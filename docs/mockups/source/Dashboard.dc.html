@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Tableau de bord Plateforme</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#415F91}a:hover{color:#2A4678}
+.ms{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+.nav-item{display:flex;align-items:center;gap:12px;height:56px;padding:0 24px 0 16px;border-radius:28px;color:#44474E;text-decoration:none;font-size:14px;font-weight:500}
+.nav-item .ms{font-size:24px}
+.nav-item:hover{background:rgba(25,28,32,.08);color:#191C20}
+.nav-item.on{background:#DAE2F9;color:#131C2B}
+.nav-item.on .ms{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+.btn{font:inherit;font-size:14px;font-weight:500;height:40px;padding:0 24px;border-radius:20px;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-sizing:border-box;white-space:nowrap}
+.btn .ms{font-size:18px;margin-left:-8px}
+.filled{background:#415F91;color:#FFFFFF}.filled:hover{background:#4E6A9B;color:#FFFFFF}
+.outlined{background:transparent;color:#415F91;border:1px solid #74777F}.outlined:hover{background:rgba(65,95,145,.08);color:#415F91}
+.icon-btn{width:40px;height:40px;border-radius:20px;border:0;background:transparent;color:#44474E;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.tf{position:relative;display:flex;flex-direction:column}
+.tf label{position:absolute;top:-8px;left:12px;padding:0 4px;font-size:12px;line-height:16px;color:#44474E;background:#F9F9FF;z-index:1}
+.tf-in{font:inherit;font-size:16px;min-height:56px;padding:0 16px;border:1px solid #74777F;border-radius:4px;background:transparent;color:#191C20;box-sizing:border-box;width:100%}
+.g{background:#FFFFFF;border:1px solid #C4C6D0;border-radius:12px;padding:16px 20px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.gh{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.gt{margin:0;font-size:14px;font-weight:500}
+.kv{font-size:36px;line-height:44px;font-variant-numeric:tabular-nums}
+.ks{font-size:12px;color:#44474E}
+.lbl{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:8px;font-size:12px;font-weight:500;background:#E7E8EE;color:#44474E;white-space:nowrap}
+.c-prog{background:#D6E3FF;color:#001B3E}
+.err{background:#FFDAD6;color:#410002}
+.av{border-radius:50%;background:#D6E3FF;color:#001B3E;font-weight:500;display:flex;align-items:center;justify-content:center;flex:none;width:40px;height:40px;font-size:14px}
+.li{display:flex;align-items:center;gap:12px;min-height:44px;border-top:1px solid #E1E2E8}
+.hm{display:grid;grid-template-columns:110px repeat(4,minmax(0,1fr));gap:4px;align-items:center;font-size:12px}
+.hc{height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;font-weight:500}
+.l1{background:#D6E3FF;color:#001B3E}.l2{background:#AAC7FF;color:#001B3E}.l3{background:#7A9AD6;color:#001B3E}.l4{background:#415F91;color:#FFFFFF}.over{background:#FFDAD6;color:#410002;box-shadow:inset 0 0 0 2px #BA1A1A}.abs{background:#FFFFFF;color:#44474E;box-shadow:inset 0 0 0 1px #C4C6D0;font-style:italic}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F9F9FF; color: #191C20; font-family: Roboto, system-ui, sans-serif; font-size: 14px; line-height: 20px;">
+<nav aria-label="Navigation principale" style="flex: 1 1 256px; box-sizing: border-box; padding: 12px; background: #F3F3FA; display: flex; flex-direction: column; gap: 4px;">
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px 16px;"><span class="ms" aria-hidden="true" style="font-size: 28px; color: #415F91;">deployed_code</span><span style="font-size: 16px; font-weight: 500;">My Little Big Project Planner</span></div>
+<div class="tf" style="margin: 4px 4px 16px;"><label for="tenant" style="background: #F3F3FA;">Organisation</label><select id="tenant" class="tf-in"><option>Acme Industrie</option><option>Acme Services</option></select></div>
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="10"><a href="{{n.href}}" class="{{n.cls}}" aria-current="{{n.cur}}"><span class="ms" aria-hidden="true">{{n.icon}}</span><span>{{n.label}}</span></a></sc-for>
+<a href="Compte.dc.html" style="margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 16px; border-top: 1px solid #C4C6D0; color: #191C20; text-decoration: none;"><div class="av" aria-hidden="true">LB</div><div style="display: flex; flex-direction: column;"><span style="font-weight: 500;">Lucas Bernard</span><span style="font-size: 12px; color: #44474E;">Mon compte</span></div></a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 24px 32px 40px; display: flex; flex-direction: column; gap: 20px;">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px;">
+<div><p style="margin: 0; font-size: 12px; color: #44474E;">Tableaux de bord · partagé avec l’équipe Plateforme</p><h1 style="margin: 4px 0 0; font-size: 28px; line-height: 36px; font-weight: 400;">Pilotage Plateforme</h1></div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;"><div class="tf" style="width: 240px;"><label for="db">Tableau de bord</label><select id="db" class="tf-in"><option>Pilotage Plateforme</option><option>Mon tableau de bord</option></select></div><button class="btn outlined" type="button"><span class="ms" aria-hidden="true">share</span>Partager</button><button class="btn filled" type="button"><span class="ms" aria-hidden="true">add</span>Ajouter un gadget</button></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+<sc-for list="{{kpis}}" as="k" hint-placeholder-count="4">
+<section class="g" aria-label="{{k.label}}"><div class="gh"><h2 class="gt">{{k.label}}</h2><button class="icon-btn" type="button" aria-label="Options du gadget"><span class="ms" aria-hidden="true">more_vert</span></button></div><div class="kv" style="{{k.style}}">{{k.v}}</div><div class="ks">{{k.sub}}</div></section>
+</sc-for>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px;">
+<section class="g" aria-labelledby="st-t">
+<div class="gh"><h2 id="st-t" class="gt">Tickets par statut</h2><span class="lbl">project = PLAT</span></div>
+<sc-for list="{{byStatus}}" as="b" hint-placeholder-count="4">
+<div style="display: grid; grid-template-columns: 90px 1fr 32px; gap: 12px; align-items: center;"><span>{{b.label}}</span><div style="height: 24px; border-radius: 6px; background: #EDEDF4; overflow: hidden;" role="img" aria-label="{{b.aria}}"><div style="{{b.style}}"></div></div><span style="text-align: right; font-weight: 500; font-variant-numeric: tabular-nums;">{{b.n}}</span></div>
+</sc-for>
+</section>
+<section class="g" aria-labelledby="bd-t">
+<div class="gh"><h2 id="bd-t" class="gt">Burndown · Sprint 24</h2><a href="AgileVersions.dc.html" style="font-size: 12px;">Détail</a></div>
+<svg role="img" aria-label="Burndown du sprint 24 : 20 points restants pour 17 attendus" viewBox="0 0 520 200" style="width: 100%; height: auto;">
+<line x1="20" y1="180" x2="500" y2="180" stroke="#C4C6D0"></line>
+<line x1="20" y1="20" x2="500" y2="180" stroke="#74777F" stroke-width="1.5" stroke-dasharray="5 4"></line>
+<polyline points="20,20 68,20 116,34 164,44 212,58 260,86" fill="none" stroke="#415F91" stroke-width="3" stroke-linejoin="round"></polyline>
+<circle cx="260" cy="86" r="5" fill="#415F91"></circle>
+<text x="270" y="80" font-family="Roboto, sans-serif" font-size="13" fill="#191C20">20 points restants</text>
+</svg>
+</section>
+<section class="g" aria-labelledby="hm-t">
+<div class="gh"><h2 id="hm-t" class="gt">Charge de l’équipe</h2><a href="Main.dc.html" style="font-size: 12px;">Heatmap complète</a></div>
+<div role="table" aria-labelledby="hm-t" style="display: flex; flex-direction: column; gap: 4px;">
+<div class="hm" role="row" style="color: #44474E;"><span role="columnheader"></span><span role="columnheader" style="text-align: center;">S45</span><span role="columnheader" style="text-align: center;">S46</span><span role="columnheader" style="text-align: center;">S47</span><span role="columnheader" style="text-align: center;">S48</span></div>
+<sc-for list="{{hm}}" as="r" hint-placeholder-count="5"><div class="hm" role="row"><span role="rowheader">{{r.name}}</span><sc-for list="{{r.cells}}" as="c" hint-placeholder-count="4"><span role="cell" class="{{c.cls}}">{{c.t}}</span></sc-for></div></sc-for>
+</div>
+</section>
+<section class="g" aria-labelledby="mt-t">
+<div class="gh"><h2 id="mt-t" class="gt">Mes tickets</h2><span class="lbl">assignee = currentUser()</span></div>
+<div>
+<sc-for list="{{mine}}" as="m" hint-placeholder-count="5"><div class="li"><a href="{{m.href}}" style="font-size: 12px; font-weight: 500; width: 72px;">{{m.key}}</a><span style="flex: 1; min-width: 0;">{{m.title}}</span><span class="{{m.cls}}">{{m.status}}</span></div></sc-for>
+</div>
+</section>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1060}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const active = 'Tableaux de bord';
+    const navDef = [['Accueil', 'Notifications.dc.html', 'home'], ['Mes tickets', 'Ticket.dc.html', 'assignment'], ['Recherche', 'Recherche.dc.html', 'search'], ['Boards', 'Kanban.dc.html', 'view_kanban'], ['Gantt', 'Gantt.dc.html', 'view_timeline'], ['Charge', 'Main.dc.html', 'groups'], ['Portefeuilles', 'Portefeuille.dc.html', 'account_tree'], ['Portails', 'PortailAdmin.dc.html', 'support_agent'], ['Tableaux de bord', 'Dashboard.dc.html', 'dashboard'], ['Administration', 'AdminMembres.dc.html', 'settings']];
+    const nav = navDef.map(([label, href, icon]) => ({ label, href, icon, cls: label === active ? 'nav-item on' : 'nav-item', cur: label === active ? 'page' : undefined }));
+    const kpis = [
+      { label: 'Tickets ouverts', v: '42', sub: 'Projet Plateforme d’identité', style: '' },
+      { label: 'En retard', v: '1', sub: 'PLAT-134 · échéance 4 nov.', style: 'color: #BA1A1A;' },
+      { label: 'Points restants · sprint 24', v: '20', sub: 'sur 34 engagés · fin le 13 nov.', style: '' },
+      { label: 'Charge de l’équipe · S47', v: '71 %', sub: '2 surcharges sur la période', style: '' }
+    ];
+    const total = 31;
+    const B = (label, n, color) => ({ label, n, aria: label + ' : ' + n + ' tickets', style: 'height: 100%; border-radius: 6px; width: ' + Math.round(n * 100 / total) + '%; background: ' + color + ';' });
+    const byStatus = [B('À faire', 22, '#C4C6D0'), B('En cours', 14, '#7A9AD6'), B('En revue', 6, '#415F91'), B('Terminé', 31, '#006D3B')];
+    const lv = v => v <= 40 ? 'l1' : v <= 70 ? 'l2' : v <= 95 ? 'l3' : v <= 100 ? 'l4' : 'over';
+    const H = (name, vals) => ({ name, cells: vals.map(v => v === 'A' ? { t: 'Congés', cls: 'hc abs' } : { t: v + ' %', cls: 'hc ' + lv(v) }) });
+    const hm = [H('Camille Martin', [82, 94, 112, 100]), H('Lucas Bernard', [70, 85, 90, 95]), H('Inès Moreau', [100, 96, 88, 72]), H('Nathan Roux', [40, 55, 48, 62]), H('Léa Fontaine', [60, 72, 58, 66])];
+    const mine = [
+      { key: 'PLAT-176', title: 'Documentation d’exploitation de l’annuaire', status: 'À faire', cls: 'lbl', href: '#' },
+      { key: 'PLAT-120', title: 'Cadrage de l’annuaire', status: 'Terminé', cls: 'lbl', href: '#' },
+      { key: 'PLAT-137', title: 'Inventaire des applications connectées', status: 'Terminé', cls: 'lbl', href: '#' },
+      { key: 'PLAT-150', title: 'Jalon : OIDC en recette', status: 'À faire', cls: 'lbl', href: 'Gantt.dc.html' },
+      { key: 'PLAT-180', title: 'Délégation d’administration par groupe', status: 'À faire', cls: 'lbl', href: '#' }
+    ];
+    return { nav, kpis, byStatus, hm, mine };
+  }
+}
+</script>
+</body>
+</html>

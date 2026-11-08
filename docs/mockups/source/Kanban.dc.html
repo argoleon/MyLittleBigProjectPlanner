@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Board Plateforme</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;family=Roboto+Mono:wght@400&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#415F91}a:hover{color:#2A4678}
+.ms{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+.nav-item{display:flex;align-items:center;gap:12px;height:56px;padding:0 24px 0 16px;border-radius:28px;color:#44474E;text-decoration:none;font-size:14px;font-weight:500;letter-spacing:.1px}
+.nav-item .ms{font-size:24px;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24}
+.nav-item:hover{background:rgba(25,28,32,.08);color:#191C20}
+.nav-item.on{background:#DAE2F9;color:#131C2B}
+.nav-item.on .ms{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+.btn{font:inherit;font-size:14px;font-weight:500;letter-spacing:.1px;height:40px;padding:0 24px;border-radius:20px;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-sizing:border-box;white-space:nowrap}
+.btn .ms{font-size:18px;margin-left:-8px}
+.outlined{background:transparent;color:#415F91;border:1px solid #74777F}.outlined:hover{background:rgba(65,95,145,.08);color:#415F91}
+.text{background:transparent;color:#415F91;padding:0 12px}.text:hover{background:rgba(65,95,145,.08)}
+.fab{font:inherit;font-size:14px;font-weight:500;height:56px;padding:0 20px 0 16px;border-radius:16px;border:0;background:#D6E3FF;color:#001B3E;display:inline-flex;align-items:center;gap:12px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.3),0 4px 8px 3px rgba(0,0,0,.15)}
+.fab .ms{font-size:24px}
+.chip{font:inherit;font-size:14px;font-weight:500;height:32px;padding:0 16px;border-radius:8px;border:1px solid #74777F;background:transparent;color:#44474E;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.chip.on{background:#DAE2F9;border-color:#DAE2F9;color:#131C2B;padding-left:8px}
+.chip .ms{font-size:18px}
+.tf{position:relative;display:flex;flex-direction:column}
+.tf label{position:absolute;top:-8px;left:12px;padding:0 4px;font-size:12px;line-height:16px;color:#44474E;background:#F9F9FF;z-index:1}
+.tf-in{font:inherit;font-size:16px;height:56px;padding:0 16px;border:1px solid #74777F;border-radius:4px;background:transparent;color:#191C20;box-sizing:border-box;width:100%}
+.lbl{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:8px;font-size:12px;font-weight:500;letter-spacing:.5px;background:#E7E8EE;color:#44474E;white-space:nowrap}
+.lbl .ms{font-size:16px}
+.ty-story{background:#D6E3FF;color:#001B3E}
+.ty-bug{background:#FFDAD6;color:#410002}
+.ty-task{background:#E7E8EE;color:#44474E}
+.col{background:#EDEDF4;border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.col.full{background:#FBEAE8}
+.kcard{background:#FFFFFF;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;text-decoration:none;color:#191C20;box-shadow:0 1px 2px rgba(0,0,0,.3),0 1px 3px 1px rgba(0,0,0,.15)}
+.kcard:hover{color:#191C20;box-shadow:0 1px 2px rgba(0,0,0,.3),0 2px 6px 2px rgba(0,0,0,.15)}
+.av{border-radius:50%;background:#D6E3FF;color:#001B3E;font-weight:500;display:flex;align-items:center;justify-content:center;flex:none;width:28px;height:28px;font-size:11px}
+.av.none{background:transparent;border:1px dashed #74777F;color:#44474E;box-sizing:border-box}
+.pts{min-width:24px;height:24px;padding:0 8px;box-sizing:border-box;border-radius:12px;background:#EDEDF4;font-size:12px;font-weight:500;display:inline-flex;align-items:center;justify-content:center}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F9F9FF; color: #191C20; font-family: Roboto, system-ui, sans-serif; font-size: 14px; line-height: 20px;">
+<nav aria-label="Navigation principale" style="flex: 1 1 256px; box-sizing: border-box; padding: 12px; background: #F3F3FA; display: flex; flex-direction: column; gap: 4px;">
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px 16px;">
+<span class="ms" aria-hidden="true" style="font-size: 28px; color: #415F91;">deployed_code</span>
+<span style="font-size: 16px; font-weight: 500;">My Little Big Project Planner</span>
+</div>
+<div class="tf" style="margin: 4px 4px 16px;">
+<label for="tenant" style="background: #F3F3FA;">Organisation</label>
+<select id="tenant" class="tf-in"><option>Acme Industrie</option><option>Acme Services</option></select>
+</div>
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="10">
+<a href="{{n.href}}" class="{{n.cls}}" aria-current="{{n.cur}}"><span class="ms" aria-hidden="true">{{n.icon}}</span><span>{{n.label}}</span></a>
+</sc-for>
+<div style="margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 16px; border-top: 1px solid #C4C6D0;">
+<div class="av" aria-hidden="true" style="width: 40px; height: 40px; font-size: 14px;">LB</div>
+<div style="display: flex; flex-direction: column;"><span style="font-weight: 500;">Lucas Bernard</span><span style="font-size: 12px; color: #44474E;">Chef de projet</span></div>
+</div>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 24px 32px 40px; display: flex; flex-direction: column; gap: 20px;">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px;">
+<div>
+<p style="margin: 0; font-size: 12px; color: #44474E;">Plateforme d’identité › Boards</p>
+<h1 style="margin: 4px 0 0; font-size: 28px; line-height: 36px; font-weight: 400;">Board Plateforme</h1>
+<p style="margin: 4px 0 0; color: #44474E;">Kanban · 17 tickets · limite de travail en cours : 4</p>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+<button class="btn outlined" type="button"><span class="ms" aria-hidden="true">tune</span>Configurer le board</button>
+<button class="fab" type="button"><span class="ms" aria-hidden="true">add</span>Nouveau ticket</button>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-top: 8px;">
+<div class="tf" style="flex: 1 1 380px; min-width: 0;">
+<label for="q">Filtre du board</label>
+<input id="q" class="tf-in" type="text" value="project = PLAT AND status != cancelled" style="font-family: 'Roboto Mono', ui-monospace, monospace; font-size: 14px;">
+</div>
+<div role="group" aria-label="Filtres rapides" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+<button type="button" class="chip">Mes tickets</button>
+<button type="button" class="chip on" aria-pressed="true"><span class="ms" aria-hidden="true">check</span>Epic : Authentification unifiée</button>
+<button type="button" class="chip">Bloqués</button>
+<button type="button" class="chip">Bugs</button>
+</div>
+</div>
+<div style="overflow-x: auto;">
+<div style="display: grid; grid-template-columns: repeat(4, minmax(250px, 1fr)); gap: 16px; align-items: start;">
+<sc-for list="{{cols}}" as="c" hint-placeholder-count="4">
+<section class="{{c.cls}}" aria-label="{{c.name}}">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 4px 8px;">
+<h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 500;">{{c.name}} <span style="font-weight: 400; color: #44474E;">{{c.count}}</span></h2>
+<sc-if value="{{c.hasWip}}" hint-placeholder-val="{{false}}"><span class="{{c.wipCls}}">{{c.wip}}</span></sc-if>
+</div>
+<sc-for list="{{c.cards}}" as="k" hint-placeholder-count="4">
+<a class="kcard" href="{{k.href}}">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+<span style="font-size: 12px; font-weight: 500; color: #44474E;">{{k.key}}</span>
+<span class="{{k.tcls}}"><span class="ms" aria-hidden="true">{{k.icon}}</span>{{k.type}}</span>
+</div>
+<span style="font-size: 14px; line-height: 20px;">{{k.title}}</span>
+<sc-if value="{{k.blocked}}" hint-placeholder-val="{{false}}">
+<span class="lbl" style="align-self: flex-start; background: #FFDAD6; color: #410002;"><span class="ms" aria-hidden="true">block</span>{{k.blockedBy}}</span>
+</sc-if>
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+<span style="font-size: 12px; color: #44474E;">{{k.label}}</span>
+<span style="display: inline-flex; align-items: center; gap: 6px;"><span class="pts" aria-label="{{k.ptsLabel}}">{{k.pts}}</span><span class="{{k.avCls}}" aria-label="{{k.who}}">{{k.ini}}</span></span>
+</div>
+</a>
+</sc-for>
+<sc-if value="{{c.hasMore}}" hint-placeholder-val="{{false}}"><button type="button" class="btn text" style="align-self: center;">{{c.more}}</button></sc-if>
+</section>
+</sc-for>
+</div>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const active = 'Boards';
+    const navDef = [['Accueil', 'Notifications.dc.html', 'home'], ['Mes tickets', 'Ticket.dc.html', 'assignment'], ['Recherche', 'Recherche.dc.html', 'search'], ['Boards', 'Kanban.dc.html', 'view_kanban'], ['Gantt', 'Gantt.dc.html', 'view_timeline'], ['Charge', 'Main.dc.html', 'groups'], ['Portefeuilles', 'Portefeuille.dc.html', 'account_tree'], ['Portails', 'PortailAdmin.dc.html', 'support_agent'], ['Tableaux de bord', 'Dashboard.dc.html', 'dashboard'], ['Administration', 'AdminMembres.dc.html', 'settings']];
+    const nav = navDef.map(([label, href, icon]) => ({ label, href, icon, cls: label === active ? 'nav-item on' : 'nav-item', cur: label === active ? 'page' : undefined }));
+    const people = { CM: 'Camille Martin', LB: 'Lucas Bernard', LF: 'Léa Fontaine', SL: 'Sarah Lefèvre', NR: 'Nathan Roux', IM: 'Inès Moreau' };
+    const types = { S: ['Story', 'lbl ty-story', 'bookmark'], B: ['Bug', 'lbl ty-bug', 'bug_report'], T: ['Tâche', 'lbl ty-task', 'task_alt'] };
+    const card = (key, t, title, pts, ini, label, blockedBy) => ({
+      key, title, pts, ini: ini || '?', label: label || '',
+      type: types[t][0], tcls: types[t][1], icon: types[t][2],
+      href: key === 'PLAT-142' ? 'Ticket.dc.html' : '#',
+      avCls: ini ? 'av' : 'av none',
+      who: ini ? 'Assigné à ' + people[ini] : 'Non assigné',
+      ptsLabel: pts + ' points',
+      blocked: !!blockedBy, blockedBy: blockedBy ? 'Bloqué par ' + blockedBy : ''
+    });
+    const cols = [
+      { name: 'À faire', count: '5', hasWip: false, wip: '', wipCls: 'lbl', cls: 'col', hasMore: false, more: '', cards: [
+        card('PLAT-170', 'B', 'Erreur 500 au changement de mot de passe', 1, '', 'sécurité'),
+        card('PLAT-145', 'T', 'Tests de bout en bout OIDC', 3, 'CM', 'annuaire'),
+        card('PLAT-160', 'T', 'Ateliers utilisateurs', 2, 'LF', 'ux'),
+        card('PLAT-161', 'S', 'Journal d’audit des connexions', 5, 'NR', 'sécurité'),
+        card('PLAT-163', 'T', 'Rotation automatique des secrets', 3, 'NR', 'exploitation')
+      ] },
+      { name: 'En cours', count: '4', hasWip: true, wip: 'Limite atteinte · 4 / 4', wipCls: 'lbl ty-bug', cls: 'col full', hasMore: false, more: '', cards: [
+        card('PLAT-142', 'S', 'Migration de l’authentification vers OIDC', 8, 'CM', 'annuaire'),
+        card('PLAT-144', 'T', 'Mapper les groupes Entra ID', 3, 'CM', 'annuaire'),
+        card('PLAT-148', 'T', 'Scripts de migration des comptes', 5, 'SL', 'annuaire'),
+        card('PLAT-151', 'S', 'Politique MFA par organisation', 5, 'IM', 'sécurité', 'PLAT-142')
+      ] },
+      { name: 'En revue', count: '2', hasWip: true, wip: '2 / 3', wipCls: 'lbl', cls: 'col', hasMore: false, more: '', cards: [
+        card('PLAT-139', 'S', 'Page de connexion accessible au clavier', 3, 'IM', 'accessibilité'),
+        card('PLAT-141', 'B', 'Corriger le délai d’expiration de session', 2, 'NR', 'sécurité')
+      ] },
+      { name: 'Terminé', count: '6', hasWip: false, wip: '', wipCls: 'lbl', cls: 'col', hasMore: true, more: 'Afficher 3 tickets de plus', cards: [
+        card('PLAT-143', 'T', 'Configurer le client OIDC', 2, 'CM', 'annuaire'),
+        card('PLAT-120', 'T', 'Cadrage de l’annuaire', 3, 'LB', 'cadrage'),
+        card('PLAT-137', 'T', 'Inventaire des applications connectées', 2, 'LB', 'cadrage')
+      ] }
+    ];
+    return { nav, cols };
+  }
+}
+</script>
+</body>
+</html>

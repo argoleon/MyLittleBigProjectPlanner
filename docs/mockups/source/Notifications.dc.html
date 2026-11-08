@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Notifications</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#415F91}a:hover{color:#2A4678}
+.ms{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+.nav-item{display:flex;align-items:center;gap:12px;height:56px;padding:0 24px 0 16px;border-radius:28px;color:#44474E;text-decoration:none;font-size:14px;font-weight:500}
+.nav-item .ms{font-size:24px}
+.nav-item:hover{background:rgba(25,28,32,.08);color:#191C20}
+.nav-item.on{background:#DAE2F9;color:#131C2B}
+.nav-item.on .ms{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+.btn{font:inherit;font-size:14px;font-weight:500;height:40px;padding:0 24px;border-radius:20px;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-sizing:border-box;white-space:nowrap}
+.btn .ms{font-size:18px;margin-left:-8px}
+.text{background:transparent;color:#415F91;padding:0 12px}.text:hover{background:rgba(65,95,145,.08);color:#415F91}
+.chip{font:inherit;font-size:14px;font-weight:500;height:32px;padding:0 16px;border-radius:8px;border:1px solid #74777F;background:transparent;color:#44474E;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.chip.on{background:#DAE2F9;border-color:#DAE2F9;color:#131C2B;padding-left:8px}
+.chip .ms{font-size:18px}
+.tf{position:relative;display:flex;flex-direction:column}
+.tf label{position:absolute;top:-8px;left:12px;padding:0 4px;font-size:12px;line-height:16px;color:#44474E;background:#FFFFFF;z-index:1}
+.tf-in{font:inherit;font-size:16px;min-height:56px;padding:0 16px;border:1px solid #74777F;border-radius:4px;background:transparent;color:#191C20;box-sizing:border-box;width:100%}
+.card{background:#FFFFFF;border:1px solid #C4C6D0;border-radius:12px;padding:20px}
+.h2{margin:0;font-size:16px;line-height:24px;font-weight:500}
+.lbl{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:8px;font-size:12px;font-weight:500;background:#E7E8EE;color:#44474E;white-space:nowrap}
+.av{border-radius:50%;background:#D6E3FF;color:#001B3E;font-weight:500;display:flex;align-items:center;justify-content:center;flex:none;width:40px;height:40px;font-size:14px}
+.sw{width:52px;height:32px;border-radius:16px;border:2px solid #74777F;background:#E1E2E8;box-sizing:border-box;position:relative;cursor:pointer;flex:none;padding:0}
+.sw::after{content:'';position:absolute;top:6px;left:6px;width:16px;height:16px;border-radius:50%;background:#74777F}
+.sw.on{background:#415F91;border-color:#415F91}
+.sw.on::after{top:2px;left:22px;width:24px;height:24px;background:#FFFFFF}
+.ntf{display:flex;gap:16px;padding:16px;border-radius:12px;text-decoration:none;color:#191C20}
+.ntf.unread{background:#E9EFFF}
+.ntf:hover{background:#E1E2E8;color:#191C20}
+.ic{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;font-size:12px;font-weight:500;color:#44474E;padding:0 8px;height:40px;border-bottom:1px solid #C4C6D0}
+.tbl td{padding:0 8px;height:48px;border-bottom:1px solid #E1E2E8;vertical-align:middle}
+.cb{width:18px;height:18px;accent-color:#415F91}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F9F9FF; color: #191C20; font-family: Roboto, system-ui, sans-serif; font-size: 14px; line-height: 20px;">
+<nav aria-label="Navigation principale" style="flex: 1 1 256px; box-sizing: border-box; padding: 12px; background: #F3F3FA; display: flex; flex-direction: column; gap: 4px;">
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px 16px;"><span class="ms" aria-hidden="true" style="font-size: 28px; color: #415F91;">deployed_code</span><span style="font-size: 16px; font-weight: 500;">My Little Big Project Planner</span></div>
+<div class="tf" style="margin: 4px 4px 16px;"><label for="tenant" style="background: #F3F3FA;">Organisation</label><select id="tenant" class="tf-in"><option>Acme Industrie</option><option>Acme Services</option></select></div>
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="10"><a href="{{n.href}}" class="{{n.cls}}" aria-current="{{n.cur}}"><span class="ms" aria-hidden="true">{{n.icon}}</span><span>{{n.label}}</span></a></sc-for>
+<a href="Compte.dc.html" style="margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 16px; border-top: 1px solid #C4C6D0; color: #191C20; text-decoration: none;"><div class="av" aria-hidden="true">LB</div><div style="display: flex; flex-direction: column;"><span style="font-weight: 500;">Lucas Bernard</span><span style="font-size: 12px; color: #44474E;">Mon compte</span></div></a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 24px 32px 40px; display: flex; flex-direction: column; gap: 20px;">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px;">
+<div><h1 style="margin: 0; font-size: 28px; line-height: 36px; font-weight: 400;">Notifications</h1><p style="margin: 4px 0 0; color: #44474E;">5 non lues · toutes organisations</p></div>
+<button class="btn text" type="button"><span class="ms" aria-hidden="true">done_all</span>Tout marquer comme lu</button>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 12px;">
+<div role="group" aria-label="Filtres" style="display: flex; flex-wrap: wrap; gap: 8px;">
+<button type="button" class="chip on" aria-pressed="true"><span class="ms" aria-hidden="true">check</span>Toutes</button>
+<button type="button" class="chip">Mentions</button>
+<button type="button" class="chip">Affectations et charge</button>
+<button type="button" class="chip">Portail</button>
+<button type="button" class="chip">Acme Industrie</button>
+<button type="button" class="chip">Acme Services</button>
+</div>
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="2">
+<p style="margin: 8px 0 0 16px; font-size: 12px; font-weight: 500; color: #44474E;">{{g.title}}</p>
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<sc-for list="{{g.items}}" as="n" hint-placeholder-count="3">
+<a href="{{n.href}}" class="{{n.cls}}">
+<div class="ic" aria-hidden="true" style="{{n.icStyle}}"><span class="ms">{{n.icon}}</span></div>
+<div style="flex: 1; min-width: 0;">
+<div><span style="font-weight: 500;">{{n.title}}</span></div>
+<div style="color: #44474E;">{{n.body}}</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px;"><span class="lbl">{{n.tenant}}</span><span style="font-size: 12px; color: #44474E;">{{n.when}}</span></div>
+</div>
+</a>
+</sc-for>
+</div>
+</sc-for>
+</div>
+<aside style="flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+<section class="card" aria-labelledby="p-t" style="display: flex; flex-direction: column; gap: 12px;">
+<h2 id="p-t" class="h2">Préférences de notification</h2>
+<table class="tbl">
+<thead><tr><th scope="col">Événement</th><th scope="col" style="text-align: center;">Application</th><th scope="col" style="text-align: center;">Email</th></tr></thead>
+<tbody>
+<sc-for list="{{prefs}}" as="p" hint-placeholder-count="7">
+<tr><td>{{p.label}}</td><td style="text-align: center;"><input class="cb" type="checkbox" defaultChecked="{{p.app}}" aria-label="{{p.appLabel}}"></td><td style="text-align: center;"><input class="cb" type="checkbox" defaultChecked="{{p.mail}}" aria-label="{{p.mailLabel}}"></td></tr>
+</sc-for>
+</tbody>
+</table>
+<div style="display: flex; align-items: center; gap: 16px; min-height: 56px; border-top: 1px solid #E1E2E8;"><div style="flex: 1;"><div>Résumé quotidien par email</div><div style="font-size: 12px; color: #44474E;">Chaque jour ouvré à 8 h, au lieu d’un email par événement</div></div><button type="button" role="switch" class="sw on" aria-checked="true" aria-label="Résumé quotidien"></button></div>
+</section>
+</aside>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const active = 'Accueil';
+    const navDef = [['Accueil', 'Notifications.dc.html', 'home'], ['Mes tickets', 'Ticket.dc.html', 'assignment'], ['Recherche', 'Recherche.dc.html', 'search'], ['Boards', 'Kanban.dc.html', 'view_kanban'], ['Gantt', 'Gantt.dc.html', 'view_timeline'], ['Charge', 'Main.dc.html', 'groups'], ['Portefeuilles', 'Portefeuille.dc.html', 'account_tree'], ['Portails', 'PortailAdmin.dc.html', 'support_agent'], ['Tableaux de bord', 'Dashboard.dc.html', 'dashboard'], ['Administration', 'AdminMembres.dc.html', 'settings']];
+    const nav = navDef.map(([label, href, icon]) => ({ label, href, icon, cls: label === active ? 'nav-item on' : 'nav-item', cur: label === active ? 'page' : undefined }));
+    const tone = { pri: 'background: #D6E3FF; color: #001B3E;', err: 'background: #FFDAD6; color: #410002;', neu: 'background: #E7E8EE; color: #44474E;', ext: 'background: #F8D8FE; color: #2A1330;' };
+    const N = (icon, t, title, body, tenant, when, unread, href) => ({ icon, icStyle: tone[t], title, body, tenant, when, cls: unread ? 'ntf unread' : 'ntf', href: href || '#' });
+    const groups = [
+      { title: 'Aujourd’hui', items: [
+        N('alternate_email', 'pri', 'Inès Moreau vous a mentionné sur PLAT-151', '« @Lucas peux-tu valider la politique MFA avant jeudi ? »', 'Acme Industrie', '09:14', true),
+        N('support_agent', 'ext', 'Nouvelle demande sur le portail Support', 'SUP-1042 · Impossible d’accéder à la messagerie · envoyée sans compte', 'Acme Services', '08:40', true),
+        N('event_busy', 'err', 'Conflit d’affectation', 'Camille Martin est absente le 4 déc. : 4 h à replanifier sur PLAT-142', 'Acme Industrie', '08:00', true, 'Ticket.dc.html')
+      ] },
+      { title: 'Cette semaine', items: [
+        N('warning', 'err', 'Surcharge forcée sur votre équipe', 'Camille Martin à 112 % en semaine 47, autorisée par vous-même', 'Acme Industrie', 'Mar. 3 nov.', true, 'Main.dc.html'),
+        N('link_off', 'err', 'Dépendance non respectée', 'DATA-325 commence avant la fin de DATA-318', 'Acme Industrie', 'Lun. 2 nov.', true, 'Gantt.dc.html'),
+        N('swap_horiz', 'neu', 'PLAT-142 est passé en cours', 'Par Lucas Bernard', 'Acme Industrie', 'Ven. 6 nov.', false, 'Ticket.dc.html')
+      ] }
+    ];
+    const P = (label, app, mail) => ({ label, app, mail, appLabel: label + ' dans l’application', mailLabel: label + ' par email' });
+    const prefs = [P('Mentions', true, true), P('Ticket assigné', true, true), P('Changement de statut', true, false), P('Nouveau commentaire', true, false), P('Surcharge et conflits', true, true), P('Dépendance non respectée', true, false), P('Demande sur un portail', true, true)];
+    return { nav, groups, prefs };
+  }
+}
+</script>
+</body>
+</html>

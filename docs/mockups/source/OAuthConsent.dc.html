@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Autoriser l’accès</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;family=Roboto+Mono:wght@400&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#415F91}a:hover{color:#2A4678}
+.ms{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+.btn{font:inherit;font-size:14px;font-weight:500;height:40px;padding:0 24px;border-radius:20px;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-sizing:border-box;white-space:nowrap}
+.filled{background:#415F91;color:#FFFFFF}.filled:hover{background:#4E6A9B;color:#FFFFFF}
+.text{background:transparent;color:#415F91;padding:0 12px}.text:hover{background:rgba(65,95,145,.08);color:#415F91}
+.opt{display:flex;align-items:center;gap:12px;min-height:56px;padding:0 16px;border:1px solid #C4C6D0;border-radius:12px;cursor:pointer}
+.opt.on{border:2px solid #415F91;background:#F3F3FA}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #F9F9FF; color: #191C20; font-family: Roboto, system-ui, sans-serif; font-size: 14px; line-height: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 16px; box-sizing: border-box;">
+<section aria-labelledby="t" style="width: 100%; max-width: 560px; background: #FFFFFF; border: 1px solid #C4C6D0; border-radius: 28px; padding: 32px; box-sizing: border-box; display: flex; flex-direction: column; gap: 24px;">
+<div style="display: flex; align-items: center; gap: 16px;">
+<div aria-hidden="true" style="width: 48px; height: 48px; border-radius: 12px; background: #EDEDF4; display: flex; align-items: center; justify-content: center;"><span class="ms" style="font-size: 28px; color: #44474E;">smart_toy</span></div>
+<span class="ms" aria-hidden="true" style="color: #74777F;">sync_alt</span>
+<div aria-hidden="true" style="width: 48px; height: 48px; border-radius: 12px; background: #D6E3FF; display: flex; align-items: center; justify-content: center;"><span class="ms" style="font-size: 28px; color: #001B3E;">deployed_code</span></div>
+</div>
+<div>
+<h1 id="t" style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 400;">Claude demande l’accès à votre compte</h1>
+<p style="margin: 8px 0 0; color: #44474E;">Connecté en tant que Lucas Bernard. Claude agira en votre nom, avec exactement vos droits, via le serveur MCP de My Little Big Project Planner.</p>
+</div>
+<fieldset style="border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px;">
+<legend style="padding: 0; margin-bottom: 8px; font-weight: 500;">Organisation à laquelle donner accès</legend>
+<label class="opt on"><input type="radio" name="tenant" defaultChecked="{{yes}}" style="width: 20px; height: 20px; margin: 0; accent-color: #415F91;"><span style="flex: 1;">Acme Industrie</span><span style="font-size: 12px; color: #44474E;">acme.exemple.org</span></label>
+<label class="opt"><input type="radio" name="tenant" style="width: 20px; height: 20px; margin: 0; accent-color: #415F91;"><span style="flex: 1;">Acme Services</span><span style="font-size: 12px; color: #44474E;">services.exemple.org</span></label>
+<span style="font-size: 12px; color: #44474E;">Un accès ne vaut que pour une organisation. Autorisez à nouveau pour en ajouter une autre.</span>
+</fieldset>
+<div>
+<p style="margin: 0 0 8px; font-weight: 500;">Claude pourra :</p>
+<ul style="list-style: none; margin: 0; padding: 0;">
+<sc-for list="{{scopes}}" as="s" hint-placeholder-count="5">
+<li style="display: flex; align-items: flex-start; gap: 16px; padding: 10px 0; border-bottom: 1px solid #E1E2E8;">
+<span class="ms" aria-hidden="true" style="color: #415F91; margin-top: 2px;">{{s.icon}}</span>
+<div style="flex: 1;"><div>{{s.label}}</div><div style="font-family: 'Roboto Mono', monospace; font-size: 12px; color: #44474E;">{{s.code}}</div></div>
+</li>
+</sc-for>
+</ul>
+</div>
+<div role="note" style="display: flex; gap: 12px; padding: 12px 16px; border-radius: 12px; background: #EDEDF4; color: #44474E;">
+<span class="ms" aria-hidden="true">shield</span>
+<span>Aucune suppression ni administration n’est possible via MCP. Chaque modification est marquée « via MCP » dans l’historique. Vous pouvez révoquer cet accès à tout moment depuis Mon compte.</span>
+</div>
+<div style="display: flex; justify-content: flex-end; gap: 8px;">
+<button class="btn text" type="button">Refuser</button>
+<button class="btn filled" type="button">Autoriser</button>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const scopes = [
+      { icon: 'search', label: 'Rechercher et lire vos tickets', code: 'tickets:read' },
+      { icon: 'edit_note', label: 'Créer, modifier, commenter et changer le statut des tickets', code: 'tickets:write' },
+      { icon: 'groups', label: 'Consulter la charge et les disponibilités', code: 'workload:read' },
+      { icon: 'person_add', label: 'Créer des affectations (contrôle de surcharge appliqué)', code: 'workload:write' },
+      { icon: 'schedule', label: 'Saisir du temps', code: 'time:write' }
+    ];
+    return { scopes, yes: true };
+  }
+}
+</script>
+</body>
+</html>

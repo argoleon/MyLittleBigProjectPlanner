@@ -1,0 +1,53 @@
+// Global Material 3 theme for My Little Big Project Planner.
+//
+// Include once, at the top of each application's global stylesheet
+// (projects/app/src/styles.scss and projects/portal/src/styles.scss):
+//
+//   @use 'ui/styles/theme';
+//
+// Emits the Angular Material system variables (--mat-sys-*) and the
+// application tokens (--app-*, see _app-tokens.scss). Components must only
+// use these variables: no hard-coded colors, fonts or radii.
+
+@use '@angular/material' as mat;
+@use 'palettes';
+@use 'app-tokens';
+
+html {
+  // Follows the operating system preference. A user setting can force a mode
+  // with <html data-theme="light|dark">.
+  color-scheme: light dark;
+
+  @include mat.theme((
+    color: (
+      primary: palettes.$primary-palette,
+      tertiary: palettes.$tertiary-palette,
+      theme-type: color-scheme,
+    ),
+    typography: (
+      plain-family: (Roboto, system-ui, sans-serif),
+      brand-family: (Roboto, system-ui, sans-serif),
+    ),
+    // 0 matches the mockups (56 px text fields). Dense screens (tables, Gantt
+    // side grid) may use mat.theme((density: -2)) on a container.
+    density: 0,
+  ));
+
+  @include app-tokens.tokens;
+}
+
+html[data-theme='light'] {
+  color-scheme: light;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+  letter-spacing: var(--mat-sys-body-medium-tracking);
+}

@@ -1,0 +1,104 @@
+# CLAUDE.md
+
+Guidance for Claude Code working in this repository.
+
+## Project
+
+My Little Big Project Planner is an open source (MIT) project and ticket management tool: Jira-like configuration, request portals, portfolios and programs, Gantt, fine-grained resource workload, REST API and MCP server.
+
+- **Source of truth**: the specification, in `docs/en/specification.md` (English) and `docs/fr/specification.md` (French original; it prevails if the two differ). Read the relevant section before implementing a feature. If the code and the specification disagree, stop and ask; do not silently pick one.
+- **Mockups**: `docs/mockups/` (25 screens, Material Design 3, interface in French). See "Using the mockups" below.
+- **MVP scope and lots**: section 20 of the specification. Anything listed in section 21 is out of the MVP: do not build it unless asked.
+
+## Language
+
+- Code, identifiers, comments, commit messages, pull requests and new documentation: **English**.
+- User-facing text: never hard-coded. Use translation keys (Transloco), with French and English provided.
+- The mockups are in French; use English identifiers (e.g. "portefeuille" → `portfolio`, "charge" → `workload`, "affectation" → `assignment`).
+
+## Repository layout (target)
+
+```
+backend/        Rust workspace
+  crates/domain   business rules, no I/O (capacity, workload, recurrences, workflows, query language)
+  crates/infra    PostgreSQL, S3 storage, email, Valkey
+  crates/api      REST API (Axum), sessions, OAuth 2.1 server
+  crates/worker   background jobs (SKIP LOCKED queue)
+  crates/mcp      MCP server, calls the public API
+web/            Angular workspace
+  projects/app    internal application
+  projects/portal request portal
+  projects/ui     shared library: theme, components, generated API client
+deploy/         docker-compose and profiles (sso, observability)
+docs/           specification (en, fr) and mockups
+```
+
+Every CI step is a `just` recipe; GitHub Actions only calls them. Run the same recipes locally before declaring work done.
+
+## Licensing (blocking)
+
+The project is MIT. Only add dependencies under MIT, Apache-2.0, BSD, ISC or 0BSD. Fonts may be OFL-1.1. Never add GPL, LGPL, AGPL, SSPL or commercial dependencies; `cargo-deny` and the npm license check fail the build otherwise. If a needed library has an incompatible license, stop and ask.
+
+## Backend rules (summary)
+
+- Axum, Tokio, SQLx with compile-time checked queries, serde, utoipa, tracing. Keep Rust simple: few generics, no custom macros.
+- Every business table has `tenant_id` and is protected by PostgreSQL Row-Level Security. The tenant context is set per transaction by the shared request layer (`SET LOCAL`); never bypass it.
+- UUID v7 keys, `timestamptz` in UTC, planning dates as `date` (local to the resource calendar), translatable labels as JSONB `{"fr": …, "en": …}`.
+- Business rules live in `crates/domain` and are unit-tested without a database. Workload and recurrence rules need tests for DST changes, part-time capacity and public holidays.
+- Errors use RFC 9457 Problem Details with stable codes. The OpenAPI contract is generated from the code; the Angular client is generated from it.
+
+## Frontend rules
+
+Stack: latest Angular, standalone components, signals, zoneless change detection, `OnPush`. UI components come from **Angular Material (Material Design 3) and the CDK only**; no other component library.
+
+### Theme
+
+- The theme lives in `web/projects/ui/styles/` and is included once per application: `@use 'ui/styles/theme';` (add `"stylePreprocessorOptions": { "includePaths": ["projects"] }` in `angular.json`).
+  - `_palettes.scss`: M3 tonal palettes generated from seed `#769CDF`. Do not hand-edit.
+  - `_theme.scss`: `mat.theme()` with light and dark modes (`color-scheme: light dark`, overridable with `<html data-theme>`), Roboto, density 0.
+  - `_app-tokens.scss`: `--app-*` tokens for what M3 does not cover (status categories, issue types, heatmap levels, Gantt, success, spacing).
+- **Never hard-code a color, font, radius or shadow.** Use `--mat-sys-*` (colors, typescale such as `--mat-sys-title-medium`, shapes such as `--mat-sys-corner-medium`, elevation) or `--app-*`. If a value is missing, add a token to `_app-tokens.scss` first.
+- Portals are themed at runtime from their brand color with `applyPortalTheme()` (`web/projects/ui/src/lib/theming/portal-theme.ts`).
+- Fonts and icons are self-hosted (`@fontsource/roboto`, `material-symbols` npm packages). No Google Fonts or other CDN: users' IP addresses must not leak to third parties (GDPR).
+
+### Using the mockups
+
+`docs/mockups/source/*.dc.html` are design files, not code. Each one contains the screen markup with inline styles, and a `renderVals()` block holding **fake data**. A PNG preview of every screen is in `docs/mockups/previews/` (the table in `docs/mockups/README.md` maps each source file to its PNG); look at it to check the visual result.
+
+- Use them as a visual and structural reference. Never copy their HTML, inline styles or CSS classes into the application.
+- Map each mockup element to its Angular Material equivalent:
+
+| Mockup element | Implementation |
+| --- | --- |
+| Navigation drawer (`nav-item`) | `mat-sidenav` + `mat-nav-list` with `routerLinkActive` |
+| `.btn.filled` / `.tonal` / `.outlined` / `.text` | `<button matButton="filled">` / `"tonal"` / `"outlined"` / `matButton` |
+| `.fab` (extended) | `<button matFab extended>` |
+| `.icon-btn` | `<button matIconButton aria-label="…">` |
+| `.seg` (segmented button) | `mat-button-toggle-group` |
+| `.chip` (filter chips) | `mat-chip-listbox` + `mat-chip-option` |
+| `.tf` + `.tf-in` (outlined field) | `mat-form-field appearance="outline"` + `matInput` / `mat-select` |
+| `.tab` | `mat-tab-group`, or `mat-tab-nav-bar` for routed tabs |
+| `.sw` (switch) | `mat-slide-toggle` |
+| Dialogs on a grey background | `MatDialog` |
+| `.tbl` tables | `mat-table` (+ `cdk-virtual-scroll-viewport` for long lists) |
+| `.lbl` status / type labels | shared `ui-status-chip` / `ui-type-chip` components using `--app-status-*` / `--app-type-*` |
+| Kanban columns and backlog | CDK drag and drop |
+| `.ms` icons | `mat-icon` with the Material Symbols Outlined font |
+| Progress bars | `mat-progress-bar` |
+
+- Replace fake data with signals fed by the generated API client. Never call `fetch` or `HttpClient` directly from components.
+- The workload heatmap and the Gantt are **custom components**: the mockups only define their appearance. Implement them with virtualized rendering (canvas or SVG, only visible rows drawn), keyboard navigation, and an equivalent accessible table view. Targets: 5,000 Gantt rows with smooth scrolling; heatmap of 200 resources over 3 months in under 1 s.
+
+### Accessibility and i18n
+
+- Target RGAA 4 / WCAG 2.1 AA. Real `<button>` and `<a>` elements, labels on every field, `aria-label` on icon-only buttons, visible focus. Contrast is guaranteed by the tokens: do not override colors locally.
+- axe checks run in CI; fix violations, do not suppress them.
+- Dates and numbers are formatted with the user's locale and time zone. Planning dates are local dates, never converted through UTC.
+
+### Workflow for a screen
+
+1. Read the matching section of the specification and the mockup source and preview.
+2. Build or reuse shared components in `projects/ui` first (shell, chips, empty states), then the screen.
+3. Wire real data through the generated client; handle loading, empty and error states (the mockups only show the filled state).
+4. Add unit tests and, for key flows, a Playwright test.
+5. Run lint, tests and accessibility checks through `just` before finishing.

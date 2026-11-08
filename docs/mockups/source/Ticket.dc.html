@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>PLAT-142 · Fiche ticket</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#415F91}a:hover{color:#2A4678}
+.ms{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+.nav-item{display:flex;align-items:center;gap:12px;height:56px;padding:0 24px 0 16px;border-radius:28px;color:#44474E;text-decoration:none;font-size:14px;font-weight:500;letter-spacing:.1px}
+.nav-item .ms{font-size:24px;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24}
+.nav-item:hover{background:rgba(25,28,32,.08);color:#191C20}
+.nav-item.on{background:#DAE2F9;color:#131C2B}
+.nav-item.on .ms{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+.btn{font:inherit;font-size:14px;font-weight:500;letter-spacing:.1px;height:40px;padding:0 24px;border-radius:20px;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-sizing:border-box;white-space:nowrap}
+.btn .ms{font-size:18px;margin-left:-8px}
+.filled{background:#415F91;color:#FFFFFF}.filled:hover{background:#4E6A9B;color:#FFFFFF}
+.tonal{background:#DAE2F9;color:#131C2B}.tonal:hover{background:#CDD6EC;color:#131C2B}
+.outlined{background:transparent;color:#415F91;border:1px solid #74777F}.outlined:hover{background:rgba(65,95,145,.08);color:#415F91}
+.text{background:transparent;color:#415F91;padding:0 12px}.text:hover{background:rgba(65,95,145,.08)}
+.icon-btn{width:40px;height:40px;border-radius:20px;border:0;background:transparent;color:#44474E;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.icon-btn:hover{background:rgba(25,28,32,.08)}
+.icon-btn .ms{font-size:24px}
+.seg{display:inline-flex;height:40px;border:1px solid #74777F;border-radius:20px;overflow:hidden}
+.seg button{font:inherit;font-size:14px;font-weight:500;padding:0 16px;border:0;border-right:1px solid #74777F;background:transparent;color:#191C20;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.seg button:last-child{border-right:0}
+.seg button.on{background:#DAE2F9;color:#131C2B}
+.seg .ms{font-size:18px}
+.tf{position:relative;display:flex;flex-direction:column}
+.tf label{position:absolute;top:-8px;left:12px;padding:0 4px;font-size:12px;line-height:16px;color:#44474E;background:#FFFFFF;z-index:1}
+.tf-in{font:inherit;font-size:16px;line-height:24px;padding:16px;border:1px solid #74777F;border-radius:4px;background:transparent;color:#191C20;box-sizing:border-box;width:100%}
+.card{background:#FFFFFF;border:1px solid #C4C6D0;border-radius:12px;padding:20px}
+.h2{margin:0;font-size:16px;line-height:24px;font-weight:500}
+.lbl{display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:8px;font-size:12px;font-weight:500;letter-spacing:.5px;background:#E7E8EE;color:#44474E;white-space:nowrap}
+.st-todo{background:#E7E8EE;color:#44474E}
+.st-prog{background:#D6E3FF;color:#001B3E}
+.st-done{background:#C4EED0;color:#002110}
+.prov{background:repeating-linear-gradient(135deg,#AAC7FF 0 5px,#E9EFFF 5px 10px);color:#001B3E}
+.av{border-radius:50%;background:#D6E3FF;color:#001B3E;font-weight:500;display:flex;align-items:center;justify-content:center;flex:none;width:40px;height:40px;font-size:14px}
+.tab{font:inherit;font-size:14px;font-weight:500;height:48px;padding:0 16px;border:0;background:transparent;color:#44474E;cursor:pointer;position:relative}
+.tab.on{color:#415F91}
+.tab.on::after{content:'';position:absolute;left:16px;right:16px;bottom:0;height:3px;border-radius:3px 3px 0 0;background:#415F91}
+.fld{display:grid;grid-template-columns:120px minmax(0,1fr);gap:8px;padding:10px 0;border-top:1px solid #E1E2E8;align-items:center}
+.fld dt{color:#44474E;font-size:12px}
+.fld dd{margin:0}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F9F9FF; color: #191C20; font-family: Roboto, system-ui, sans-serif; font-size: 14px; line-height: 20px;">
+<nav aria-label="Navigation principale" style="flex: 1 1 256px; box-sizing: border-box; padding: 12px; background: #F3F3FA; display: flex; flex-direction: column; gap: 4px;">
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px 16px;">
+<span class="ms" aria-hidden="true" style="font-size: 28px; color: #415F91;">deployed_code</span>
+<span style="font-size: 16px; font-weight: 500;">My Little Big Project Planner</span>
+</div>
+<div class="tf" style="margin: 4px 4px 16px;">
+<label for="tenant" style="background: #F3F3FA;">Organisation</label>
+<select id="tenant" class="tf-in" style="height: 56px; padding: 0 16px;"><option>Acme Industrie</option><option>Acme Services</option></select>
+</div>
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="10">
+<a href="{{n.href}}" class="{{n.cls}}" aria-current="{{n.cur}}"><span class="ms" aria-hidden="true">{{n.icon}}</span><span>{{n.label}}</span></a>
+</sc-for>
+<div style="margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 16px; border-top: 1px solid #C4C6D0;">
+<div class="av" aria-hidden="true">LB</div>
+<div style="display: flex; flex-direction: column;"><span style="font-weight: 500;">Lucas Bernard</span><span style="font-size: 12px; color: #44474E;">Chef de projet</span></div>
+</div>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 24px 32px 40px; display: flex; flex-direction: column; gap: 20px;">
+<div style="display: flex; flex-direction: column; gap: 12px;">
+<p style="margin: 0; font-size: 12px; color: #44474E;">Plateforme d’identité › <a href="#">PLAT-100 Authentification unifiée</a></p>
+<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+<span class="lbl st-prog"><span class="ms" aria-hidden="true" style="font-size: 16px; margin-right: 4px;">bookmark</span>Story</span>
+<span style="font-size: 14px; font-weight: 500; color: #44474E;">PLAT-142</span>
+</div>
+<h1 style="margin: 0; font-size: 28px; line-height: 36px; font-weight: 400;">Migration de l’authentification vers OIDC</h1>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+<button class="btn tonal" type="button" style="padding-right: 16px;">En cours<span class="ms" aria-hidden="true" style="margin: 0;">arrow_drop_down</span></button>
+<button class="btn filled" type="button">Passer en revue</button>
+<button class="btn outlined" type="button"><span class="ms" aria-hidden="true">edit</span>Modifier</button>
+<button class="btn outlined" type="button"><span class="ms" aria-hidden="true">notifications</span>Suivre</button>
+<button class="icon-btn" type="button" aria-label="Plus d’actions"><span class="ms" aria-hidden="true">more_vert</span></button>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+<section class="card" aria-labelledby="desc-t" style="display: flex; flex-direction: column; gap: 12px;">
+<h2 id="desc-t" class="h2">Description</h2>
+<p style="margin: 0; line-height: 22px;">Remplacer l’authentification locale de l’annuaire par OIDC (Entra ID). Les comptes locaux restent disponibles pour les prestataires qui n’ont pas de compte dans l’annuaire de l’entreprise.</p>
+<p style="margin: 0; font-weight: 500;">Critères d’acceptation</p>
+<ul style="margin: 0; padding-left: 20px; line-height: 26px;">
+<li>Connexion par Entra ID pour tous les comptes internes</li>
+<li>Repli sur les comptes locaux pour les prestataires</li>
+<li>Déconnexion propagée vers le fournisseur d’identité</li>
+</ul>
+</section>
+<section class="card" aria-labelledby="assign-t" style="display: flex; flex-direction: column; gap: 16px;">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px;">
+<div>
+<h2 id="assign-t" class="h2">Affectations</h2>
+<p style="margin: 2px 0 0; font-size: 12px; color: #44474E;">Total planifié : 117,5 h · du 9 nov. au 4 déc.</p>
+</div>
+<button class="btn tonal" type="button"><span class="ms" aria-hidden="true">person_add</span>Ajouter une ressource</button>
+</div>
+<div role="note" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 8px 8px 8px 16px; border-radius: 12px; background: #FFDAD6; color: #410002;">
+<span class="ms" aria-hidden="true">event_busy</span>
+<span style="flex: 1 1 260px;">Camille Martin est absente le 4 déc. : 4 h à replanifier.</span>
+<button class="btn text" type="button" style="color: #410002;">Replanifier</button>
+</div>
+<sc-for list="{{assigns}}" as="a" hint-placeholder-count="3">
+<div style="border: 1px solid #C4C6D0; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
+<div class="av" aria-hidden="true">{{a.ini}}</div>
+<div style="flex: 1 1 200px; min-width: 0;">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;"><span style="font-size: 16px; line-height: 24px;">{{a.name}}</span><sc-for list="{{a.badges}}" as="b" hint-placeholder-count="1"><span class="{{b.cls}}">{{b.t}}</span></sc-for></div>
+<div style="font-size: 12px; color: #44474E;">{{a.meta}}</div>
+</div>
+<span style="font-size: 16px; font-weight: 500; font-variant-numeric: tabular-nums;">{{a.total}}</span>
+<sc-if value="{{a.hasAction}}" hint-placeholder-val="{{false}}"><button class="btn outlined" type="button">{{a.action}}</button></sc-if>
+</div>
+<div style="overflow-x: auto;">
+<table style="width: 100%; min-width: 440px; border-collapse: collapse;">
+<thead><tr style="color: #44474E; font-size: 12px;"><th scope="col" style="text-align: left; font-weight: 500; padding: 8px; border-bottom: 1px solid #E1E2E8;">Période</th><th scope="col" style="text-align: left; font-weight: 500; padding: 8px; border-bottom: 1px solid #E1E2E8;">Mode</th><th scope="col" style="text-align: left; font-weight: 500; padding: 8px; border-bottom: 1px solid #E1E2E8;">Valeur</th><th scope="col" style="text-align: right; font-weight: 500; padding: 8px; border-bottom: 1px solid #E1E2E8;">Charge</th></tr></thead>
+<tbody>
+<sc-for list="{{a.segs}}" as="s" hint-placeholder-count="2">
+<tr><td style="padding: 8px;">{{s.period}}</td><td style="padding: 8px;">{{s.mode}}</td><td style="padding: 8px;">{{s.value}}</td><td style="padding: 8px; text-align: right; font-variant-numeric: tabular-nums;">{{s.load}}</td></tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</div>
+</sc-for>
+</section>
+<section class="card" aria-labelledby="sub-t" style="display: flex; flex-direction: column; gap: 8px; padding-bottom: 8px;">
+<h2 id="sub-t" class="h2">Sous-tâches et liens</h2>
+<ul style="list-style: none; margin: 0; padding: 0;">
+<sc-for list="{{subs}}" as="s" hint-placeholder-count="5">
+<li style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; min-height: 56px; border-top: 1px solid #E1E2E8;">
+<span class="ms" aria-hidden="true" style="color: #44474E;">{{s.icon}}</span>
+<span style="width: 84px; color: #44474E; font-size: 12px;">{{s.rel}}</span>
+<a href="#" style="font-weight: 500; font-size: 12px;">{{s.key}}</a>
+<span style="flex: 1 1 200px; min-width: 0;">{{s.title}}</span>
+<span class="{{s.cls}}">{{s.status}}</span>
+</li>
+</sc-for>
+</ul>
+</section>
+<section class="card" aria-label="Activité, commentaires et temps passés" style="display: flex; flex-direction: column; gap: 12px; padding-top: 4px;">
+<div role="tablist" style="display: flex; border-bottom: 1px solid #C4C6D0; margin: 0 -20px; padding: 0 4px;">
+<button role="tab" type="button" class="tab on" aria-selected="true">Activité</button>
+<button role="tab" type="button" class="tab" aria-selected="false">Commentaires (3)</button>
+<button role="tab" type="button" class="tab" aria-selected="false">Temps passés (12 h)</button>
+</div>
+<ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column;">
+<sc-for list="{{activity}}" as="e" hint-placeholder-count="4">
+<li style="display: flex; gap: 16px; padding: 12px 0; border-bottom: 1px solid #E1E2E8; line-height: 20px;">
+<div class="av" aria-hidden="true">{{e.ini}}</div>
+<div style="flex: 1; min-width: 0;">
+<div><span style="font-weight: 500;">{{e.who}}</span> {{e.what}} <sc-if value="{{e.mcp}}" hint-placeholder-val="{{false}}"><span class="lbl" style="background: #F8D8FE; color: #2A1330;"><span class="ms" aria-hidden="true" style="font-size: 16px; margin-right: 4px;">smart_toy</span>via MCP</span></sc-if></div>
+<div style="font-size: 12px; color: #44474E;">{{e.when}}</div>
+</div>
+</li>
+</sc-for>
+</ul>
+<div class="tf" style="margin-top: 12px;">
+<label for="cmt">Ajouter un commentaire</label>
+<textarea id="cmt" class="tf-in" rows="3" placeholder="@ pour mentionner, # pour citer un ticket" style="resize: vertical;"></textarea>
+</div>
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px;">
+<div class="seg" role="group" aria-label="Visibilité du commentaire">
+<button type="button" class="on" aria-pressed="true"><span class="ms" aria-hidden="true">check</span>Interne</button>
+<button type="button">Public (portail)</button>
+</div>
+<button class="btn filled" type="button"><span class="ms" aria-hidden="true">send</span>Commenter</button>
+</div>
+</section>
+</div>
+<aside style="flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+<section class="card" aria-labelledby="det-t" style="padding: 16px 20px;">
+<h2 id="det-t" class="h2" style="margin-bottom: 8px;">Détails</h2>
+<dl style="margin: 0;">
+<sc-for list="{{fields}}" as="f" hint-placeholder-count="12">
+<div class="fld"><dt>{{f.k}}</dt><dd>{{f.v}}</dd></div>
+</sc-for>
+</dl>
+</section>
+<section class="card" aria-labelledby="ctx-t" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 10px;">
+<h2 id="ctx-t" class="h2">Rattachement</h2>
+<p style="margin: 0; line-height: 20px;">Projet <strong style="font-weight: 500;">Plateforme d’identité</strong>, rattaché à deux programmes :</p>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;"><span class="lbl"><span class="ms" aria-hidden="true" style="font-size: 16px; margin-right: 4px;">account_tree</span>Programme Modernisation SI</span><span class="lbl"><span class="ms" aria-hidden="true" style="font-size: 16px; margin-right: 4px;">account_tree</span>Programme Conformité</span></div>
+<p style="margin: 0; font-size: 12px; color: #44474E;">Configuration de projet : « Développement logiciel », partagée par 6 projets</p>
+</section>
+</aside>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1200}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const active = 'Mes tickets';
+    const navDef = [['Accueil', 'Notifications.dc.html', 'home'], ['Mes tickets', 'Ticket.dc.html', 'assignment'], ['Recherche', 'Recherche.dc.html', 'search'], ['Boards', 'Kanban.dc.html', 'view_kanban'], ['Gantt', 'Gantt.dc.html', 'view_timeline'], ['Charge', 'Main.dc.html', 'groups'], ['Portefeuilles', 'Portefeuille.dc.html', 'account_tree'], ['Portails', 'PortailAdmin.dc.html', 'support_agent'], ['Tableaux de bord', 'Dashboard.dc.html', 'dashboard'], ['Administration', 'AdminMembres.dc.html', 'settings']];
+    const nav = navDef.map(([label, href, icon]) => ({ label, href, icon, cls: label === active ? 'nav-item on' : 'nav-item', cur: label === active ? 'page' : undefined }));
+    const assigns = [
+      { ini: 'CM', name: 'Camille Martin', meta: 'Dev back · Équipe Plateforme', badges: [], total: '67,5 h', hasAction: false, action: '',
+        segs: [
+          { period: '9 → 20 nov.', mode: 'Pourcentage', value: '50 % (11 nov. férié)', load: '31,5 h' },
+          { period: '23 nov. → 4 déc.', mode: 'Heures par jour', value: '4 h/j', load: '36 h + 4 h en conflit' }
+        ] },
+      { ini: 'DR', name: 'Dev Rust', meta: 'Ressource générique · à nommer', badges: [{ t: 'Générique', cls: 'lbl' }, { t: 'Provisoire', cls: 'lbl prov' }], total: '40 h', hasAction: true, action: 'Remplacer par une personne',
+        segs: [
+          { period: '9 nov. → 4 déc.', mode: 'Effort total', value: '40 h réparties sur 19 jours ouvrés', load: '≈ 2,1 h/j' }
+        ] },
+      { ini: 'TL', name: 'Thomas Leroy', meta: 'Sous-traitant', badges: [{ t: 'Sans compte', cls: 'lbl' }], total: '10 h', hasAction: false, action: '',
+        segs: [
+          { period: '30 nov. → 4 déc.', mode: 'Heures par jour', value: '2 h/j', load: '10 h' }
+        ] }
+    ];
+    const subs = [
+      { icon: 'subdirectory_arrow_right', rel: 'Sous-tâche', key: 'PLAT-143', title: 'Configurer le client OIDC', status: 'Terminé', cls: 'lbl st-done' },
+      { icon: 'subdirectory_arrow_right', rel: 'Sous-tâche', key: 'PLAT-144', title: 'Mapper les groupes Entra ID', status: 'En cours', cls: 'lbl st-prog' },
+      { icon: 'subdirectory_arrow_right', rel: 'Sous-tâche', key: 'PLAT-145', title: 'Tests de bout en bout', status: 'À faire', cls: 'lbl st-todo' },
+      { icon: 'link', rel: 'Dépend de', key: 'PLAT-120', title: 'Cadrage de l’annuaire', status: 'Terminé', cls: 'lbl st-done' },
+      { icon: 'block', rel: 'Bloque', key: 'CRM-224', title: 'Développement des formulaires · Refonte du portail client', status: 'À faire', cls: 'lbl st-todo' }
+    ];
+    const activity = [
+      { ini: 'CM', who: 'Camille Martin', what: 'a saisi 3 h : « Configuration du client OIDC en recette ».', when: 'Vendredi 6 nov., 18:20', mcp: true },
+      { ini: 'LB', who: 'Lucas Bernard', what: 'a changé le statut : À faire → En cours.', when: 'Vendredi 6 nov., 09:12', mcp: false },
+      { ini: 'LB', who: 'Lucas Bernard', what: 'a forcé une surcharge sur l’affectation de Camille Martin (semaine 47).', when: 'Mardi 3 nov., 16:05', mcp: false },
+      { ini: 'SY', who: 'Système', what: 'a signalé un conflit : absence de Camille Martin le 4 déc.', when: 'Lundi 2 nov., 08:00', mcp: false }
+    ];
+    const fields = [
+      { k: 'Responsable', v: 'Camille Martin' },
+      { k: 'Rapporteur', v: 'Lucas Bernard' },
+      { k: 'Priorité', v: 'Haute' },
+      { k: 'Sprint', v: 'Sprint 24' },
+      { k: 'Version', v: '2.1' },
+      { k: 'Début', v: '9 nov. 2026' },
+      { k: 'Échéance', v: '4 déc. 2026' },
+      { k: 'Estimation', v: '8 points' },
+      { k: 'Reste à faire', v: '64 h' },
+      { k: 'Temps passé', v: '12 h' },
+      { k: 'Étiquettes', v: 'sécurité, annuaire' },
+      { k: 'Application', v: 'Annuaire' },
+      { k: 'Environnement', v: 'Recette' }
+    ];
+    return { nav, assigns, subs, activity, fields };
+  }
+}
+</script>
+</body>
+</html>

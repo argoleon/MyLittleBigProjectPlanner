@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Portail Support informatique</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#191C20}a:hover{color:#44474E}
+.ms{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+.tf{position:relative;display:flex;flex-direction:column}
+.tf label{position:absolute;top:-8px;left:12px;padding:0 4px;font-size:12px;line-height:16px;color:#44474E;background:#FFFFFF;z-index:1}
+.tf-in{font:inherit;font-size:16px;line-height:24px;min-height:56px;padding:0 16px;border:1px solid #74777F;border-radius:4px;background:transparent;color:#191C20;box-sizing:border-box;width:100%}
+.sup{font-size:12px;color:#44474E;padding:4px 16px 0}
+.btn{font:inherit;font-size:14px;font-weight:500;letter-spacing:.1px;height:40px;padding:0 24px;border-radius:20px;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-sizing:border-box;white-space:nowrap}
+.btn .ms{font-size:18px;margin-left:-8px}
+.rtype{font:inherit;text-align:left;cursor:pointer;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px;min-height:120px;box-sizing:border-box;color:#191C20}
+.rtype .ms{font-size:24px}
+.side{background:#FFFFFF;border:1px solid #C4C6D0;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:12px}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: {{s.surface}}; color: #191C20; font-family: Roboto, system-ui, sans-serif; font-size: 14px; line-height: 20px; display: flex; flex-direction: column;">
+<header style="background: {{s.surfaceLow}};">
+<div style="max-width: 1120px; margin: 0 auto; padding: 8px 24px; min-height: 64px; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+<div style="display: flex; align-items: center; gap: 16px;">
+<div style="width: 96px; height: 36px; border: 1px dashed #74777F; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #44474E;">[LOGO]</div>
+<span style="font-size: 22px; line-height: 28px; font-weight: 400;">Support informatique</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+<button class="btn" type="button" style="background: transparent; color: {{s.primary}}; padding: 0 12px;" aria-label="Changer de langue : français"><span class="ms" aria-hidden="true" style="margin: 0;">translate</span>FR</button>
+<a class="btn" href="#" style="background: {{s.primary}}; color: #FFFFFF;"><span class="ms" aria-hidden="true">login</span>Se connecter</a>
+</div>
+</div>
+</header>
+<div style="max-width: 1120px; width: 100%; margin: 0 auto; padding: 40px 24px 48px; box-sizing: border-box; display: flex; flex-direction: column; gap: 28px;">
+<div style="display: flex; flex-direction: column; gap: 8px; max-width: 720px;">
+<h1 style="margin: 0; font-size: 36px; line-height: 44px; font-weight: 400;">Comment pouvons-nous vous aider ?</h1>
+<p style="margin: 0; font-size: 16px; line-height: 24px; color: #44474E;">Choisissez un type de demande. Vous pouvez la soumettre sans compte : un lien de suivi vous sera envoyé par email.</p>
+</div>
+<div role="radiogroup" aria-label="Type de demande" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+<sc-for list="{{types}}" as="t" hint-placeholder-count="4">
+<button type="button" role="radio" class="rtype" aria-checked="{{t.checked}}" style="{{t.style}}">
+<span class="ms" aria-hidden="true" style="{{t.iconStyle}}">{{t.icon}}</span>
+<span style="font-size: 16px; line-height: 24px; font-weight: 500;">{{t.name}}</span>
+<span style="font-size: 14px; color: #44474E;">{{t.desc}}</span>
+</button>
+</sc-for>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+<form aria-labelledby="form-t" style="flex: 999 1 520px; min-width: 0; background: #FFFFFF; border: 1px solid #C4C6D0; border-radius: 12px; padding: 28px; display: flex; flex-direction: column; gap: 24px; box-sizing: border-box;">
+<div>
+<h2 id="form-t" style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 400;">Signaler un incident</h2>
+<p style="margin: 4px 0 0; font-size: 12px; color: #44474E;">Les champs marqués * sont obligatoires.</p>
+</div>
+<div class="tf"><label for="f-sum">Résumé *</label><input id="f-sum" class="tf-in" type="text" placeholder="Ex. : impossible d’accéder à la messagerie"></div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px;">
+<div class="tf"><label for="f-app">Application concernée *</label><select id="f-app" class="tf-in"><option>Choisir une application</option><option>Messagerie</option><option>Annuaire</option><option>ERP</option><option>Autre</option></select></div>
+<fieldset style="border: 0; margin: 0; padding: 0; display: flex; flex-direction: column;">
+<legend style="padding: 0; margin-bottom: 4px; font-size: 14px; font-weight: 500;">Impact *</legend>
+<label style="display: flex; align-items: center; gap: 12px; min-height: 40px;"><input type="radio" name="impact" style="width: 20px; height: 20px; margin: 0; accent-color: {{s.primary}};">Je suis bloqué</label>
+<label style="display: flex; align-items: center; gap: 12px; min-height: 40px;"><input type="radio" name="impact" style="width: 20px; height: 20px; margin: 0; accent-color: {{s.primary}};">Je peux contourner le problème</label>
+<label style="display: flex; align-items: center; gap: 12px; min-height: 40px;"><input type="radio" name="impact" style="width: 20px; height: 20px; margin: 0; accent-color: {{s.primary}};">Gêne mineure</label>
+</fieldset>
+</div>
+<div class="tf"><label for="f-desc">Description</label><textarea id="f-desc" class="tf-in" rows="5" placeholder="Que s’est-il passé ? Depuis quand ? Quel message d’erreur ?" style="padding: 16px; resize: vertical;"></textarea></div>
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<span id="att-l" style="font-size: 14px; font-weight: 500;">Pièces jointes</span>
+<div aria-labelledby="att-l" style="border: 1px dashed #74777F; border-radius: 12px; padding: 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; color: #44474E; text-align: center;">
+<span class="ms" aria-hidden="true" style="font-size: 24px; color: {{s.primary}};">upload_file</span>
+<span>Déposez vos fichiers ici ou <a href="#" style="color: {{s.primary}}; font-weight: 500;">parcourez</a> · 50 Mo maximum par fichier</span>
+</div>
+</div>
+<div class="tf"><label for="f-mail">Votre email *</label><input id="f-mail" class="tf-in" type="email" placeholder="prenom.nom@exemple.fr"><span class="sup">Nécessaire pour vous envoyer le lien de suivi de votre demande.</span></div>
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; background: {{s.secondaryContainer}}; color: {{s.onSecondaryContainer}};">
+<span class="ms" aria-hidden="true" style="font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;">verified_user</span>
+<span>Vérification anti-robot terminée, sans action de votre part.</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+<span style="flex: 1 1 260px; font-size: 12px; color: #44474E;">Vos données servent uniquement au traitement de votre demande.</span>
+<button type="submit" class="btn" style="background: {{s.primary}}; color: #FFFFFF;"><span class="ms" aria-hidden="true">send</span>Envoyer la demande</button>
+</div>
+</form>
+<aside style="flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+<section class="side" aria-labelledby="acc-t">
+<h2 id="acc-t" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 500;">Vous avez un compte ?</h2>
+<p style="margin: 0; color: #44474E;">Connectez-vous pour retrouver toutes vos demandes au même endroit. Les demandes envoyées sans compte avec le même email y sont rattachées automatiquement.</p>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+<a class="btn" href="#" style="background: {{s.secondaryContainer}}; color: {{s.onSecondaryContainer}};">Se connecter</a>
+<a class="btn" href="#" style="background: transparent; color: {{s.primary}}; padding: 0 12px;">Créer un compte</a>
+</div>
+</section>
+<section class="side" aria-labelledby="track-t">
+<h2 id="track-t" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 500;">Suivre une demande</h2>
+<div class="tf" style="margin-top: 8px;"><label for="track">Lien ou numéro de suivi</label><input id="track" class="tf-in" type="text" placeholder="Ex. : SUP-1042"></div>
+<button class="btn" type="button" style="background: transparent; color: {{s.primary}}; border: 1px solid #74777F; align-self: flex-start;">Afficher ma demande</button>
+</section>
+</aside>
+</div>
+</div>
+<footer style="margin-top: auto; background: {{s.surfaceLow}};">
+<div style="max-width: 1120px; margin: 0 auto; padding: 16px 24px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 12px; color: #44474E;">
+<span>Propulsé par My Little Big Project Planner</span>
+<span><a href="#" style="color: #44474E;">Confidentialité</a> · <a href="#" style="color: #44474E;">Accessibilité</a></span>
+</div>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","default":"Vert","options":["Vert","Bleu","Violet","Orange"]},"$preview":{"width":1440,"height":1120}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const schemes = {
+      Vert: { primary: '#006A63', primaryContainer: '#9EF2E7', onPrimaryContainer: '#00201D', secondaryContainer: '#CCE8E3', onSecondaryContainer: '#051F1C', surface: '#F4FBF9', surfaceLow: '#EEF5F3' },
+      Bleu: { primary: '#415F91', primaryContainer: '#D6E3FF', onPrimaryContainer: '#001B3E', secondaryContainer: '#DAE2F9', onSecondaryContainer: '#131C2B', surface: '#F9F9FF', surfaceLow: '#F3F3FA' },
+      Violet: { primary: '#6750A4', primaryContainer: '#EADDFF', onPrimaryContainer: '#21005D', secondaryContainer: '#E8DEF8', onSecondaryContainer: '#1D192B', surface: '#FEF7FF', surfaceLow: '#F7F2FA' },
+      Orange: { primary: '#8B5000', primaryContainer: '#FFDCBE', onPrimaryContainer: '#2C1600', secondaryContainer: '#F9DEC9', onSecondaryContainer: '#2B1708', surface: '#FFF8F5', surfaceLow: '#FCF2EC' }
+    };
+    const s = schemes[this.props.theme ?? 'Vert'] || schemes.Vert;
+    const def = [
+      { icon: 'report', name: 'Signaler un incident', desc: 'Un service ou un équipement ne fonctionne pas.', on: true },
+      { icon: 'key', name: 'Demander un accès', desc: 'Accès à une application, un dossier partagé ou un outil.' },
+      { icon: 'devices', name: 'Commander du matériel', desc: 'Poste de travail, écran, téléphone ou accessoire.' },
+      { icon: 'help', name: 'Poser une question', desc: 'Toute autre demande à l’équipe support.' }
+    ];
+    const types = def.map(d => ({
+      icon: d.icon, name: d.name, desc: d.desc,
+      checked: d.on ? 'true' : 'false',
+      style: d.on ? 'background: ' + s.primaryContainer + '; border: 2px solid ' + s.primary + ';' : 'background: #FFFFFF; border: 1px solid #C4C6D0;',
+      iconStyle: 'color: ' + (d.on ? s.onPrimaryContainer : s.primary) + ';'
+    }));
+    return { s, types };
+  }
+}
+</script>
+</body>
+</html>

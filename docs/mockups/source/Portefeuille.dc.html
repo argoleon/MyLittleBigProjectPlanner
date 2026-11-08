@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Portefeuille Transformation numérique</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#415F91}a:hover{color:#2A4678}
+.ms{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+.nav-item{display:flex;align-items:center;gap:12px;height:56px;padding:0 24px 0 16px;border-radius:28px;color:#44474E;text-decoration:none;font-size:14px;font-weight:500;letter-spacing:.1px}
+.nav-item .ms{font-size:24px;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24}
+.nav-item:hover{background:rgba(25,28,32,.08);color:#191C20}
+.nav-item.on{background:#DAE2F9;color:#131C2B}
+.nav-item.on .ms{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+.btn{font:inherit;font-size:14px;font-weight:500;letter-spacing:.1px;height:40px;padding:0 24px;border-radius:20px;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-sizing:border-box;white-space:nowrap}
+.btn .ms{font-size:18px;margin-left:-8px}
+.filled{background:#415F91;color:#FFFFFF}.filled:hover{background:#4E6A9B;color:#FFFFFF}
+.outlined{background:transparent;color:#415F91;border:1px solid #74777F}.outlined:hover{background:rgba(65,95,145,.08);color:#415F91}
+.tf{position:relative;display:flex;flex-direction:column}
+.tf label{position:absolute;top:-8px;left:12px;padding:0 4px;font-size:12px;line-height:16px;color:#44474E;background:#F3F3FA;z-index:1}
+.tf-in{font:inherit;font-size:16px;height:56px;padding:0 16px;border:1px solid #74777F;border-radius:4px;background:transparent;color:#191C20;box-sizing:border-box;width:100%}
+.card{background:#FFFFFF;border:1px solid #C4C6D0;border-radius:12px}
+.av{border-radius:50%;background:#D6E3FF;color:#001B3E;font-weight:500;display:flex;align-items:center;justify-content:center;flex:none;width:40px;height:40px;font-size:14px}
+.lbl{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:8px;font-size:12px;font-weight:500;letter-spacing:.5px;background:#E7E8EE;color:#44474E;white-space:nowrap}
+.lbl .ms{font-size:16px}
+.ok{background:#C4EED0;color:#002110}
+.risk{background:#FFDAD6;color:#410002}
+.kpi{background:#EDEDF4;border-radius:12px;padding:16px 20px;display:flex;flex-direction:column;gap:4px}
+.kpi .l{font-size:14px;font-weight:500;color:#44474E}
+.kpi .v{font-size:36px;line-height:44px;font-weight:400;font-variant-numeric:tabular-nums}
+.kpi .s{font-size:12px;color:#44474E}
+th.c{text-align:left;font-size:12px;font-weight:500;color:#44474E;padding:0 16px;height:56px;border-bottom:1px solid #C4C6D0;white-space:nowrap}
+td{padding:0 16px;height:56px;border-bottom:1px solid #E1E2E8;vertical-align:middle}
+td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.p td{background:#F3F3FA}
+tr.muted td{color:#44474E}
+.track{width:96px;height:4px;border-radius:2px;background:#DAE2F9;overflow:hidden}
+.fill{height:100%;background:#415F91;border-radius:2px}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F9F9FF; color: #191C20; font-family: Roboto, system-ui, sans-serif; font-size: 14px; line-height: 20px;">
+<nav aria-label="Navigation principale" style="flex: 1 1 256px; box-sizing: border-box; padding: 12px; background: #F3F3FA; display: flex; flex-direction: column; gap: 4px;">
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px 16px;">
+<span class="ms" aria-hidden="true" style="font-size: 28px; color: #415F91;">deployed_code</span>
+<span style="font-size: 16px; font-weight: 500;">My Little Big Project Planner</span>
+</div>
+<div class="tf" style="margin: 4px 4px 16px;">
+<label for="tenant">Organisation</label>
+<select id="tenant" class="tf-in"><option>Acme Industrie</option><option>Acme Services</option></select>
+</div>
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="10">
+<a href="{{n.href}}" class="{{n.cls}}" aria-current="{{n.cur}}"><span class="ms" aria-hidden="true">{{n.icon}}</span><span>{{n.label}}</span></a>
+</sc-for>
+<div style="margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 16px; border-top: 1px solid #C4C6D0;">
+<div class="av" aria-hidden="true">LB</div>
+<div style="display: flex; flex-direction: column;"><span style="font-weight: 500;">Lucas Bernard</span><span style="font-size: 12px; color: #44474E;">Chef de projet</span></div>
+</div>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 24px 32px 40px; display: flex; flex-direction: column; gap: 20px;">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px;">
+<div>
+<p style="margin: 0; font-size: 12px; color: #44474E;">Portefeuilles</p>
+<h1 style="margin: 4px 0 0; font-size: 28px; line-height: 36px; font-weight: 400;">Transformation numérique</h1>
+<p style="margin: 4px 0 0; color: #44474E;">Portefeuille · Responsable : Marion Garnier · 2026–2027</p>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+<a class="btn outlined" href="Gantt.dc.html"><span class="ms" aria-hidden="true">view_timeline</span>Gantt du portefeuille</a>
+<a class="btn outlined" href="Main.dc.html"><span class="ms" aria-hidden="true">groups</span>Charge des équipes</a>
+<button class="btn filled" type="button"><span class="ms" aria-hidden="true">add</span>Ajouter un enfant</button>
+</div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+<div class="kpi"><span class="l">Charge planifiée · nov. et déc.</span><span class="v">3 540 h</span><span class="s">6 projets distincts</span></div>
+<div class="kpi"><span class="l">Capacité consommée</span><span class="v">86 %</span><span class="s">des équipes affectées</span></div>
+<div class="kpi"><span class="l">Tickets ouverts</span><span class="v">276</span><span class="s">dont 38 sur un projet confidentiel</span></div>
+<div class="kpi" style="background: #FFDAD6; color: #410002;"><span class="l" style="color: #410002;">Tickets en retard</span><span class="v">17</span><span class="s" style="color: #410002;">dont 7 sur Entrepôt de données</span></div>
+</div>
+<p style="margin: 0; display: flex; align-items: flex-start; gap: 8px; color: #44474E;"><span class="ms" aria-hidden="true">info</span>Les agrégats portent sur les projets descendants distincts : un projet rattaché à plusieurs programmes n’est compté qu’une fois.</p>
+<section class="card" aria-label="Arborescence du portefeuille" style="overflow: hidden;">
+<div style="overflow-x: auto;">
+<table style="width: 100%; min-width: 980px; border-collapse: collapse;">
+<thead>
+<tr>
+<th class="c" scope="col">Nom</th>
+<th class="c" scope="col">Responsable</th>
+<th class="c" scope="col">Statut</th>
+<th class="c" scope="col">Avancement</th>
+<th class="c" scope="col" style="text-align: right;">Charge planifiée</th>
+<th class="c" scope="col" style="text-align: right;">Ouverts</th>
+<th class="c" scope="col" style="text-align: right;">En retard</th>
+</tr>
+</thead>
+<tbody>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="10">
+<tr class="{{r.cls}}">
+<td style="padding-top: 8px; padding-bottom: 8px;">
+<div style="{{r.indent}}">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+<span class="ms" aria-hidden="true" style="color: #44474E;">{{r.icon}}</span>
+<span style="{{r.nameStyle}}">{{r.name}}</span>
+<span class="lbl">{{r.type}}</span>
+</div>
+<sc-if value="{{r.hasNote}}" hint-placeholder-val="{{false}}"><div style="font-size: 12px; color: #44474E; margin: 2px 0 0 28px;">{{r.note}}</div></sc-if>
+</div>
+</td>
+<td>{{r.owner}}</td>
+<td><sc-if value="{{r.hasStatus}}" hint-placeholder-val="{{true}}"><span class="{{r.stCls}}">{{r.status}}</span></sc-if></td>
+<td>
+<sc-if value="{{r.hasProg}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; align-items: center; gap: 8px;"><div class="track" role="img" aria-label="{{r.progLabel}}"><div class="fill" style="{{r.progStyle}}"></div></div><span style="font-size: 12px; font-variant-numeric: tabular-nums;">{{r.prog}}</span></div>
+</sc-if>
+</td>
+<td class="n">{{r.load}}</td>
+<td class="n">{{r.open}}</td>
+<td class="n">{{r.late}}</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</section>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const active = 'Portefeuilles';
+    const navDef = [['Accueil', 'Notifications.dc.html', 'home'], ['Mes tickets', 'Ticket.dc.html', 'assignment'], ['Recherche', 'Recherche.dc.html', 'search'], ['Boards', 'Kanban.dc.html', 'view_kanban'], ['Gantt', 'Gantt.dc.html', 'view_timeline'], ['Charge', 'Main.dc.html', 'groups'], ['Portefeuilles', 'Portefeuille.dc.html', 'account_tree'], ['Portails', 'PortailAdmin.dc.html', 'support_agent'], ['Tableaux de bord', 'Dashboard.dc.html', 'dashboard'], ['Administration', 'AdminMembres.dc.html', 'settings']];
+    const nav = navDef.map(([label, href, icon]) => ({ label, href, icon, cls: label === active ? 'nav-item on' : 'nav-item', cur: label === active ? 'page' : undefined }));
+    const icons = { Programme: 'workspaces', Projet: 'folder', 'Sous-projet': 'folder_open' };
+    const def = [
+      { lv: 0, name: 'Programme Modernisation SI', type: 'Programme', owner: 'Lucas Bernard', st: 'risk', prog: 46, load: '2 380 h', open: '168', late: '11' },
+      { lv: 1, name: 'Plateforme d’identité', type: 'Projet', owner: 'Camille Martin', st: 'ok', prog: 58, load: '620 h', open: '42', late: '1', note: 'Aussi rattaché à : Programme Conformité' },
+      { lv: 1, name: 'Refonte du portail client', type: 'Projet', owner: 'Léa Fontaine', st: 'ok', prog: 31, load: '940 h', open: '71', late: '3' },
+      { lv: 1, name: 'Entrepôt de données', type: 'Projet', owner: 'Sarah Lefèvre', st: 'risk', prog: 44, load: '820 h', open: '55', late: '7', note: '1 dépendance non respectée' },
+      { lv: 2, name: 'Flux ERP', type: 'Sous-projet', owner: 'Nathan Roux', st: 'risk', prog: 20, load: '310 h', open: '18', late: '4' },
+      { lv: 0, name: 'Programme Conformité', type: 'Programme', owner: 'Marion Garnier', st: 'ok', prog: 52, load: '1 140 h', open: '96', late: '5' },
+      { lv: 1, name: 'Plateforme d’identité', type: 'Projet', owner: 'Camille Martin', st: 'ok', prog: 58, load: '620 h', open: '42', late: '1', note: 'Rattachement secondaire : compté une seule fois au niveau du portefeuille', muted: true },
+      { lv: 1, name: 'Archivage légal', type: 'Projet', owner: 'Marion Garnier', st: 'ok', prog: 61, load: '520 h', open: '54', late: '4' },
+      { lv: 0, name: 'Projet confidentiel', type: 'Projet', owner: '—', st: '', prog: null, load: '600 h', open: '—', late: '—', note: 'Vous n’avez pas accès à ce projet. Sa charge est comptée de façon anonyme.', lock: true, muted: true },
+      { lv: 0, name: 'Pilotage du portefeuille', type: 'Projet', owner: 'Marion Garnier', st: 'ok', prog: 70, load: '40 h', open: '16', late: '0' }
+    ];
+    const rows = def.map(d => ({
+      name: d.name, type: d.type, owner: d.owner, load: d.load, open: d.open, late: d.late,
+      icon: d.lock ? 'lock' : icons[d.type],
+      cls: (d.type === 'Programme' ? 'p ' : '') + (d.muted ? 'muted' : ''),
+      indent: 'padding-left: ' + (d.lv * 28) + 'px;',
+      nameStyle: d.type === 'Programme' ? 'font-weight: 500;' : 'font-weight: 400;',
+      hasNote: !!d.note, note: d.note || '',
+      hasStatus: !!d.st, status: d.st === 'ok' ? 'En bonne voie' : 'À risque', stCls: d.st === 'ok' ? 'lbl ok' : 'lbl risk',
+      hasProg: d.prog !== null, prog: (d.prog || 0) + ' %', progStyle: 'width: ' + (d.prog || 0) + '%;', progLabel: 'Avancement ' + (d.prog || 0) + ' %'
+    }));
+    return { nav, rows };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Charge des ressources</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#415F91}a:hover{color:#2A4678}
+.ms{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+.nav-item{display:flex;align-items:center;gap:12px;height:56px;padding:0 24px 0 16px;border-radius:28px;color:#44474E;text-decoration:none;font-size:14px;font-weight:500;letter-spacing:.1px}
+.nav-item .ms{font-size:24px;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24}
+.nav-item:hover{background:rgba(25,28,32,.08);color:#191C20}
+.nav-item.on{background:#DAE2F9;color:#131C2B}
+.nav-item.on .ms{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+.btn{font:inherit;font-size:14px;font-weight:500;letter-spacing:.1px;height:40px;padding:0 24px;border-radius:20px;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-sizing:border-box;white-space:nowrap}
+.btn .ms{font-size:18px;margin-left:-8px}
+.filled{background:#415F91;color:#FFFFFF}.filled:hover{background:#4E6A9B;color:#FFFFFF}
+.tonal{background:#DAE2F9;color:#131C2B}.tonal:hover{background:#CDD6EC;color:#131C2B}
+.outlined{background:transparent;color:#415F91;border:1px solid #74777F}.outlined:hover{background:rgba(65,95,145,.08);color:#415F91}
+.seg{display:inline-flex;height:40px;border:1px solid #74777F;border-radius:20px;overflow:hidden}
+.seg button{font:inherit;font-size:14px;font-weight:500;padding:0 16px;border:0;border-right:1px solid #74777F;background:transparent;color:#191C20;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.seg button:last-child{border-right:0}
+.seg button.on{background:#DAE2F9;color:#131C2B}
+.seg .ms{font-size:18px}
+.chip{font:inherit;font-size:14px;font-weight:500;height:32px;padding:0 16px;border-radius:8px;border:1px solid #74777F;background:transparent;color:#44474E;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.chip.on{background:#DAE2F9;border-color:#DAE2F9;color:#131C2B;padding-left:8px}
+.chip .ms{font-size:18px}
+.tf{position:relative;display:flex;flex-direction:column}
+.tf label{position:absolute;top:-8px;left:12px;padding:0 4px;font-size:12px;line-height:16px;color:#44474E;background:#FFFFFF;z-index:1}
+.tf-in{font:inherit;font-size:16px;height:56px;padding:0 16px;border:1px solid #74777F;border-radius:4px;background:transparent;color:#191C20;box-sizing:border-box;width:100%}
+.card{background:#FFFFFF;border:1px solid #C4C6D0;border-radius:12px}
+.lbl{display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:8px;font-size:12px;font-weight:500;letter-spacing:.5px;background:#E7E8EE;color:#44474E;white-space:nowrap}
+.cell{font:inherit;width:100%;min-width:64px;height:52px;border:0;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:14px;font-weight:500;font-variant-numeric:tabular-nums;cursor:pointer;padding:0}
+.cell small{font-size:11px;font-weight:500}
+.l0{background:#EDEDF4;color:#44474E}
+.l1{background:#D6E3FF;color:#001B3E}
+.l2{background:#AAC7FF;color:#001B3E}
+.l3{background:#7A9AD6;color:#001B3E}
+.l4{background:#415F91;color:#FFFFFF}
+.over{background:#FFDAD6;color:#410002;box-shadow:inset 0 0 0 2px #BA1A1A;font-weight:700}
+.conf{background:repeating-linear-gradient(135deg,#C4C6D0 0 6px,#EDEDF4 6px 12px);color:#191C20}
+.prov{background:repeating-linear-gradient(135deg,#AAC7FF 0 6px,#E9EFFF 6px 12px);color:#001B3E}
+.abs{background:#FFFFFF;color:#44474E;box-shadow:inset 0 0 0 1px #C4C6D0;font-style:italic}
+.sel{outline:2px solid #191C20;outline-offset:2px}
+.av{border-radius:50%;background:#D6E3FF;color:#001B3E;font-weight:500;display:flex;align-items:center;justify-content:center;flex:none}
+.sw{display:inline-block;width:20px;height:14px;border-radius:4px;vertical-align:middle;margin-right:4px}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F9F9FF; color: #191C20; font-family: Roboto, system-ui, sans-serif; font-size: 14px; line-height: 20px;">
+<nav aria-label="Navigation principale" style="flex: 1 1 256px; box-sizing: border-box; padding: 12px; background: #F3F3FA; display: flex; flex-direction: column; gap: 4px;">
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px 16px;">
+<span class="ms" aria-hidden="true" style="font-size: 28px; color: #415F91;">deployed_code</span>
+<span style="font-size: 16px; font-weight: 500;">My Little Big Project Planner</span>
+</div>
+<div class="tf" style="margin: 4px 4px 16px;">
+<label for="tenant" style="background: #F3F3FA;">Organisation</label>
+<select id="tenant" class="tf-in"><option>Acme Industrie</option><option>Acme Services</option></select>
+</div>
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="10">
+<a href="{{n.href}}" class="{{n.cls}}" aria-current="{{n.cur}}"><span class="ms" aria-hidden="true">{{n.icon}}</span><span>{{n.label}}</span></a>
+</sc-for>
+<div style="margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 16px; border-top: 1px solid #C4C6D0;">
+<div class="av" aria-hidden="true" style="width: 40px; height: 40px; font-size: 14px;">LB</div>
+<div style="display: flex; flex-direction: column;"><span style="font-weight: 500;">Lucas Bernard</span><span style="font-size: 12px; color: #44474E;">Chef de projet</span></div>
+</div>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 24px 32px 40px; display: flex; flex-direction: column; gap: 20px;">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px;">
+<div>
+<p style="margin: 0; font-size: 12px; color: #44474E;">Programme Modernisation SI › Équipe Plateforme</p>
+<h1 style="margin: 4px 0 0; font-size: 28px; line-height: 36px; font-weight: 400;">Charge des ressources</h1>
+<p style="margin: 4px 0 0; color: #44474E;">8 ressources · du 2 nov. au 27 déc. 2026 · 2 surcharges</p>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+<button class="btn outlined" type="button"><span class="ms" aria-hidden="true">download</span>Exporter</button>
+<button class="btn filled" type="button"><span class="ms" aria-hidden="true">add</span>Nouvelle affectation</button>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
+<div class="seg" role="group" aria-label="Échelle de temps">
+<button type="button">Jour</button>
+<button type="button" class="on" aria-pressed="true"><span class="ms" aria-hidden="true">check</span>Semaine</button>
+<button type="button">Mois</button>
+</div>
+<button type="button" class="chip on" aria-pressed="true"><span class="ms" aria-hidden="true">check</span>Équipe : Plateforme</button>
+<button type="button" class="chip on" aria-pressed="true"><span class="ms" aria-hidden="true">check</span>Programme Modernisation SI</button>
+<button type="button" class="chip on" aria-pressed="true"><span class="ms" aria-hidden="true">check</span>Inclure les provisoires</button>
+<button type="button" class="chip"><span class="ms" aria-hidden="true">add</span>Filtre</button>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 12px; color: #44474E;">
+<span><span class="sw l1"></span>Moins de 40 %</span>
+<span><span class="sw l2"></span>40 à 70 %</span>
+<span><span class="sw l3"></span>70 à 95 %</span>
+<span><span class="sw l4"></span>95 à 100 %</span>
+<span><span class="sw over"></span>Surcharge</span>
+<span><span class="sw conf"></span>Dont temps confidentiel</span>
+<span><span class="sw prov"></span>Provisoire</span>
+<span><span class="sw abs"></span>Absence</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+<section class="card" aria-label="Heatmap de charge" style="flex: 999 1 640px; min-width: 0; box-sizing: border-box; padding: 12px;">
+<div style="overflow-x: auto;">
+<table style="width: 100%; min-width: 720px; border-collapse: separate; border-spacing: 4px;">
+<thead>
+<tr>
+<th scope="col" style="text-align: left; font-size: 12px; font-weight: 500; color: #44474E; padding: 4px 8px; width: 180px;">Ressource</th>
+<sc-for list="{{weeks}}" as="w" hint-placeholder-count="8">
+<th scope="col" style="font-size: 12px; font-weight: 400; color: #44474E; padding: 4px 2px; vertical-align: bottom;">
+<div style="font-size: 14px; font-weight: 500; color: #191C20;">{{w.label}}</div>
+<div>{{w.dates}}</div>
+<div style="font-size: 11px; min-height: 16px; color: #BA1A1A;">{{w.note}}</div>
+</th>
+</sc-for>
+</tr>
+</thead>
+<tbody>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+<tr>
+<th scope="row" style="text-align: left; font-weight: 400; padding: 4px 8px;">
+<div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"><span style="font-size: 14px; font-weight: 500;">{{r.name}}</span><sc-if value="{{r.hasBadge}}" hint-placeholder-val="{{false}}"><span class="lbl">{{r.badge}}</span></sc-if></div>
+<div style="font-size: 12px; color: #44474E;">{{r.meta}}</div>
+</th>
+<sc-for list="{{r.cells}}" as="c" hint-placeholder-count="8">
+<td style="padding: 0;"><button type="button" class="{{c.cls}}" aria-label="{{c.aria}}">{{c.t}}<sc-if value="{{c.hasSub}}" hint-placeholder-val="{{false}}"><small>{{c.sub}}</small></sc-if></button></td>
+</sc-for>
+</tr>
+</sc-for>
+</tbody>
+<tfoot>
+<tr>
+<th scope="row" style="text-align: left; font-size: 12px; font-weight: 500; padding: 12px 8px 4px; border-top: 1px solid #C4C6D0;">Moyenne de l’équipe</th>
+<sc-for list="{{totals}}" as="t" hint-placeholder-count="8">
+<td style="text-align: center; font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; padding: 12px 0 4px; border-top: 1px solid #C4C6D0;">{{t}}</td>
+</sc-for>
+</tr>
+</tfoot>
+</table>
+</div>
+</section>
+<aside style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+<section class="card" aria-labelledby="detail-title" style="padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+<div>
+<p style="margin: 0; font-size: 12px; color: #44474E;">Semaine 47 · du 16 au 22 nov.</p>
+<h2 id="detail-title" style="margin: 2px 0 0; font-size: 22px; line-height: 28px; font-weight: 400;">Camille Martin</h2>
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+<div style="background: #EDEDF4; border-radius: 12px; padding: 12px;"><div style="font-size: 12px; color: #44474E;">Capacité</div><div style="font-size: 22px; line-height: 28px; font-variant-numeric: tabular-nums;">35 h</div></div>
+<div style="background: #EDEDF4; border-radius: 12px; padding: 12px;"><div style="font-size: 12px; color: #44474E;">Planifié</div><div style="font-size: 22px; line-height: 28px; font-variant-numeric: tabular-nums;">39 h</div></div>
+<div style="background: #FFDAD6; border-radius: 12px; padding: 12px; color: #410002;"><div style="font-size: 12px;">Écart</div><div style="font-size: 22px; line-height: 28px; font-weight: 500; font-variant-numeric: tabular-nums;">+4 h</div></div>
+</div>
+<div role="note" style="display: flex; gap: 12px; align-items: flex-start; padding: 12px 16px; border-radius: 12px; background: #FFDAD6; color: #410002;">
+<span class="ms" aria-hidden="true" style="flex: none;">warning</span>
+<span>Surcharge autorisée par Lucas Bernard le 3 nov., avec la permission « Forcer la surcharge ».</span>
+</div>
+<ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column;">
+<sc-for list="{{items}}" as="it" hint-placeholder-count="4">
+<li style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 12px 0; border-top: 1px solid #E1E2E8;">
+<div style="display: flex; flex-direction: column; gap: 4px; min-width: 0;">
+<a href="{{it.href}}" style="font-size: 12px; font-weight: 500;">{{it.key}}</a>
+<span>{{it.title}}</span>
+<span class="lbl" style="align-self: flex-start;">{{it.mode}}</span>
+</div>
+<span style="font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap;">{{it.h}}</span>
+</li>
+</sc-for>
+</ul>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+<button class="btn filled" type="button">Replanifier</button>
+<a class="btn outlined" href="Gantt.dc.html">Voir dans le Gantt</a>
+</div>
+</section>
+<section class="card" aria-labelledby="avail-title" style="padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+<h2 id="avail-title" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 500;">Trouver une disponibilité</h2>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+<div class="tf"><label for="av-team">Équipe</label><select id="av-team" class="tf-in"><option>Plateforme</option></select></div>
+<div class="tf"><label for="av-need">Besoin</label><select id="av-need" class="tf-in"><option>2 jours libres</option></select></div>
+</div>
+<p style="margin: 0; font-size: 12px; color: #44474E;">Semaine 47 · 3 ressources trouvées</p>
+<ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column;">
+<sc-for list="{{avail}}" as="a" hint-placeholder-count="3">
+<li style="display: flex; align-items: center; gap: 12px; min-height: 56px; border-top: 1px solid #E1E2E8;"><div class="av" aria-hidden="true" style="width: 40px; height: 40px; font-size: 14px;">{{a.ini}}</div><span style="flex: 1;">{{a.name}}</span><span style="font-weight: 500; font-variant-numeric: tabular-nums;">{{a.free}}</span></li>
+</sc-for>
+</ul>
+</section>
+</aside>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1080}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const nb = ' ';
+    const active = 'Charge';
+    const navDef = [['Accueil', 'Notifications.dc.html', 'home'], ['Mes tickets', 'Ticket.dc.html', 'assignment'], ['Recherche', 'Recherche.dc.html', 'search'], ['Boards', 'Kanban.dc.html', 'view_kanban'], ['Gantt', 'Gantt.dc.html', 'view_timeline'], ['Charge', 'Main.dc.html', 'groups'], ['Portefeuilles', 'Portefeuille.dc.html', 'account_tree'], ['Portails', 'PortailAdmin.dc.html', 'support_agent'], ['Tableaux de bord', 'Dashboard.dc.html', 'dashboard'], ['Administration', 'AdminMembres.dc.html', 'settings']];
+    const nav = navDef.map(([label, href, icon]) => ({ label, href, icon, cls: label === active ? 'nav-item on' : 'nav-item', cur: label === active ? 'page' : undefined }));
+    const weeks = [
+      { label: 'S45', dates: '2–8 nov.', note: '' },
+      { label: 'S46', dates: '9–15 nov.', note: 'Férié 11/11' },
+      { label: 'S47', dates: '16–22 nov.', note: '' },
+      { label: 'S48', dates: '23–29 nov.', note: '' },
+      { label: 'S49', dates: '30 nov.–6 déc.', note: '' },
+      { label: 'S50', dates: '7–13 déc.', note: '' },
+      { label: 'S51', dates: '14–20 déc.', note: '' },
+      { label: 'S52', dates: '21–27 déc.', note: 'Férié 25/12' }
+    ];
+    const C = v => ({ k: 'conf', v });
+    const P = v => ({ k: 'prov', v });
+    const A = { k: 'abs' };
+    const raw = [
+      { name: 'Camille Martin', meta: 'Dev back · 35 h/sem.', cells: [82, 94, 112, 100, 88, 76, 60, 40], sel: 2 },
+      { name: 'Lucas Bernard', meta: 'Chef de projet · 35 h/sem.', cells: [70, 85, 90, 95, 80, 75, 60, 30] },
+      { name: 'Inès Moreau', meta: 'Dev front · 28 h/sem. (80 %)', cells: [100, 96, 88, 72, A, A, 64, 0] },
+      { name: 'Sarah Lefèvre', meta: 'Dev back · 35 h/sem.', cells: [C(78), C(86), C(90), 64, 70, 58, 40, 20] },
+      { name: 'Nathan Roux', meta: 'Admin systèmes · 35 h/sem.', cells: [40, 55, 48, 62, 70, 85, 105, 30] },
+      { name: 'Léa Fontaine', meta: 'UX designer · 35 h/sem.', cells: [P(60), P(72), 58, 66, 50, P(45), 20, 10] },
+      { name: 'Thomas Leroy', meta: 'Sous-traitant · 35 h/sem.', badge: 'Sans compte', cells: [0, 0, 0, 20, 40, 60, 100, 40] },
+      { name: 'Dev Rust', meta: 'Ressource générique · à nommer', badge: 'Générique', cells: [P(50), P(50), P(80), P(80), P(100), P(100), P(60), P(20)] }
+    ];
+    const lv = v => v === 0 ? 'l0' : v <= 40 ? 'l1' : v <= 70 ? 'l2' : v <= 95 ? 'l3' : v <= 100 ? 'l4' : 'over';
+    const rows = raw.map(r => ({
+      name: r.name,
+      meta: r.meta,
+      badge: r.badge || '',
+      hasBadge: !!r.badge,
+      cells: r.cells.map((s, i) => {
+        let c;
+        if (typeof s === 'number') c = { t: s + nb + '%', sub: '', hasSub: false, cls: 'cell ' + lv(s) };
+        else if (s.k === 'abs') c = { t: 'Congés', sub: '', hasSub: false, cls: 'cell abs' };
+        else c = { t: s.v + nb + '%', sub: s.k === 'conf' ? 'confidentiel' : 'provisoire', hasSub: true, cls: 'cell ' + s.k };
+        if (r.sel === i) c.cls += ' sel';
+        c.aria = r.name + ', ' + weeks[i].label + ' : ' + c.t + (c.hasSub ? ', ' + c.sub : '');
+        return c;
+      })
+    }));
+    const totals = [60, 67, 71, 70, 62, 62, 64, 24].map(v => v + nb + '%');
+    const items = [
+      { key: 'PLAT-142', href: 'Ticket.dc.html', title: 'Migration de l’authentification vers OIDC', mode: '50 % de la capacité', h: '17,5 h' },
+      { key: 'PLAT-148', href: '#', title: 'Scripts de migration des comptes', mode: 'Effort total', h: '10,5 h' },
+      { key: 'RUN-031', href: '#', title: 'Astreinte hebdomadaire', mode: 'Récurrente · lun. 9 h–12 h, jeu. 14 h–18 h', h: '7 h' },
+      { key: 'PLAT-160', href: '#', title: 'Ateliers utilisateurs', mode: 'Provisoire', h: '4 h' }
+    ];
+    const avail = [
+      { ini: 'TL', name: 'Thomas Leroy', free: '5 j' },
+      { ini: 'NR', name: 'Nathan Roux', free: '2,6 j' },
+      { ini: 'LF', name: 'Léa Fontaine', free: '2,1 j' }
+    ];
+    return { nav, weeks, rows, totals, items, avail };
+  }
+}
+</script>
+</body>
+</html>

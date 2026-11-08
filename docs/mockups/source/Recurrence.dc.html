@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Tâche récurrente</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;family=Roboto+Mono:wght@400&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;display=swap">
+<style>
+body{margin:0}
+.ms{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+.btn{font:inherit;font-size:14px;font-weight:500;height:40px;padding:0 24px;border-radius:20px;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;box-sizing:border-box;white-space:nowrap}
+.btn .ms{font-size:18px;margin-left:-8px}
+.filled{background:#415F91;color:#FFFFFF}
+.text{background:transparent;color:#415F91;padding:0 12px}
+.tf{position:relative;display:flex;flex-direction:column}
+.tf label{position:absolute;top:-8px;left:12px;padding:0 4px;font-size:12px;line-height:16px;color:#44474E;background:#ECEDF4;z-index:1}
+.tf-in{font:inherit;font-size:16px;min-height:56px;padding:0 16px;border:1px solid #74777F;border-radius:4px;background:transparent;color:#191C20;box-sizing:border-box;width:100%}
+.dayc{font:inherit;width:40px;height:40px;border-radius:20px;border:1px solid #74777F;background:transparent;color:#191C20;cursor:pointer;font-weight:500}
+.dayc.on{background:#415F91;border-color:#415F91;color:#FFFFFF}
+.sw{width:52px;height:32px;border-radius:16px;border:2px solid #415F91;background:#415F91;box-sizing:border-box;position:relative;cursor:pointer;flex:none;padding:0}
+.sw::after{content:'';position:absolute;top:2px;left:22px;width:24px;height:24px;border-radius:50%;background:#FFFFFF}
+.lbl{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:8px;font-size:12px;font-weight:500;background:#DDDEE5;color:#44474E;white-space:nowrap}
+.occ{display:flex;align-items:center;gap:12px;min-height:44px;border-top:1px solid #D7D8DF}
+.chip{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px 0 4px;border-radius:8px;background:#DAE2F9;color:#131C2B;font-weight:500}
+.av{border-radius:50%;background:#AAC7FF;color:#001B3E;font-weight:500;display:flex;align-items:center;justify-content:center;width:24px;height:24px;font-size:10px}
+</style>
+</helmet>
+<div style="width: 880px; height: 1120px; box-sizing: border-box; padding: 24px; background: #8F9199; display: flex; align-items: center; justify-content: center; font-family: Roboto, system-ui, sans-serif; font-size: 14px; line-height: 20px; color: #191C20;">
+<section role="dialog" aria-modal="true" aria-labelledby="d-t" style="width: 100%; background: #ECEDF4; border-radius: 28px; padding: 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px; box-shadow: 0 4px 8px 3px rgba(0,0,0,.15), 0 1px 3px rgba(0,0,0,.3);">
+<h2 id="d-t" style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 400;">Nouvelle tâche récurrente</h2>
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px;">
+<div class="tf"><label for="ti">Titre</label><input id="ti" class="tf-in" type="text" value="Astreinte hebdomadaire"></div>
+<div class="tf"><label for="pr">Projet</label><select id="pr" class="tf-in"><option>Exploitation (RUN)</option></select></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px;">
+<div class="tf"><label for="fq">Fréquence</label><select id="fq" class="tf-in"><option>Chaque semaine</option><option>Chaque jour</option><option>Chaque mois</option><option>Chaque année</option></select></div>
+<div class="tf"><label for="iv">Toutes les</label><input id="iv" class="tf-in" type="text" value="1 semaine"></div>
+<div class="tf"><label for="st">Début</label><input id="st" class="tf-in" type="text" value="lun. 9 nov. 2026"></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<span style="font-weight: 500;">Jours</span>
+<div role="group" aria-label="Jours de la semaine" style="display: flex; gap: 8px;">
+<button type="button" class="dayc on" aria-pressed="true" aria-label="Lundi">L</button><button type="button" class="dayc" aria-pressed="false" aria-label="Mardi">M</button><button type="button" class="dayc" aria-pressed="false" aria-label="Mercredi">M</button><button type="button" class="dayc on" aria-pressed="true" aria-label="Jeudi">J</button><button type="button" class="dayc" aria-pressed="false" aria-label="Vendredi">V</button><button type="button" class="dayc" aria-pressed="false" aria-label="Samedi">S</button><button type="button" class="dayc" aria-pressed="false" aria-label="Dimanche">D</button>
+</div>
+</div>
+<div style="display: flex; align-items: center; gap: 16px;"><div style="flex: 1;"><div>Horaire fixe</div><div style="font-size: 12px; color: #44474E;">Réserve un créneau ; un chevauchement avec un autre créneau de la ressource est un conflit</div></div><button type="button" role="switch" class="sw" aria-checked="true" aria-label="Horaire fixe"></button></div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+<div class="tf"><label for="h1">Lundi</label><input id="h1" class="tf-in" type="text" value="9:00 → 12:00 (3 h)"></div>
+<div class="tf"><label for="h2">Jeudi</label><input id="h2" class="tf-in" type="text" value="14:00 → 18:00 (4 h)"></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+<div class="tf"><label for="en">Fin</label><select id="en" class="tf-in"><option>Jamais</option><option>À une date</option><option>Après N occurrences</option></select></div>
+<div class="tf"><label for="nw">Si le jour n’est pas ouvré</label><select id="nw" class="tf-in"><option>Décaler au jour ouvré suivant</option><option>Décaler au jour ouvré précédent</option><option>Supprimer l’occurrence</option></select></div>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;"><span style="font-weight: 500; margin-right: 8px;">Ressources</span><span class="chip"><span class="av" aria-hidden="true">CM</span>Camille Martin</span><button class="btn text" type="button"><span class="ms" aria-hidden="true">add</span>Ajouter</button><span style="margin-left: auto; font-family: 'Roboto Mono', monospace; font-size: 12px; color: #44474E;">FREQ=WEEKLY;BYDAY=MO,TH</span></div>
+<div style="display: flex; flex-direction: column;">
+<p style="margin: 0 0 8px; font-weight: 500;">Prochaines occurrences</p>
+<sc-for list="{{occ}}" as="o" hint-placeholder-count="6">
+<div class="occ"><span class="ms" aria-hidden="true" style="{{o.iconStyle}}">{{o.icon}}</span><span style="width: 140px; font-weight: 500;">{{o.date}}</span><span style="width: 120px; color: #44474E;">{{o.slot}}</span><span style="flex: 1; font-size: 12px; color: #44474E;">{{o.note}}</span></div>
+</sc-for>
+</div>
+<div role="alert" style="display: flex; gap: 12px; align-items: flex-start; padding: 12px 16px; border-radius: 12px; background: #FFDAD6; color: #410002;"><span class="ms" aria-hidden="true">event_busy</span><span>Capacité vérifiée sur 12 mois : 1 conflit. Le jeu. 19 nov., le créneau 14:00–18:00 chevauche « Revue d’architecture » (14:00–15:00) de Camille Martin.</span></div>
+<div style="display: flex; gap: 12px; padding: 12px 16px; border-radius: 12px; background: #DDDEE5; color: #44474E;"><span class="ms" aria-hidden="true">info</span><span>Chaque occurrence est un vrai ticket, créé 90 jours à l’avance. Au-delà, la charge est calculée depuis la série et comptée dans la heatmap.</span></div>
+<div style="display: flex; justify-content: flex-end; gap: 8px;"><button class="btn text" type="button">Annuler</button><button class="btn filled" type="button">Créer la série</button></div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":880,"height":1120}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const ok = { icon: 'event_available', iconStyle: 'color: #415F91;' };
+    const ko = { icon: 'event_busy', iconStyle: 'color: #BA1A1A;' };
+    const O = (date, slot, note, bad) => Object.assign({ date, slot, note }, bad ? ko : ok);
+    const occ = [
+      O('lun. 9 nov.', '9:00 → 12:00', 'Ticket créé à l’enregistrement'),
+      O('jeu. 12 nov.', '14:00 → 18:00', 'Ticket créé à l’enregistrement'),
+      O('lun. 16 nov.', '9:00 → 12:00', 'Ticket créé à l’enregistrement'),
+      O('jeu. 19 nov.', '14:00 → 18:00', 'Chevauche « Revue d’architecture »', true),
+      O('lun. 23 nov.', '9:00 → 12:00', 'Ticket créé à l’enregistrement'),
+      O('jeu. 26 nov.', '14:00 → 18:00', 'Ticket créé à l’enregistrement')
+    ];
+    return { occ };
+  }
+}
+</script>
+</body>
+</html>

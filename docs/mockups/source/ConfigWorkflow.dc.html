@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Configuration · Workflows</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#415F91}a:hover{color:#2A4678}
+.ms{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+.nav-item{display:flex;align-items:center;gap:12px;height:56px;padding:0 24px 0 16px;border-radius:28px;color:#44474E;text-decoration:none;font-size:14px;font-weight:500}
+.nav-item .ms{font-size:24px}
+.nav-item:hover{background:rgba(25,28,32,.08);color:#191C20}
+.nav-item.on{background:#DAE2F9;color:#131C2B}
+.nav-item.on .ms{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+.btn{font:inherit;font-size:14px;font-weight:500;height:40px;padding:0 24px;border-radius:20px;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-sizing:border-box;white-space:nowrap}
+.btn .ms{font-size:18px;margin-left:-8px}
+.filled{background:#415F91;color:#FFFFFF}.filled:hover{background:#4E6A9B;color:#FFFFFF}
+.tonal{background:#DAE2F9;color:#131C2B}.tonal:hover{background:#CDD6EC;color:#131C2B}
+.outlined{background:transparent;color:#415F91;border:1px solid #74777F}.outlined:hover{background:rgba(65,95,145,.08);color:#415F91}
+.text{background:transparent;color:#415F91;padding:0 12px}.text:hover{background:rgba(65,95,145,.08);color:#415F91}
+.icon-btn{width:40px;height:40px;border-radius:20px;border:0;background:transparent;color:#44474E;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.tf{position:relative;display:flex;flex-direction:column}
+.tf label{position:absolute;top:-8px;left:12px;padding:0 4px;font-size:12px;line-height:16px;color:#44474E;background:#FFFFFF;z-index:1}
+.tf-in{font:inherit;font-size:16px;min-height:56px;padding:0 16px;border:1px solid #74777F;border-radius:4px;background:transparent;color:#191C20;box-sizing:border-box;width:100%}
+.card{background:#FFFFFF;border:1px solid #C4C6D0;border-radius:12px;padding:20px}
+.h2{margin:0;font-size:16px;line-height:24px;font-weight:500}
+.lbl{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:8px;font-size:12px;font-weight:500;background:#E7E8EE;color:#44474E;white-space:nowrap}
+.c-todo{background:#E7E8EE;color:#44474E}
+.c-prog{background:#D6E3FF;color:#001B3E}
+.c-done{background:#C4EED0;color:#002110}
+.av{border-radius:50%;background:#D6E3FF;color:#001B3E;font-weight:500;display:flex;align-items:center;justify-content:center;flex:none;width:40px;height:40px;font-size:14px}
+.tab{font:inherit;font-size:14px;font-weight:500;height:48px;padding:0 16px;border:0;background:transparent;color:#44474E;cursor:pointer;position:relative;text-decoration:none;display:inline-flex;align-items:center}
+.tab.on{color:#415F91}
+.tab.on::after{content:'';position:absolute;left:16px;right:16px;bottom:0;height:3px;border-radius:3px 3px 0 0;background:#415F91}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;font-size:12px;font-weight:500;color:#44474E;padding:0 12px;height:48px;border-bottom:1px solid #C4C6D0;white-space:nowrap}
+.tbl td{padding:8px 12px;height:44px;border-bottom:1px solid #E1E2E8;vertical-align:middle}
+.wf{display:flex;align-items:center;gap:12px;min-height:56px;padding:0 16px;border-radius:28px;color:#44474E;text-decoration:none}
+.wf.on{background:#DAE2F9;color:#131C2B}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F9F9FF; color: #191C20; font-family: Roboto, system-ui, sans-serif; font-size: 14px; line-height: 20px;">
+<nav aria-label="Navigation principale" style="flex: 1 1 256px; box-sizing: border-box; padding: 12px; background: #F3F3FA; display: flex; flex-direction: column; gap: 4px;">
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px 16px;"><span class="ms" aria-hidden="true" style="font-size: 28px; color: #415F91;">deployed_code</span><span style="font-size: 16px; font-weight: 500;">My Little Big Project Planner</span></div>
+<div class="tf" style="margin: 4px 4px 16px;"><label for="tenant" style="background: #F3F3FA;">Organisation</label><select id="tenant" class="tf-in"><option>Acme Industrie</option><option>Acme Services</option></select></div>
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="10"><a href="{{n.href}}" class="{{n.cls}}" aria-current="{{n.cur}}"><span class="ms" aria-hidden="true">{{n.icon}}</span><span>{{n.label}}</span></a></sc-for>
+<a href="Compte.dc.html" style="margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 16px; border-top: 1px solid #C4C6D0; color: #191C20; text-decoration: none;"><div class="av" aria-hidden="true">LB</div><div style="display: flex; flex-direction: column;"><span style="font-weight: 500;">Lucas Bernard</span><span style="font-size: 12px; color: #44474E;">Mon compte</span></div></a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 24px 32px 40px; display: flex; flex-direction: column; gap: 20px;">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px;">
+<div>
+<p style="margin: 0; font-size: 12px; color: #44474E;">Administration › Configurations de projet</p>
+<h1 style="margin: 4px 0 0; font-size: 28px; line-height: 36px; font-weight: 400;">Développement logiciel</h1>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;"><span class="lbl"><span class="ms" aria-hidden="true">share</span>Partagée par 6 projets</span><span class="lbl">Brouillon non publié · 2 modifications</span></div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+<button class="btn outlined" type="button"><span class="ms" aria-hidden="true">content_copy</span>Dupliquer</button>
+<a class="btn filled" href="MigrationStatuts.dc.html"><span class="ms" aria-hidden="true">publish</span>Publier les modifications</a>
+</div>
+</div>
+<div role="tablist" style="display: flex; flex-wrap: wrap; border-bottom: 1px solid #C4C6D0;">
+<button role="tab" type="button" class="tab" aria-selected="false">Types</button>
+<a role="tab" href="ConfigChamps.dc.html" class="tab" aria-selected="false">Champs</a>
+<button role="tab" type="button" class="tab on" aria-selected="true">Workflows</button>
+<button role="tab" type="button" class="tab" aria-selected="false">Écrans</button>
+<button role="tab" type="button" class="tab" aria-selected="false">Notifications</button>
+<button role="tab" type="button" class="tab" aria-selected="false">Projets (6)</button>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+<aside aria-label="Workflows par type" style="flex: 1 1 240px; max-width: 280px; display: flex; flex-direction: column; gap: 4px;">
+<p style="margin: 0 0 8px 16px; font-size: 12px; font-weight: 500; color: #44474E;">Workflow par type de ticket</p>
+<a href="#" class="wf on" aria-current="true"><span class="ms" aria-hidden="true">bookmark</span><span style="flex: 1;"><span style="display: block; font-weight: 500;">Story, Tâche</span><span style="font-size: 12px;">Workflow standard</span></span></a>
+<a href="#" class="wf"><span class="ms" aria-hidden="true">bug_report</span><span style="flex: 1;"><span style="display: block; font-weight: 500;">Bug</span><span style="font-size: 12px;">Workflow bug</span></span></a>
+<a href="#" class="wf"><span class="ms" aria-hidden="true">flag</span><span style="flex: 1;"><span style="display: block; font-weight: 500;">Epic</span><span style="font-size: 12px;">Workflow simple</span></span></a>
+<button class="btn text" type="button" style="align-self: flex-start; margin-left: 4px;"><span class="ms" aria-hidden="true">add</span>Nouveau workflow</button>
+</aside>
+<div style="flex: 999 1 600px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+<section class="card" aria-labelledby="g-t" style="display: flex; flex-direction: column; gap: 12px;">
+<div style="display: flex; justify-content: space-between; align-items: center;"><h2 id="g-t" class="h2">Workflow standard</h2><span class="lbl">Vue graphique en lecture seule</span></div>
+<svg role="img" aria-label="Workflow : À faire, En cours, En revue, Terminé, avec retour de En revue vers En cours et Annulé accessible depuis tous les statuts" viewBox="0 0 760 170" style="width: 100%; height: auto; max-height: 190px;">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#74777F"></path></marker></defs>
+<g font-family="Roboto, sans-serif" font-size="14" text-anchor="middle">
+<rect x="10" y="40" width="130" height="44" rx="12" fill="#E7E8EE"></rect><text x="75" y="67" fill="#44474E">À faire</text>
+<rect x="210" y="40" width="130" height="44" rx="12" fill="#D6E3FF"></rect><text x="275" y="67" fill="#001B3E">En cours</text>
+<rect x="410" y="40" width="130" height="44" rx="12" fill="#D6E3FF"></rect><text x="475" y="67" fill="#001B3E">En revue</text>
+<rect x="610" y="40" width="130" height="44" rx="12" fill="#C4EED0"></rect><text x="675" y="67" fill="#002110">Terminé</text>
+<rect x="310" y="120" width="130" height="40" rx="12" fill="#FFFFFF" stroke="#74777F" stroke-dasharray="4 3"></rect><text x="375" y="145" fill="#44474E">Annulé</text>
+</g>
+<g fill="none" stroke="#74777F" stroke-width="1.5" marker-end="url(#a)">
+<path d="M140 55 H208"></path>
+<path d="M340 55 H408"></path>
+<path d="M540 55 H608"></path>
+<path d="M475 84 V100 H275 V86"></path>
+</g>
+<g font-family="Roboto, sans-serif" font-size="11" fill="#44474E" text-anchor="middle">
+<text x="174" y="47">Démarrer</text><text x="374" y="47">Passer en revue</text><text x="574" y="47">Valider</text><text x="375" y="112">Refuser</text>
+</g>
+<path d="M375 118 V106" stroke="#74777F" stroke-width="1.5" stroke-dasharray="3 3" fill="none"></path>
+</svg>
+</section>
+<section class="card" aria-labelledby="s-t" style="display: flex; flex-direction: column; gap: 8px;">
+<div style="display: flex; justify-content: space-between; align-items: center;"><h2 id="s-t" class="h2">Statuts</h2><button class="btn text" type="button"><span class="ms" aria-hidden="true">add</span>Ajouter un statut</button></div>
+<div style="overflow-x: auto;">
+<table class="tbl" style="min-width: 600px;">
+<thead><tr><th scope="col">Libellé (FR / EN)</th><th scope="col">Identifiant</th><th scope="col">Catégorie</th><th scope="col">Libellé sur le portail</th></tr></thead>
+<tbody>
+<sc-for list="{{statuses}}" as="s" hint-placeholder-count="5">
+<tr><td><span style="font-weight: 500;">{{s.fr}}</span> <span style="color: #44474E;">/ {{s.en}}</span></td><td style="font-family: monospace; font-size: 13px;">{{s.id}}</td><td><span class="{{s.cls}}">{{s.cat}}</span></td><td>{{s.portal}}</td></tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</section>
+<section class="card" aria-labelledby="t-t" style="display: flex; flex-direction: column; gap: 8px;">
+<div style="display: flex; justify-content: space-between; align-items: center;"><h2 id="t-t" class="h2">Transitions</h2><button class="btn text" type="button"><span class="ms" aria-hidden="true">add</span>Ajouter une transition</button></div>
+<div style="overflow-x: auto;">
+<table class="tbl" style="min-width: 820px;">
+<thead><tr><th scope="col">Transition</th><th scope="col">De → vers</th><th scope="col">Conditions</th><th scope="col">Validateurs</th><th scope="col">Post-fonctions</th><th scope="col">Écran</th></tr></thead>
+<tbody>
+<sc-for list="{{transitions}}" as="t" hint-placeholder-count="5">
+<tr><td style="font-weight: 500;">{{t.name}}</td><td>{{t.path}}</td><td>{{t.cond}}</td><td>{{t.valid}}</td><td>{{t.post}}</td><td>{{t.screen}}</td></tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</section>
+</div>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1120}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const active = 'Administration';
+    const navDef = [['Accueil', 'Notifications.dc.html', 'home'], ['Mes tickets', 'Ticket.dc.html', 'assignment'], ['Recherche', 'Recherche.dc.html', 'search'], ['Boards', 'Kanban.dc.html', 'view_kanban'], ['Gantt', 'Gantt.dc.html', 'view_timeline'], ['Charge', 'Main.dc.html', 'groups'], ['Portefeuilles', 'Portefeuille.dc.html', 'account_tree'], ['Portails', 'PortailAdmin.dc.html', 'support_agent'], ['Tableaux de bord', 'Dashboard.dc.html', 'dashboard'], ['Administration', 'AdminMembres.dc.html', 'settings']];
+    const nav = navDef.map(([label, href, icon]) => ({ label, href, icon, cls: label === active ? 'nav-item on' : 'nav-item', cur: label === active ? 'page' : undefined }));
+    const cats = { todo: ['À faire', 'lbl c-todo'], prog: ['En cours', 'lbl c-prog'], done: ['Terminé', 'lbl c-done'] };
+    const st = (fr, en, id, c, portal) => ({ fr, en, id, cat: cats[c][0], cls: cats[c][1], portal });
+    const statuses = [
+      st('À faire', 'To do', 'todo', 'todo', 'Reçue'),
+      st('En cours', 'In progress', 'in_progress', 'prog', 'En cours de traitement'),
+      st('En revue', 'In review', 'in_review', 'prog', 'En cours de traitement'),
+      st('Terminé', 'Done', 'done', 'done', 'Résolue'),
+      st('Annulé', 'Cancelled', 'cancelled', 'done', 'Fermée')
+    ];
+    const transitions = [
+      { name: 'Démarrer', path: 'À faire → En cours', cond: 'Membre du projet', valid: '—', post: 'Assigner à l’utilisateur courant', screen: '—' },
+      { name: 'Passer en revue', path: 'En cours → En revue', cond: '—', valid: 'Reste à faire renseigné', post: '—', screen: '—' },
+      { name: 'Refuser', path: 'En revue → En cours', cond: 'Rôle Relecteur', valid: 'Commentaire obligatoire', post: 'Ajouter le commentaire', screen: 'Motif du refus' },
+      { name: 'Valider', path: 'En revue → Terminé', cond: 'Rôle Relecteur', valid: '—', post: 'Résolution = Fait', screen: '—' },
+      { name: 'Annuler', path: 'Tous → Annulé', cond: 'Rôle Chef de projet', valid: 'Motif obligatoire', post: 'Résolution = Annulé', screen: 'Motif d’annulation' }
+    ];
+    return { nav, statuses, transitions };
+  }
+}
+</script>
+</body>
+</html>

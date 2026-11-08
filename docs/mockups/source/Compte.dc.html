@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Mon compte</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;family=Roboto+Mono:wght@400&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#415F91}a:hover{color:#2A4678}
+.ms{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+.nav-item{display:flex;align-items:center;gap:12px;height:56px;padding:0 24px 0 16px;border-radius:28px;color:#44474E;text-decoration:none;font-size:14px;font-weight:500}
+.nav-item .ms{font-size:24px}
+.nav-item:hover{background:rgba(25,28,32,.08);color:#191C20}
+.nav-item.on{background:#DAE2F9;color:#131C2B}
+.btn{font:inherit;font-size:14px;font-weight:500;height:40px;padding:0 24px;border-radius:20px;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-sizing:border-box;white-space:nowrap}
+.btn .ms{font-size:18px;margin-left:-8px}
+.filled{background:#415F91;color:#FFFFFF}.filled:hover{background:#4E6A9B;color:#FFFFFF}
+.tonal{background:#DAE2F9;color:#131C2B}.tonal:hover{background:#CDD6EC;color:#131C2B}
+.outlined{background:transparent;color:#415F91;border:1px solid #74777F}.outlined:hover{background:rgba(65,95,145,.08);color:#415F91}
+.danger{background:transparent;color:#BA1A1A;border:1px solid #BA1A1A}.danger:hover{background:rgba(186,26,26,.08);color:#BA1A1A}
+.icon-btn{width:40px;height:40px;border-radius:20px;border:0;background:transparent;color:#44474E;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.tf{position:relative;display:flex;flex-direction:column}
+.tf label{position:absolute;top:-8px;left:12px;padding:0 4px;font-size:12px;line-height:16px;color:#44474E;background:#FFFFFF;z-index:1}
+.tf-in{font:inherit;font-size:16px;min-height:56px;padding:0 16px;border:1px solid #74777F;border-radius:4px;background:transparent;color:#191C20;box-sizing:border-box;width:100%}
+.card{background:#FFFFFF;border:1px solid #C4C6D0;border-radius:12px;padding:20px}
+.h2{margin:0;font-size:16px;line-height:24px;font-weight:500}
+.lbl{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:8px;font-size:12px;font-weight:500;background:#E7E8EE;color:#44474E;white-space:nowrap}
+.mono{font-family:'Roboto Mono',monospace;font-size:12px}
+.ok{background:#C4EED0;color:#002110}
+.av{border-radius:50%;background:#D6E3FF;color:#001B3E;font-weight:500;display:flex;align-items:center;justify-content:center;flex:none;width:40px;height:40px;font-size:14px}
+.sw{width:52px;height:32px;border-radius:16px;border:2px solid #74777F;background:#E1E2E8;box-sizing:border-box;position:relative;cursor:pointer;flex:none;padding:0}
+.sw::after{content:'';position:absolute;top:6px;left:6px;width:16px;height:16px;border-radius:50%;background:#74777F}
+.sw.on{background:#415F91;border-color:#415F91}
+.sw.on::after{top:2px;left:22px;width:24px;height:24px;background:#FFFFFF}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;font-size:12px;font-weight:500;color:#44474E;padding:0 12px;height:48px;border-bottom:1px solid #C4C6D0;white-space:nowrap}
+.tbl td{padding:8px 12px;height:48px;border-bottom:1px solid #E1E2E8;vertical-align:middle}
+.row{display:flex;align-items:center;gap:16px;min-height:56px;border-top:1px solid #E1E2E8}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F9F9FF; color: #191C20; font-family: Roboto, system-ui, sans-serif; font-size: 14px; line-height: 20px;">
+<nav aria-label="Navigation principale" style="flex: 1 1 256px; box-sizing: border-box; padding: 12px; background: #F3F3FA; display: flex; flex-direction: column; gap: 4px;">
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px 16px;"><span class="ms" aria-hidden="true" style="font-size: 28px; color: #415F91;">deployed_code</span><span style="font-size: 16px; font-weight: 500;">My Little Big Project Planner</span></div>
+<div class="tf" style="margin: 4px 4px 16px;"><label for="tenant" style="background: #F3F3FA;">Organisation</label><select id="tenant" class="tf-in"><option>Acme Industrie</option><option>Acme Services</option></select></div>
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="10"><a href="{{n.href}}" class="{{n.cls}}"><span class="ms" aria-hidden="true">{{n.icon}}</span><span>{{n.label}}</span></a></sc-for>
+<a href="Compte.dc.html" aria-current="page" style="margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: 28px; background: #DAE2F9; color: #131C2B; text-decoration: none;"><div class="av" aria-hidden="true">LB</div><div style="display: flex; flex-direction: column;"><span style="font-weight: 500;">Lucas Bernard</span><span style="font-size: 12px;">Mon compte</span></div></a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 24px 32px 40px; display: flex; flex-direction: column; gap: 20px;">
+<div>
+<p style="margin: 0; font-size: 12px; color: #44474E;">Compte global · lucas.bernard@acme.example</p>
+<h1 style="margin: 4px 0 0; font-size: 28px; line-height: 36px; font-weight: 400;">Mon compte</h1>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+<div style="flex: 999 1 600px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+<section class="card" aria-labelledby="tok-t" style="display: flex; flex-direction: column; gap: 12px;">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px;"><div><h2 id="tok-t" class="h2">Tokens d’API personnels</h2><p style="margin: 2px 0 0; font-size: 12px; color: #44474E;">Pour vos scripts et intégrations. Chaque token vaut pour une seule organisation.</p></div><button class="btn filled" type="button"><span class="ms" aria-hidden="true">add</span>Créer un token</button></div>
+<div style="overflow-x: auto;">
+<table class="tbl" style="min-width: 680px;">
+<thead><tr><th scope="col">Nom</th><th scope="col">Organisation</th><th scope="col">Scopes</th><th scope="col">Expiration</th><th scope="col">Dernière utilisation</th><th scope="col"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden;">Révoquer</span></th></tr></thead>
+<tbody>
+<sc-for list="{{tokens}}" as="t" hint-placeholder-count="3">
+<tr><td style="font-weight: 500;">{{t.name}}</td><td>{{t.tenant}}</td><td><div style="display: flex; flex-wrap: wrap; gap: 4px;"><sc-for list="{{t.scopes}}" as="s" hint-placeholder-count="2"><span class="lbl mono">{{s}}</span></sc-for></div></td><td>{{t.exp}}</td><td style="color: #44474E;">{{t.last}}</td><td><button class="icon-btn" type="button" aria-label="Révoquer le token"><span class="ms" aria-hidden="true">delete</span></button></td></tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</section>
+<section class="card" aria-labelledby="app-t" style="display: flex; flex-direction: column; gap: 4px;">
+<h2 id="app-t" class="h2" style="margin-bottom: 8px;">Applications autorisées</h2>
+<div class="row"><div aria-hidden="true" style="width: 40px; height: 40px; border-radius: 12px; background: #EDEDF4; display: flex; align-items: center; justify-content: center;"><span class="ms" style="color: #44474E;">smart_toy</span></div><div style="flex: 1; min-width: 0;"><div style="font-weight: 500;">Claude · client MCP</div><div style="font-size: 12px; color: #44474E;">Acme Industrie · tickets:read, tickets:write, workload:read, workload:write, time:write · autorisée le 2 nov.</div></div><button class="btn outlined" type="button">Révoquer</button></div>
+<div class="row"><div aria-hidden="true" style="width: 40px; height: 40px; border-radius: 12px; background: #EDEDF4; display: flex; align-items: center; justify-content: center;"><span class="ms" style="color: #44474E;">insights</span></div><div style="flex: 1; min-width: 0;"><div style="font-weight: 500;">Outil de BI interne</div><div style="font-size: 12px; color: #44474E;">Acme Industrie · tickets:read, workload:read · autorisée le 12 oct.</div></div><button class="btn outlined" type="button">Révoquer</button></div>
+</section>
+<section class="card" aria-labelledby="org-t" style="display: flex; flex-direction: column; gap: 4px;">
+<h2 id="org-t" class="h2" style="margin-bottom: 8px;">Mes organisations</h2>
+<div class="row"><span class="ms" aria-hidden="true" style="color: #415F91;">corporate_fare</span><div style="flex: 1;"><div style="font-weight: 500;">Acme Industrie</div><div style="font-size: 12px; color: #44474E;">Admin de l’organisation · connexion par Entra ID</div></div><span class="lbl ok">Active</span></div>
+<div class="row"><span class="ms" aria-hidden="true" style="color: #415F91;">corporate_fare</span><div style="flex: 1;"><div style="font-weight: 500;">Acme Services</div><div style="font-size: 12px; color: #44474E;">Utilisateur · mot de passe et MFA</div></div><span class="lbl">Membre</span></div>
+</section>
+</div>
+<aside style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+<section class="card" aria-labelledby="pref-t" style="display: flex; flex-direction: column; gap: 20px;">
+<h2 id="pref-t" class="h2">Préférences</h2>
+<div class="tf"><label for="lang">Langue</label><select id="lang" class="tf-in"><option>Français</option><option>English</option></select></div>
+<div class="tf"><label for="tz">Fuseau horaire</label><select id="tz" class="tf-in"><option>Europe/Paris (UTC+1)</option></select></div>
+</section>
+<section class="card" aria-labelledby="sec-t" style="display: flex; flex-direction: column; gap: 4px;">
+<h2 id="sec-t" class="h2" style="margin-bottom: 8px;">Sécurité</h2>
+<div class="row"><div style="flex: 1;"><div>Vérification en deux étapes</div><div style="font-size: 12px; color: #44474E;">Application d’authentification · 8 codes de secours</div></div><button type="button" role="switch" class="sw on" aria-checked="true" aria-label="Vérification en deux étapes"></button></div>
+<div class="row"><div style="flex: 1;"><div>Sessions actives</div><div style="font-size: 12px; color: #44474E;">2 appareils · dernière connexion aujourd’hui</div></div><button class="btn outlined" type="button">Gérer</button></div>
+</section>
+<section class="card" aria-labelledby="rgpd-t" style="display: flex; flex-direction: column; gap: 12px;">
+<h2 id="rgpd-t" class="h2">Mes données personnelles</h2>
+<p style="margin: 0; font-size: 12px; color: #44474E;">L’effacement anonymise votre nom et votre email partout, historique compris. Le contenu de vos tickets est conservé.</p>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;"><button class="btn outlined" type="button"><span class="ms" aria-hidden="true">download</span>Exporter (JSON)</button><button class="btn danger" type="button">Supprimer mon compte</button></div>
+</section>
+</aside>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1160}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const navDef = [['Accueil', 'Notifications.dc.html', 'home'], ['Mes tickets', 'Ticket.dc.html', 'assignment'], ['Recherche', 'Recherche.dc.html', 'search'], ['Boards', 'Kanban.dc.html', 'view_kanban'], ['Gantt', 'Gantt.dc.html', 'view_timeline'], ['Charge', 'Main.dc.html', 'groups'], ['Portefeuilles', 'Portefeuille.dc.html', 'account_tree'], ['Portails', 'PortailAdmin.dc.html', 'support_agent'], ['Tableaux de bord', 'Dashboard.dc.html', 'dashboard'], ['Administration', 'AdminMembres.dc.html', 'settings']];
+    const nav = navDef.map(([label, href, icon]) => ({ label, href, icon, cls: 'nav-item' }));
+    const tokens = [
+      { name: 'Synchronisation ERP', tenant: 'Acme Industrie', scopes: ['tickets:read', 'time:write'], exp: '31 mars 2027', last: 'Il y a 2 h' },
+      { name: 'Script de reporting', tenant: 'Acme Industrie', scopes: ['tickets:read', 'workload:read'], exp: '15 janv. 2027', last: '5 nov.' },
+      { name: 'Import portail', tenant: 'Acme Services', scopes: ['tickets:write'], exp: '20 nov. 2026', last: 'Jamais' }
+    ];
+    return { nav, tokens };
+  }
+}
+</script>
+</body>
+</html>

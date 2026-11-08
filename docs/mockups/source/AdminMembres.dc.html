@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Administration · Membres</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#415F91}a:hover{color:#2A4678}
+.ms{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+.nav-item{display:flex;align-items:center;gap:12px;height:56px;padding:0 24px 0 16px;border-radius:28px;color:#44474E;text-decoration:none;font-size:14px;font-weight:500}
+.nav-item .ms{font-size:24px}
+.nav-item:hover{background:rgba(25,28,32,.08);color:#191C20}
+.nav-item.on{background:#DAE2F9;color:#131C2B}
+.nav-item.on .ms{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+.btn{font:inherit;font-size:14px;font-weight:500;height:40px;padding:0 24px;border-radius:20px;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-sizing:border-box;white-space:nowrap}
+.btn .ms{font-size:18px;margin-left:-8px}
+.filled{background:#415F91;color:#FFFFFF}.filled:hover{background:#4E6A9B;color:#FFFFFF}
+.outlined{background:transparent;color:#415F91;border:1px solid #74777F}.outlined:hover{background:rgba(65,95,145,.08);color:#415F91}
+.icon-btn{width:40px;height:40px;border-radius:20px;border:0;background:transparent;color:#44474E;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.chip{font:inherit;font-size:14px;font-weight:500;height:32px;padding:0 16px;border-radius:8px;border:1px solid #74777F;background:transparent;color:#44474E;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.chip.on{background:#DAE2F9;border-color:#DAE2F9;color:#131C2B;padding-left:8px}
+.chip .ms{font-size:18px}
+.tf{position:relative;display:flex;flex-direction:column}
+.tf label{position:absolute;top:-8px;left:12px;padding:0 4px;font-size:12px;line-height:16px;color:#44474E;background:#F9F9FF;z-index:1}
+.tf-in{font:inherit;font-size:16px;min-height:56px;padding:0 16px;border:1px solid #74777F;border-radius:4px;background:transparent;color:#191C20;box-sizing:border-box;width:100%}
+.card{background:#FFFFFF;border:1px solid #C4C6D0;border-radius:12px;padding:20px}
+.h2{margin:0;font-size:16px;line-height:24px;font-weight:500}
+.lbl{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:8px;font-size:12px;font-weight:500;background:#E7E8EE;color:#44474E;white-space:nowrap}
+.lbl .ms{font-size:16px}
+.ok{background:#C4EED0;color:#002110}
+.pri{background:#D6E3FF;color:#001B3E}
+.ext{background:#F8D8FE;color:#2A1330}
+.av{border-radius:50%;background:#D6E3FF;color:#001B3E;font-weight:500;display:flex;align-items:center;justify-content:center;flex:none;width:40px;height:40px;font-size:14px}
+.tab{font:inherit;font-size:14px;font-weight:500;height:48px;padding:0 16px;border:0;background:transparent;color:#44474E;cursor:pointer;position:relative}
+.tab.on{color:#415F91}
+.tab.on::after{content:'';position:absolute;left:16px;right:16px;bottom:0;height:3px;border-radius:3px 3px 0 0;background:#415F91}
+.sw{width:52px;height:32px;border-radius:16px;border:2px solid #74777F;background:#E1E2E8;box-sizing:border-box;position:relative;cursor:pointer;flex:none;padding:0}
+.sw::after{content:'';position:absolute;top:6px;left:6px;width:16px;height:16px;border-radius:50%;background:#74777F}
+.sw.on{background:#415F91;border-color:#415F91}
+.sw.on::after{top:2px;left:22px;width:24px;height:24px;background:#FFFFFF}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;font-size:12px;font-weight:500;color:#44474E;padding:0 12px;height:48px;border-bottom:1px solid #C4C6D0;white-space:nowrap}
+.tbl td{padding:8px 12px;height:48px;border-bottom:1px solid #E1E2E8;vertical-align:middle}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F9F9FF; color: #191C20; font-family: Roboto, system-ui, sans-serif; font-size: 14px; line-height: 20px;">
+<nav aria-label="Navigation principale" style="flex: 1 1 256px; box-sizing: border-box; padding: 12px; background: #F3F3FA; display: flex; flex-direction: column; gap: 4px;">
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px 16px;"><span class="ms" aria-hidden="true" style="font-size: 28px; color: #415F91;">deployed_code</span><span style="font-size: 16px; font-weight: 500;">My Little Big Project Planner</span></div>
+<div class="tf" style="margin: 4px 4px 16px;"><label for="tenant" style="background: #F3F3FA;">Organisation</label><select id="tenant" class="tf-in"><option>Acme Industrie</option><option>Acme Services</option></select></div>
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="10"><a href="{{n.href}}" class="{{n.cls}}" aria-current="{{n.cur}}"><span class="ms" aria-hidden="true">{{n.icon}}</span><span>{{n.label}}</span></a></sc-for>
+<a href="Compte.dc.html" style="margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 16px; border-top: 1px solid #C4C6D0; color: #191C20; text-decoration: none;"><div class="av" aria-hidden="true">LB</div><div style="display: flex; flex-direction: column;"><span style="font-weight: 500;">Lucas Bernard</span><span style="font-size: 12px; color: #44474E;">Mon compte</span></div></a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 24px 32px 40px; display: flex; flex-direction: column; gap: 20px;">
+<div>
+<p style="margin: 0; font-size: 12px; color: #44474E;">Administration · Acme Industrie</p>
+<h1 style="margin: 4px 0 0; font-size: 28px; line-height: 36px; font-weight: 400;">Membres et rôles</h1>
+</div>
+<div role="tablist" style="display: flex; flex-wrap: wrap; border-bottom: 1px solid #C4C6D0;">
+<button role="tab" type="button" class="tab on" aria-selected="true">Membres</button>
+<button role="tab" type="button" class="tab" aria-selected="false">Groupes</button>
+<button role="tab" type="button" class="tab" aria-selected="false">Rôles</button>
+<button role="tab" type="button" class="tab" aria-selected="false">Authentification</button>
+<a role="tab" href="ConfigWorkflow.dc.html" class="tab" aria-selected="false" style="text-decoration: none; display: inline-flex; align-items: center;">Configurations de projet</a>
+<button role="tab" type="button" class="tab" aria-selected="false">Quotas</button>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+<div style="flex: 999 1 600px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding-top: 8px;">
+<div class="tf" style="flex: 1 1 260px;"><label for="s">Rechercher un membre</label><input id="s" class="tf-in" type="search" placeholder="Nom ou email"></div>
+<button type="button" class="chip on" aria-pressed="true"><span class="ms" aria-hidden="true">check</span>Internes</button>
+<button type="button" class="chip on" aria-pressed="true"><span class="ms" aria-hidden="true">check</span>Externes</button>
+<button type="button" class="chip">Invitations en attente</button>
+<button class="btn filled" type="button"><span class="ms" aria-hidden="true">person_add</span>Inviter</button>
+</div>
+<section class="card" aria-label="Membres" style="padding: 0; overflow: hidden;">
+<div style="overflow-x: auto;">
+<table class="tbl" style="min-width: 760px;">
+<thead><tr><th scope="col">Membre</th><th scope="col">Type</th><th scope="col">Rôle d’organisation</th><th scope="col">Groupes</th><th scope="col">MFA</th><th scope="col">Statut</th><th scope="col"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden;">Actions</span></th></tr></thead>
+<tbody>
+<sc-for list="{{members}}" as="m" hint-placeholder-count="7">
+<tr>
+<td><div style="display: flex; align-items: center; gap: 12px;"><div class="av" aria-hidden="true">{{m.ini}}</div><div><div style="font-weight: 500;">{{m.name}}</div><div style="font-size: 12px; color: #44474E;">{{m.mail}}</div></div></div></td>
+<td><span class="{{m.typeCls}}">{{m.type}}</span></td>
+<td>{{m.role}}</td>
+<td style="font-size: 12px; color: #44474E;">{{m.groups}}</td>
+<td><span class="ms" aria-label="{{m.mfaLabel}}" style="{{m.mfaStyle}}">{{m.mfaIcon}}</span></td>
+<td><span class="{{m.stCls}}">{{m.status}}</span></td>
+<td><button class="icon-btn" type="button" aria-label="Actions"><span class="ms" aria-hidden="true">more_vert</span></button></td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</section>
+</div>
+<aside style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+<section class="card" aria-labelledby="r-t" style="display: flex; flex-direction: column; gap: 8px;">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;"><h2 id="r-t" class="h2">Rôle « Chef de projet »</h2><span class="lbl">Rôle de nœud</span></div>
+<p style="margin: 0 0 8px; font-size: 12px; color: #44474E;">Attribué sur un portefeuille, un programme ou un projet, et hérité par ses descendants.</p>
+<sc-for list="{{perms}}" as="p" hint-placeholder-count="10">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; border-top: 1px solid #E1E2E8;">
+<span>{{p.label}}</span>
+<button type="button" role="switch" class="{{p.cls}}" aria-checked="{{p.checked}}" aria-label="{{p.label}}"></button>
+</div>
+</sc-for>
+</section>
+<section class="card" aria-labelledby="a-t" style="display: flex; flex-direction: column; gap: 8px;">
+<h2 id="a-t" class="h2">Politique d’authentification</h2>
+<div style="display: flex; gap: 12px; align-items: flex-start;"><span class="ms" aria-hidden="true" style="color: #415F91;">corporate_fare</span><span>Comptes internes : connexion par Entra ID imposée</span></div>
+<div style="display: flex; gap: 12px; align-items: flex-start;"><span class="ms" aria-hidden="true" style="color: #415F91;">password</span><span>Comptes locaux : vérification en deux étapes obligatoire</span></div>
+<div style="display: flex; gap: 12px; align-items: flex-start;"><span class="ms" aria-hidden="true" style="color: #415F91;">link</span><span>Comptes externes du portail : mot de passe ou lien magique</span></div>
+</section>
+</aside>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const active = 'Administration';
+    const navDef = [['Accueil', 'Notifications.dc.html', 'home'], ['Mes tickets', 'Ticket.dc.html', 'assignment'], ['Recherche', 'Recherche.dc.html', 'search'], ['Boards', 'Kanban.dc.html', 'view_kanban'], ['Gantt', 'Gantt.dc.html', 'view_timeline'], ['Charge', 'Main.dc.html', 'groups'], ['Portefeuilles', 'Portefeuille.dc.html', 'account_tree'], ['Portails', 'PortailAdmin.dc.html', 'support_agent'], ['Tableaux de bord', 'Dashboard.dc.html', 'dashboard'], ['Administration', 'AdminMembres.dc.html', 'settings']];
+    const nav = navDef.map(([label, href, icon]) => ({ label, href, icon, cls: label === active ? 'nav-item on' : 'nav-item', cur: label === active ? 'page' : undefined }));
+    const mk = (ini, name, mail, ext, role, groups, mfa, status) => ({
+      ini, name, mail, role, groups,
+      type: ext ? 'Externe' : 'Interne', typeCls: ext ? 'lbl ext' : 'lbl pri',
+      mfaIcon: mfa ? 'verified_user' : 'remove', mfaLabel: mfa ? 'MFA activée' : 'Gérée par le fournisseur d’identité',
+      mfaStyle: mfa ? 'color: #006D3B;' : 'color: #74777F;',
+      status, stCls: status === 'Actif' ? 'lbl ok' : 'lbl'
+    });
+    const members = [
+      mk('LB', 'Lucas Bernard', 'lucas.bernard@acme.example', false, 'Admin de l’organisation', 'Plateforme, Managers', false, 'Actif'),
+      mk('MG', 'Marion Garnier', 'marion.garnier@acme.example', false, 'Admin de configuration', 'Managers, Conformité', false, 'Actif'),
+      mk('CM', 'Camille Martin', 'camille.martin@acme.example', false, 'Utilisateur', 'Plateforme', false, 'Actif'),
+      mk('IM', 'Inès Moreau', 'ines.moreau@acme.example', false, 'Utilisateur', 'Plateforme', false, 'Actif'),
+      mk('TL', 'Thomas Leroy', 'thomas.leroy@prestataire.fr', false, 'Utilisateur (compte local)', 'Prestataires', true, 'Actif'),
+      mk('PD', 'Paul Durand', 'p.durand@client.example', true, 'Externe · portail uniquement', 'Clients Acme Services', true, 'Actif'),
+      mk('SL', 's.leclerc@fournisseur.example', 'Invitation envoyée le 5 nov.', true, 'Externe · portail uniquement', 'Fournisseurs', false, 'Invitation envoyée')
+    ];
+    const P = (label, on) => ({ label, cls: on ? 'sw on' : 'sw', checked: on ? 'true' : 'false' });
+    const perms = [P('Voir', true), P('Créer un ticket', true), P('Modifier', true), P('Commenter', true), P('Saisir du temps', true), P('Affecter des ressources', true), P('Forcer la surcharge', true), P('Gérer les sprints', true), P('Gérer les membres', false), P('Administrer le nœud', false)];
+    return { nav, members, perms };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Gantt du programme</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;family=Roboto+Mono:wght@400&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#415F91}a:hover{color:#2A4678}
+.ms{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+.nav-item{display:flex;align-items:center;gap:12px;height:56px;padding:0 24px 0 16px;border-radius:28px;color:#44474E;text-decoration:none;font-size:14px;font-weight:500;letter-spacing:.1px}
+.nav-item .ms{font-size:24px;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24}
+.nav-item:hover{background:rgba(25,28,32,.08);color:#191C20}
+.nav-item.on{background:#DAE2F9;color:#131C2B}
+.nav-item.on .ms{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+.btn{font:inherit;font-size:14px;font-weight:500;letter-spacing:.1px;height:40px;padding:0 24px;border-radius:20px;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-sizing:border-box;white-space:nowrap}
+.btn .ms{font-size:18px;margin-left:-8px}
+.outlined{background:transparent;color:#415F91;border:1px solid #74777F}.outlined:hover{background:rgba(65,95,145,.08);color:#415F91}
+.text{background:transparent;color:#410002;padding:0 12px;font-weight:500}.text:hover{background:rgba(65,0,2,.08);color:#410002}
+.fab{font:inherit;font-size:14px;font-weight:500;height:56px;padding:0 20px 0 16px;border-radius:16px;border:0;background:#D6E3FF;color:#001B3E;display:inline-flex;align-items:center;gap:12px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.3),0 4px 8px 3px rgba(0,0,0,.15)}
+.fab .ms{font-size:24px}
+.seg{display:inline-flex;height:40px;border:1px solid #74777F;border-radius:20px;overflow:hidden}
+.seg button{font:inherit;font-size:14px;font-weight:500;padding:0 16px;border:0;border-right:1px solid #74777F;background:transparent;color:#191C20;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.seg button:last-child{border-right:0}
+.seg button.on{background:#DAE2F9;color:#131C2B}
+.seg .ms{font-size:18px}
+.tf{position:relative;display:flex;flex-direction:column}
+.tf label{position:absolute;top:-8px;left:12px;padding:0 4px;font-size:12px;line-height:16px;color:#44474E;background:#F9F9FF;z-index:1}
+.tf-in{font:inherit;font-size:16px;height:56px;padding:0 16px;border:1px solid #74777F;border-radius:4px;background:transparent;color:#191C20;box-sizing:border-box;width:100%}
+.card{background:#FFFFFF;border:1px solid #C4C6D0;border-radius:12px}
+.av{border-radius:50%;background:#D6E3FF;color:#001B3E;font-weight:500;display:flex;align-items:center;justify-content:center;flex:none;width:24px;height:24px;font-size:10px}
+.lrow{display:grid;grid-template-columns:84px minmax(0,1fr) 68px 68px 36px;align-items:center;column-gap:8px;height:36px;box-sizing:border-box;border-bottom:1px solid #E1E2E8;padding:0 16px;font-size:14px}
+.lrow.g{background:#F3F3FA;font-weight:500}
+.lrow .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trow{position:relative;height:36px;box-sizing:border-box;border-bottom:1px solid #E1E2E8}
+.trow.g{background:rgba(243,243,250,.7)}
+.bar{position:absolute;top:8px;height:20px;border-radius:10px;background:#D6E3FF;box-sizing:border-box;overflow:hidden}
+.bar .prog{height:100%;background:#415F91}
+.bar.bad{background:#FFDAD6;border:2px solid #BA1A1A}
+.bar.bad .prog{background:#BA1A1A}
+.sum{position:absolute;top:14px;height:8px;border-radius:4px;background:#44474E}
+.ms-dia{position:absolute;top:10px;width:16px;height:16px;background:#191C20;transform:rotate(45deg);border-radius:3px}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F9F9FF; color: #191C20; font-family: Roboto, system-ui, sans-serif; font-size: 14px; line-height: 20px;">
+<nav aria-label="Navigation principale" style="flex: 1 1 256px; box-sizing: border-box; padding: 12px; background: #F3F3FA; display: flex; flex-direction: column; gap: 4px;">
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px 16px;">
+<span class="ms" aria-hidden="true" style="font-size: 28px; color: #415F91;">deployed_code</span>
+<span style="font-size: 16px; font-weight: 500;">My Little Big Project Planner</span>
+</div>
+<div class="tf" style="margin: 4px 4px 16px;">
+<label for="tenant" style="background: #F3F3FA;">Organisation</label>
+<select id="tenant" class="tf-in"><option>Acme Industrie</option><option>Acme Services</option></select>
+</div>
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="10">
+<a href="{{n.href}}" class="{{n.cls}}" aria-current="{{n.cur}}"><span class="ms" aria-hidden="true">{{n.icon}}</span><span>{{n.label}}</span></a>
+</sc-for>
+<div style="margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 16px; border-top: 1px solid #C4C6D0;">
+<div class="av" aria-hidden="true" style="width: 40px; height: 40px; font-size: 14px;">LB</div>
+<div style="display: flex; flex-direction: column;"><span style="font-weight: 500;">Lucas Bernard</span><span style="font-size: 12px; color: #44474E;">Chef de projet</span></div>
+</div>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 24px 32px 40px; display: flex; flex-direction: column; gap: 20px;">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px;">
+<div>
+<p style="margin: 0; font-size: 12px; color: #44474E;">Transformation numérique › Programme Modernisation SI</p>
+<h1 style="margin: 4px 0 0; font-size: 28px; line-height: 36px; font-weight: 400;">Gantt du programme Modernisation SI</h1>
+<p style="margin: 4px 0 0; color: #44474E;">3 projets · 13 lignes · ordonnancement manuel · aujourd’hui : 8 nov.</p>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+<button class="btn outlined" type="button"><span class="ms" aria-hidden="true">table_rows</span>Afficher en tableau</button>
+<button class="fab" type="button"><span class="ms" aria-hidden="true">add</span>Nouveau ticket</button>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-top: 8px;">
+<div class="tf" style="flex: 1 1 420px; min-width: 0;">
+<label for="q">Requête</label>
+<input id="q" class="tf-in" type="text" value="project IN descendantsOf(&quot;PROG-MODSI&quot;) ORDER BY start" style="font-family: 'Roboto Mono', ui-monospace, monospace; font-size: 14px;">
+</div>
+<div class="seg" role="group" aria-label="Échelle de temps">
+<button type="button">Jour</button>
+<button type="button" class="on" aria-pressed="true"><span class="ms" aria-hidden="true">check</span>Semaine</button>
+<button type="button">Mois</button>
+<button type="button">Trimestre</button>
+</div>
+</div>
+<div role="note" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 8px 8px 8px 16px; border-radius: 12px; background: #FFDAD6; color: #410002;">
+<span class="ms" aria-hidden="true">link_off</span>
+<span style="flex: 1 1 300px;">1 dépendance non respectée : DATA-325 commence le 14 déc., avant la fin de DATA-318 le 24 déc.</span>
+<button class="btn text" type="button">Afficher</button>
+</div>
+<section class="card" aria-label="Diagramme de Gantt" style="overflow: hidden;">
+<div style="overflow-x: auto;">
+<div style="display: flex; width: max-content; min-width: 100%;">
+<div style="flex: none; width: 520px; border-right: 1px solid #C4C6D0;">
+<div style="display: grid; grid-template-columns: 84px minmax(0, 1fr) 68px 68px 36px; align-items: end; column-gap: 8px; height: 48px; box-sizing: border-box; border-bottom: 1px solid #C4C6D0; padding: 0 16px 8px; font-size: 12px; font-weight: 500; color: #44474E;">
+<span>Clé</span><span>Titre</span><span>Début</span><span>Fin</span><span>Resp.</span>
+</div>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="13">
+<div class="{{r.lcls}}">
+<a href="{{r.href}}" style="font-size: 12px; font-weight: 500; text-decoration: none;">{{r.key}}</a>
+<span class="t">{{r.title}}</span>
+<span style="font-size: 12px; color: #44474E;">{{r.start}}</span>
+<span style="font-size: 12px; color: #44474E;">{{r.end}}</span>
+<sc-if value="{{r.hasResp}}" hint-placeholder-val="{{false}}"><span class="av" aria-label="{{r.respName}}">{{r.resp}}</span></sc-if>
+</div>
+</sc-for>
+</div>
+<div style="flex: none; width: 768px; position: relative;">
+<div style="height: 48px; box-sizing: border-box; border-bottom: 1px solid #C4C6D0;">
+<div style="display: flex; height: 24px;">
+<sc-for list="{{months}}" as="m" hint-placeholder-count="4">
+<div style="{{m.style}}">{{m.label}}</div>
+</sc-for>
+</div>
+<div style="display: flex; height: 24px;">
+<sc-for list="{{weeks}}" as="w" hint-placeholder-count="16">
+<div style="width: 48px; flex: none; box-sizing: border-box; border-left: 1px solid #E1E2E8; font-size: 11px; color: #44474E; display: flex; align-items: center; justify-content: center;">{{w}}</div>
+</sc-for>
+</div>
+</div>
+<div style="background-image: linear-gradient(to right, #E1E2E8 1px, transparent 1px); background-size: 48px 100%;">
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="13">
+<div class="{{r.tcls}}">
+<sc-if value="{{r.isTask}}" hint-placeholder-val="{{false}}"><div class="{{r.barCls}}" style="{{r.barStyle}}"><div class="prog" style="{{r.progStyle}}"></div></div></sc-if>
+<sc-if value="{{r.isGroup}}" hint-placeholder-val="{{false}}"><div class="sum" style="{{r.barStyle}}"></div></sc-if>
+<sc-if value="{{r.isMs}}" hint-placeholder-val="{{false}}"><div class="ms-dia" style="{{r.barStyle}}"></div></sc-if>
+</div>
+</sc-for>
+</div>
+<div aria-hidden="true" style="position: absolute; top: 24px; left: 41px; width: 2px; height: 492px; background: #415F91;"></div>
+<svg role="img" aria-label="Dépendances entre tâches, dont une non respectée entre DATA-318 et DATA-325" width="768" height="516" viewBox="0 0 768 516" style="position: absolute; top: 0; left: 0; pointer-events: none;">
+<defs>
+<marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#74777F"></path></marker>
+<marker id="arr-bad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#BA1A1A"></path></marker>
+</defs>
+<g fill="none" stroke="#74777F" stroke-width="1.25" marker-end="url(#arr)">
+<path d="M44 102 H48 V138 H52"></path>
+<path d="M236 138 H246 V174 H255"></path>
+<path d="M272 174 H282 V318 H291"></path>
+<path d="M236 282 H276 V318 H291"></path>
+<path d="M572 318 H582 V354 H591"></path>
+<path d="M140 426 H144 V462 H147"></path>
+</g>
+<path d="M380 462 H390 V480 H282 V498 H291" fill="none" stroke="#BA1A1A" stroke-width="1.75" marker-end="url(#arr-bad)"></path>
+</svg>
+</div>
+</div>
+</div>
+</section>
+<div style="display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 12px; color: #44474E; align-items: center;">
+<span style="display: inline-flex; align-items: center; gap: 6px;"><span style="display: inline-block; width: 28px; height: 10px; border-radius: 5px; background: linear-gradient(to right, #415F91 40%, #D6E3FF 40%);"></span>Tâche (remplissage = avancement)</span>
+<span style="display: inline-flex; align-items: center; gap: 6px;"><span style="display: inline-block; width: 28px; height: 6px; border-radius: 3px; background: #44474E;"></span>Synthèse du projet</span>
+<span style="display: inline-flex; align-items: center; gap: 6px;"><span style="display: inline-block; width: 10px; height: 10px; background: #191C20; transform: rotate(45deg); border-radius: 2px;"></span>Jalon</span>
+<span style="display: inline-flex; align-items: center; gap: 6px;"><span style="display: inline-block; width: 28px; height: 10px; border-radius: 5px; background: #FFDAD6; border: 2px solid #BA1A1A; box-sizing: border-box;"></span>Dépendance non respectée</span>
+<span style="display: inline-flex; align-items: center; gap: 6px;"><span style="display: inline-block; width: 2px; height: 14px; background: #415F91;"></span>Aujourd’hui</span>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const active = 'Gantt';
+    const navDef = [['Accueil', 'Notifications.dc.html', 'home'], ['Mes tickets', 'Ticket.dc.html', 'assignment'], ['Recherche', 'Recherche.dc.html', 'search'], ['Boards', 'Kanban.dc.html', 'view_kanban'], ['Gantt', 'Gantt.dc.html', 'view_timeline'], ['Charge', 'Main.dc.html', 'groups'], ['Portefeuilles', 'Portefeuille.dc.html', 'account_tree'], ['Portails', 'PortailAdmin.dc.html', 'support_agent'], ['Tableaux de bord', 'Dashboard.dc.html', 'dashboard'], ['Administration', 'AdminMembres.dc.html', 'settings']];
+    const nav = navDef.map(([label, href, icon]) => ({ label, href, icon, cls: label === active ? 'nav-item on' : 'nav-item', cur: label === active ? 'page' : undefined }));
+    const W = 48;
+    const mStyle = n => 'width: ' + (n * W) + 'px; flex: none; box-sizing: border-box; border-left: 1px solid #C4C6D0; padding-left: 8px; font-size: 12px; font-weight: 500; display: flex; align-items: center;';
+    const months = [
+      { label: 'nov. 2026', style: mStyle(4) },
+      { label: 'déc.', style: mStyle(5) },
+      { label: 'janv. 2027', style: mStyle(5) },
+      { label: 'févr.', style: mStyle(2) }
+    ];
+    const weeks = ['S45', 'S46', 'S47', 'S48', 'S49', 'S50', 'S51', 'S52', 'S53', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7'];
+    const people = { CM: 'Camille Martin', LB: 'Lucas Bernard', LF: 'Léa Fontaine', TL: 'Thomas Leroy', SL: 'Sarah Lefèvre', NR: 'Nathan Roux' };
+    const def = [
+      { k: 'g', key: 'PLAT', title: 'Plateforme d’identité', start: '2 nov.', end: '18 déc.', s: 0, e: 6 },
+      { k: 't', key: 'PLAT-120', title: 'Cadrage de l’annuaire', start: '2 nov.', end: '6 nov.', s: 0, e: 0, p: 100, r: 'LB' },
+      { k: 't', key: 'PLAT-142', title: 'Migration de l’authentification vers OIDC', start: '9 nov.', end: '4 déc.', s: 1, e: 4, p: 15, r: 'CM', href: 'Ticket.dc.html' },
+      { k: 'm', key: 'PLAT-150', title: 'Jalon : OIDC en recette', start: '9 déc.', end: '', m: 5, r: 'LB' },
+      { k: 't', key: 'PLAT-155', title: 'Revue de sécurité', start: '7 déc.', end: '18 déc.', s: 5, e: 6, p: 0, r: 'NR' },
+      { k: 'g', key: 'CRM', title: 'Refonte du portail client', start: '16 nov.', end: '29 janv.', s: 2, e: 12 },
+      { k: 't', key: 'CRM-210', title: 'Maquettes du portail', start: '16 nov.', end: '4 déc.', s: 2, e: 4, p: 0, r: 'LF' },
+      { k: 't', key: 'CRM-224', title: 'Développement des formulaires', start: '14 déc.', end: '22 janv.', s: 6, e: 11, p: 0, r: 'TL' },
+      { k: 'm', key: 'CRM-230', title: 'Jalon : ouverture du pilote', start: '27 janv.', end: '', m: 12, r: 'LF' },
+      { k: 'g', key: 'DATA', title: 'Entrepôt de données', start: '2 nov.', end: '5 févr.', s: 0, e: 13 },
+      { k: 't', key: 'DATA-301', title: 'Modèle de données', start: '2 nov.', end: '20 nov.', s: 0, e: 2, p: 40, r: 'SL' },
+      { k: 't', key: 'DATA-318', title: 'Flux ERP', start: '23 nov.', end: '24 déc.', s: 3, e: 7, p: 0, r: 'NR' },
+      { k: 't', key: 'DATA-325', title: 'Tableaux de bord', start: '14 déc.', end: '5 févr.', s: 6, e: 13, p: 0, r: 'SL', bad: true }
+    ];
+    const rows = def.map(d => {
+      const g = d.k === 'g';
+      let barStyle = '';
+      if (d.k === 't') barStyle = 'left: ' + (d.s * W + 4) + 'px; width: ' + ((d.e - d.s + 1) * W - 8) + 'px;';
+      if (g) barStyle = 'left: ' + (d.s * W) + 'px; width: ' + ((d.e - d.s + 1) * W) + 'px;';
+      if (d.k === 'm') barStyle = 'left: ' + (d.m * W + 16) + 'px;';
+      return {
+        key: d.key, title: d.title, start: d.start, end: d.end,
+        href: d.href || '#',
+        lcls: g ? 'lrow g' : 'lrow',
+        tcls: g ? 'trow g' : 'trow',
+        hasResp: !!d.r, resp: d.r || '', respName: d.r ? people[d.r] : '',
+        isTask: d.k === 't', isGroup: g, isMs: d.k === 'm',
+        barCls: d.bad ? 'bar bad' : 'bar',
+        barStyle,
+        progStyle: 'width: ' + (d.p || 0) + '%;'
+      };
+    });
+    return { nav, months, weeks, rows };
+  }
+}
+</script>
+</body>
+</html>

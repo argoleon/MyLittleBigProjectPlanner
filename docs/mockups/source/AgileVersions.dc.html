@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Rapports agiles et versions</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#415F91}a:hover{color:#2A4678}
+.ms{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+.nav-item{display:flex;align-items:center;gap:12px;height:56px;padding:0 24px 0 16px;border-radius:28px;color:#44474E;text-decoration:none;font-size:14px;font-weight:500}
+.nav-item .ms{font-size:24px}
+.nav-item:hover{background:rgba(25,28,32,.08);color:#191C20}
+.nav-item.on{background:#DAE2F9;color:#131C2B}
+.nav-item.on .ms{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+.btn{font:inherit;font-size:14px;font-weight:500;height:40px;padding:0 24px;border-radius:20px;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-sizing:border-box;white-space:nowrap}
+.btn .ms{font-size:18px;margin-left:-8px}
+.filled{background:#415F91;color:#FFFFFF}.filled:hover{background:#4E6A9B;color:#FFFFFF}
+.outlined{background:transparent;color:#415F91;border:1px solid #74777F}.outlined:hover{background:rgba(65,95,145,.08);color:#415F91}
+.seg{display:inline-flex;height:40px;border:1px solid #74777F;border-radius:20px;overflow:hidden}
+.seg a{font:inherit;font-size:14px;font-weight:500;padding:0 16px;border-right:1px solid #74777F;color:#191C20;display:inline-flex;align-items:center;gap:8px;text-decoration:none}
+.seg a:last-child{border-right:0}
+.seg .on{background:#DAE2F9;color:#131C2B}
+.seg .ms{font-size:18px}
+.tf{position:relative;display:flex;flex-direction:column}
+.tf label{position:absolute;top:-8px;left:12px;padding:0 4px;font-size:12px;line-height:16px;color:#44474E;background:#FFFFFF;z-index:1}
+.tf-in{font:inherit;font-size:16px;min-height:56px;padding:0 16px;border:1px solid #74777F;border-radius:4px;background:transparent;color:#191C20;box-sizing:border-box;width:100%}
+.card{background:#FFFFFF;border:1px solid #C4C6D0;border-radius:12px;padding:20px}
+.h2{margin:0;font-size:16px;line-height:24px;font-weight:500}
+.lbl{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:8px;font-size:12px;font-weight:500;background:#E7E8EE;color:#44474E;white-space:nowrap}
+.c-prog{background:#D6E3FF;color:#001B3E}
+.c-done{background:#C4EED0;color:#002110}
+.av{border-radius:50%;background:#D6E3FF;color:#001B3E;font-weight:500;display:flex;align-items:center;justify-content:center;flex:none;width:40px;height:40px;font-size:14px}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;font-size:12px;font-weight:500;color:#44474E;padding:0 12px;height:48px;border-bottom:1px solid #C4C6D0;white-space:nowrap}
+.tbl td{padding:8px 12px;height:48px;border-bottom:1px solid #E1E2E8;vertical-align:middle}
+tr.sel td{background:#F3F3FA}
+.track{width:96px;height:4px;border-radius:2px;background:#DAE2F9;overflow:hidden}
+.fill{height:100%;background:#415F91}
+.key{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#44474E}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F9F9FF; color: #191C20; font-family: Roboto, system-ui, sans-serif; font-size: 14px; line-height: 20px;">
+<nav aria-label="Navigation principale" style="flex: 1 1 256px; box-sizing: border-box; padding: 12px; background: #F3F3FA; display: flex; flex-direction: column; gap: 4px;">
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px 16px;"><span class="ms" aria-hidden="true" style="font-size: 28px; color: #415F91;">deployed_code</span><span style="font-size: 16px; font-weight: 500;">My Little Big Project Planner</span></div>
+<div class="tf" style="margin: 4px 4px 16px;"><label for="tenant" style="background: #F3F3FA;">Organisation</label><select id="tenant" class="tf-in"><option>Acme Industrie</option><option>Acme Services</option></select></div>
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="10"><a href="{{n.href}}" class="{{n.cls}}" aria-current="{{n.cur}}"><span class="ms" aria-hidden="true">{{n.icon}}</span><span>{{n.label}}</span></a></sc-for>
+<a href="Compte.dc.html" style="margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 16px; border-top: 1px solid #C4C6D0; color: #191C20; text-decoration: none;"><div class="av" aria-hidden="true">LB</div><div style="display: flex; flex-direction: column;"><span style="font-weight: 500;">Lucas Bernard</span><span style="font-size: 12px; color: #44474E;">Mon compte</span></div></a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 24px 32px 40px; display: flex; flex-direction: column; gap: 20px;">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px;">
+<div><p style="margin: 0; font-size: 12px; color: #44474E;">Plateforme d’identité › Board Scrum</p><h1 style="margin: 4px 0 0; font-size: 28px; line-height: 36px; font-weight: 400;">Rapports et versions</h1></div>
+<nav class="seg" aria-label="Vues du board"><a href="Backlog.dc.html">Backlog</a><a href="Kanban.dc.html">Sprint actif</a><a href="#" class="on" aria-current="page"><span class="ms" aria-hidden="true">check</span>Rapports</a></nav>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 16px;">
+<section class="card" aria-labelledby="bd-t" style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 8px;">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;"><h2 id="bd-t" class="h2">Burndown · Sprint 24</h2><span class="lbl">Points</span></div>
+<p style="margin: 0; font-size: 12px; color: #44474E;">20 points restants au 6 nov., 3 de plus que la courbe idéale</p>
+<svg role="img" aria-label="Burndown du sprint 24 : 34 points au départ, 20 restants au 6 novembre, contre 17 attendus" viewBox="0 0 520 240" style="width: 100%; height: auto;">
+<g stroke="#E1E2E8"><line x1="40" y1="20" x2="500" y2="20"></line><line x1="40" y1="110" x2="500" y2="110"></line><line x1="40" y1="200" x2="500" y2="200" stroke="#C4C6D0"></line></g>
+<g font-family="Roboto, sans-serif" font-size="11" fill="#44474E"><text x="30" y="24" text-anchor="end">34</text><text x="30" y="114" text-anchor="end">17</text><text x="30" y="204" text-anchor="end">0</text><text x="40" y="222" text-anchor="middle">2 nov.</text><text x="270" y="222" text-anchor="middle">6 nov.</text><text x="500" y="222" text-anchor="end">13 nov.</text></g>
+<line x1="40" y1="20" x2="500" y2="200" stroke="#74777F" stroke-width="1.5" stroke-dasharray="5 4"></line>
+<polyline points="40,20 86,20 132,36 178,47 224,62 270,94" fill="none" stroke="#415F91" stroke-width="2.5" stroke-linejoin="round"></polyline>
+<circle cx="270" cy="94" r="4" fill="#415F91"></circle>
+</svg>
+<div style="display: flex; gap: 16px;"><span class="key"><span style="width: 18px; height: 3px; background: #415F91; border-radius: 2px;"></span>Restant</span><span class="key"><span style="width: 18px; border-top: 2px dashed #74777F;"></span>Idéal</span></div>
+</section>
+<section class="card" aria-labelledby="v-t" style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 8px;">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;"><h2 id="v-t" class="h2">Vélocité</h2><span class="lbl">5 derniers sprints</span></div>
+<p style="margin: 0; font-size: 12px; color: #44474E;">Moyenne : 31 points terminés par sprint</p>
+<svg role="img" aria-label="Vélocité des sprints 19 à 23 : engagés 30, 32, 30, 34, 33 ; terminés 29, 31, 30, 32, 33" viewBox="0 0 520 240" style="width: 100%; height: auto;">
+<line x1="40" y1="200" x2="500" y2="200" stroke="#C4C6D0"></line>
+<line x1="40" y1="60.5" x2="500" y2="60.5" stroke="#74777F" stroke-dasharray="5 4"></line>
+<g fill="#C4C6D0"><rect x="54" y="65" width="28" height="135" rx="4"></rect><rect x="146" y="56" width="28" height="144" rx="4"></rect><rect x="238" y="65" width="28" height="135" rx="4"></rect><rect x="330" y="47" width="28" height="153" rx="4"></rect><rect x="422" y="51.5" width="28" height="148.5" rx="4"></rect></g>
+<g fill="#415F91"><rect x="84" y="69.5" width="28" height="130.5" rx="4"></rect><rect x="176" y="60.5" width="28" height="139.5" rx="4"></rect><rect x="268" y="65" width="28" height="135" rx="4"></rect><rect x="360" y="56" width="28" height="144" rx="4"></rect><rect x="452" y="51.5" width="28" height="148.5" rx="4"></rect></g>
+<g font-family="Roboto, sans-serif" font-size="11" fill="#44474E" text-anchor="middle"><text x="83" y="218">S19</text><text x="175" y="218">S20</text><text x="267" y="218">S21</text><text x="359" y="218">S22</text><text x="451" y="218">S23</text><text x="30" y="64" text-anchor="end">31</text></g>
+</svg>
+<div style="display: flex; gap: 16px;"><span class="key"><span style="width: 12px; height: 12px; background: #C4C6D0; border-radius: 3px;"></span>Engagés</span><span class="key"><span style="width: 12px; height: 12px; background: #415F91; border-radius: 3px;"></span>Terminés</span><span class="key"><span style="width: 18px; border-top: 2px dashed #74777F;"></span>Moyenne</span></div>
+</section>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start;">
+<section class="card" aria-labelledby="ver-t" style="flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 8px;">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;"><h2 id="ver-t" class="h2">Versions</h2><button class="btn outlined" type="button"><span class="ms" aria-hidden="true">add</span>Nouvelle version</button></div>
+<div style="overflow-x: auto;">
+<table class="tbl" style="min-width: 520px;">
+<thead><tr><th scope="col">Version</th><th scope="col">Statut</th><th scope="col">Date</th><th scope="col">Avancement</th></tr></thead>
+<tbody>
+<sc-for list="{{versions}}" as="v" hint-placeholder-count="3">
+<tr class="{{v.cls}}"><td style="font-weight: 500;">{{v.name}}</td><td><span class="{{v.scls}}">{{v.status}}</span></td><td>{{v.date}}</td><td><div style="display: flex; align-items: center; gap: 8px;"><div class="track" role="img" aria-label="{{v.progLabel}}"><div class="fill" style="{{v.style}}"></div></div><span style="font-size: 12px; font-variant-numeric: tabular-nums;">{{v.prog}}</span></div></td></tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</section>
+<section class="card" aria-labelledby="rn-t" style="flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 12px;">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;"><h2 id="rn-t" class="h2">Notes de version 2.1</h2><span class="lbl">Générées depuis les tickets</span></div>
+<div><p style="margin: 0 0 4px; font-weight: 500;">Nouveautés</p><ul style="margin: 0; padding-left: 20px; line-height: 24px;"><li>Connexion par Entra ID (PLAT-142)</li><li>Politique MFA par organisation (PLAT-151)</li><li>Page de connexion accessible au clavier (PLAT-139)</li></ul></div>
+<div><p style="margin: 0 0 4px; font-weight: 500;">Corrections</p><ul style="margin: 0; padding-left: 20px; line-height: 24px;"><li>Délai d’expiration de session (PLAT-141)</li></ul></div>
+<button class="btn filled" type="button" style="align-self: flex-start;"><span class="ms" aria-hidden="true">rocket_launch</span>Publier la version</button>
+</section>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const active = 'Boards';
+    const navDef = [['Accueil', 'Notifications.dc.html', 'home'], ['Mes tickets', 'Ticket.dc.html', 'assignment'], ['Recherche', 'Recherche.dc.html', 'search'], ['Boards', 'Kanban.dc.html', 'view_kanban'], ['Gantt', 'Gantt.dc.html', 'view_timeline'], ['Charge', 'Main.dc.html', 'groups'], ['Portefeuilles', 'Portefeuille.dc.html', 'account_tree'], ['Portails', 'PortailAdmin.dc.html', 'support_agent'], ['Tableaux de bord', 'Dashboard.dc.html', 'dashboard'], ['Administration', 'AdminMembres.dc.html', 'settings']];
+    const nav = navDef.map(([label, href, icon]) => ({ label, href, icon, cls: label === active ? 'nav-item on' : 'nav-item', cur: label === active ? 'page' : undefined }));
+    const V = (name, status, scls, date, done, total, sel) => {
+      const p = total ? Math.round(done * 100 / total) : 0;
+      return { name, status, scls, date, prog: done + ' / ' + total + ' tickets', progLabel: p + ' % des tickets terminés', style: 'width: ' + p + '%;', cls: sel ? 'sel' : '' };
+    };
+    const versions = [
+      V('2.0', 'Publiée', 'lbl c-done', '16 oct. 2026', 24, 24),
+      V('2.1', 'En cours', 'lbl c-prog', 'Prévue le 11 déc.', 18, 27, true),
+      V('2.2', 'Planifiée', 'lbl', 'Février 2027', 0, 9)
+    ];
+    return { nav, versions };
+  }
+}
+</script>
+</body>
+</html>

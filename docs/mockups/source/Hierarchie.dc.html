@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Paramètres du projet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#415F91}a:hover{color:#2A4678}
+.ms{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+.nav-item{display:flex;align-items:center;gap:12px;height:56px;padding:0 24px 0 16px;border-radius:28px;color:#44474E;text-decoration:none;font-size:14px;font-weight:500}
+.nav-item .ms{font-size:24px}
+.nav-item:hover{background:rgba(25,28,32,.08);color:#191C20}
+.nav-item.on{background:#DAE2F9;color:#131C2B}
+.nav-item.on .ms{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+.btn{font:inherit;font-size:14px;font-weight:500;height:40px;padding:0 24px;border-radius:20px;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-sizing:border-box;white-space:nowrap}
+.btn .ms{font-size:18px;margin-left:-8px}
+.filled{background:#415F91;color:#FFFFFF}.filled:hover{background:#4E6A9B;color:#FFFFFF}
+.tonal{background:#DAE2F9;color:#131C2B}.tonal:hover{background:#CDD6EC;color:#131C2B}
+.outlined{background:transparent;color:#415F91;border:1px solid #74777F}.outlined:hover{background:rgba(65,95,145,.08);color:#415F91}
+.text{background:transparent;color:#415F91;padding:0 12px}.text:hover{background:rgba(65,95,145,.08);color:#415F91}
+.icon-btn{width:40px;height:40px;border-radius:20px;border:0;background:transparent;color:#44474E;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.tf{position:relative;display:flex;flex-direction:column}
+.tf label{position:absolute;top:-8px;left:12px;padding:0 4px;font-size:12px;line-height:16px;color:#44474E;background:#FFFFFF;z-index:1}
+.tf-in{font:inherit;font-size:16px;min-height:56px;padding:0 16px;border:1px solid #74777F;border-radius:4px;background:transparent;color:#191C20;box-sizing:border-box;width:100%}
+.card{background:#FFFFFF;border:1px solid #C4C6D0;border-radius:12px;padding:20px}
+.h2{margin:0;font-size:16px;line-height:24px;font-weight:500}
+.lbl{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:8px;font-size:12px;font-weight:500;background:#E7E8EE;color:#44474E;white-space:nowrap}
+.pri{background:#D6E3FF;color:#001B3E}
+.av{border-radius:50%;background:#D6E3FF;color:#001B3E;font-weight:500;display:flex;align-items:center;justify-content:center;flex:none;width:40px;height:40px;font-size:14px}
+.tab{font:inherit;font-size:14px;font-weight:500;height:48px;padding:0 16px;border:0;background:transparent;color:#44474E;cursor:pointer;position:relative}
+.tab.on{color:#415F91}
+.tab.on::after{content:'';position:absolute;left:16px;right:16px;bottom:0;height:3px;border-radius:3px 3px 0 0;background:#415F91}
+.sw{width:52px;height:32px;border-radius:16px;border:2px solid #74777F;background:#E1E2E8;box-sizing:border-box;position:relative;cursor:pointer;flex:none;padding:0}
+.sw::after{content:'';position:absolute;top:6px;left:6px;width:16px;height:16px;border-radius:50%;background:#74777F}
+.row{display:flex;align-items:center;gap:16px;min-height:56px;border-top:1px solid #E1E2E8}
+.pick{display:flex;align-items:center;gap:16px;min-height:56px;padding:0 16px}
+.pick.dis{color:#8E9099}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F9F9FF; color: #191C20; font-family: Roboto, system-ui, sans-serif; font-size: 14px; line-height: 20px;">
+<nav aria-label="Navigation principale" style="flex: 1 1 256px; box-sizing: border-box; padding: 12px; background: #F3F3FA; display: flex; flex-direction: column; gap: 4px;">
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px 16px;"><span class="ms" aria-hidden="true" style="font-size: 28px; color: #415F91;">deployed_code</span><span style="font-size: 16px; font-weight: 500;">My Little Big Project Planner</span></div>
+<div class="tf" style="margin: 4px 4px 16px;"><label for="tenant" style="background: #F3F3FA;">Organisation</label><select id="tenant" class="tf-in"><option>Acme Industrie</option><option>Acme Services</option></select></div>
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="10"><a href="{{n.href}}" class="{{n.cls}}" aria-current="{{n.cur}}"><span class="ms" aria-hidden="true">{{n.icon}}</span><span>{{n.label}}</span></a></sc-for>
+<a href="Compte.dc.html" style="margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 16px; border-top: 1px solid #C4C6D0; color: #191C20; text-decoration: none;"><div class="av" aria-hidden="true">LB</div><div style="display: flex; flex-direction: column;"><span style="font-weight: 500;">Lucas Bernard</span><span style="font-size: 12px; color: #44474E;">Mon compte</span></div></a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 24px 32px 40px; display: flex; flex-direction: column; gap: 20px;">
+<div>
+<p style="margin: 0; font-size: 12px; color: #44474E;">Portefeuilles › Projet PLAT</p>
+<h1 style="margin: 4px 0 0; font-size: 28px; line-height: 36px; font-weight: 400;">Plateforme d’identité · Paramètres</h1>
+</div>
+<div role="tablist" style="display: flex; flex-wrap: wrap; border-bottom: 1px solid #C4C6D0;">
+<button role="tab" type="button" class="tab" aria-selected="false">Général</button>
+<button role="tab" type="button" class="tab on" aria-selected="true">Rattachements et droits</button>
+<button role="tab" type="button" class="tab" aria-selected="false">Configuration</button>
+<button role="tab" type="button" class="tab" aria-selected="false">Archivage</button>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+<section class="card" aria-labelledby="p-t" style="display: flex; flex-direction: column; gap: 4px;">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px;"><div><h2 id="p-t" class="h2">Parents</h2><p style="margin: 2px 0 0; font-size: 12px; color: #44474E;">Un projet peut être rattaché à des portefeuilles, des programmes ou d’autres projets.</p></div><button class="btn tonal" type="button"><span class="ms" aria-hidden="true">add_link</span>Ajouter un parent</button></div>
+<div class="row"><span class="ms" aria-hidden="true" style="color: #415F91;">workspaces</span><div style="flex: 1;"><div style="font-weight: 500;">Programme Modernisation SI</div><div style="font-size: 12px; color: #44474E;">Programme · Portefeuille Transformation numérique</div></div><div class="tf" style="width: 120px;"><label for="w1">Pondération</label><input id="w1" class="tf-in" type="text" value="100 %" style="min-height: 48px;"></div><button class="icon-btn" type="button" aria-label="Retirer ce parent"><span class="ms" aria-hidden="true">link_off</span></button></div>
+<div class="row"><span class="ms" aria-hidden="true" style="color: #415F91;">workspaces</span><div style="flex: 1;"><div style="font-weight: 500;">Programme Conformité</div><div style="font-size: 12px; color: #44474E;">Programme · Portefeuille Transformation numérique</div></div><div class="tf" style="width: 120px;"><label for="w2">Pondération</label><input id="w2" class="tf-in" type="text" value="40 %" style="min-height: 48px;"></div><button class="icon-btn" type="button" aria-label="Retirer ce parent"><span class="ms" aria-hidden="true">link_off</span></button></div>
+<p style="margin: 8px 0 0; font-size: 12px; color: #44474E;">La pondération ne s’applique qu’aux agrégats du parent concerné. Au niveau du portefeuille, le projet reste compté une seule fois.</p>
+</section>
+<section class="card" aria-labelledby="pick-t" style="display: flex; flex-direction: column; gap: 12px; border: 2px solid #415F91;">
+<h2 id="pick-t" class="h2">Ajouter un parent</h2>
+<div class="tf"><label for="q">Rechercher un nœud</label><input id="q" class="tf-in" type="search" value="cyber"></div>
+<div role="listbox" aria-label="Résultats" style="display: flex; flex-direction: column; border-radius: 4px; background: #F3F3FA;">
+<div role="option" class="pick" aria-selected="false"><span class="ms" aria-hidden="true">workspaces</span><div style="flex: 1;"><div>Programme Cybersécurité</div><div style="font-size: 12px; color: #44474E;">Programme · rattachement autorisé</div></div></div>
+<div role="option" class="pick" aria-selected="false"><span class="ms" aria-hidden="true">folder</span><div style="flex: 1;"><div>Projet Cyber-résilience</div><div style="font-size: 12px; color: #44474E;">Projet · rattachement autorisé</div></div></div>
+<div role="option" class="pick dis" aria-disabled="true"><span class="ms" aria-hidden="true">folder_open</span><div style="flex: 1;"><div>Sous-projet Habilitations cyber</div><div style="font-size: 12px; color: #BA1A1A;">Impossible : c’est un descendant de ce projet, le lien créerait un cycle</div></div></div>
+</div>
+</section>
+<section class="card" aria-labelledby="c-t" style="display: flex; flex-direction: column; gap: 4px;">
+<h2 id="c-t" class="h2" style="margin-bottom: 8px;">Enfants</h2>
+<div class="row"><span class="ms" aria-hidden="true" style="color: #415F91;">folder_open</span><div style="flex: 1;"><div style="font-weight: 500;">Habilitations cyber</div><div style="font-size: 12px; color: #44474E;">Sous-projet · 14 tickets ouverts</div></div><button class="btn text" type="button">Ouvrir</button></div>
+</section>
+</div>
+<aside style="flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+<section class="card" aria-labelledby="conf-t" style="display: flex; flex-direction: column; gap: 12px;">
+<h2 id="conf-t" class="h2">Confidentialité</h2>
+<div style="display: flex; align-items: center; gap: 16px;"><div style="flex: 1;"><div>Projet confidentiel</div><div style="font-size: 12px; color: #44474E;">Bloque l’héritage des droits : seuls les membres directs accèdent au projet. Sa charge reste comptée de façon anonyme chez ses parents.</div></div><button type="button" role="switch" class="sw" aria-checked="false" aria-label="Projet confidentiel"></button></div>
+</section>
+<section class="card" aria-labelledby="m-t" style="display: flex; flex-direction: column; gap: 4px;">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;"><h2 id="m-t" class="h2">Accès effectifs</h2><button class="btn text" type="button"><span class="ms" aria-hidden="true">add</span>Ajouter</button></div>
+<sc-for list="{{grants}}" as="g" hint-placeholder-count="5">
+<div class="row"><span class="ms" aria-hidden="true" style="color: #44474E;">{{g.icon}}</span><div style="flex: 1; min-width: 0;"><div style="font-weight: 500;">{{g.who}}</div><div style="font-size: 12px; color: #44474E;">{{g.from}}</div></div><span class="{{g.cls}}">{{g.role}}</span></div>
+</sc-for>
+<p style="margin: 8px 0 0; font-size: 12px; color: #44474E;">Les droits sont l’union des rôles directs et des rôles hérités de chaque parent.</p>
+</section>
+</aside>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const active = 'Portefeuilles';
+    const navDef = [['Accueil', 'Notifications.dc.html', 'home'], ['Mes tickets', 'Ticket.dc.html', 'assignment'], ['Recherche', 'Recherche.dc.html', 'search'], ['Boards', 'Kanban.dc.html', 'view_kanban'], ['Gantt', 'Gantt.dc.html', 'view_timeline'], ['Charge', 'Main.dc.html', 'groups'], ['Portefeuilles', 'Portefeuille.dc.html', 'account_tree'], ['Portails', 'PortailAdmin.dc.html', 'support_agent'], ['Tableaux de bord', 'Dashboard.dc.html', 'dashboard'], ['Administration', 'AdminMembres.dc.html', 'settings']];
+    const nav = navDef.map(([label, href, icon]) => ({ label, href, icon, cls: label === active ? 'nav-item on' : 'nav-item', cur: label === active ? 'page' : undefined }));
+    const G = (icon, who, from, role, direct) => ({ icon, who, from, role, cls: direct ? 'lbl pri' : 'lbl' });
+    const grants = [
+      G('group', 'Équipe Plateforme', 'Rôle direct sur ce projet', 'Contributeur', true),
+      G('person', 'Camille Martin', 'Rôle direct sur ce projet', 'Chef de projet', true),
+      G('group', 'Managers', 'Hérité du portefeuille Transformation numérique', 'Chef de projet'),
+      G('group', 'Équipe Modernisation', 'Hérité du programme Modernisation SI', 'Contributeur'),
+      G('group', 'Équipe Conformité', 'Hérité du programme Conformité', 'Lecteur')
+    ];
+    return { nav, grants };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Affecter une ressource</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;display=swap">
+<style>
+body{margin:0}
+.ms{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+.btn{font:inherit;font-size:14px;font-weight:500;height:40px;padding:0 24px;border-radius:20px;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;box-sizing:border-box;white-space:nowrap}
+.btn .ms{font-size:18px;margin-left:-8px}
+.filled{background:#415F91;color:#FFFFFF}
+.filled[disabled]{background:rgba(25,28,32,.12);color:rgba(25,28,32,.38);cursor:not-allowed}
+.outlined{background:transparent;color:#415F91;border:1px solid #74777F}
+.text{background:transparent;color:#415F91;padding:0 12px}
+.icon-btn{width:40px;height:40px;border-radius:20px;border:0;background:transparent;color:#44474E;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.seg{display:inline-flex;height:40px;border:1px solid #74777F;border-radius:20px;overflow:hidden}
+.seg button{font:inherit;font-size:13px;font-weight:500;padding:0 12px;border:0;border-right:1px solid #74777F;background:transparent;color:#191C20;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.seg button:last-child{border-right:0}
+.seg button.on{background:#DAE2F9;color:#131C2B}
+.seg .ms{font-size:16px}
+.tf{position:relative;display:flex;flex-direction:column}
+.tf label{position:absolute;top:-8px;left:12px;padding:0 4px;font-size:12px;line-height:16px;color:#44474E;background:#ECEDF4;z-index:1}
+.tf-in{font:inherit;font-size:16px;min-height:56px;padding:0 16px;border:1px solid #74777F;border-radius:4px;background:transparent;color:#191C20;box-sizing:border-box;width:100%}
+.seg-card{border:1px solid #C4C6D0;border-radius:12px;padding:16px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;background:#F3F3FA}
+.sw{width:52px;height:32px;border-radius:16px;border:2px solid #74777F;background:#E1E2E8;box-sizing:border-box;position:relative;cursor:pointer;flex:none;padding:0}
+.sw::after{content:'';position:absolute;top:6px;left:6px;width:16px;height:16px;border-radius:50%;background:#74777F}
+.grid{display:grid;grid-template-columns:120px repeat(10,minmax(0,1fr));gap:4px;align-items:center;font-size:12px;font-variant-numeric:tabular-nums}
+.c{height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.ex{background:#E7E8EE;color:#44474E}
+.nw{background:#D6E3FF;color:#001B3E}
+.tot{background:#FFFFFF;color:#191C20;font-weight:500;box-shadow:inset 0 0 0 1px #C4C6D0}
+.tot.over{background:#FFDAD6;color:#410002;box-shadow:inset 0 0 0 2px #BA1A1A;font-weight:700}
+</style>
+</helmet>
+<div style="width: 880px; height: 980px; box-sizing: border-box; padding: 24px; background: #8F9199; display: flex; align-items: center; justify-content: center; font-family: Roboto, system-ui, sans-serif; font-size: 14px; line-height: 20px; color: #191C20;">
+<section role="dialog" aria-modal="true" aria-labelledby="d-t" style="width: 100%; background: #ECEDF4; border-radius: 28px; padding: 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px; box-shadow: 0 4px 8px 3px rgba(0,0,0,.15), 0 1px 3px rgba(0,0,0,.3);">
+<div><h2 id="d-t" style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 400;">Affecter une ressource</h2><p style="margin: 4px 0 0; color: #44474E;">PLAT-148 · Scripts de migration des comptes · du 16 au 27 nov.</p></div>
+<div class="tf"><label for="res">Ressource</label><select id="res" class="tf-in"><option>Nathan Roux · Admin systèmes · 7 h/jour</option></select></div>
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<p style="margin: 0; font-weight: 500;">Segments</p>
+<div class="seg-card">
+<span style="font-weight: 500; width: 20px;">1</span>
+<div class="tf" style="flex: 1 1 180px;"><label for="p1" style="background: #F3F3FA;">Période</label><input id="p1" class="tf-in" type="text" value="16 → 20 nov."></div>
+<div class="seg" role="group" aria-label="Mode du segment 1"><button type="button">%</button><button type="button" class="on" aria-pressed="true"><span class="ms" aria-hidden="true">check</span>h/jour</button><button type="button">Effort total</button></div>
+<div class="tf" style="width: 110px;"><label for="v1" style="background: #F3F3FA;">Valeur</label><input id="v1" class="tf-in" type="text" value="4 h/j"></div>
+<button class="icon-btn" type="button" aria-label="Supprimer le segment 1"><span class="ms" aria-hidden="true">delete</span></button>
+</div>
+<div class="seg-card">
+<span style="font-weight: 500; width: 20px;">2</span>
+<div class="tf" style="flex: 1 1 180px;"><label for="p2" style="background: #F3F3FA;">Période</label><input id="p2" class="tf-in" type="text" value="23 → 27 nov."></div>
+<div class="seg" role="group" aria-label="Mode du segment 2"><button type="button" class="on" aria-pressed="true"><span class="ms" aria-hidden="true">check</span>%</button><button type="button">h/jour</button><button type="button">Effort total</button></div>
+<div class="tf" style="width: 110px;"><label for="v2" style="background: #F3F3FA;">Valeur</label><input id="v2" class="tf-in" type="text" value="30 %"></div>
+<button class="icon-btn" type="button" aria-label="Supprimer le segment 2"><span class="ms" aria-hidden="true">delete</span></button>
+</div>
+<button class="btn text" type="button" style="align-self: flex-start;"><span class="ms" aria-hidden="true">add</span>Ajouter un segment</button>
+</div>
+<div style="display: flex; align-items: center; gap: 16px;"><div style="flex: 1;"><div>Affectation provisoire</div><div style="font-size: 12px; color: #44474E;">Hachurée dans la heatmap ; selon le réglage de l’organisation, comptée ou non dans le contrôle de surcharge</div></div><button type="button" role="switch" class="sw" aria-checked="false" aria-label="Affectation provisoire"></button></div>
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<p style="margin: 0; font-weight: 500;">Aperçu de la charge de Nathan Roux (capacité 7 h/jour)</p>
+<div role="table" aria-label="Aperçu de la charge par jour" style="overflow-x: auto;">
+<div class="grid" role="row" style="color: #44474E; min-width: 640px;"><span role="columnheader"></span><sc-for list="{{days}}" as="d" hint-placeholder-count="10"><span role="columnheader" style="text-align: center;">{{d.label}}</span></sc-for></div>
+<div class="grid" role="row" style="min-width: 640px; margin-top: 4px;"><span role="rowheader" style="color: #44474E;">Charge existante</span><sc-for list="{{days}}" as="d" hint-placeholder-count="10"><span role="cell" class="c ex">{{d.ex}}</span></sc-for></div>
+<div class="grid" role="row" style="min-width: 640px; margin-top: 4px;"><span role="rowheader" style="color: #44474E;">Cette affectation</span><sc-for list="{{days}}" as="d" hint-placeholder-count="10"><span role="cell" class="c nw">{{d.nw}}</span></sc-for></div>
+<div class="grid" role="row" style="min-width: 640px; margin-top: 4px;"><span role="rowheader" style="font-weight: 500;">Total</span><sc-for list="{{days}}" as="d" hint-placeholder-count="10"><span role="cell" class="{{d.cls}}">{{d.tot}}</span></sc-for></div>
+</div>
+</div>
+<div role="alert" style="display: flex; gap: 12px; align-items: flex-start; padding: 12px 16px; border-radius: 12px; background: #FFDAD6; color: #410002;">
+<span class="ms" aria-hidden="true">block</span>
+<span>Capacité dépassée le mer. 18 nov. : 8 h planifiées pour 7 h disponibles (+1 h). L’affectation ne peut pas être enregistrée telle quelle. Réduisez le segment 1 ou forcez la surcharge.</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; align-items: center;">
+<button class="btn text" type="button">Annuler</button>
+<button class="btn outlined" type="button" style="color: #BA1A1A; border-color: #BA1A1A;"><span class="ms" aria-hidden="true">warning</span>Forcer la surcharge</button>
+<button class="btn filled" type="button" disabled="{{yes}}">Enregistrer</button>
+</div>
+<p style="margin: -8px 0 0; text-align: right; font-size: 12px; color: #44474E;">« Forcer la surcharge » est réservé aux rôles disposant de cette permission. L’action est tracée.</p>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":880,"height":980}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const fmt = v => (Math.round(v * 10) / 10).toString().replace('.', ',') + ' h';
+    const labels = ['lun. 16', 'mar. 17', 'mer. 18', 'jeu. 19', 'ven. 20', 'lun. 23', 'mar. 24', 'mer. 25', 'jeu. 26', 'ven. 27'];
+    const ex = [2, 3, 4, 3, 2.5, 3, 4, 3, 4, 3];
+    const nw = [4, 4, 4, 4, 4, 2.1, 2.1, 2.1, 2.1, 2.1];
+    const days = labels.map((label, i) => {
+      const t = ex[i] + nw[i];
+      return { label, ex: fmt(ex[i]), nw: fmt(nw[i]), tot: fmt(t), cls: t > 7 ? 'c tot over' : 'c tot' };
+    });
+    return { days, yes: true };
+  }
+}
+</script>
+</body>
+</html>

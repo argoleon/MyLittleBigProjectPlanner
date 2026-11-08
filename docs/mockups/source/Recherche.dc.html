@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Recherche</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;family=Roboto+Mono:wght@400;500&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#415F91}a:hover{color:#2A4678}
+.ms{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+.nav-item{display:flex;align-items:center;gap:12px;height:56px;padding:0 24px 0 16px;border-radius:28px;color:#44474E;text-decoration:none;font-size:14px;font-weight:500}
+.nav-item .ms{font-size:24px}
+.nav-item:hover{background:rgba(25,28,32,.08);color:#191C20}
+.nav-item.on{background:#DAE2F9;color:#131C2B}
+.nav-item.on .ms{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+.btn{font:inherit;font-size:14px;font-weight:500;height:40px;padding:0 24px;border-radius:20px;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-sizing:border-box;white-space:nowrap}
+.btn .ms{font-size:18px;margin-left:-8px}
+.filled{background:#415F91;color:#FFFFFF}.filled:hover{background:#4E6A9B;color:#FFFFFF}
+.outlined{background:transparent;color:#415F91;border:1px solid #74777F}.outlined:hover{background:rgba(65,95,145,.08);color:#415F91}
+.text{background:transparent;color:#415F91;padding:0 12px}.text:hover{background:rgba(65,95,145,.08);color:#415F91}
+.seg{display:inline-flex;height:40px;border:1px solid #74777F;border-radius:20px;overflow:hidden}
+.seg button{font:inherit;font-size:14px;font-weight:500;padding:0 16px;border:0;border-right:1px solid #74777F;background:transparent;color:#191C20;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.seg button:last-child{border-right:0}
+.seg button.on{background:#DAE2F9;color:#131C2B}
+.seg .ms{font-size:18px}
+.tf{position:relative;display:flex;flex-direction:column}
+.tf label{position:absolute;top:-8px;left:12px;padding:0 4px;font-size:12px;line-height:16px;color:#44474E;background:#F9F9FF;z-index:1}
+.tf-in{font:inherit;font-size:16px;min-height:56px;padding:0 16px;border:1px solid #74777F;border-radius:4px;background:transparent;color:#191C20;box-sizing:border-box;width:100%}
+.card{background:#FFFFFF;border:1px solid #C4C6D0;border-radius:12px}
+.lbl{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:8px;font-size:12px;font-weight:500;background:#E7E8EE;color:#44474E;white-space:nowrap}
+.lbl .ms{font-size:16px}
+.c-todo{background:#E7E8EE;color:#44474E}
+.c-prog{background:#D6E3FF;color:#001B3E}
+.c-done{background:#C4EED0;color:#002110}
+.ty-bug{background:#FFDAD6;color:#410002}
+.av{border-radius:50%;background:#D6E3FF;color:#001B3E;font-weight:500;display:flex;align-items:center;justify-content:center;flex:none;width:28px;height:28px;font-size:11px}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;font-size:12px;font-weight:500;color:#44474E;padding:0 12px;height:48px;border-bottom:1px solid #C4C6D0;white-space:nowrap}
+.tbl td{padding:4px 12px;height:48px;border-bottom:1px solid #E1E2E8;vertical-align:middle}
+tr.sel td{background:#E9EFFF}
+.flt{display:flex;align-items:center;gap:12px;min-height:48px;padding:0 16px;border-radius:24px;color:#44474E;text-decoration:none}
+.flt.on{background:#DAE2F9;color:#131C2B}
+.sug{display:flex;align-items:center;gap:12px;min-height:48px;padding:0 16px}
+.sug.on{background:#E1E2E8}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F9F9FF; color: #191C20; font-family: Roboto, system-ui, sans-serif; font-size: 14px; line-height: 20px;">
+<nav aria-label="Navigation principale" style="flex: 1 1 256px; box-sizing: border-box; padding: 12px; background: #F3F3FA; display: flex; flex-direction: column; gap: 4px;">
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px 16px;"><span class="ms" aria-hidden="true" style="font-size: 28px; color: #415F91;">deployed_code</span><span style="font-size: 16px; font-weight: 500;">My Little Big Project Planner</span></div>
+<div class="tf" style="margin: 4px 4px 16px;"><label for="tenant" style="background: #F3F3FA;">Organisation</label><select id="tenant" class="tf-in"><option>Acme Industrie</option><option>Acme Services</option></select></div>
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="10"><a href="{{n.href}}" class="{{n.cls}}" aria-current="{{n.cur}}"><span class="ms" aria-hidden="true">{{n.icon}}</span><span>{{n.label}}</span></a></sc-for>
+<a href="Compte.dc.html" style="margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 16px; border-top: 1px solid #C4C6D0; color: #191C20; text-decoration: none;"><div class="av" aria-hidden="true" style="width: 40px; height: 40px; font-size: 14px;">LB</div><div style="display: flex; flex-direction: column;"><span style="font-weight: 500;">Lucas Bernard</span><span style="font-size: 12px; color: #44474E;">Mon compte</span></div></a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 24px 32px 40px; display: flex; flex-direction: column; gap: 20px;">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px;">
+<div><h1 style="margin: 0; font-size: 28px; line-height: 36px; font-weight: 400;">Recherche</h1><p style="margin: 4px 0 0; color: #44474E;">Filtre « Retards programme Modernisation » · partagé · 38 résultats</p></div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;"><button class="btn outlined" type="button"><span class="ms" aria-hidden="true">download</span>CSV</button><button class="btn outlined" type="button"><span class="ms" aria-hidden="true">table_view</span>Excel</button><button class="btn filled" type="button"><span class="ms" aria-hidden="true">bookmark_add</span>Enregistrer le filtre</button></div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+<aside aria-label="Filtres enregistrés" style="flex: 1 1 220px; max-width: 260px; display: flex; flex-direction: column; gap: 2px;">
+<p style="margin: 0 0 4px 16px; font-size: 12px; font-weight: 500; color: #44474E;">Mes filtres</p>
+<a href="#" class="flt"><span class="ms" aria-hidden="true">person</span>Mes tickets ouverts</a>
+<a href="#" class="flt"><span class="ms" aria-hidden="true">bug_report</span>Bugs critiques</a>
+<p style="margin: 12px 0 4px 16px; font-size: 12px; font-weight: 500; color: #44474E;">Partagés</p>
+<a href="#" class="flt on" aria-current="true"><span class="ms" aria-hidden="true">schedule</span>Retards programme Modernisation</a>
+<a href="#" class="flt"><span class="ms" aria-hidden="true">shield</span>Revue sécurité</a>
+<a href="#" class="flt"><span class="ms" aria-hidden="true">support_agent</span>Demandes portail non affectées</a>
+</aside>
+<div style="flex: 999 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; padding-top: 8px;">
+<div style="flex: 1 1 520px; min-width: 0; position: relative;">
+<div class="tf"><label for="q">Requête</label><input id="q" class="tf-in" type="text" value="project IN descendantsOf(&quot;PROG-MODSI&quot;) AND due &lt; now() AND status IN (" style="font-family: 'Roboto Mono', monospace; font-size: 14px; border: 2px solid #415F91;"></div>
+<div role="listbox" aria-label="Suggestions" style="position: absolute; top: 60px; left: 0; right: 0; z-index: 2; background: #ECEDF4; border-radius: 4px; padding: 8px 0; box-shadow: 0 2px 6px 2px rgba(0,0,0,.15), 0 1px 2px rgba(0,0,0,.3);">
+<div role="option" class="sug on" aria-selected="true"><span class="lbl c-todo">À faire</span><span style="font-family: 'Roboto Mono', monospace; color: #44474E;">todo</span></div>
+<div role="option" class="sug" aria-selected="false"><span class="lbl c-prog">En cours</span><span style="font-family: 'Roboto Mono', monospace; color: #44474E;">in_progress</span></div>
+<div role="option" class="sug" aria-selected="false"><span class="lbl c-prog">En revue</span><span style="font-family: 'Roboto Mono', monospace; color: #44474E;">in_review</span></div>
+<div style="padding: 8px 16px 0; font-size: 12px; color: #44474E; border-top: 1px solid #C4C6D0; margin-top: 4px;">Entrée pour insérer · les requêtes utilisent des identifiants, indépendants de la langue</div>
+</div>
+</div>
+<div class="seg" role="group" aria-label="Mode de saisie"><button type="button">Constructeur</button><button type="button" class="on" aria-pressed="true"><span class="ms" aria-hidden="true">check</span>Requête</button></div>
+</div>
+<div style="height: 152px;" aria-hidden="true"></div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 4px 4px 4px 16px; border-radius: 16px; background: #DAE2F9; color: #131C2B;">
+<span style="font-weight: 500; margin-right: auto;">2 tickets sélectionnés</span>
+<button class="btn text" type="button" style="color: #131C2B;"><span class="ms" aria-hidden="true">edit</span>Modifier</button>
+<button class="btn text" type="button" style="color: #131C2B;"><span class="ms" aria-hidden="true">swap_horiz</span>Changer le statut</button>
+<button class="btn text" type="button" style="color: #131C2B;"><span class="ms" aria-hidden="true">drive_file_move</span>Déplacer</button>
+</div>
+<section class="card" aria-label="Résultats" style="overflow: hidden;">
+<div style="overflow-x: auto;">
+<table class="tbl" style="min-width: 820px;">
+<thead><tr><th scope="col" style="width: 40px;"><input type="checkbox" aria-label="Tout sélectionner" style="width: 18px; height: 18px; accent-color: #415F91;"></th><th scope="col">Clé</th><th scope="col">Résumé</th><th scope="col">Type</th><th scope="col">Statut</th><th scope="col">Resp.</th><th scope="col">Priorité</th><th scope="col">Échéance</th></tr></thead>
+<tbody>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+<tr class="{{r.cls}}"><td><input type="checkbox" defaultChecked="{{r.sel}}" aria-label="{{r.aria}}" style="width: 18px; height: 18px; accent-color: #415F91;"></td><td><a href="{{r.href}}" style="font-weight: 500;">{{r.key}}</a></td><td>{{r.title}}</td><td><span class="{{r.tcls}}">{{r.type}}</span></td><td><span class="{{r.scls}}">{{r.status}}</span></td><td><span class="av" aria-label="{{r.who}}">{{r.ini}}</span></td><td>{{r.prio}}</td><td style="color: #BA1A1A; font-weight: 500;">{{r.due}}</td></tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+<div style="display: flex; justify-content: flex-end; align-items: center; gap: 8px; padding: 8px 16px; color: #44474E; font-size: 12px;">1–8 sur 38<button class="btn text" type="button" aria-label="Page suivante"><span class="ms" aria-hidden="true" style="margin: 0;">chevron_right</span></button></div>
+</section>
+</div>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const active = 'Recherche';
+    const navDef = [['Accueil', 'Notifications.dc.html', 'home'], ['Mes tickets', 'Ticket.dc.html', 'assignment'], ['Recherche', 'Recherche.dc.html', 'search'], ['Boards', 'Kanban.dc.html', 'view_kanban'], ['Gantt', 'Gantt.dc.html', 'view_timeline'], ['Charge', 'Main.dc.html', 'groups'], ['Portefeuilles', 'Portefeuille.dc.html', 'account_tree'], ['Portails', 'PortailAdmin.dc.html', 'support_agent'], ['Tableaux de bord', 'Dashboard.dc.html', 'dashboard'], ['Administration', 'AdminMembres.dc.html', 'settings']];
+    const nav = navDef.map(([label, href, icon]) => ({ label, href, icon, cls: label === active ? 'nav-item on' : 'nav-item', cur: label === active ? 'page' : undefined }));
+    const people = { CM: 'Camille Martin', LF: 'Léa Fontaine', SL: 'Sarah Lefèvre', NR: 'Nathan Roux', IM: 'Inès Moreau', TL: 'Thomas Leroy' };
+    const T = { S: ['Story', 'lbl c-prog'], B: ['Bug', 'lbl ty-bug'], T: ['Tâche', 'lbl'] };
+    const S = { todo: ['À faire', 'lbl c-todo'], prog: ['En cours', 'lbl c-prog'], rev: ['En revue', 'lbl c-prog'] };
+    const R = (key, title, t, s, ini, prio, due, sel) => ({ key, title, type: T[t][0], tcls: T[t][1], status: S[s][0], scls: S[s][1], ini, who: people[ini], prio, due, sel: !!sel, cls: sel ? 'sel' : '', aria: 'Sélectionner ' + key, href: key === 'PLAT-142' ? 'Ticket.dc.html' : '#' });
+    const rows = [
+      R('DATA-309', 'Normaliser les codes article', 'T', 'prog', 'SL', 'Haute', '30 oct.', true),
+      R('DATA-311', 'Reprise de l’historique des ventes', 'S', 'todo', 'NR', 'Haute', '2 nov.', true),
+      R('CRM-205', 'Inventaire des formulaires existants', 'T', 'rev', 'LF', 'Moyenne', '3 nov.'),
+      R('PLAT-134', 'Export des groupes de l’annuaire', 'T', 'prog', 'CM', 'Moyenne', '4 nov.'),
+      R('DATA-304', 'Doublons clients après import', 'B', 'todo', 'SL', 'Critique', '5 nov.'),
+      R('CRM-207', 'Charte d’accessibilité du portail', 'S', 'prog', 'IM', 'Moyenne', '5 nov.'),
+      R('PLAT-136', 'Délai de synchronisation des comptes', 'B', 'rev', 'NR', 'Haute', '6 nov.'),
+      R('CRM-212', 'Recette des maquettes', 'T', 'todo', 'TL', 'Basse', '6 nov.')
+    ];
+    return { nav, rows };
+  }
+}
+</script>
+</body>
+</html>

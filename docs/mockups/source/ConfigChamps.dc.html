@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Configuration · Champs</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#415F91}a:hover{color:#2A4678}
+.ms{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+.nav-item{display:flex;align-items:center;gap:12px;height:56px;padding:0 24px 0 16px;border-radius:28px;color:#44474E;text-decoration:none;font-size:14px;font-weight:500}
+.nav-item .ms{font-size:24px}
+.nav-item:hover{background:rgba(25,28,32,.08);color:#191C20}
+.nav-item.on{background:#DAE2F9;color:#131C2B}
+.nav-item.on .ms{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+.btn{font:inherit;font-size:14px;font-weight:500;height:40px;padding:0 24px;border-radius:20px;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-sizing:border-box;white-space:nowrap}
+.btn .ms{font-size:18px;margin-left:-8px}
+.filled{background:#415F91;color:#FFFFFF}.filled:hover{background:#4E6A9B;color:#FFFFFF}
+.outlined{background:transparent;color:#415F91;border:1px solid #74777F}.outlined:hover{background:rgba(65,95,145,.08);color:#415F91}
+.text{background:transparent;color:#415F91;padding:0 12px}.text:hover{background:rgba(65,95,145,.08);color:#415F91}
+.icon-btn{width:40px;height:40px;border-radius:20px;border:0;background:transparent;color:#44474E;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.tf{position:relative;display:flex;flex-direction:column}
+.tf label{position:absolute;top:-8px;left:12px;padding:0 4px;font-size:12px;line-height:16px;color:#44474E;background:#FFFFFF;z-index:1}
+.tf-in{font:inherit;font-size:16px;min-height:56px;padding:0 16px;border:1px solid #74777F;border-radius:4px;background:transparent;color:#191C20;box-sizing:border-box;width:100%}
+.tf-sm{font:inherit;font-size:14px;height:40px;padding:0 12px;border:1px solid #74777F;border-radius:4px;background:transparent;color:#191C20;box-sizing:border-box;width:100%}
+.card{background:#FFFFFF;border:1px solid #C4C6D0;border-radius:12px;padding:20px}
+.h2{margin:0;font-size:16px;line-height:24px;font-weight:500}
+.lbl{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:8px;font-size:12px;font-weight:500;background:#E7E8EE;color:#44474E;white-space:nowrap}
+.r-hide{background:#FFFFFF;color:#44474E;box-shadow:inset 0 0 0 1px #C4C6D0}
+.r-vis{background:#E7E8EE;color:#44474E}
+.r-req{background:#415F91;color:#FFFFFF}
+.av{border-radius:50%;background:#D6E3FF;color:#001B3E;font-weight:500;display:flex;align-items:center;justify-content:center;flex:none;width:40px;height:40px;font-size:14px}
+.tab{font:inherit;font-size:14px;font-weight:500;height:48px;padding:0 16px;border:0;background:transparent;color:#44474E;cursor:pointer;position:relative;text-decoration:none;display:inline-flex;align-items:center}
+.tab.on{color:#415F91}
+.tab.on::after{content:'';position:absolute;left:16px;right:16px;bottom:0;height:3px;border-radius:3px 3px 0 0;background:#415F91}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;font-size:12px;font-weight:500;color:#44474E;padding:0 12px;height:48px;border-bottom:1px solid #C4C6D0;white-space:nowrap}
+.tbl td{padding:8px 12px;height:44px;border-bottom:1px solid #E1E2E8;vertical-align:middle}
+tr.sel td{background:#F3F3FA}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F9F9FF; color: #191C20; font-family: Roboto, system-ui, sans-serif; font-size: 14px; line-height: 20px;">
+<nav aria-label="Navigation principale" style="flex: 1 1 256px; box-sizing: border-box; padding: 12px; background: #F3F3FA; display: flex; flex-direction: column; gap: 4px;">
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px 16px;"><span class="ms" aria-hidden="true" style="font-size: 28px; color: #415F91;">deployed_code</span><span style="font-size: 16px; font-weight: 500;">My Little Big Project Planner</span></div>
+<div class="tf" style="margin: 4px 4px 16px;"><label for="tenant" style="background: #F3F3FA;">Organisation</label><select id="tenant" class="tf-in"><option>Acme Industrie</option><option>Acme Services</option></select></div>
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="10"><a href="{{n.href}}" class="{{n.cls}}" aria-current="{{n.cur}}"><span class="ms" aria-hidden="true">{{n.icon}}</span><span>{{n.label}}</span></a></sc-for>
+<a href="Compte.dc.html" style="margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 16px; border-top: 1px solid #C4C6D0; color: #191C20; text-decoration: none;"><div class="av" aria-hidden="true">LB</div><div style="display: flex; flex-direction: column;"><span style="font-weight: 500;">Lucas Bernard</span><span style="font-size: 12px; color: #44474E;">Mon compte</span></div></a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 24px 32px 40px; display: flex; flex-direction: column; gap: 20px;">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px;">
+<div>
+<p style="margin: 0; font-size: 12px; color: #44474E;">Administration › Configurations de projet</p>
+<h1 style="margin: 4px 0 0; font-size: 28px; line-height: 36px; font-weight: 400;">Développement logiciel</h1>
+</div>
+<button class="btn filled" type="button"><span class="ms" aria-hidden="true">add</span>Nouveau champ</button>
+</div>
+<div role="tablist" style="display: flex; flex-wrap: wrap; border-bottom: 1px solid #C4C6D0;">
+<button role="tab" type="button" class="tab" aria-selected="false">Types</button>
+<button role="tab" type="button" class="tab on" aria-selected="true">Champs</button>
+<a role="tab" href="ConfigWorkflow.dc.html" class="tab" aria-selected="false">Workflows</a>
+<button role="tab" type="button" class="tab" aria-selected="false">Écrans</button>
+<button role="tab" type="button" class="tab" aria-selected="false">Notifications</button>
+<button role="tab" type="button" class="tab" aria-selected="false">Projets (6)</button>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+<section class="card" aria-label="Champs de la configuration" style="flex: 999 1 520px; min-width: 0; padding: 0; overflow: hidden;">
+<div style="overflow-x: auto;">
+<table class="tbl" style="min-width: 620px;">
+<thead><tr><th scope="col">Champ</th><th scope="col">Identifiant</th><th scope="col">Type</th><th scope="col">Types de ticket</th><th scope="col">Langues</th></tr></thead>
+<tbody>
+<sc-for list="{{fields}}" as="f" hint-placeholder-count="9">
+<tr class="{{f.cls}}"><td><div style="display: flex; align-items: center; gap: 8px;"><span class="ms" aria-hidden="true" style="color: #44474E;">{{f.icon}}</span><span style="font-weight: 500;">{{f.name}}</span><sc-if value="{{f.sys}}" hint-placeholder-val="{{false}}"><span class="lbl">Système</span></sc-if></div></td><td style="font-family: monospace; font-size: 13px;">{{f.id}}</td><td>{{f.type}}</td><td style="color: #44474E;">{{f.types}}</td><td>{{f.langs}}</td></tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</section>
+<section class="card" aria-labelledby="e-t" style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 20px;">
+<div style="display: flex; justify-content: space-between; align-items: center;"><h2 id="e-t" class="h2">Modifier « Application »</h2><button class="icon-btn" type="button" aria-label="Fermer"><span class="ms" aria-hidden="true">close</span></button></div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+<div class="tf"><label for="lf">Libellé FR</label><input id="lf" class="tf-in" type="text" value="Application"></div>
+<div class="tf"><label for="le">Libellé EN</label><input id="le" class="tf-in" type="text" value="Application"></div>
+</div>
+<div class="tf"><label for="ty">Type</label><select id="ty" class="tf-in"><option>Liste simple</option></select></div>
+<div>
+<p style="margin: 0 0 8px; font-weight: 500;">Valeurs</p>
+<sc-for list="{{values}}" as="v" hint-placeholder-count="4">
+<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;"><span class="ms" aria-hidden="true" style="color: #74777F;">drag_indicator</span><input class="tf-sm" type="text" value="{{v.fr}}" aria-label="Valeur FR"><input class="tf-sm" type="text" value="{{v.en}}" aria-label="Valeur EN"></div>
+</sc-for>
+<button class="btn text" type="button"><span class="ms" aria-hidden="true">add</span>Ajouter une valeur</button>
+</div>
+<div>
+<p style="margin: 0 0 4px; font-weight: 500;">Règles par type et par étape</p>
+<p style="margin: 0 0 8px; font-size: 12px; color: #44474E;">Cliquez une case pour passer de Masqué à Visible puis Obligatoire.</p>
+<div style="overflow-x: auto;">
+<table class="tbl" style="min-width: 380px;">
+<thead><tr><th scope="col">Type</th><th scope="col">Création</th><th scope="col">En cours</th><th scope="col">En revue</th><th scope="col">Terminé</th></tr></thead>
+<tbody>
+<sc-for list="{{rules}}" as="r" hint-placeholder-count="3">
+<tr><th scope="row" style="font-size: 14px; font-weight: 500; color: #191C20; height: 44px;">{{r.type}}</th><sc-for list="{{r.cells}}" as="c" hint-placeholder-count="4"><td><button type="button" class="{{c.cls}}" style="border: 0; cursor: pointer; font: inherit; font-size: 12px; font-weight: 500;">{{c.t}}</button></td></sc-for></tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</div>
+<div style="display: flex; justify-content: flex-end; gap: 8px;"><button class="btn text" type="button">Annuler</button><button class="btn filled" type="button">Enregistrer</button></div>
+</section>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1060}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const active = 'Administration';
+    const navDef = [['Accueil', 'Notifications.dc.html', 'home'], ['Mes tickets', 'Ticket.dc.html', 'assignment'], ['Recherche', 'Recherche.dc.html', 'search'], ['Boards', 'Kanban.dc.html', 'view_kanban'], ['Gantt', 'Gantt.dc.html', 'view_timeline'], ['Charge', 'Main.dc.html', 'groups'], ['Portefeuilles', 'Portefeuille.dc.html', 'account_tree'], ['Portails', 'PortailAdmin.dc.html', 'support_agent'], ['Tableaux de bord', 'Dashboard.dc.html', 'dashboard'], ['Administration', 'AdminMembres.dc.html', 'settings']];
+    const nav = navDef.map(([label, href, icon]) => ({ label, href, icon, cls: label === active ? 'nav-item on' : 'nav-item', cur: label === active ? 'page' : undefined }));
+    const F = (icon, name, id, type, types, langs, sys, sel) => ({ icon, name, id, type, types, langs, sys: !!sys, cls: sel ? 'sel' : '' });
+    const fields = [
+      F('list', 'Application', 'application', 'Liste simple', 'Story, Bug, Tâche', 'FR, EN', false, true),
+      F('dns', 'Environnement', 'environment', 'Liste simple', 'Bug', 'FR, EN'),
+      F('account_tree', 'Impact client', 'customer_impact', 'Liste en cascade', 'Bug', 'FR, EN'),
+      F('event', 'Date de mise en production', 'go_live_date', 'Date', 'Story, Epic', 'FR, EN'),
+      F('sell', 'Composants', 'components', 'Étiquettes', 'Story, Bug, Tâche', 'FR, EN'),
+      F('person', 'Relecteur', 'reviewer', 'Utilisateur', 'Story, Tâche', 'FR, EN'),
+      F('link', 'Ticket d’origine (portail)', 'origin_request', 'Lien vers un ticket', 'Bug', 'FR'),
+      F('pin', 'Points', 'story_points', 'Nombre', 'Story, Tâche', 'FR, EN', true),
+      F('hourglass', 'Reste à faire', 'remaining', 'Nombre (heures)', 'Tous', 'FR, EN', true)
+    ];
+    const values = [{ fr: 'Annuaire', en: 'Directory' }, { fr: 'Messagerie', en: 'Mail' }, { fr: 'ERP', en: 'ERP' }, { fr: 'Portail client', en: 'Customer portal' }];
+    const R = { h: ['Masqué', 'lbl r-hide'], v: ['Visible', 'lbl r-vis'], o: ['Obligatoire', 'lbl r-req'] };
+    const row = (type, codes) => ({ type, cells: codes.split('').map(k => ({ t: R[k][0], cls: R[k][1] })) });
+    const rules = [row('Story', 'vvvo'), row('Bug', 'oooo'), row('Tâche', 'hvvv')];
+    return { nav, fields, values, rules };
+  }
+}
+</script>
+</body>
+</html>

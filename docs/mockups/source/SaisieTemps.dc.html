@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Saisir du temps</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;display=swap">
+<style>
+body{margin:0}
+.ms{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+.btn{font:inherit;font-size:14px;font-weight:500;height:40px;padding:0 24px;border-radius:20px;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;box-sizing:border-box;white-space:nowrap}
+.filled{background:#415F91;color:#FFFFFF}
+.text{background:transparent;color:#415F91;padding:0 12px}
+.tf{position:relative;display:flex;flex-direction:column}
+.tf label{position:absolute;top:-8px;left:12px;padding:0 4px;font-size:12px;line-height:16px;color:#44474E;background:#ECEDF4;z-index:1}
+.tf-in{font:inherit;font-size:16px;min-height:56px;padding:0 16px;border:1px solid #74777F;border-radius:4px;background:transparent;color:#191C20;box-sizing:border-box;width:100%}
+.sup{font-size:12px;color:#44474E;padding:4px 16px 0}
+.sw{width:52px;height:32px;border-radius:16px;border:2px solid #415F91;background:#415F91;box-sizing:border-box;position:relative;cursor:pointer;flex:none;padding:0}
+.sw::after{content:'';position:absolute;top:2px;left:22px;width:24px;height:24px;border-radius:50%;background:#FFFFFF}
+</style>
+</helmet>
+<div style="width: 560px; height: 700px; box-sizing: border-box; padding: 24px; background: #8F9199; display: flex; align-items: center; justify-content: center; font-family: Roboto, system-ui, sans-serif; font-size: 14px; line-height: 20px; color: #191C20;">
+<section role="dialog" aria-modal="true" aria-labelledby="d-t" style="width: 100%; background: #ECEDF4; border-radius: 28px; padding: 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px; box-shadow: 0 4px 8px 3px rgba(0,0,0,.15), 0 1px 3px rgba(0,0,0,.3);">
+<div>
+<h2 id="d-t" style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 400;">Saisir du temps</h2>
+<p style="margin: 4px 0 0; color: #44474E;">PLAT-142 · Migration de l’authentification vers OIDC</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+<div class="tf"><label for="dt">Date</label><input id="dt" class="tf-in" type="text" value="ven. 6 nov. 2026"></div>
+<div class="tf"><label for="du">Durée</label><input id="du" class="tf-in" type="text" value="3 h"></div>
+</div>
+<div class="tf"><label for="cm">Commentaire</label><textarea id="cm" class="tf-in" rows="2" style="padding: 16px; resize: vertical;">Configuration du client OIDC en recette</textarea></div>
+<div class="tf"><label for="raf">Reste à faire</label><input id="raf" class="tf-in" type="text" value="61 h"><span class="sup">Avant cette saisie : 64 h. Le burndown en heures s’appuie sur cette valeur.</span></div>
+<div style="display: flex; align-items: center; gap: 16px;"><div style="flex: 1;"><div>Temps facturable</div><div style="font-size: 12px; color: #44474E;">Exporté vers l’ERP après le MVP</div></div><button type="button" role="switch" class="sw" aria-checked="true" aria-label="Temps facturable"></button></div>
+<div style="display: flex; gap: 12px; padding: 12px 16px; border-radius: 12px; background: #DDDEE5; color: #44474E;"><span class="ms" aria-hidden="true">schedule</span><span>Temps passé sur ce ticket après saisie : 15 h</span></div>
+<div style="display: flex; justify-content: flex-end; gap: 8px;"><button class="btn text" type="button">Annuler</button><button class="btn filled" type="button">Enregistrer</button></div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":560,"height":700}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Paramètres du portail</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#415F91}a:hover{color:#2A4678}
+.ms{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+.nav-item{display:flex;align-items:center;gap:12px;height:56px;padding:0 24px 0 16px;border-radius:28px;color:#44474E;text-decoration:none;font-size:14px;font-weight:500}
+.nav-item .ms{font-size:24px}
+.nav-item:hover{background:rgba(25,28,32,.08);color:#191C20}
+.nav-item.on{background:#DAE2F9;color:#131C2B}
+.nav-item.on .ms{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+.btn{font:inherit;font-size:14px;font-weight:500;height:40px;padding:0 24px;border-radius:20px;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-sizing:border-box;white-space:nowrap}
+.btn .ms{font-size:18px;margin-left:-8px}
+.filled{background:#415F91;color:#FFFFFF}.filled:hover{background:#4E6A9B;color:#FFFFFF}
+.outlined{background:transparent;color:#415F91;border:1px solid #74777F}.outlined:hover{background:rgba(65,95,145,.08);color:#415F91}
+.text{background:transparent;color:#415F91;padding:0 12px}.text:hover{background:rgba(65,95,145,.08);color:#415F91}
+.icon-btn{width:40px;height:40px;border-radius:20px;border:0;background:transparent;color:#44474E;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.tf{position:relative;display:flex;flex-direction:column}
+.tf label{position:absolute;top:-8px;left:12px;padding:0 4px;font-size:12px;line-height:16px;color:#44474E;background:#FFFFFF;z-index:1}
+.tf-in{font:inherit;font-size:16px;min-height:56px;padding:0 16px;border:1px solid #74777F;border-radius:4px;background:transparent;color:#191C20;box-sizing:border-box;width:100%}
+.card{background:#FFFFFF;border:1px solid #C4C6D0;border-radius:12px;padding:20px}
+.h2{margin:0;font-size:16px;line-height:24px;font-weight:500}
+.lbl{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:8px;font-size:12px;font-weight:500;background:#E7E8EE;color:#44474E;white-space:nowrap}
+.ok{background:#C4EED0;color:#002110}
+.av{border-radius:50%;background:#D6E3FF;color:#001B3E;font-weight:500;display:flex;align-items:center;justify-content:center;flex:none;width:40px;height:40px;font-size:14px}
+.tab{font:inherit;font-size:14px;font-weight:500;height:48px;padding:0 16px;border:0;background:transparent;color:#44474E;cursor:pointer;position:relative}
+.tab.on{color:#415F91}
+.tab.on::after{content:'';position:absolute;left:16px;right:16px;bottom:0;height:3px;border-radius:3px 3px 0 0;background:#415F91}
+.sw{width:52px;height:32px;border-radius:16px;border:2px solid #74777F;background:#E1E2E8;box-sizing:border-box;position:relative;cursor:pointer;flex:none;padding:0}
+.sw::after{content:'';position:absolute;top:6px;left:6px;width:16px;height:16px;border-radius:50%;background:#74777F}
+.sw.on{background:#415F91;border-color:#415F91}
+.sw.on::after{top:2px;left:22px;width:24px;height:24px;background:#FFFFFF}
+.opt{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border:1px solid #C4C6D0;border-radius:12px}
+.opt.on{border:2px solid #415F91;background:#F3F3FA}
+.row{display:flex;align-items:center;gap:12px;min-height:56px;border-top:1px solid #E1E2E8}
+.swatch{width:40px;height:40px;border-radius:20px;border:0;cursor:pointer}
+.swatch.on{box-shadow:0 0 0 3px #FFFFFF,0 0 0 5px #191C20}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F9F9FF; color: #191C20; font-family: Roboto, system-ui, sans-serif; font-size: 14px; line-height: 20px;">
+<nav aria-label="Navigation principale" style="flex: 1 1 256px; box-sizing: border-box; padding: 12px; background: #F3F3FA; display: flex; flex-direction: column; gap: 4px;">
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px 16px;"><span class="ms" aria-hidden="true" style="font-size: 28px; color: #415F91;">deployed_code</span><span style="font-size: 16px; font-weight: 500;">My Little Big Project Planner</span></div>
+<div class="tf" style="margin: 4px 4px 16px;"><label for="tenant" style="background: #F3F3FA;">Organisation</label><select id="tenant" class="tf-in"><option>Acme Industrie</option><option>Acme Services</option></select></div>
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="10"><a href="{{n.href}}" class="{{n.cls}}" aria-current="{{n.cur}}"><span class="ms" aria-hidden="true">{{n.icon}}</span><span>{{n.label}}</span></a></sc-for>
+<a href="Compte.dc.html" style="margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 16px; border-top: 1px solid #C4C6D0; color: #191C20; text-decoration: none;"><div class="av" aria-hidden="true">LB</div><div style="display: flex; flex-direction: column;"><span style="font-weight: 500;">Lucas Bernard</span><span style="font-size: 12px; color: #44474E;">Mon compte</span></div></a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 24px 32px 40px; display: flex; flex-direction: column; gap: 20px;">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px;">
+<div><p style="margin: 0; font-size: 12px; color: #44474E;">Portails · 3 portails dans cette organisation</p><h1 style="margin: 4px 0 0; font-size: 28px; line-height: 36px; font-weight: 400;">Support informatique</h1><div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;"><span class="lbl ok">Publié</span><span class="lbl">Projet cible : Support IT (SUP)</span><span class="lbl">support.acme.exemple.org</span></div></div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;"><a class="btn outlined" href="Portail.dc.html"><span class="ms" aria-hidden="true">open_in_new</span>Voir le portail</a><button class="btn filled" type="button">Enregistrer</button></div>
+</div>
+<div role="tablist" style="display: flex; flex-wrap: wrap; border-bottom: 1px solid #C4C6D0;">
+<button role="tab" type="button" class="tab on" aria-selected="true">Général</button>
+<button role="tab" type="button" class="tab" aria-selected="false">Types de demande</button>
+<button role="tab" type="button" class="tab" aria-selected="false">Apparence</button>
+<button role="tab" type="button" class="tab" aria-selected="false">Emails</button>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+<section class="card" aria-labelledby="vis-t" style="display: flex; flex-direction: column; gap: 12px;">
+<h2 id="vis-t" class="h2">Qui peut accéder au portail ?</h2>
+<div role="radiogroup" aria-labelledby="vis-t" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px;">
+<sc-for list="{{vis}}" as="v" hint-placeholder-count="4">
+<label class="{{v.cls}}"><input type="radio" name="vis" defaultChecked="{{v.on}}" style="width: 20px; height: 20px; margin: 0; accent-color: #415F91; flex: none;"><span><span style="display: block; font-weight: 500;">{{v.name}}</span><span style="font-size: 12px; color: #44474E;">{{v.desc}}</span></span></label>
+</sc-for>
+</div>
+<div class="row" style="margin-top: 8px;"><div style="flex: 1;"><div>Autoriser les demandes sans compte</div><div style="font-size: 12px; color: #44474E;">Email obligatoire, lien de suivi signé, vérification anti-robot automatique, limite de 5 demandes par heure et par email</div></div><button type="button" role="switch" class="sw on" aria-checked="true" aria-label="Autoriser les demandes sans compte"></button></div>
+<div class="row"><div style="flex: 1;"><div>Inscription libre des comptes externes</div><div style="font-size: 12px; color: #44474E;">Sinon, uniquement sur invitation</div></div><button type="button" role="switch" class="sw on" aria-checked="true" aria-label="Inscription libre"></button></div>
+</section>
+<section class="card" aria-labelledby="rt-t" style="display: flex; flex-direction: column; gap: 4px;">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;"><h2 id="rt-t" class="h2">Types de demande</h2><button class="btn text" type="button"><span class="ms" aria-hidden="true">add</span>Ajouter</button></div>
+<sc-for list="{{types}}" as="t" hint-placeholder-count="4">
+<div class="row"><span class="ms" aria-hidden="true" style="color: #74777F;">drag_indicator</span><span class="ms" aria-hidden="true" style="color: #415F91;">{{t.icon}}</span><div style="flex: 1; min-width: 0;"><div style="font-weight: 500;">{{t.name}}</div><div style="font-size: 12px; color: #44474E;">{{t.meta}}</div></div><button class="icon-btn" type="button" aria-label="{{t.aria}}"><span class="ms" aria-hidden="true">edit</span></button></div>
+</sc-for>
+</section>
+</div>
+<aside style="flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+<section class="card" aria-labelledby="br-t" style="display: flex; flex-direction: column; gap: 16px;">
+<h2 id="br-t" class="h2">Apparence</h2>
+<div style="display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 12px; color: #44474E;">Couleur de marque · le schéma Material 3 complet en est déduit</span>
+<div role="radiogroup" aria-label="Couleur de marque" style="display: flex; gap: 12px;"><button type="button" role="radio" aria-checked="true" aria-label="Vert" class="swatch on" style="background: #006A63;"></button><button type="button" role="radio" aria-checked="false" aria-label="Bleu" class="swatch" style="background: #415F91;"></button><button type="button" role="radio" aria-checked="false" aria-label="Violet" class="swatch" style="background: #6750A4;"></button><button type="button" role="radio" aria-checked="false" aria-label="Orange" class="swatch" style="background: #8B5000;"></button><button type="button" aria-label="Couleur personnalisée" class="swatch" style="background: #FFFFFF; border: 1px dashed #74777F; display: inline-flex; align-items: center; justify-content: center;"><span class="ms" aria-hidden="true">add</span></button></div></div>
+<div style="display: flex; align-items: center; gap: 12px;"><div style="width: 96px; height: 40px; border: 1px dashed #74777F; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #44474E;">[LOGO]</div><button class="btn outlined" type="button"><span class="ms" aria-hidden="true">upload</span>Changer le logo</button></div>
+<div class="tf"><label for="wel">Texte d’accueil (FR)</label><input id="wel" class="tf-in" type="text" value="Comment pouvons-nous vous aider ?"></div>
+<div class="tf"><label for="wel2">Texte d’accueil (EN)</label><input id="wel2" class="tf-in" type="text" value="How can we help you?"></div>
+<div aria-hidden="true" style="border: 1px solid #C4C6D0; border-radius: 12px; overflow: hidden;"><div style="background: #EEF5F3; padding: 10px 12px; font-size: 12px; font-weight: 500;">Aperçu</div><div style="background: #F4FBF9; padding: 16px; display: flex; flex-direction: column; gap: 8px;"><div style="height: 10px; width: 60%; border-radius: 5px; background: #191C20; opacity: .8;"></div><div style="display: flex; gap: 6px;"><div style="flex: 1; height: 36px; border-radius: 8px; background: #9EF2E7; border: 2px solid #006A63;"></div><div style="flex: 1; height: 36px; border-radius: 8px; background: #FFFFFF; border: 1px solid #C4C6D0;"></div><div style="flex: 1; height: 36px; border-radius: 8px; background: #FFFFFF; border: 1px solid #C4C6D0;"></div></div><div style="align-self: flex-end; width: 96px; height: 24px; border-radius: 12px; background: #006A63;"></div></div></div>
+</section>
+</aside>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1120}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const active = 'Portails';
+    const navDef = [['Accueil', 'Notifications.dc.html', 'home'], ['Mes tickets', 'Ticket.dc.html', 'assignment'], ['Recherche', 'Recherche.dc.html', 'search'], ['Boards', 'Kanban.dc.html', 'view_kanban'], ['Gantt', 'Gantt.dc.html', 'view_timeline'], ['Charge', 'Main.dc.html', 'groups'], ['Portefeuilles', 'Portefeuille.dc.html', 'account_tree'], ['Portails', 'PortailAdmin.dc.html', 'support_agent'], ['Tableaux de bord', 'Dashboard.dc.html', 'dashboard'], ['Administration', 'AdminMembres.dc.html', 'settings']];
+    const nav = navDef.map(([label, href, icon]) => ({ label, href, icon, cls: label === active ? 'nav-item on' : 'nav-item', cur: label === active ? 'page' : undefined }));
+    const V = (name, desc, on) => ({ name, desc, on: !!on, cls: on ? 'opt on' : 'opt' });
+    const vis = [
+      V('Public', 'Tout le monde, y compris sans compte', true),
+      V('Authentifié', 'Tout compte, interne ou externe'),
+      V('Interne', 'Comptes internes, via le SSO de l’organisation'),
+      V('Sur invitation', 'Clients ou fournisseurs invités uniquement')
+    ];
+    const T = (icon, name, meta) => ({ icon, name, meta, aria: 'Modifier ' + name });
+    const types = [
+      T('report', 'Signaler un incident', '6 champs · type de ticket Incident · statut public : Reçue'),
+      T('key', 'Demander un accès', '4 champs · type de ticket Demande d’accès'),
+      T('devices', 'Commander du matériel', '5 champs · type de ticket Commande'),
+      T('help', 'Poser une question', '2 champs · type de ticket Question')
+    ];
+    return { nav, vis, types };
+  }
+}
+</script>
+</body>
+</html>

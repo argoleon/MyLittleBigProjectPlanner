@@ -1,0 +1,116 @@
+// Application tokens (--app-*) for what Material 3 does not cover:
+// status categories, issue types, workload heatmap, Gantt, success color,
+// spacing. Built on the M3 system variables and the same tonal palettes, with
+// light-dark() so dark mode works without extra code.
+//
+// Rule: a component needing a color that is neither a --mat-sys-* nor an
+// --app-* variable gets a new token here first, never a literal value.
+
+@use 'palettes' as p;
+
+@mixin tokens {
+  // ---------------------------------------------------------------------------
+  // Spacing (4 px base) and layout
+  // ---------------------------------------------------------------------------
+  --app-space-1: 4px;
+  --app-space-2: 8px;
+  --app-space-3: 12px;
+  --app-space-4: 16px;
+  --app-space-5: 20px;
+  --app-space-6: 24px;
+  --app-space-8: 32px;
+  --app-space-10: 40px;
+  --app-nav-drawer-width: 256px;
+  --app-page-padding: 24px 32px 40px;
+
+  // ---------------------------------------------------------------------------
+  // Success (not part of M3). Tonal palette of hue #006D3B, chroma 36.
+  // ---------------------------------------------------------------------------
+  --app-success: light-dark(#2E6A44, #96D5A6);
+  --app-on-success: light-dark(#FFFFFF, #00391C);
+  --app-success-container: light-dark(#B1F1C1, #12512E);
+  --app-on-success-container: light-dark(#00210E, #B1F1C1);
+
+  // ---------------------------------------------------------------------------
+  // Status categories (every workflow status maps to one of them)
+  // ---------------------------------------------------------------------------
+  --app-status-todo-container: var(--mat-sys-surface-container-highest);
+  --app-status-todo-on: var(--mat-sys-on-surface-variant);
+  --app-status-progress-container: var(--mat-sys-primary-container);
+  --app-status-progress-on: var(--mat-sys-on-primary-container);
+  --app-status-done-container: var(--app-success-container);
+  --app-status-done-on: var(--app-on-success-container);
+
+  // Health of a portfolio node
+  --app-health-ok-container: var(--app-success-container);
+  --app-health-ok-on: var(--app-on-success-container);
+  --app-health-risk-container: var(--mat-sys-error-container);
+  --app-health-risk-on: var(--mat-sys-on-error-container);
+
+  // ---------------------------------------------------------------------------
+  // Issue types and special badges
+  // ---------------------------------------------------------------------------
+  --app-type-story-container: var(--mat-sys-primary-container);
+  --app-type-story-on: var(--mat-sys-on-primary-container);
+  --app-type-bug-container: var(--mat-sys-error-container);
+  --app-type-bug-on: var(--mat-sys-on-error-container);
+  --app-type-task-container: var(--mat-sys-surface-container-highest);
+  --app-type-task-on: var(--mat-sys-on-surface-variant);
+  --app-type-epic-container: var(--mat-sys-tertiary-container);
+  --app-type-epic-on: var(--mat-sys-on-tertiary-container);
+  // "via MCP", external accounts
+  --app-badge-ai-container: var(--mat-sys-tertiary-container);
+  --app-badge-ai-on: var(--mat-sys-on-tertiary-container);
+
+  // ---------------------------------------------------------------------------
+  // Workload heatmap: occupation levels (0 %, ≤ 40 %, ≤ 70 %, ≤ 95 %, ≤ 100 %)
+  // In dark mode the scale is reversed: higher load = brighter cell.
+  // ---------------------------------------------------------------------------
+  --app-load-0: var(--mat-sys-surface-container-high);
+  --app-load-0-on: var(--mat-sys-on-surface-variant);
+  --app-load-1: light-dark(#{p.tone(primary, 90)}, #{p.tone(primary, 20)});
+  --app-load-1-on: light-dark(#{p.tone(primary, 10)}, #{p.tone(primary, 90)});
+  --app-load-2: light-dark(#{p.tone(primary, 80)}, #{p.tone(primary, 30)});
+  --app-load-2-on: light-dark(#{p.tone(primary, 10)}, #{p.tone(primary, 90)});
+  --app-load-3: light-dark(#{p.tone(primary, 70)}, #{p.tone(primary, 40)});
+  --app-load-3-on: light-dark(#{p.tone(primary, 10)}, #{p.tone(primary, 100)});
+  --app-load-4: light-dark(#{p.tone(primary, 40)}, #{p.tone(primary, 80)});
+  --app-load-4-on: light-dark(#{p.tone(primary, 100)}, #{p.tone(primary, 20)});
+  // Overload (above capacity)
+  --app-load-over: var(--mat-sys-error-container);
+  --app-load-over-on: var(--mat-sys-on-error-container);
+  --app-load-over-outline: var(--mat-sys-error);
+  // Confidential time: hatched with these two colors
+  --app-load-confidential-a: light-dark(#{p.tone(neutral-variant, 80)}, #{p.tone(neutral-variant, 30)});
+  --app-load-confidential-b: var(--mat-sys-surface-container-high);
+  --app-load-confidential-on: var(--mat-sys-on-surface);
+  // Provisional booking: hatched with these two colors
+  --app-load-provisional-a: light-dark(#{p.tone(primary, 80)}, #{p.tone(primary, 30)});
+  --app-load-provisional-b: light-dark(#{p.tone(primary, 95)}, #{p.tone(primary, 10)});
+  --app-load-provisional-on: light-dark(#{p.tone(primary, 10)}, #{p.tone(primary, 90)});
+  // Absence
+  --app-load-absence: var(--mat-sys-surface-container-lowest);
+  --app-load-absence-outline: var(--mat-sys-outline-variant);
+  --app-load-absence-on: var(--mat-sys-on-surface-variant);
+
+  // ---------------------------------------------------------------------------
+  // Gantt
+  // ---------------------------------------------------------------------------
+  --app-gantt-grid: var(--mat-sys-outline-variant);
+  --app-gantt-bar: var(--mat-sys-primary-container);
+  --app-gantt-bar-progress: var(--mat-sys-primary);
+  --app-gantt-summary: var(--mat-sys-on-surface-variant);
+  --app-gantt-milestone: var(--mat-sys-on-surface);
+  --app-gantt-dependency: var(--mat-sys-outline);
+  --app-gantt-violation: var(--mat-sys-error);
+  --app-gantt-violation-container: var(--mat-sys-error-container);
+  --app-gantt-today: var(--mat-sys-primary);
+  --app-gantt-row-height: 36px;
+  --app-gantt-week-width: 48px;
+}
+
+// Hatched background used by confidential and provisional cells:
+//   @include app-tokens.hatch(var(--app-load-provisional-a), var(--app-load-provisional-b));
+@mixin hatch($a, $b, $size: 6px) {
+  background: repeating-linear-gradient(135deg, $a 0 $size, $b $size ($size * 2));
+}

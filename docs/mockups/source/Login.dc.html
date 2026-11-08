@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Connexion</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#415F91}a:hover{color:#2A4678}
+.ms{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+.btn{font:inherit;font-size:14px;font-weight:500;height:40px;padding:0 24px;border-radius:20px;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-sizing:border-box;white-space:nowrap}
+.btn .ms{font-size:18px;margin-left:-8px}
+.filled{background:#415F91;color:#FFFFFF}.filled:hover{background:#4E6A9B;color:#FFFFFF}
+.tonal{background:#DAE2F9;color:#131C2B}.tonal:hover{background:#CDD6EC;color:#131C2B}
+.text{background:transparent;color:#415F91;padding:0 12px}.text:hover{background:rgba(65,95,145,.08);color:#415F91}
+.tf{position:relative;display:flex;flex-direction:column}
+.tf label{position:absolute;top:-8px;left:12px;padding:0 4px;font-size:12px;line-height:16px;color:#44474E;background:#FFFFFF;z-index:1}
+.tf-in{font:inherit;font-size:16px;min-height:56px;padding:0 16px;border:1px solid #74777F;border-radius:4px;background:transparent;color:#191C20;box-sizing:border-box;width:100%}
+.sup{font-size:12px;color:#44474E;padding:4px 16px 0}
+.panel{flex:1 1 380px;max-width:448px;background:#FFFFFF;border:1px solid #C4C6D0;border-radius:28px;padding:32px;box-sizing:border-box;display:flex;flex-direction:column;gap:20px}
+.code{width:48px;height:56px;border:1px solid #74777F;border-radius:8px;font:inherit;font-size:24px;text-align:center;box-sizing:border-box}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #F9F9FF; color: #191C20; font-family: Roboto, system-ui, sans-serif; font-size: 14px; line-height: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; padding: 48px 16px; box-sizing: border-box;">
+<div style="display: flex; align-items: center; gap: 12px;">
+<span class="ms" aria-hidden="true" style="font-size: 32px; color: #415F91;">deployed_code</span>
+<span style="font-size: 22px; line-height: 28px;">My Little Big Project Planner</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; align-items: stretch; width: 100%; max-width: 960px;">
+<section class="panel" aria-labelledby="l1">
+<div>
+<p style="margin: 0; font-size: 12px; font-weight: 500; color: #415F91;">Étape 1 sur 2</p>
+<h1 id="l1" style="margin: 4px 0 0; font-size: 24px; line-height: 32px; font-weight: 400;">Connexion</h1>
+<p style="margin: 4px 0 0; color: #44474E;">Organisation : Acme Industrie · acme.exemple.org</p>
+</div>
+<button class="btn tonal" type="button" style="width: 100%;"><span class="ms" aria-hidden="true">corporate_fare</span>Continuer avec Entra ID</button>
+<div style="display: flex; align-items: center; gap: 12px; color: #44474E; font-size: 12px;"><span style="flex: 1; height: 1px; background: #C4C6D0;"></span>ou avec un compte local<span style="flex: 1; height: 1px; background: #C4C6D0;"></span></div>
+<div class="tf"><label for="mail">Email</label><input id="mail" class="tf-in" type="email" value="thomas.leroy@prestataire.fr"></div>
+<div class="tf"><label for="pwd">Mot de passe</label><input id="pwd" class="tf-in" type="password" value="motdepasse"><span class="sup"><a href="#">Mot de passe oublié ?</a></span></div>
+<button class="btn filled" type="button" style="width: 100%;">Se connecter</button>
+<p style="margin: 0; font-size: 12px; color: #44474E;">Les comptes internes de cette organisation se connectent par Entra ID. Les comptes locaux sont réservés aux prestataires et doivent activer la vérification en deux étapes.</p>
+</section>
+<section class="panel" aria-labelledby="l2">
+<div>
+<p style="margin: 0; font-size: 12px; font-weight: 500; color: #415F91;">Étape 2 sur 2</p>
+<h2 id="l2" style="margin: 4px 0 0; font-size: 24px; line-height: 32px; font-weight: 400;">Vérification en deux étapes</h2>
+<p style="margin: 4px 0 0; color: #44474E;">Saisissez le code à 6 chiffres affiché par votre application d’authentification.</p>
+</div>
+<div role="group" aria-label="Code de vérification" style="display: flex; gap: 8px; justify-content: space-between;">
+<input class="code" type="text" aria-label="Chiffre 1" value="4">
+<input class="code" type="text" aria-label="Chiffre 2" value="8">
+<input class="code" type="text" aria-label="Chiffre 3" value="2">
+<input class="code" type="text" aria-label="Chiffre 4" value="">
+<input class="code" type="text" aria-label="Chiffre 5" value="">
+<input class="code" type="text" aria-label="Chiffre 6" value="">
+</div>
+<label style="display: flex; align-items: center; gap: 12px; min-height: 40px;"><input type="checkbox" style="width: 18px; height: 18px; margin: 0; accent-color: #415F91;">Faire confiance à cet appareil pendant 30 jours</label>
+<button class="btn filled" type="button" style="width: 100%;">Valider</button>
+<button class="btn text" type="button" style="align-self: center;">Utiliser un code de secours</button>
+</section>
+</div>
+<div style="display: flex; gap: 16px; font-size: 12px; color: #44474E;"><a href="#" style="color: #44474E;">Français</a><a href="#" style="color: #44474E;">English</a><a href="#" style="color: #44474E;">Confidentialité</a></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

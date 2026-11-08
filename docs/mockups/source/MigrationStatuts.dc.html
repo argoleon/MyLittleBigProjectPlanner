@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Migrer les statuts</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;display=swap">
+<style>
+body{margin:0}
+.ms{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+.btn{font:inherit;font-size:14px;font-weight:500;height:40px;padding:0 24px;border-radius:20px;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-sizing:border-box;white-space:nowrap}
+.filled{background:#415F91;color:#FFFFFF}
+.text{background:transparent;color:#415F91;padding:0 12px}
+.lbl{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:8px;font-size:12px;font-weight:500;background:#DDDEE5;color:#44474E;white-space:nowrap}
+.sel{font:inherit;font-size:14px;height:40px;padding:0 8px;border:1px solid #74777F;border-radius:4px;background:#FFFFFF;color:#191C20;width:100%}
+.sel.new{border:2px solid #415F91}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;font-size:12px;font-weight:500;color:#44474E;padding:0 8px;height:40px;border-bottom:1px solid #C4C6D0}
+.tbl td{padding:6px 8px;border-bottom:1px solid #D7D8DF;vertical-align:middle}
+</style>
+</helmet>
+<div style="width: 760px; height: 780px; box-sizing: border-box; padding: 32px; background: #8F9199; display: flex; align-items: center; justify-content: center; font-family: Roboto, system-ui, sans-serif; font-size: 14px; line-height: 20px; color: #191C20;">
+<section role="dialog" aria-modal="true" aria-labelledby="d-t" style="width: 100%; background: #ECEDF4; border-radius: 28px; padding: 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 4px 8px 3px rgba(0,0,0,.15), 0 1px 3px rgba(0,0,0,.3);">
+<span class="ms" aria-hidden="true" style="font-size: 24px; color: #415F91; align-self: center;">swap_horiz</span>
+<h2 id="d-t" style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 400; text-align: center;">Migrer les statuts</h2>
+<p style="margin: 0; color: #44474E;">Le workflow « Standard v2 » remplace « Standard » pour 6 projets. Il supprime le statut « En test » et ajoute « En recette ». Choisissez le statut de destination des tickets existants.</p>
+<table class="tbl">
+<thead><tr><th scope="col">Statut actuel</th><th scope="col" style="text-align: right;">Tickets</th><th scope="col" style="width: 44px;"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden;">vers</span></th><th scope="col">Nouveau statut</th></tr></thead>
+<tbody>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="5">
+<tr><td>{{r.from}}</td><td style="text-align: right; font-variant-numeric: tabular-nums;">{{r.n}}</td><td style="text-align: center;"><span class="ms" aria-hidden="true" style="color: #74777F;">arrow_forward</span></td><td><select class="{{r.cls}}" aria-label="{{r.aria}}"><option>{{r.to}}</option></select></td></tr>
+</sc-for>
+</tbody>
+</table>
+<div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"><span style="font-size: 12px; color: #44474E; margin-right: 4px;">Projets concernés :</span><sc-for list="{{projects}}" as="p" hint-placeholder-count="6"><span class="lbl">{{p}}</span></sc-for></div>
+<div style="display: flex; gap: 12px; padding: 12px 16px; border-radius: 12px; background: #DDDEE5; color: #44474E;"><span class="ms" aria-hidden="true">info</span><span>La migration s’exécute en tâche de fond. L’historique de chaque ticket conserve son ancien statut.</span></div>
+<div style="display: flex; justify-content: flex-end; gap: 8px;"><button class="btn text" type="button">Annuler</button><button class="btn filled" type="button">Migrer 2 172 tickets</button></div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":760,"height":780}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const R = (from, n, to, isNew) => ({ from, n, to, cls: isNew ? 'sel new' : 'sel', aria: 'Nouveau statut pour ' + from });
+    const rows = [R('À faire', '214', 'À faire'), R('En cours', '96', 'En cours'), R('En test', '38', 'En recette (nouveau)', true), R('En revue', '22', 'En revue'), R('Terminé', '1 802', 'Terminé')];
+    const projects = ['PLAT', 'CRM', 'DATA', 'ARCH', 'RUN', 'PILOT'];
+    return { rows, projects };
+  }
+}
+</script>
+</body>
+</html>
