@@ -35,6 +35,29 @@ docs/           specification (en, fr) and mockups
 
 Every CI step is a `just` recipe; GitHub Actions only calls them. Run the same recipes locally before declaring work done.
 
+## Tests (mandatory)
+
+Unit tests and integration tests are **mandatory** for every development. A feature without them is not done and must not be merged.
+
+- **Unit tests**: every business rule, service, component and utility gets unit tests. Backend rules in `crates/domain` are tested without a database; Angular components and services are tested in isolation.
+- **Integration tests**: every API endpoint, repository, worker job and MCP tool gets integration tests against real dependencies (real PostgreSQL with RLS enabled, S3-compatible storage, Valkey), never against mocks of them. Test the error cases (Problem Details codes, permission denials, cross-tenant isolation) as well as the happy path.
+- Key user flows also get a Playwright end-to-end test.
+- A bug fix starts with a test that reproduces the bug.
+- Never delete, skip or weaken an existing test to make the build pass; fix the code, or stop and ask if the test itself looks wrong.
+- All tests run in CI through `just` and must pass before a feature is closed.
+
+## Git workflow (Gitflow)
+
+The project follows **Gitflow**.
+
+- `main`: production. Contains only released, working versions; every commit on `main` is a release tagged `vX.Y.Z`. Never commit directly to it.
+- `develop`: integration branch. Never commit directly to it either.
+- `feature/<package>-<short-description>` (e.g. `feature/L02-role-permissions`): **every development is a feature**, branched from `develop`. Once it is validated (review approved, unit and integration tests written and passing, CI green), the feature is finished: merged into `develop` and the feature branch is deleted.
+- `release/X.Y.Z`: when a work package (lot, see section 20 of the specification) is complete and working on `develop`, a release branch is created from `develop`. Only stabilization fixes go there. The release is then finished: merged into `main`, tagged `vX.Y.Z`, merged back into `develop`, and deployed.
+- `hotfix/X.Y.Z`: urgent production fix, branched from `main`, merged into both `main` (tagged) and `develop`.
+- Commit messages in English, using Conventional Commits (`feat:`, `fix:`, `test:`, `docs:`, `refactor:`, `chore:`).
+- Before starting a development, check you are on the right feature branch; if none exists, create it from an up-to-date `develop`.
+
 ## Licensing (blocking)
 
 The project is MIT. Only add dependencies under MIT, Apache-2.0, BSD, ISC or 0BSD. Fonts may be OFL-1.1. Never add GPL, LGPL, AGPL, SSPL or commercial dependencies; `cargo-deny` and the npm license check fail the build otherwise. If a needed library has an incompatible license, stop and ask.
@@ -100,5 +123,5 @@ Stack: latest Angular, standalone components, signals, zoneless change detection
 1. Read the matching section of the specification and the mockup source and preview.
 2. Build or reuse shared components in `projects/ui` first (shell, chips, empty states), then the screen.
 3. Wire real data through the generated client; handle loading, empty and error states (the mockups only show the filled state).
-4. Add unit tests and, for key flows, a Playwright test.
+4. Add unit tests and integration tests (mandatory, see "Tests"), and a Playwright test for key flows.
 5. Run lint, tests and accessibility checks through `just` before finishing.
