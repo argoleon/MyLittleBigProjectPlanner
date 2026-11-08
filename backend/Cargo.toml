@@ -1,0 +1,38 @@
+[workspace]
+resolver = "3"
+members = ["crates/domain", "crates/infra", "crates/api", "crates/worker", "crates/mcp"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/argoleon/MyLittleBigProjectPlanner"
+publish = false
+
+[workspace.dependencies]
+domain = { path = "crates/domain" }
+infra = { path = "crates/infra" }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+# A pragmatic subset of pedantic lints: catch real mistakes without
+# pushing beginners towards clever code.
+cast_lossless = "warn"
+cast_possible_truncation = "warn"
+cast_sign_loss = "warn"
+explicit_iter_loop = "warn"
+implicit_clone = "warn"
+manual_let_else = "warn"
+match_same_arms = "warn"
+needless_pass_by_value = "warn"
+redundant_closure_for_method_calls = "warn"
+semicolon_if_nothing_returned = "warn"
+uninlined_format_args = "warn"
+unnested_or_patterns = "warn"
+unused_async = "warn"
+dbg_macro = "warn"
+todo = "warn"
+unwrap_used = "warn"

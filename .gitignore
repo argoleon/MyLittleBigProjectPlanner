@@ -14,6 +14,10 @@
 
 # Environment files
 /.env
+/deploy/.env
+
+# Rust build output
+/backend/target/
 
 # Angular CLI and build artefacts
 /.angular-cli.json
