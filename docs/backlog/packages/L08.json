@@ -1,0 +1,593 @@
+{
+  "lot": "L08",
+  "title": "Assignments, workload",
+  "level": "essential",
+  "depends_on": [
+    "L05",
+    "L07"
+  ],
+  "summary": "The core of the product: assignments made of successive segments (percentage, hours per day, total effort) link resources to tickets; the system derives one load row per resource and per day in minutes, checks overloads against capacity plus tolerance (blocking by default, with a logged \"Force overload\" permission), reports absence conflicts, and renders the workload heatmap and aggregates by team, program and portfolio. Availability search and provisional bookings are important (can slip). Leveling, distribution profiles, MS Project modes and skills are out of the MVP.",
+  "stories": [
+    {
+      "id": "L08-US01",
+      "title": "Assign a resource to a ticket with segments",
+      "level": "essential",
+      "as_a": "project manager",
+      "i_want": "to assign a resource to a ticket with one or more successive segments, each in percentage, hours per day or total effort",
+      "so_that": "I can express realistic plans such as 4 h/day in week 1 then 30% in week 2",
+      "acceptance": [
+        "Given a ticket dated 16 to 27 November and a resource with 7 h/day, When I add a segment of 4 h/day from 16 to 20 November, Then the assignment is saved with that segment",
+        "Given a segment of 50% on a day where capacity is 3.5 h, When the load is computed, Then that day carries 1 h 45 and a public holiday carries 0",
+        "Given a segment of 40 h total effort between 3 and 28 March, When the load is computed, Then the 40 h are spread evenly over the resource's working days in that period",
+        "Given a segment extending beyond the ticket's dates, When I save, Then the API rejects it with a stable Problem Details code",
+        "Given two resources assigned to the same ticket, When I view the ticket, Then each assignment is independent and the ticket load is their sum",
+        "Given overlapping segments within the same assignment, When I save, Then the API rejects them"
+      ],
+      "spec": [
+        "§8",
+        "§18"
+      ],
+      "mockups": [
+        "docs/mockups/previews/21-new-assignment.png",
+        "docs/mockups/previews/03-ticket.png"
+      ],
+      "depends_on": [],
+      "tech": [
+        {
+          "id": "L08-US01-T01",
+          "title": "Implement segment load distribution in the domain crate",
+          "layer": "domain",
+          "description": "In crates/domain, compute the minutes per local date produced by a segment for each mode: percentage × day capacity, fixed hours on working days, total effort spread evenly over working days (remainder minutes distributed deterministically). Uses the L07 day-capacity function; no I/O.",
+          "done_when": [
+            "Unit tests cover the three modes, multi-segment assignments and the spec examples (50% of a 3.5 h Friday = 1.75 h; holiday = 0)",
+            "Tests cover part-time capacity, public holidays and DST change weeks",
+            "Property-based tests check that total effort is fully distributed (sum equals effort) and no minute lands on a non-working day"
+          ]
+        },
+        {
+          "id": "L08-US01-T02",
+          "title": "Create assignment and assignment_segment tables",
+          "layer": "database",
+          "description": "Add `assignment` (issue_id, resource_id, provisional flag, version) and `assignment_segment` (assignment_id, start and end local dates, mode, value in percent or minutes) with RLS, a non-overlap constraint between segments of the same assignment (daterange exclusion), and indexes starting with tenant_id.",
+          "done_when": [
+            "Migration applies cleanly",
+            "Integration tests cover RLS isolation and the segment overlap exclusion constraint"
+          ]
+        },
+        {
+          "id": "L08-US01-T03",
+          "title": "Expose assignment endpoints",
+          "layer": "backend",
+          "description": "Implement `/api/v1/issues/{key}/assignments` and `/api/v1/assignments/{id}` (create, update with If-Match, delete, list) with Idempotency-Key on creation. Validate segments against ticket dates and the \"assign resources\" permission. Writes go through the overload check of L08-US03 once available.",
+          "done_when": [
+            "Unit tests for validation rules",
+            "Integration tests on a real PostgreSQL cover CRUD, ticket-date validation, permission denial, idempotent replay and tenant isolation",
+            "OpenAPI updated and Angular client regenerated"
+          ]
+        },
+        {
+          "id": "L08-US01-T04",
+          "title": "Build the \"Assign a resource\" dialog",
+          "layer": "frontend",
+          "description": "MatDialog with a resource select, a list of segments (period date range, mat-button-toggle-group for % / h per day / total effort, value field), add/remove segment actions, opened from the ticket page. Wired to the generated client; Transloco keys; numbers and dates formatted per locale.",
+          "done_when": [
+            "Component unit tests cover segment add/remove and mode switching",
+            "Screen integration test covers save and API error display",
+            "axe check passes; every field has a label"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L08-US02",
+      "title": "Keep the daily load up to date",
+      "level": "essential",
+      "as_a": "planner",
+      "i_want": "the per-day load of every resource to be recomputed whenever segments, capacity, calendars or absences change",
+      "so_that": "the heatmap and overload checks always reflect the current plan",
+      "acceptance": [
+        "Given an assignment of 50% on a resource, When the resource's capacity pattern changes from 7 h to 3.5 h on Fridays, Then the Friday load rows become 1 h 45 within a few seconds",
+        "Given a percentage assignment, When an absence is declared on one of its days, Then the load on that day becomes 0",
+        "Given a public holiday is added to the site calendar, When the recomputation completes, Then the load of all impacted resources is updated for that date",
+        "Given an assignment is deleted, When the transaction commits, Then its daily load rows are removed",
+        "Given a recomputation job fails, When the worker retries, Then the final load is the same as a single successful run"
+      ],
+      "spec": [
+        "§8",
+        "§17",
+        "§18"
+      ],
+      "mockups": [],
+      "depends_on": [
+        "L08-US01"
+      ],
+      "tech": [
+        {
+          "id": "L08-US02-T01",
+          "title": "Create the partitioned resource_day_load table",
+          "layer": "database",
+          "description": "Add `resource_day_load` (resource_id, local date, issue_id, assignment_id, minutes, provisional flag) partitioned by month, with RLS and an index on (tenant_id, resource_id, date). Provide the partition creation function used by the worker.",
+          "done_when": [
+            "Migration creates partitions and future partitions are created automatically",
+            "Integration tests cover RLS on partitions and partition pruning on date ranges"
+          ]
+        },
+        {
+          "id": "L08-US02-T02",
+          "title": "Derive load rows synchronously on assignment writes",
+          "layer": "backend",
+          "description": "When an assignment or segment is written, recompute its load rows in the same transaction using the domain distribution, so the overload check and the API response see the new load immediately. Implemented in crates/infra as a set-based replace of the assignment's rows.",
+          "done_when": [
+            "Unit tests for the row diffing logic",
+            "Integration tests on a real PostgreSQL prove rows match the domain computation after create, update and delete"
+          ]
+        },
+        {
+          "id": "L08-US02-T03",
+          "title": "Recompute load on capacity, calendar and absence events",
+          "layer": "worker",
+          "description": "In crates/worker, consume `resource.capacity_changed`, `resource.absence_changed` and calendar change outbox events, determine the impacted resources and date ranges, and recompute their load rows idempotently through the SKIP LOCKED job queue.",
+          "done_when": [
+            "Unit tests cover impacted range computation",
+            "Integration tests on a real PostgreSQL cover each event type, retry idempotency and concurrent workers processing a job once"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L08-US03",
+      "title": "Block overloads when assigning resources",
+      "level": "essential",
+      "as_a": "project manager",
+      "i_want": "the system to refuse an assignment that exceeds a resource's capacity plus tolerance, and to show me the conflicting days",
+      "so_that": "nobody gets booked beyond what they can do",
+      "acceptance": [
+        "Given a resource with 7 h on 18 November already loaded with 4 h, When I add 4 h/day on that day in blocking mode, Then the assignment is rejected and the message lists 18 November with 8 h planned for 7 h available",
+        "Given the tenant tolerance is 10%, When the resulting load is 7 h 30 for 7 h capacity, Then the assignment is accepted",
+        "Given the tenant uses warning mode, When an assignment overloads a day, Then it is saved and the overload is flagged",
+        "Given I have the \"Force overload\" permission, When I force an overloaded assignment, Then it is saved and an audit entry records who forced it",
+        "Given two project managers assign the same resource on the same day at the same time, When both transactions run, Then the second one sees the first one's load and capacity is never exceeded in blocking mode",
+        "Given I am editing an assignment, When I change a segment, Then a preview shows existing load, this assignment and the total per day, with overloaded days highlighted"
+      ],
+      "spec": [
+        "§8",
+        "§19"
+      ],
+      "mockups": [
+        "docs/mockups/previews/21-new-assignment.png"
+      ],
+      "depends_on": [
+        "L08-US02"
+      ],
+      "tech": [
+        {
+          "id": "L08-US03-T01",
+          "title": "Implement the overload rule in the domain crate",
+          "layer": "domain",
+          "description": "In crates/domain, compare resulting daily load with capacity × (1 + tolerance) and return the list of conflicting days with planned and available minutes. Supports blocking and warning modes and the provisional-assignment setting. No I/O.",
+          "done_when": [
+            "Unit tests cover tolerance, blocking vs warning modes, exact-capacity boundary and part-time days",
+            "Tests include public holidays (capacity 0) and DST change weeks"
+          ]
+        },
+        {
+          "id": "L08-US03-T02",
+          "title": "Enforce the overload check transactionally with resource locks",
+          "layer": "backend",
+          "description": "Wrap assignment writes in a transaction taking a per-resource advisory lock, recompute load and apply the domain check. Reject with a Problem Details code (`workload.overload`) listing conflicting days, unless the caller has \"Force overload\" and sets the force flag, which is written to the audit log. Writes must stay under 500 ms p95.",
+          "done_when": [
+            "Unit tests for the error payload mapping",
+            "Integration tests on a real PostgreSQL cover blocking, warning, tolerance, forced overload with audit entry, and permission denial",
+            "A concurrency integration test with two parallel transactions proves capacity cannot be exceeded"
+          ]
+        },
+        {
+          "id": "L08-US03-T03",
+          "title": "Add a load preview endpoint",
+          "layer": "backend",
+          "description": "Implement `POST /api/v1/assignments/preview` that computes, without writing, existing load, the candidate assignment's load and the total per day, plus the overload result. Used by the dialog for live feedback.",
+          "done_when": [
+            "Unit tests for request validation",
+            "Integration tests on a real PostgreSQL check preview results equal the actual write results"
+          ]
+        },
+        {
+          "id": "L08-US03-T04",
+          "title": "Show the load preview and overload error in the dialog",
+          "layer": "frontend",
+          "description": "In the assignment dialog, display the per-day preview grid (existing, this assignment, total) with overloaded days highlighted via `--app-*` tokens, the blocking message, and a \"Force overload\" button shown only to users with the permission. Debounce preview requests.",
+          "done_when": [
+            "Component unit tests cover highlighting, permission-based button visibility and debounce",
+            "Screen integration test covers the blocked and forced paths",
+            "Overload is conveyed by text and not only by color; axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L08-US04",
+      "title": "Report absence conflicts to the project manager",
+      "level": "essential",
+      "as_a": "project manager",
+      "i_want": "to be told when an absence falls on hours planned in hours-per-day or total-effort mode",
+      "so_that": "I can reschedule the work myself, since nothing is shifted automatically",
+      "acceptance": [
+        "Given an assignment of 7 h/day on PROJ-42, When the resource declares a leave on one of those days, Then a conflict \"7 h to reschedule on PROJ-42\" is created and the project manager is notified",
+        "Given a percentage assignment, When an absence is declared, Then no conflict is created because the load drops to 0 automatically",
+        "Given a conflict exists, When the segment is changed so no hours fall on the absence, Then the conflict is resolved automatically",
+        "Given conflicts exist on a resource, When I open the resource page, Then the absence shows a badge with the conflicting hours"
+      ],
+      "spec": [
+        "§8",
+        "§12"
+      ],
+      "mockups": [
+        "docs/mockups/previews/20-resource.png"
+      ],
+      "depends_on": [
+        "L08-US02"
+      ],
+      "tech": [
+        {
+          "id": "L08-US04-T01",
+          "title": "Detect absence conflicts in the domain crate",
+          "layer": "domain",
+          "description": "In crates/domain, compute conflicts for fixed-hours and total-effort segments: hours that fall on days where capacity is reduced by an absence. Percentage segments never conflict.",
+          "done_when": [
+            "Unit tests cover each mode, half-day absences and part-time capacity"
+          ]
+        },
+        {
+          "id": "L08-US04-T02",
+          "title": "Store conflicts and notify on absence changes",
+          "layer": "worker",
+          "description": "Add a `workload_conflict` table (resource, issue, date, minutes, status) with RLS. On absence or segment change events, the worker recomputes conflicts, resolves obsolete ones and emits a notification event to the project manager (ticket owner/assignee per notification rules).",
+          "done_when": [
+            "Unit tests for conflict reconciliation",
+            "Integration tests on a real PostgreSQL cover creation, auto-resolution, notification event emission and tenant isolation"
+          ]
+        },
+        {
+          "id": "L08-US04-T03",
+          "title": "Expose the workload conflicts endpoint",
+          "layer": "backend",
+          "description": "Implement `GET /api/v1/workload/conflicts` filtered by resource, project and status, with cursor pagination and node permission checks, and include conflict counts on absences returned by the absence endpoint.",
+          "done_when": [
+            "Unit tests for filter validation",
+            "Integration tests on a real PostgreSQL cover filtering, permissions and tenant isolation",
+            "OpenAPI updated and client regenerated"
+          ]
+        },
+        {
+          "id": "L08-US04-T04",
+          "title": "Display conflict badges and the ticket conflicts list",
+          "layer": "frontend",
+          "description": "Show conflict badges (e.g. \"4 h in conflict\") on absences in the resource page and a conflicts list on the ticket assignments panel, using `--app-*` tokens and text labels.",
+          "done_when": [
+            "Component unit tests and a screen integration test pass",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L08-US05",
+      "title": "View and manage assignments of a ticket and a resource",
+      "level": "essential",
+      "as_a": "project manager",
+      "i_want": "to see all assignments of a ticket and all assignments of a resource, and edit or remove them",
+      "so_that": "I can review and adjust the plan from either side",
+      "acceptance": [
+        "Given a ticket with two assignments, When I open the ticket, Then the assignments panel lists each resource, its segments and its total planned hours",
+        "Given a resource, When I open its \"Assignments\" tab, Then I see its assignments grouped by project with periods and hours",
+        "Given I edit a segment from the list, When the change would overload a day, Then I get the same overload message as when creating",
+        "Given I remove an assignment, When I confirm, Then its load disappears from the resource's days"
+      ],
+      "spec": [
+        "§8"
+      ],
+      "mockups": [
+        "docs/mockups/previews/03-ticket.png",
+        "docs/mockups/previews/20-resource.png"
+      ],
+      "depends_on": [
+        "L08-US03"
+      ],
+      "tech": [
+        {
+          "id": "L08-US05-T01",
+          "title": "Add assignment listing by resource",
+          "layer": "backend",
+          "description": "Implement `GET /api/v1/resources/{id}/assignments` with cursor pagination, period filter and `expand=issue`. Respect node permissions: assignments on confidential projects the caller cannot see are returned as anonymous \"Busy (confidential)\" entries.",
+          "done_when": [
+            "Unit tests for confidential masking",
+            "Integration tests on a real PostgreSQL cover pagination, period filtering, confidential projects and tenant isolation"
+          ]
+        },
+        {
+          "id": "L08-US05-T02",
+          "title": "Build ticket assignments panel and resource assignments tab",
+          "layer": "frontend",
+          "description": "Add the assignments panel on the ticket page and the \"Assignments\" tab on the resource page (mat-table, edit/delete actions reusing the assignment dialog, confirmation dialog for delete).",
+          "done_when": [
+            "Component unit tests and screen integration tests pass",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L08-US06",
+      "title": "Explore the workload heatmap",
+      "level": "essential",
+      "as_a": "resource manager",
+      "i_want": "a heatmap of resources by day, week or month colored by occupation rate, filterable by team, project or hierarchy node",
+      "so_that": "I spot overloads and free capacity at a glance",
+      "acceptance": [
+        "Given 200 resources over 3 months, When I open the heatmap, Then it renders in under 1 second",
+        "Given a resource loaded at 112% in week 47, When I view the week scale, Then the cell uses the overload level and shows 112%",
+        "Given I click or press Enter on a cell, When the details open, Then I see the tickets behind that load with their hours",
+        "Given I filter by team \"Platform\" or by a program node, When the filter applies, Then only matching resources and their load are shown",
+        "Given time on a confidential project I cannot access, When I view the cell details, Then it appears as \"Busy (confidential)\" without name",
+        "Given I use only the keyboard or a screen reader, When I switch to the table view, Then the same data is available in an accessible table"
+      ],
+      "spec": [
+        "§8",
+        "§4",
+        "§19"
+      ],
+      "mockups": [
+        "docs/mockups/previews/01-workload-heatmap.png"
+      ],
+      "depends_on": [
+        "L08-US02",
+        "L08-US03",
+        "L08-US04"
+      ],
+      "tech": [
+        {
+          "id": "L08-US06-T01",
+          "title": "Precompute weekly and monthly load aggregates",
+          "layer": "worker",
+          "description": "Add `load_aggregate` (resource, period kind: week | month, period start, load minutes, capacity minutes, provisional minutes) maintained by the worker from load and capacity changes, so heatmap reads never scan daily rows for long ranges.",
+          "done_when": [
+            "Unit tests for period bucketing (ISO weeks, month boundaries)",
+            "Integration tests on a real PostgreSQL prove aggregates equal the sum of daily rows after changes"
+          ]
+        },
+        {
+          "id": "L08-US06-T02",
+          "title": "Expose the heatmap and cell detail endpoints",
+          "layer": "backend",
+          "description": "Implement `GET /api/v1/workload/heatmap` (scale, period, filters team/project/node via descendantsOf, compact columnar payload of load and capacity) and `GET /api/v1/workload/cell` (tickets behind a resource/period). Apply confidential masking.",
+          "done_when": [
+            "Unit tests for payload shaping and masking",
+            "Integration tests on a real PostgreSQL cover filters, scales, confidential masking and tenant isolation",
+            "Benchmark: 200 resources × 3 months answered under 200 ms p95"
+          ]
+        },
+        {
+          "id": "L08-US06-T03",
+          "title": "Build the virtualized canvas heatmap component",
+          "layer": "frontend",
+          "description": "Create a custom heatmap component in web/projects/ui drawing only visible rows and columns on canvas, using `--app-heatmap-*` tokens read at runtime, with hatching for provisional load, sticky resource column and time header, day/week/month scales (mat-button-toggle-group). Provide a roving-focus keyboard layer (arrows, Home/End, Enter for details) and live region announcements.",
+          "done_when": [
+            "Unit tests for viewport computation, color level mapping and keyboard navigation",
+            "Performance test: 200 resources × 3 months first render under 1 s on the CI reference machine",
+            "No hard-coded colors; works in light and dark themes"
+          ]
+        },
+        {
+          "id": "L08-US06-T04",
+          "title": "Build the heatmap screen with filters, details and table view",
+          "layer": "frontend",
+          "description": "Assemble the workload screen: filters (team, project, hierarchy node), scale selector, the canvas heatmap, a cell detail side panel listing tickets, and an equivalent accessible mat-table view with virtual scroll. Data comes from the generated client via signals.",
+          "done_when": [
+            "Component unit tests and a screen integration test pass",
+            "Table view exposes the same data as the canvas; axe check passes"
+          ]
+        },
+        {
+          "id": "L08-US06-T05",
+          "title": "Write Playwright scenarios for assignment and heatmap",
+          "layer": "e2e",
+          "description": "Playwright scenarios covering assignment with segments, blocked overload, forced overload, absence conflict and heatmap drill-down including the table view, on a seeded tenant. Run axe on each visited screen.",
+          "done_when": [
+            "Scenarios pass in CI through the `just` e2e recipe",
+            "axe checks report no violation on the visited screens"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L08-US07",
+      "title": "Compare load and capacity by team, program and portfolio",
+      "level": "essential",
+      "as_a": "portfolio manager",
+      "i_want": "to see planned load against capacity aggregated by team and by hierarchy node",
+      "so_that": "I can judge whether a program or portfolio is feasible with the available people",
+      "acceptance": [
+        "Given a program with three projects, When I open its workload aggregate, Then planned load sums all distinct descendant projects, counting a project reached twice only once",
+        "Given a parent-child link weighted at 50%, When the aggregate is computed, Then the child's load counts for 50%",
+        "Given a team, When I view the team aggregate for a month, Then load and capacity are summed over its members",
+        "Given an assignment changes, When a few seconds pass, Then the node and team aggregates are updated"
+      ],
+      "spec": [
+        "§4",
+        "§8",
+        "§13"
+      ],
+      "mockups": [
+        "docs/mockups/previews/05-portfolio.png"
+      ],
+      "depends_on": [
+        "L08-US06"
+      ],
+      "tech": [
+        {
+          "id": "L08-US07-T01",
+          "title": "Aggregate load per hierarchy node and team in the worker",
+          "layer": "worker",
+          "description": "Extend the L03 aggregate jobs to compute planned load and consumed capacity per node over distinct descendants (closure table, link weighting) and per team, per week and month, triggered by load events.",
+          "done_when": [
+            "Unit tests for distinct-descendant and weighting rules",
+            "Integration tests on a real PostgreSQL cover multi-parent graphs, weighting, confidential projects counted anonymously and update latency"
+          ]
+        },
+        {
+          "id": "L08-US07-T02",
+          "title": "Expose node and team workload aggregate endpoints",
+          "layer": "backend",
+          "description": "Implement `GET /api/v1/nodes/{id}/workload` and `GET /api/v1/teams/{id}/workload` returning load and capacity per week or month from precomputed aggregates, with confidential projects counted without detail.",
+          "done_when": [
+            "Unit tests for response shaping",
+            "Integration tests on a real PostgreSQL cover permissions, confidential projects and tenant isolation"
+          ]
+        },
+        {
+          "id": "L08-US07-T03",
+          "title": "Show load vs capacity on portfolio, program and team views",
+          "layer": "frontend",
+          "description": "Display load vs capacity per period (mat-progress-bar with text values and percentages) on the portfolio/program view and the team page, fed by the generated client.",
+          "done_when": [
+            "Component unit tests and a screen integration test pass",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L08-US08",
+      "title": "Replace a generic resource with a person",
+      "level": "essential",
+      "as_a": "resource manager",
+      "i_want": "to replace a generic resource such as \"Rust developer\" with a named person",
+      "so_that": "the planned assignments transfer to the person once they are hired or chosen",
+      "acceptance": [
+        "Given a generic resource with assignments, When I replace it with a person, Then all its current and future assignments are transferred to the person",
+        "Given the transfer would overload the person in blocking mode, When I confirm, Then the replacement is rejected and the conflicting days are listed",
+        "Given the replacement succeeds, When I view the history of the affected tickets, Then the change of resource is recorded",
+        "Given the replacement succeeds, When I open the generic resource, Then it has no remaining future assignment"
+      ],
+      "spec": [
+        "§8"
+      ],
+      "mockups": [],
+      "depends_on": [
+        "L08-US03"
+      ],
+      "tech": [
+        {
+          "id": "L08-US08-T01",
+          "title": "Implement the generic resource replacement endpoint",
+          "layer": "backend",
+          "description": "Implement `POST /api/v1/resources/{id}/replace` moving assignments to the target person in one transaction with locks on both resources, recomputing load and applying the overload check (with optional force). Write audit entries per ticket.",
+          "done_when": [
+            "Unit tests for the transfer plan",
+            "Integration tests on a real PostgreSQL cover success, overload rejection, forced replacement with audit and tenant isolation"
+          ]
+        },
+        {
+          "id": "L08-US08-T02",
+          "title": "Add the replace action on generic resources",
+          "layer": "frontend",
+          "description": "Add a \"Replace with a person\" action on generic resources opening a dialog with the person select and an impact summary (number of assignments, overload preview).",
+          "done_when": [
+            "Component unit tests and a screen integration test pass; axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L08-US09",
+      "title": "Book resources provisionally",
+      "level": "important",
+      "as_a": "project manager",
+      "i_want": "to mark an assignment as provisional",
+      "so_that": "I can pencil in people before a project is confirmed",
+      "acceptance": [
+        "Given I toggle \"Provisional assignment\" in the dialog, When I save, Then the assignment is stored as provisional",
+        "Given a provisional assignment, When I view the heatmap, Then its load is hatched",
+        "Given the tenant setting excludes provisional load from the overload check, When a provisional assignment exceeds capacity, Then it is accepted",
+        "Given the tenant setting includes provisional load, When it exceeds capacity in blocking mode, Then it is rejected",
+        "Given a provisional assignment, When I confirm it, Then it becomes firm and the overload check runs as for a firm assignment"
+      ],
+      "spec": [
+        "§8"
+      ],
+      "mockups": [
+        "docs/mockups/previews/21-new-assignment.png",
+        "docs/mockups/previews/01-workload-heatmap.png"
+      ],
+      "depends_on": [
+        "L08-US03",
+        "L08-US06"
+      ],
+      "tech": [
+        {
+          "id": "L08-US09-T01",
+          "title": "Apply provisional rules in domain and API",
+          "layer": "backend",
+          "description": "Add the tenant setting \"count provisional load in overload check\" and apply it in the domain overload rule; propagate the provisional flag to load rows and aggregates; add a confirm action on assignments.",
+          "done_when": [
+            "Domain unit tests cover both settings",
+            "Integration tests on a real PostgreSQL cover provisional create, confirm, overload behaviour per setting and aggregates"
+          ]
+        },
+        {
+          "id": "L08-US09-T02",
+          "title": "Show provisional toggle and hatched load",
+          "layer": "frontend",
+          "description": "Add the mat-slide-toggle to the assignment dialog, hatching in the heatmap canvas and a textual \"provisional\" marker in the table view and cell details.",
+          "done_when": [
+            "Component unit tests pass; screen integration test covers toggle and confirm",
+            "Provisional state is conveyed by text, not only by pattern; axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L08-US10",
+      "title": "Search for available resources",
+      "level": "important",
+      "as_a": "project manager",
+      "i_want": "to ask who has a given number of free hours or days over a period, optionally in a team",
+      "so_that": "I can find someone available without scanning the whole heatmap",
+      "acceptance": [
+        "Given team X and next week, When I search for 3 free days, Then the result lists resources whose free capacity covers at least 3 full working days, with their free hours",
+        "Given I search for 10 free hours, When results are shown, Then they are sorted by free hours descending",
+        "Given a resource with absences next week, When I search, Then its free capacity accounts for the absences and public holidays",
+        "Given I cannot see a confidential project, When availability is computed, Then its load still reduces free capacity without revealing the project"
+      ],
+      "spec": [
+        "§8",
+        "§16"
+      ],
+      "mockups": [],
+      "depends_on": [
+        "L08-US06"
+      ],
+      "tech": [
+        {
+          "id": "L08-US10-T01",
+          "title": "Implement free-capacity computation and availability endpoint",
+          "layer": "backend",
+          "description": "Add a domain function computing free minutes per day (capacity × (1 + tolerance) − load) and full free days, and `GET /api/v1/workload/availability` (period, team, min hours or days). This endpoint also backs the MCP `find_availability` tool (L16).",
+          "done_when": [
+            "Domain unit tests cover tolerance, partial days, part-time and holidays",
+            "Integration tests on a real PostgreSQL cover filters, sorting, confidential load and tenant isolation"
+          ]
+        },
+        {
+          "id": "L08-US10-T02",
+          "title": "Build the availability search panel",
+          "layer": "frontend",
+          "description": "Add an availability search panel on the workload screen (period, team, hours or days) listing matching resources with their free capacity and a link to open them in the heatmap.",
+          "done_when": [
+            "Component unit tests and a screen integration test pass; axe check passes"
+          ]
+        }
+      ]
+    }
+  ]
+}

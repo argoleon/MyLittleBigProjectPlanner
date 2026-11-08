@@ -1,0 +1,328 @@
+{
+  "lot": "L09",
+  "title": "Scrum and versions",
+  "level": "important",
+  "depends_on": ["L06"],
+  "summary": "Scrum support on top of boards: a backlog, sprint planning, starting and closing sprints (unfinished tickets move to the next sprint or back to the backlog), the active sprint board, estimation in points or hours per board, burndown based on remaining work, velocity over the last N sprints, project versions and releases with generated release notes, and epic progress. This package is important: it can slip just after the MVP without blocking the production release.",
+  "stories": [
+    {
+      "id": "L09-US01",
+      "title": "Plan sprints from the backlog",
+      "level": "important",
+      "as_a": "Scrum master",
+      "i_want": "a backlog where I rank tickets and plan them into sprints",
+      "so_that": "the team commits to a realistic sprint scope",
+      "acceptance": [
+        "Given a Scrum board fed by a filter, When I open the backlog, Then I see future sprints and the ranked backlog of tickets not in a sprint",
+        "Given I drag a ticket from the backlog into Sprint 25, When I drop it, Then it is added to the sprint and the sprint total estimate updates",
+        "Given I reorder tickets in the backlog, When I reload, Then the ranking is kept",
+        "Given I lack the 'manage sprints' permission, When I open the backlog, Then I can view it but not create, start or reorder sprints",
+        "Given I use only the keyboard, When a ticket is focused, Then I can move it to a sprint or change its rank through accessible actions"
+      ],
+      "spec": ["§6"],
+      "mockups": ["docs/mockups/previews/17-backlog-sprints.png"],
+      "depends_on": [],
+      "tech": [
+        {
+          "id": "L09-US01-T01",
+          "title": "Create sprint and sprint_issue tables with ranking",
+          "layer": "database",
+          "description": "Add `sprint` (tenant_id, board, name, goal, dates, state future/active/closed) and `sprint_issue` (sprint, issue, added and removed timestamps, to keep history for velocity), plus a backlog rank on issues per board (lexicographic rank to avoid renumbering). RLS on all tables.",
+          "done_when": [
+            "Unit tests for rank generation between two neighbours",
+            "Integration tests for RLS isolation and sprint membership history"
+          ]
+        },
+        {
+          "id": "L09-US01-T02",
+          "title": "Expose backlog, sprint and ranking endpoints",
+          "layer": "backend",
+          "description": "Add endpoints to get the backlog of a Scrum board, create and edit future sprints, add or remove tickets, and rerank. Check the 'manage sprints' permission; emit outbox events for real-time updates.",
+          "done_when": [
+            "Integration tests cover permission, ranking, sprint scope changes and cross-tenant isolation",
+            "OpenAPI and Angular client regenerated"
+          ]
+        },
+        {
+          "id": "L09-US01-T03",
+          "title": "Build the backlog and sprint planning screen",
+          "layer": "frontend",
+          "description": "Build the backlog screen following the mockup with CDK drag and drop between backlog and sprints, sprint headers with totals in the board's estimation unit, create sprint dialog, and keyboard move actions.",
+          "done_when": [
+            "Unit tests for drop handling and totals",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L09-US02",
+      "title": "Run and close a sprint",
+      "level": "important",
+      "as_a": "Scrum master",
+      "i_want": "to start a sprint, follow it on the sprint board, and close it",
+      "so_that": "unfinished work is handled explicitly and sprint history stays reliable",
+      "acceptance": [
+        "Given a future sprint with dates and tickets, When I start it, Then it becomes active and the sprint board shows its tickets by column",
+        "Given another sprint is already active on this board, When I try to start a second one, Then it is refused with an explicit message",
+        "Given an active sprint with 3 tickets not in a Done-category status, When I close it, Then I choose to move them to the next sprint or to the backlog",
+        "Given a closed sprint, When I view it later, Then its committed and completed scope is preserved"
+      ],
+      "spec": ["§6"],
+      "mockups": ["docs/mockups/previews/17-backlog-sprints.png", "docs/mockups/previews/04-kanban-board.png"],
+      "depends_on": ["L09-US01"],
+      "tech": [
+        {
+          "id": "L09-US02-T01",
+          "title": "Implement sprint lifecycle rules in domain",
+          "layer": "domain",
+          "description": "In `crates/domain`, implement start (one active sprint per board, dates required) and close (identify unfinished tickets by status category, move them to the target sprint or backlog, snapshot committed and completed scope).",
+          "done_when": [
+            "Unit tests for start conflicts, close with each target and scope snapshots"
+          ]
+        },
+        {
+          "id": "L09-US02-T02",
+          "title": "Expose start and close sprint endpoints",
+          "layer": "backend",
+          "description": "Add start and close endpoints applying the domain rules transactionally, writing sprint history and outbox events. The board data endpoint shows only the active sprint's tickets for Scrum boards.",
+          "done_when": [
+            "Integration tests cover start, double active refused, close moving tickets, permission and cross-tenant isolation",
+            "OpenAPI and Angular client regenerated"
+          ]
+        },
+        {
+          "id": "L09-US02-T03",
+          "title": "Build sprint board and close sprint dialog",
+          "layer": "frontend",
+          "description": "Reuse the Kanban board component for the active sprint board with a sprint header (goal, dates, days left), and build the start and close `MatDialog`s with the choice for unfinished tickets.",
+          "done_when": [
+            "Unit tests for the dialogs and header",
+            "axe check passes"
+          ]
+        },
+        {
+          "id": "L09-US02-T04",
+          "title": "Add Playwright test for a sprint cycle",
+          "layer": "e2e",
+          "description": "Scenario: plan tickets into a sprint, start it, move a card to Done, close the sprint moving the rest to the next sprint, check backlog and next sprint contents.",
+          "done_when": [
+            "Scenario runs green in CI through `just`"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L09-US03",
+      "title": "Estimate in points or hours per board",
+      "level": "important",
+      "as_a": "board administrator",
+      "i_want": "to choose whether a board estimates in story points or hours",
+      "so_that": "each team uses its own estimation practice while workload stays in hours",
+      "acceptance": [
+        "Given a board set to points, When I view backlog and sprint totals, Then they sum the story points field",
+        "Given a board set to hours, When I view totals, Then they sum the original estimate in hours",
+        "Given a ticket's assignments, When the board uses points, Then the workload computation is unaffected and stays in hours",
+        "Given a ticket without estimate, When totals are computed, Then it is counted as unestimated and flagged"
+      ],
+      "spec": ["§6"],
+      "mockups": ["docs/mockups/previews/17-backlog-sprints.png"],
+      "depends_on": ["L09-US01"],
+      "tech": [
+        {
+          "id": "L09-US03-T01",
+          "title": "Add estimation unit to boards and totals computation",
+          "layer": "backend",
+          "description": "Use the board's estimation unit (points or hours) to compute backlog, sprint and column totals, with an unestimated count. The rule lives in `crates/domain`; endpoints return totals with the unit.",
+          "done_when": [
+            "Unit tests for totals in both units and unestimated tickets",
+            "Integration tests for board totals endpoints"
+          ]
+        },
+        {
+          "id": "L09-US03-T02",
+          "title": "Show estimation unit in board settings and totals",
+          "layer": "frontend",
+          "description": "Add the estimation unit `mat-button-toggle-group` to board settings and display totals and estimate badges with the right unit, localized.",
+          "done_when": [
+            "Unit tests for settings and badge formatting",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L09-US04",
+      "title": "Follow the sprint burndown",
+      "level": "important",
+      "as_a": "team member",
+      "i_want": "a burndown chart of the active sprint in points or hours",
+      "so_that": "we see early whether the sprint goal is at risk",
+      "acceptance": [
+        "Given an active sprint on a points board, When I open the burndown, Then I see remaining points per day against the ideal line",
+        "Given an hours board, When I open the burndown, Then it is based on the remaining work entered on tickets",
+        "Given a ticket is added to the sprint mid-way, When the burndown is drawn, Then the scope increase is visible on that day",
+        "Given the chart, When I use a screen reader, Then an equivalent data table is available"
+      ],
+      "spec": ["§6", "§10", "§12"],
+      "mockups": ["docs/mockups/previews/18-burndown-velocity-versions.png"],
+      "depends_on": ["L09-US02"],
+      "tech": [
+        {
+          "id": "L09-US04-T01",
+          "title": "Compute burndown series from history",
+          "layer": "domain",
+          "description": "In `crates/domain`, compute daily remaining values for a sprint from sprint membership history, audit log status changes (Done category) and remaining work estimates, using working days of the tenant calendar for the ideal line.",
+          "done_when": [
+            "Unit tests for points and hours, scope changes, reopened tickets and non-working days"
+          ]
+        },
+        {
+          "id": "L09-US04-T02",
+          "title": "Expose the burndown endpoint",
+          "layer": "backend",
+          "description": "Add `GET /api/v1/sprints/{id}/burndown` returning the daily series and ideal line.",
+          "done_when": [
+            "Integration tests on seeded history, permission and cross-tenant isolation",
+            "OpenAPI and Angular client regenerated"
+          ]
+        },
+        {
+          "id": "L09-US04-T03",
+          "title": "Build the burndown chart with table view",
+          "layer": "frontend",
+          "description": "Build a reusable burndown chart component in `projects/ui` (SVG, colors from tokens only) with an equivalent accessible table, used on the agile reports screen and reusable by the dashboard gadget (L14).",
+          "done_when": [
+            "Unit tests for scaling and table rendering",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L09-US05",
+      "title": "Measure velocity over the last sprints",
+      "level": "important",
+      "as_a": "Scrum master",
+      "i_want": "a velocity chart comparing committed and completed work over the last N sprints",
+      "so_that": "I can plan future sprints on actual capacity",
+      "acceptance": [
+        "Given 6 closed sprints, When I open velocity with N = 6, Then I see committed and completed values per sprint and the average",
+        "Given I change N to 3, When the chart refreshes, Then only the last 3 closed sprints are shown",
+        "Given the chart, When I use a screen reader, Then an equivalent data table is available"
+      ],
+      "spec": ["§6"],
+      "mockups": ["docs/mockups/previews/18-burndown-velocity-versions.png"],
+      "depends_on": ["L09-US02"],
+      "tech": [
+        {
+          "id": "L09-US05-T01",
+          "title": "Compute and expose velocity",
+          "layer": "backend",
+          "description": "Compute committed and completed values from closed sprint snapshots in `crates/domain` and expose `GET /api/v1/boards/{id}/velocity?last=N`.",
+          "done_when": [
+            "Unit tests for velocity and average computation",
+            "Integration tests for the endpoint, permission and cross-tenant isolation"
+          ]
+        },
+        {
+          "id": "L09-US05-T02",
+          "title": "Build the velocity chart with table view",
+          "layer": "frontend",
+          "description": "Build an SVG bar chart (committed vs completed, token colors) with N selector and accessible table on the agile reports screen.",
+          "done_when": [
+            "Unit tests for the chart and selector",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L09-US06",
+      "title": "Manage versions and generate release notes",
+      "level": "important",
+      "as_a": "product owner",
+      "i_want": "to manage project versions with a release date and status, and generate release notes",
+      "so_that": "I can plan releases and communicate what each one contains",
+      "acceptance": [
+        "Given project PLAT, When I create version 2.1 with a release date, Then it can be set as fixVersion on tickets and used in `fixVersion = \"2.1\"`",
+        "Given version 2.1 has open tickets, When I view it, Then I see progress by status category",
+        "Given I release version 2.1, When open tickets remain, Then I must move them to another version or leave them unreleased",
+        "Given a released version, When I generate release notes, Then I get a list of its tickets grouped by type, in the chosen language"
+      ],
+      "spec": ["§6"],
+      "mockups": ["docs/mockups/previews/18-burndown-velocity-versions.png"],
+      "depends_on": [],
+      "tech": [
+        {
+          "id": "L09-US06-T01",
+          "title": "Create version table and fixVersion field",
+          "layer": "database",
+          "description": "Add `version` (tenant_id, project, name, description, release date, status unreleased/released/archived) with RLS and uniqueness per project, plus the fixVersion system field on issues and its support in the query compiler.",
+          "done_when": [
+            "Integration tests for RLS, uniqueness and `fixVersion` queries"
+          ]
+        },
+        {
+          "id": "L09-US06-T02",
+          "title": "Expose version endpoints and release notes generation",
+          "layer": "backend",
+          "description": "Add version CRUD, release action (with move of open tickets) and a release notes endpoint returning tickets grouped by type as structured data and Markdown, using the requested language.",
+          "done_when": [
+            "Unit tests for release notes grouping",
+            "Integration tests for release with open tickets, permission and cross-tenant isolation",
+            "OpenAPI and Angular client regenerated"
+          ]
+        },
+        {
+          "id": "L09-US06-T03",
+          "title": "Build versions list and version detail",
+          "layer": "frontend",
+          "description": "Build the versions table with progress bars (`mat-progress-bar`), create and release dialogs, and a release notes view with copy action.",
+          "done_when": [
+            "Unit tests for the list, dialogs and release notes view",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L09-US07",
+      "title": "Follow epic progress",
+      "level": "important",
+      "as_a": "product owner",
+      "i_want": "each epic to show a progress bar of its child tickets",
+      "so_that": "I see at a glance how far each epic is",
+      "acceptance": [
+        "Given an epic with 10 child tickets of which 4 are in a Done-category status, When I view it, Then its progress bar shows 40% with To do / In progress / Done segments",
+        "Given child tickets in projects I cannot view, When I view the epic, Then progress is computed only from tickets I may see",
+        "Given the backlog, When I filter by epic, Then I see only that epic's tickets"
+      ],
+      "spec": ["§6"],
+      "mockups": ["docs/mockups/previews/17-backlog-sprints.png"],
+      "depends_on": ["L09-US01"],
+      "tech": [
+        {
+          "id": "L09-US07-T01",
+          "title": "Compute epic progress by status category",
+          "layer": "backend",
+          "description": "Compute counts and estimate sums of an epic's descendants by status category (rule in `crates/domain`) and expose them in the ticket `expand` and on backlog epic lists.",
+          "done_when": [
+            "Unit tests for progress computation",
+            "Integration tests for permission filtering and cross-tenant isolation"
+          ]
+        },
+        {
+          "id": "L09-US07-T02",
+          "title": "Show epic progress bars and epic filter",
+          "layer": "frontend",
+          "description": "Add a segmented progress component in `projects/ui` using `--app-status-*` tokens, shown on epic tickets and in the backlog epic panel with an epic filter.",
+          "done_when": [
+            "Unit tests for the progress component and filter",
+            "axe check passes"
+          ]
+        }
+      ]
+    }
+  ]
+}

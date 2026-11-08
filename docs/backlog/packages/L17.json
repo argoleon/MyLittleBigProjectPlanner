@@ -1,0 +1,318 @@
+{
+  "lot": "L17",
+  "title": "Industrialization, acceptance",
+  "level": "essential",
+  "depends_on": ["L01", "L02", "L03", "L04", "L05", "L06", "L07", "L08", "L09", "L10", "L11", "L12", "L13", "L14", "L15", "L16"],
+  "summary": "Makes the MVP ready for internal production: automated load tests against the section 19 targets, a security and tenant-isolation audit, an RGAA 4 / WCAG 2.1 AA accessibility audit, pgBackRest backups with a tested and timed restore consistent with object storage, operations and user documentation, the acceptance environment and the internal acceptance campaign ending with the production release milestone.",
+  "stories": [
+    {
+      "id": "L17-US01",
+      "title": "Verify performance targets with automated load tests",
+      "level": "essential",
+      "as_a": "platform operator",
+      "i_want": "automated load tests proving the section 19 performance targets",
+      "so_that": "we go to production knowing the system holds 1,000 concurrent users",
+      "acceptance": [
+        "Given a dataset at 3-year volume (thousands of projects, hundreds of thousands of tickets), When the read scenario runs with 1,000 concurrent users, Then API reads stay under 200 ms at the 95th percentile",
+        "Given the same load, When writes with load check run, Then they stay under 500 ms at the 95th percentile",
+        "Given 200 resources over 3 months, When the heatmap is requested and rendered, Then it is displayed in under 1 s",
+        "Given a 5,000-row Gantt, When scrolling in the browser, Then frame rate stays smooth (no long task over 50 ms during scroll)",
+        "Given a change affecting aggregates, When it is committed under load, Then aggregates are updated within a few seconds",
+        "Given the initial interface load on a standard connection, When measured, Then it is under 2 s"
+      ],
+      "spec": ["§19", "§17"],
+      "mockups": [],
+      "depends_on": [],
+      "tech": [
+        {
+          "id": "L17-US01-T01",
+          "title": "Build a volume dataset generator",
+          "layer": "infra",
+          "description": "Write a seeding tool (Rust binary or `just` recipe) generating a realistic multi-tenant dataset at 3-year volume: hierarchy, configurations, tickets, comments, resources, assignments, recurrences and time entries, through SQL or the API.",
+          "done_when": [
+            "Generator is deterministic from a seed and documented",
+            "Integration test generates a small dataset and checks RLS isolation between generated tenants"
+          ]
+        },
+        {
+          "id": "L17-US01-T02",
+          "title": "Write load test scenarios with an open source tool",
+          "layer": "infra",
+          "description": "Write load scenarios (search, ticket read/write, assignment with overload check, heatmap, board) using an MIT/Apache-licensed load tool, with thresholds matching section 19, run through a `just` recipe on the acceptance environment.",
+          "done_when": [
+            "Scenarios fail the run when a threshold is exceeded",
+            "Report archived per run; results for the release candidate meet all targets"
+          ]
+        },
+        {
+          "id": "L17-US01-T03",
+          "title": "Measure front-end rendering targets with Playwright",
+          "layer": "e2e",
+          "description": "Add Playwright performance tests measuring heatmap time-to-render (200 resources x 3 months), Gantt scrolling on 5,000 rows (long tasks via PerformanceObserver) and initial load time.",
+          "done_when": [
+            "Tests pass in CI on the reference machine profile through `just`"
+          ]
+        },
+        {
+          "id": "L17-US01-T04",
+          "title": "Fix performance bottlenecks found by load tests",
+          "layer": "backend",
+          "description": "Analyze traces and slow query logs from the load runs, add missing tenant-first indexes, tune pool sizes and caches, and decide whether PgBouncer is needed. Each fix references the measurement before and after.",
+          "done_when": [
+            "Each fix is covered by its unit or integration tests and a rerun of the affected scenario",
+            "All section 19 targets are met"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L17-US02",
+      "title": "Prove tenant isolation on every endpoint",
+      "level": "essential",
+      "as_a": "tenant admin",
+      "i_want": "proof that no data from my tenant can leak to another tenant",
+      "so_that": "we can host several organizations safely",
+      "acceptance": [
+        "Given two tenants with data, When the isolation suite calls every API operation with a token of tenant B on resources of tenant A, Then every call returns not found or forbidden and no data of A",
+        "Given a database connection without tenant context, When it queries business tables, Then it sees no rows",
+        "Given the worker and MCP services, When they process jobs or calls, Then each job runs with the right tenant context",
+        "Given a new endpoint added without an isolation test, When CI runs, Then the build fails"
+      ],
+      "spec": ["§3", "§22", "§14"],
+      "mockups": [],
+      "depends_on": [],
+      "tech": [
+        {
+          "id": "L17-US02-T01",
+          "title": "Generate a cross-tenant test for every OpenAPI operation",
+          "layer": "backend",
+          "description": "Build an integration test harness that enumerates operations from the generated OpenAPI contract, seeds two tenants and calls each operation cross-tenant, asserting no foreign data is returned or modified. Unlisted operations fail the suite.",
+          "done_when": [
+            "Suite covers 100% of operations and runs in CI on real PostgreSQL with RLS",
+            "Adding an operation without fixture data fails the build"
+          ]
+        },
+        {
+          "id": "L17-US02-T02",
+          "title": "Audit RLS policies and tenant context in workers",
+          "layer": "database",
+          "description": "Write a check listing every table and asserting RLS is enabled and forced except on `account`, that the application role cannot bypass RLS, and that worker jobs set the tenant context per job. Review partitioned tables.",
+          "done_when": [
+            "Integration test fails if a business table lacks RLS",
+            "Integration tests prove worker jobs cannot read another tenant's rows"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L17-US03",
+      "title": "Pass a security audit before production",
+      "level": "essential",
+      "as_a": "security officer",
+      "i_want": "the application to be audited against common web risks and its findings fixed",
+      "so_that": "we open it to internal users and portal requesters without known vulnerabilities",
+      "acceptance": [
+        "Given the security checklist (authentication, sessions, CSRF, XSS sanitization, injection, SSRF, file upload, OAuth, rate limiting, headers), When the audit runs, Then each item has evidence and no high or critical finding remains open",
+        "Given the CI, When it runs, Then gitleaks, cargo-deny and npm audit pass with no unresolved high vulnerability",
+        "Given the production configuration, When response headers are checked, Then CSP, HSTS and cookie flags (httpOnly, Secure, SameSite) are present",
+        "Given the git history, When scanned before the public opening, Then it contains no secret and no internal reference"
+      ],
+      "spec": ["§14", "§19", "§22"],
+      "mockups": [],
+      "depends_on": [],
+      "tech": [
+        {
+          "id": "L17-US03-T01",
+          "title": "Run automated security scans against acceptance",
+          "layer": "infra",
+          "description": "Add a `just` recipe running an Apache-licensed DAST scanner against the acceptance environment (internal app, portal, API, MCP) and checking security headers; publish the report as a CI artifact.",
+          "done_when": [
+            "Recipe runs in CI; no high or critical alerts remain"
+          ]
+        },
+        {
+          "id": "L17-US03-T02",
+          "title": "Perform manual security review and fix findings",
+          "layer": "backend",
+          "description": "Review authentication, MFA, magic links, OAuth flows, presigned URLs, antivirus gating, HTML sanitization and portal abuse protection against the checklist. Each finding becomes an issue; each fix ships with a regression test.",
+          "done_when": [
+            "Audit report written in docs with status of every item",
+            "Every fix has a unit or integration regression test"
+          ]
+        },
+        {
+          "id": "L17-US03-T03",
+          "title": "Scan the git history before the public opening",
+          "layer": "infra",
+          "description": "Run gitleaks on the whole history and search for internal references (domains, names, hosts); rewrite or squash history if needed with the team's agreement.",
+          "done_when": [
+            "Full-history scan report is clean and archived"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L17-US04",
+      "title": "Certify RGAA 4 / WCAG 2.1 AA accessibility",
+      "level": "essential",
+      "as_a": "user relying on assistive technologies",
+      "i_want": "every MVP screen to meet RGAA 4 / WCAG 2.1 AA",
+      "so_that": "I can use the internal application and the portal like anyone else",
+      "acceptance": [
+        "Given every MVP screen, When axe-core runs in CI, Then there is no violation",
+        "Given the key flows (sign-in, create ticket, Kanban, assignment, heatmap, Gantt, portal request), When tested manually with keyboard only and a screen reader, Then they can be completed",
+        "Given the Gantt and the heatmap, When used with a keyboard, Then every cell and bar is reachable and an equivalent table view is available",
+        "Given the audit, When completed, Then an accessibility statement with the compliance rate is published"
+      ],
+      "spec": ["§19", "§7", "§8"],
+      "mockups": [],
+      "depends_on": [],
+      "tech": [
+        {
+          "id": "L17-US04-T01",
+          "title": "Extend axe coverage to every route in both themes",
+          "layer": "e2e",
+          "description": "Add a Playwright suite visiting every route of the app and the portal in light and dark themes and in fr and en, running axe-core with WCAG 2.1 AA rules.",
+          "done_when": [
+            "Suite passes in CI with zero violations through `just`"
+          ]
+        },
+        {
+          "id": "L17-US04-T02",
+          "title": "Run manual RGAA audit and fix issues",
+          "layer": "frontend",
+          "description": "Audit a representative sample of screens against RGAA 4 criteria with NVDA/Orca and keyboard only, fix issues in shared `projects/ui` components first, and write the accessibility statement in both languages.",
+          "done_when": [
+            "Audit grid and statement committed in docs",
+            "Each fix has a component unit test covering the accessible behavior"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L17-US05",
+      "title": "Back up data and restore it within the targets",
+      "level": "essential",
+      "as_a": "platform operator",
+      "i_want": "scheduled backups and a tested, timed restore procedure",
+      "so_that": "we lose at most 15 minutes of data and recover in under 4 hours",
+      "acceptance": [
+        "Given pgBackRest with WAL archiving, When the system runs, Then full and incremental backups are scheduled and point-in-time recovery is possible with at most 15 minutes of data loss",
+        "Given object storage, When backups run, Then files are replicated or versioned separately",
+        "Given a restore drill on a clean machine, When the procedure is followed, Then the database and files are restored consistently in under 4 hours and the measured time is recorded",
+        "Given a failed backup, When it happens, Then an alert is raised"
+      ],
+      "spec": ["§19", "§17", "§14"],
+      "mockups": [],
+      "depends_on": [],
+      "tech": [
+        {
+          "id": "L17-US05-T01",
+          "title": "Configure pgBackRest and object storage backups in compose",
+          "layer": "infra",
+          "description": "Add pgBackRest configuration with WAL archiving, full/differential/incremental schedules and retention, plus SeaweedFS versioning or replication, to the production compose profile; expose backup status metrics for alerting.",
+          "done_when": [
+            "Backups run on the acceptance environment and appear in pgBackRest info",
+            "Alert fires in a test where the repository is unavailable"
+          ]
+        },
+        {
+          "id": "L17-US05-T02",
+          "title": "Automate and time a full restore drill",
+          "layer": "infra",
+          "description": "Write a `just` restore recipe and a script that restores to a point in time on a fresh machine, then verifies consistency between attachment metadata and stored files, and records the elapsed time.",
+          "done_when": [
+            "Drill executed at least once with measured RTO under 4 h and RPO under 15 min",
+            "Consistency check script has its own tests"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L17-US06",
+      "title": "Document operations and usage of the MVP",
+      "level": "essential",
+      "as_a": "operator or new user",
+      "i_want": "installation, operations and user documentation in French and English",
+      "so_that": "I can install, run and use the tool without the development team",
+      "acceptance": [
+        "Given the operations guide, When an operator follows it on a fresh machine, Then the stack is installed with Docker Compose, configured and upgraded without help",
+        "Given the guide, When reading it, Then it covers environment variables, profiles (sso, observability), scaling, backups and restore, log retention and GDPR (erased data remains in backups until rotation)",
+        "Given the user guide, When a new internal user reads it, Then it explains the main screens: tickets, boards, workload, Gantt, portal",
+        "Given both languages, When a page exists in English, Then it exists in French"
+      ],
+      "spec": ["§14", "§17", "§19"],
+      "mockups": [],
+      "depends_on": ["L17-US05"],
+      "tech": [
+        {
+          "id": "L17-US06-T01",
+          "title": "Write the installation and operations guide",
+          "layer": "infra",
+          "description": "Write `docs/en/operations/` and `docs/fr/operations/`: prerequisites, compose installation, configuration reference generated or checked against the code, upgrades and migrations, scaling, observability, backup and restore, log retention, GDPR notes.",
+          "done_when": [
+            "A team member not involved in writing it installs the stack from the guide on a fresh VM",
+            "A CI check fails if an environment variable read by the code is missing from the reference"
+          ]
+        },
+        {
+          "id": "L17-US06-T02",
+          "title": "Write the user guide for the main screens",
+          "layer": "frontend",
+          "description": "Write the user guide in both languages with screenshots from the acceptance environment, and link it from the application's help menu.",
+          "done_when": [
+            "Guide published; help menu link covered by a component unit test"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L17-US07",
+      "title": "Run internal acceptance and release to production",
+      "level": "essential",
+      "as_a": "product owner",
+      "i_want": "an acceptance campaign on a production-like environment followed by the production release",
+      "so_that": "internal teams start using the MVP with confidence",
+      "acceptance": [
+        "Given the acceptance environment deployed from the release branch, When key users run the acceptance scenarios for each essential package, Then every scenario is passed or has an accepted workaround",
+        "Given blocking defects found, When they are fixed on the release branch, Then the affected scenarios are rerun and passed",
+        "Given all essential packages accepted and L17 targets met, When the go/no-go meeting decides go, Then the release is merged to main, tagged, deployed to production and smoke-tested",
+        "Given the production release, When it is live, Then a rollback procedure has been rehearsed"
+      ],
+      "spec": ["§20", "§19"],
+      "mockups": [],
+      "depends_on": ["L17-US01", "L17-US02", "L17-US03", "L17-US04", "L17-US05", "L17-US06"],
+      "tech": [
+        {
+          "id": "L17-US07-T01",
+          "title": "Provision acceptance and production environments",
+          "layer": "infra",
+          "description": "Provision the acceptance and production machines with the compose stack, TLS through Traefik, secrets as environment variables or mounted files, monitoring profile, and a `just` deployment recipe from a tagged image set.",
+          "done_when": [
+            "Both environments deployed from tagged images with SBOM",
+            "Smoke test recipe passes on both"
+          ]
+        },
+        {
+          "id": "L17-US07-T02",
+          "title": "Write acceptance scenarios per essential package",
+          "layer": "e2e",
+          "description": "Write the acceptance scenario catalog derived from user story acceptance criteria, automate the critical ones with Playwright, and track manual runs and results.",
+          "done_when": [
+            "Catalog covers every essential package; automated subset passes in CI"
+          ]
+        },
+        {
+          "id": "L17-US07-T03",
+          "title": "Prepare go-live checklist and rollback procedure",
+          "layer": "infra",
+          "description": "Write the go/no-go checklist (targets, audits, backups, documentation, open defects) and a rollback procedure (previous images, database restore point), and rehearse the rollback on acceptance.",
+          "done_when": [
+            "Rollback rehearsed on acceptance with recorded duration",
+            "Checklist signed off at the go/no-go meeting"
+          ]
+        }
+      ]
+    }
+  ]
+}

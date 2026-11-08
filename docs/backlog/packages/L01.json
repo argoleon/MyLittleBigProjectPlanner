@@ -1,0 +1,441 @@
+{
+  "lot": "L01",
+  "title": "Technical foundation",
+  "level": "essential",
+  "depends_on": [],
+  "summary": "Month 1 foundation that gates every other package: Rust workspace (domain, infra, api, worker, mcp), database access with versioned SQLx migrations, tenant context enforced by PostgreSQL Row-Level Security, RFC 9457 error handling, a complete reference endpoint, the OpenAPI pipeline generating the Angular client, the Angular workspace with the Material Design 3 theme and Transloco, Docker Compose deployment, a CI made only of just recipes, and basic observability. Validation milestone at end of M1: reference endpoint complete, tenant isolation tested, compose deployment working.",
+  "stories": [
+    {
+      "id": "L01-US01",
+      "title": "Rust workspace with service binaries and shared request layer",
+      "level": "essential",
+      "as_a": "developer",
+      "i_want": "a Cargo workspace with the domain, infra, api, worker and mcp crates and a shared Axum request layer",
+      "so_that": "every feature is built on the same structure and conventions from day one",
+      "acceptance": [
+        "Given a fresh clone, When I run `just build`, Then all crates compile without warnings",
+        "Given the workspace, When I inspect `crates/domain`, Then it has no dependency on SQLx, Axum or any I/O crate",
+        "Given the api binary is started, When I call `GET /api/v1/ping`, Then it answers 200 with a JSON body",
+        "Given configuration is missing a required environment variable, When a binary starts, Then it exits with a clear error naming the variable",
+        "Given a SIGTERM, When the api or worker is running, Then it finishes in-flight requests or jobs and shuts down gracefully"
+      ],
+      "spec": ["§17", "§19"],
+      "mockups": [],
+      "depends_on": [],
+      "tech": [
+        {
+          "id": "L01-US01-T01",
+          "title": "Create the Cargo workspace and crate skeletons",
+          "layer": "infra",
+          "description": "Create `backend/` as a Cargo workspace with `crates/domain`, `crates/infra`, `crates/api`, `crates/worker`, `crates/mcp`. Pin the toolchain with `rust-toolchain.toml`, share lint settings (clippy pedantic subset) at workspace level. Keep Rust simple: few generics, no custom macros.",
+          "done_when": [
+            "`cargo build --workspace` and `cargo clippy -- -D warnings` pass",
+            "`domain` depends on no I/O crate (checked by a cargo-deny ban or a CI script)",
+            "Unit test placeholder runs in each crate; integration test harness crate compiles"
+          ]
+        },
+        {
+          "id": "L01-US01-T02",
+          "title": "Implement typed configuration from environment variables",
+          "layer": "backend",
+          "description": "Add a configuration module in `infra` that reads environment variables and mounted secret files (`*_FILE`), validates them and exposes a typed struct per binary. No secret in code or default values.",
+          "done_when": [
+            "Unit tests cover missing, malformed and file-based values",
+            "Integration test starts the api with a minimal env and fails cleanly without it",
+            "Every variable is documented in `deploy/.env.example`"
+          ]
+        },
+        {
+          "id": "L01-US01-T03",
+          "title": "Build the Axum app skeleton with graceful shutdown",
+          "layer": "backend",
+          "description": "Create the Axum router in `crates/api` with `/api/v1` prefix, request ID middleware, timeouts, body limits and graceful shutdown on SIGTERM. Create the worker main loop skeleton with the same shutdown handling.",
+          "done_when": [
+            "Unit tests cover the middleware stack (request ID propagated, body limit enforced)",
+            "Integration test boots the server on a random port and calls `/api/v1/ping`",
+            "Shutdown test proves an in-flight request completes after SIGTERM"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L01-US02",
+      "title": "Database access, migrations and RLS tenant isolation",
+      "level": "essential",
+      "as_a": "developer",
+      "i_want": "a database layer where every transaction runs with the current tenant set for Row-Level Security",
+      "so_that": "no query can ever read or write another tenant's rows, even with an application bug",
+      "acceptance": [
+        "Given a request resolved to tenant A, When any query runs in its transaction, Then `SET LOCAL app.tenant_id` is applied before the first statement",
+        "Given rows of tenants A and B, When a query without a tenant filter runs in tenant A's context, Then only A's rows are returned",
+        "Given a business table without an RLS policy, When the migration checker runs in CI, Then the build fails",
+        "Given a new migration file, When the api starts or `just migrate` runs, Then migrations are applied once and in order",
+        "Given the application database role, When it tries to bypass RLS, Then it is refused because it is neither owner nor BYPASSRLS"
+      ],
+      "spec": ["§3", "§17", "§18"],
+      "mockups": [],
+      "depends_on": ["L01-US01"],
+      "tech": [
+        {
+          "id": "L01-US02-T01",
+          "title": "Set up SQLx, connection pool and versioned migrations",
+          "layer": "database",
+          "description": "Configure SQLx with compile-time checked queries (offline mode for CI), a connection pool in `infra`, and versioned migrations runnable at api startup or via `just migrate` / a dedicated command. Create separate owner and application roles; the application role has no BYPASSRLS.",
+          "done_when": [
+            "`cargo sqlx prepare --check` runs in CI",
+            "Integration test applies all migrations on an empty PostgreSQL and re-applies them idempotently",
+            "Unit tests cover the migration command argument parsing"
+          ]
+        },
+        {
+          "id": "L01-US02-T02",
+          "title": "Create tenant table, conventions and RLS policy template",
+          "layer": "database",
+          "description": "Create the `tenant` table and a reusable pattern for business tables: UUID v7 key generated by the application, `tenant_id`, `created_at`/`updated_at` timestamptz, `version`, composite indexes starting with `tenant_id`, and an RLS policy reading `current_setting('app.tenant_id')`. Add a CI check listing tables without RLS.",
+          "done_when": [
+            "Unit tests cover UUID v7 generation ordering",
+            "Integration test proves cross-tenant read, update and delete return nothing on a sample table",
+            "CI check fails on a table missing `tenant_id` or an RLS policy (except `account`)"
+          ]
+        },
+        {
+          "id": "L01-US02-T03",
+          "title": "Implement the tenant-scoped transaction in the request layer",
+          "layer": "backend",
+          "description": "Add an Axum extractor that resolves the tenant (by subdomain, or single-tenant default domain), opens a transaction and runs `SET LOCAL app.tenant_id`. Handlers only receive this scoped transaction, so a developer cannot forget the tenant context.",
+          "done_when": [
+            "Unit tests cover subdomain resolution and single-tenant mode",
+            "Integration tests on real PostgreSQL prove isolation for two tenants through HTTP calls",
+            "Unknown subdomain returns a Problem Details 404 with a stable code"
+          ]
+        },
+        {
+          "id": "L01-US02-T04",
+          "title": "Provide an integration test harness with ephemeral databases",
+          "layer": "infra",
+          "description": "Provide a shared test helper that creates an isolated PostgreSQL database per test (or per test file), applies migrations, seeds two tenants and builds an HTTP client against the app. Used by every later integration test, including the cross-tenant isolation suite.",
+          "done_when": [
+            "Helper is documented and used by at least the reference endpoint tests",
+            "Tests run in parallel without interfering",
+            "`just test-integration` runs locally and in CI against a real PostgreSQL service"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L01-US03",
+      "title": "Problem Details errors and complete reference endpoint",
+      "level": "essential",
+      "as_a": "developer",
+      "i_want": "a complete reference CRUD endpoint showing errors, validation, pagination, ETag and idempotency",
+      "so_that": "every developer, including Rust beginners, can copy a proven pattern for new endpoints",
+      "acceptance": [
+        "Given an invalid payload, When I POST to the reference endpoint, Then I get a 400 RFC 9457 Problem Details with a stable `code` and field errors",
+        "Given a resource with version 3, When I PUT with `If-Match` of version 2, Then I get 412 with code `precondition_failed`",
+        "Given the same `Idempotency-Key`, When I replay a creation, Then no duplicate is created and the first response is returned",
+        "Given more items than the page size, When I list them, Then I get a cursor and following the cursor returns the next page",
+        "Given an unexpected server error, When it occurs, Then the response is a generic 500 Problem Details and details are only logged"
+      ],
+      "spec": ["§15", "§17", "§18"],
+      "mockups": [],
+      "depends_on": ["L01-US02"],
+      "tech": [
+        {
+          "id": "L01-US03-T01",
+          "title": "Implement the RFC 9457 error type and stable code catalog",
+          "layer": "backend",
+          "description": "Create a single application error type mapped to Problem Details (`type`, `title`, `status`, `detail`, `code`, optional `errors[]`). Maintain a catalog of stable codes in one place so the client can translate them. Map SQLx and validation errors consistently.",
+          "done_when": [
+            "Unit tests cover the mapping of every error variant to status and code",
+            "Integration tests assert the JSON shape and `application/problem+json` content type",
+            "Code catalog is exported in the OpenAPI document"
+          ]
+        },
+        {
+          "id": "L01-US03-T02",
+          "title": "Build the reference resource with ETag, cursor and idempotency",
+          "layer": "backend",
+          "description": "Implement a small reference resource (e.g. `/api/v1/reference-items`) with create, read, update, delete and list: cursor pagination, field selection, `ETag`/`If-Match` based on `version`, `Idempotency-Key` storage, and Accept-Language handling for translatable labels. Document it as the template for new endpoints.",
+          "done_when": [
+            "Unit tests cover cursor encoding and idempotency key hashing",
+            "Integration tests cover every acceptance criterion against real PostgreSQL, including cross-tenant access returning 404",
+            "A short developer guide in `docs/` explains how to copy the pattern"
+          ]
+        },
+        {
+          "id": "L01-US03-T03",
+          "title": "Add generic idempotency and pagination tables",
+          "layer": "database",
+          "description": "Create the `idempotency_key` table (tenant, key, request hash, response, expiry) with RLS and a purge job hook. Provide reusable SQL helpers for keyset pagination on `(created_at, id)`.",
+          "done_when": [
+            "Unit tests cover key expiry logic",
+            "Integration tests prove keys are tenant-scoped under RLS",
+            "Indexes start with `tenant_id`"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L01-US04",
+      "title": "OpenAPI contract generation and typed Angular client",
+      "level": "essential",
+      "as_a": "developer",
+      "i_want": "the OpenAPI contract generated from the Rust code and an Angular client generated from it",
+      "so_that": "the front end and back end can never drift apart",
+      "acceptance": [
+        "Given the api is running, When I open `/api/v1/openapi.json`, Then I get the contract generated by utoipa",
+        "Given the api serves interactive docs, When I open the docs URL, Then I can browse and try the reference endpoint",
+        "Given an endpoint changes, When I run `just generate-client`, Then the client in `web/projects/ui` is regenerated",
+        "Given the committed client is outdated, When CI runs, Then the build fails with a diff"
+      ],
+      "spec": ["§15", "§17"],
+      "mockups": [],
+      "depends_on": ["L01-US03"],
+      "tech": [
+        {
+          "id": "L01-US04-T01",
+          "title": "Annotate endpoints with utoipa and serve the contract",
+          "layer": "backend",
+          "description": "Add utoipa annotations to the reference endpoint and error types, expose `openapi.json` and a self-hosted interactive documentation page (no CDN). Add a `just openapi` recipe that writes the contract to a file.",
+          "done_when": [
+            "Unit test validates the generated document against the OpenAPI schema",
+            "Integration test fetches `/api/v1/openapi.json` and checks the reference paths",
+            "Docs page loads no third-party resource"
+          ]
+        },
+        {
+          "id": "L01-US04-T02",
+          "title": "Generate the Angular API client into the ui library",
+          "layer": "frontend",
+          "description": "Choose an MIT/Apache generator and generate a typed client (services and models) into `web/projects/ui/src/lib/api`. Provide an Angular provider configuring base URL, credentials and Problem Details parsing. Components must use it, never `HttpClient` directly.",
+          "done_when": [
+            "Unit tests cover the Problem Details interceptor and error translation key mapping",
+            "Integration test (Angular test against a mocked HTTP backend generated from the contract) calls the reference endpoint",
+            "CI step regenerates the client and fails on diff; generator license passes the npm license check"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L01-US05",
+      "title": "Angular workspace with Material 3 theme, shell and i18n",
+      "level": "essential",
+      "as_a": "developer",
+      "i_want": "an Angular workspace with the app, portal and ui projects, the M3 theme, Transloco and an application shell",
+      "so_that": "every screen is built on the same components, tokens and translations",
+      "acceptance": [
+        "Given the workspace, When I run `just web-build`, Then the app, portal and ui projects build with zoneless change detection",
+        "Given the app is open, When I switch between light and dark mode, Then colors come only from `--mat-sys-*` and `--app-*` tokens",
+        "Given the user language is English, When the shell renders, Then all texts come from Transloco keys with FR and EN files",
+        "Given the browser network log, When the app loads, Then fonts and icons are served locally with no request to a third-party CDN",
+        "Given axe-core runs on the shell, When CI executes, Then there is no violation"
+      ],
+      "spec": ["§17", "§19"],
+      "mockups": ["docs/mockups/previews/01-workload-heatmap.png"],
+      "depends_on": ["L01-US04"],
+      "tech": [
+        {
+          "id": "L01-US05-T01",
+          "title": "Create the Angular workspace with app, portal and ui projects",
+          "layer": "frontend",
+          "description": "Create `web/` with `projects/app`, `projects/portal` and `projects/ui`: standalone components, signals, zoneless, OnPush by default, strict TypeScript, ESLint. Include the existing theme from `web/projects/ui/styles/` via `stylePreprocessorOptions.includePaths`.",
+          "done_when": [
+            "Lint and unit tests run with `just web-lint` and `just web-test`",
+            "Integration test boots each application in a test harness and renders the root component",
+            "npm license check passes"
+          ]
+        },
+        {
+          "id": "L01-US05-T02",
+          "title": "Set up Transloco with FR and EN and locale-aware formatting",
+          "layer": "frontend",
+          "description": "Configure Transloco with runtime-loaded FR and EN files, a missing-key check in CI, and helpers formatting dates and numbers in the user's locale and time zone; planning dates are formatted as local dates, never through UTC.",
+          "done_when": [
+            "Unit tests cover date formatting around DST and local-date handling",
+            "Integration test switches language and checks rendered texts",
+            "CI fails on a key missing in FR or EN"
+          ]
+        },
+        {
+          "id": "L01-US05-T03",
+          "title": "Build the application shell with navigation drawer",
+          "layer": "frontend",
+          "description": "Build the shell in `projects/ui`: `mat-sidenav` with `mat-nav-list` and `routerLinkActive`, top app bar with tenant switcher placeholder, theme toggle (`data-theme`), language selector, self-hosted Roboto and Material Symbols. Follow the navigation structure of the mockups without copying their HTML.",
+          "done_when": [
+            "Unit tests cover theme toggling and active route highlighting",
+            "Integration test navigates between two placeholder routes",
+            "Keyboard navigation and visible focus verified; axe-core passes"
+          ]
+        },
+        {
+          "id": "L01-US05-T04",
+          "title": "Create shared status, type and empty-state components",
+          "layer": "frontend",
+          "description": "Create `ui-status-chip`, `ui-type-chip`, `ui-empty-state` and `ui-error-state` components using `--app-status-*` and `--app-type-*` tokens, plus a loading pattern. They will be reused by every screen to handle loading, empty and error states.",
+          "done_when": [
+            "Unit tests cover each component's inputs and accessible names",
+            "Integration test renders them in light and dark mode",
+            "No hard-coded color, font, radius or shadow (stylelint rule)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L01-US06",
+      "title": "Docker Compose deployment for development and production",
+      "level": "essential",
+      "as_a": "operator",
+      "i_want": "a single Docker Compose file running the whole stack with optional profiles",
+      "so_that": "I can deploy the MVP on one machine and scale api and worker instances",
+      "acceptance": [
+        "Given a machine with Docker, When I run `docker compose up`, Then Traefik, web, api, worker, mcp, PostgreSQL, Valkey, SeaweedFS and ClamAV start healthy",
+        "Given the stack is running, When I run `docker compose up --scale api=3 --scale worker=2`, Then Traefik balances requests across instances",
+        "Given the `sso` profile, When I start it, Then Keycloak is added; Given the `observability` profile, Then Prometheus, Grafana and Loki are added",
+        "Given the stack restarts, When PostgreSQL and SeaweedFS come back, Then data is preserved on persistent volumes",
+        "Given an image is built, When CI publishes it, Then an SBOM is produced"
+      ],
+      "spec": ["§17", "§19"],
+      "mockups": [],
+      "depends_on": ["L01-US01", "L01-US05"],
+      "tech": [
+        {
+          "id": "L01-US06-T01",
+          "title": "Write multi-stage Dockerfiles for api, worker, mcp and web",
+          "layer": "infra",
+          "description": "Write minimal, non-root, multi-stage images for the Rust binaries and the Angular apps served by nginx. Generate an SBOM for each image. Migrations can run as a separate one-shot command.",
+          "done_when": [
+            "Images build in CI with SBOM artifacts",
+            "Smoke integration test starts each image and checks `/health/live`",
+            "Images run as non-root and contain no secret"
+          ]
+        },
+        {
+          "id": "L01-US06-T02",
+          "title": "Create the compose file with profiles and Traefik routing",
+          "layer": "infra",
+          "description": "Create `deploy/docker-compose.yml` with all services, persistent volumes, Traefik service discovery and TLS, profiles `sso` and `observability`, and a local development override. Configuration only through environment variables and secret files.",
+          "done_when": [
+            "`just compose-up` starts the stack and an integration smoke test hits the reference endpoint through Traefik",
+            "Scaling test with 3 api instances passes",
+            "`deploy/README.md` documents profiles and variables"
+          ]
+        },
+        {
+          "id": "L01-US06-T03",
+          "title": "Configure scheduled pgBackRest backups",
+          "layer": "infra",
+          "description": "Add pgBackRest configuration for scheduled full and incremental backups with WAL archiving (PITR, 15 min RPO target). The full restore drill belongs to L17; here the backup must run and be listable.",
+          "done_when": [
+            "Integration test in CI runs a backup and lists it",
+            "Configuration documented with retention settings",
+            "Backup credentials provided via secret files only"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L01-US07",
+      "title": "CI pipeline built only from just recipes",
+      "level": "essential",
+      "as_a": "developer",
+      "i_want": "every CI step to be a `just` recipe that GitHub Actions only calls",
+      "so_that": "I can reproduce the CI locally and the pipeline stays portable",
+      "acceptance": [
+        "Given a pull request, When CI runs, Then it executes fmt, clippy, unit and integration tests on real PostgreSQL, cargo-deny, front-end lint and tests, axe-core and gitleaks",
+        "Given a dependency under GPL is added, When CI runs, Then cargo-deny or the npm license check fails the build",
+        "Given a committed secret, When CI runs, Then gitleaks fails the build",
+        "Given I run `just ci` locally, When it finishes, Then it runs the same steps as GitHub Actions"
+      ],
+      "spec": ["§14", "§19"],
+      "mockups": [],
+      "depends_on": ["L01-US01", "L01-US05"],
+      "tech": [
+        {
+          "id": "L01-US07-T01",
+          "title": "Write the justfile with all quality recipes",
+          "layer": "infra",
+          "description": "Create a root `justfile` with recipes: fmt, lint, test-unit, test-integration, deny, web-lint, web-test, a11y, e2e, gitleaks, openapi, generate-client, ci. Recipes start required services (PostgreSQL, Valkey, S3) via compose when needed.",
+          "done_when": [
+            "`just ci` passes locally on a clean checkout",
+            "Each recipe documented with a one-line comment",
+            "Unit and integration test recipes fail on any test failure"
+          ]
+        },
+        {
+          "id": "L01-US07-T02",
+          "title": "Configure cargo-deny and npm license and audit checks",
+          "layer": "infra",
+          "description": "Configure `deny.toml` allowing only MIT, Apache-2.0, BSD, ISC, 0BSD (and OFL-1.1 for fonts), banning GPL/LGPL/AGPL/SSPL, plus vulnerability advisories. Add an equivalent npm license checker and `npm audit` step.",
+          "done_when": [
+            "A test branch adding a GPL crate fails `just deny`",
+            "Current dependency tree passes both checks",
+            "Checks run in CI on every pull request"
+          ]
+        },
+        {
+          "id": "L01-US07-T03",
+          "title": "Create GitHub Actions workflows calling just recipes",
+          "layer": "infra",
+          "description": "Create workflows for pull requests to `develop` and `main` and for release branches: service containers for PostgreSQL, Valkey and SeaweedFS, caching, and only `just` calls. Add gitleaks and image build with SBOM on release.",
+          "done_when": [
+            "Workflow runs green on a pull request",
+            "No logic in YAML beyond setup and `just` calls",
+            "Branch protection documented for `main` and `develop`"
+          ]
+        },
+        {
+          "id": "L01-US07-T04",
+          "title": "Set up Playwright and axe-core end-to-end harness",
+          "layer": "e2e",
+          "description": "Set up Playwright against the compose stack, with axe-core checks and a first test opening the shell, switching language and theme. This harness is reused by all key-flow e2e tests.",
+          "done_when": [
+            "`just e2e` runs headless in CI and locally",
+            "First e2e test passes with zero axe violations",
+            "Traces and screenshots are kept as CI artifacts on failure"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L01-US08",
+      "title": "Basic observability: health, logs, traces and metrics",
+      "level": "essential",
+      "as_a": "operator",
+      "i_want": "health endpoints, structured logs with a correlation ID, and OpenTelemetry traces and metrics",
+      "so_that": "I can monitor the services and diagnose a request across them",
+      "acceptance": [
+        "Given a running api, When I call `/health/live`, Then it answers 200; When I call `/health/ready` with PostgreSQL down, Then it answers 503",
+        "Given any request, When it is logged, Then the log line is JSON with a correlation ID also returned in a response header",
+        "Given the observability profile, When requests are made, Then traces and metrics appear in the configured backend",
+        "Given a log line, When it contains a client IP, Then it follows the configured technical log retention"
+      ],
+      "spec": ["§14", "§19"],
+      "mockups": [],
+      "depends_on": ["L01-US01"],
+      "tech": [
+        {
+          "id": "L01-US08-T01",
+          "title": "Add health endpoints for api, worker and mcp",
+          "layer": "backend",
+          "description": "Implement `/health/live` (process alive) and `/health/ready` (PostgreSQL, Valkey and S3 reachable) in every service, used by compose healthchecks and later Kubernetes probes.",
+          "done_when": [
+            "Unit tests cover readiness aggregation",
+            "Integration tests stop a dependency and assert 503",
+            "Compose healthchecks use these endpoints"
+          ]
+        },
+        {
+          "id": "L01-US08-T02",
+          "title": "Configure tracing, JSON logs and OpenTelemetry export",
+          "layer": "backend",
+          "description": "Configure `tracing` with JSON output, correlation ID propagation (incoming header or generated), OpenTelemetry traces and Prometheus-compatible metrics (request count, latency, DB pool). Export is enabled by environment variables.",
+          "done_when": [
+            "Unit tests cover correlation ID extraction and generation",
+            "Integration test asserts the response header and a JSON log line per request",
+            "Grafana dashboard JSON for the observability profile is committed"
+          ]
+        }
+      ]
+    }
+  ]
+}

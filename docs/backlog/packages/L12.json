@@ -1,0 +1,298 @@
+{
+  "lot": "L12",
+  "title": "Gantt",
+  "level": "essential",
+  "depends_on": ["L05", "L08"],
+  "summary": "An in-house, virtualized Gantt chart drawn on canvas, fed by a query (a project, a program or a portfolio through descendantsOf), grouping tickets by project with summary bars and milestones, supporting drag-and-drop editing, finish-to-start dependencies with lag (including across projects), manual scheduling with violated dependencies shown in red, day/week/month/quarter scales, keyboard navigation and an equivalent table view. A rendering prototype starts in month 3 to de-risk the 5,000-row target. SS/FF/SF dependencies, automatic scheduling, critical path, baselines and exports are out of the MVP.",
+  "stories": [
+    {
+      "id": "L12-US01",
+      "title": "Prototype the virtualized Gantt rendering",
+      "level": "essential",
+      "as_a": "development team",
+      "i_want": "a rendering prototype of the canvas Gantt with 5,000 rows, started in month 3",
+      "so_that": "we validate the rendering approach and performance before building the full feature",
+      "acceptance": [
+        "Given a synthetic dataset of 5,000 rows and 2,000 dependencies, When I scroll vertically and horizontally, Then scrolling stays smooth (no frame above 16 ms on the reference machine for typical scrolls)",
+        "Given the prototype, When the viewport changes, Then only visible rows and visible time range are drawn",
+        "Given the light and dark themes, When the prototype renders, Then all colors come from `--mat-sys-*` and `--app-gantt-*` tokens",
+        "Given the prototype is reviewed, When the team decides, Then a short ADR records the rendering choice (canvas layers, hit testing, text rendering) and measured results"
+      ],
+      "spec": ["§7", "§17", "§20", "§22"],
+      "mockups": ["docs/mockups/previews/02-gantt.png"],
+      "depends_on": [],
+      "tech": [
+        {
+          "id": "L12-US01-T01",
+          "title": "Build the canvas rendering engine prototype",
+          "layer": "frontend",
+          "description": "In web/projects/ui, prototype a Gantt rendering engine: row virtualization, time-axis viewport, layered canvases (grid, bars, dependencies, overlay), device-pixel-ratio handling and token-based colors read from CSS custom properties at runtime. Keep the engine framework-agnostic behind an Angular component wrapper.",
+          "done_when": [
+            "Unit tests cover viewport math (visible rows, date-to-pixel mapping for each scale)",
+            "Rendering works in light and dark themes without hard-coded colors"
+          ]
+        },
+        {
+          "id": "L12-US01-T02",
+          "title": "Add a 5,000-row performance benchmark",
+          "layer": "frontend",
+          "description": "Create a synthetic data generator and an automated benchmark (Playwright with performance traces) measuring first render and scroll frame times for 5,000 rows, run in CI as a non-blocking report until the feature is complete, then as a gate.",
+          "done_when": [
+            "Benchmark runs through a `just` recipe and publishes frame-time results",
+            "Results meet the smooth-scrolling target on the reference machine"
+          ]
+        },
+        {
+          "id": "L12-US01-T03",
+          "title": "Record the Gantt rendering decision in an ADR",
+          "layer": "infra",
+          "description": "Write an ADR in docs/ describing the chosen rendering architecture, hit-testing approach, accessibility layer strategy and benchmark results, with alternatives considered (SVG, DOM).",
+          "done_when": [
+            "ADR reviewed and merged with the prototype"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L12-US02",
+      "title": "View a multi-project Gantt from a query",
+      "level": "essential",
+      "as_a": "program manager",
+      "i_want": "a Gantt chart fed by a query such as project IN descendantsOf(\"PROG-MODSI\")",
+      "so_that": "I see the schedule of all projects of a program or portfolio in one view",
+      "acceptance": [
+        "Given a program with three projects, When I open its Gantt, Then tickets are grouped by project with a summary bar per project",
+        "Given a project reached through two parents, When the Gantt loads, Then it appears only once",
+        "Given dated tickets and milestones, When the Gantt renders, Then tickets show as bars with progress fill and milestones as diamonds",
+        "Given the scale selector, When I switch between day, week, month and quarter, Then the time axis and bars update accordingly",
+        "Given tickets without dates, When the Gantt loads, Then they are listed in the table part without a bar",
+        "Given I edit the query, When I apply it, Then the Gantt reloads with the matching tickets and respects my permissions"
+      ],
+      "spec": ["§7", "§6"],
+      "mockups": ["docs/mockups/previews/02-gantt.png"],
+      "depends_on": ["L12-US01"],
+      "tech": [
+        {
+          "id": "L12-US02-T01",
+          "title": "Expose a Gantt data endpoint",
+          "layer": "backend",
+          "description": "Implement `POST /api/v1/gantt` taking a query (compiled by the L06 query language) and returning a compact payload: project groups with summary dates, rows (key, title, start, due, progress, assignee, milestone flag) and dependencies, with distinct projects and permission/RLS filtering. Progress uses status categories as for aggregates.",
+          "done_when": [
+            "Unit tests for grouping and summary date computation",
+            "Integration tests on a real PostgreSQL cover descendantsOf queries, multi-parent de-duplication, confidential projects and tenant isolation",
+            "Benchmark: 5,000 rows returned under the read performance target"
+          ]
+        },
+        {
+          "id": "L12-US02-T02",
+          "title": "Render project groups, bars, milestones and scales",
+          "layer": "frontend",
+          "description": "Extend the rendering engine with project summary rows, ticket bars with progress fill, milestone diamonds, today line, and day/week/month/quarter time headers. Dates are local planning dates, never converted through UTC.",
+          "done_when": [
+            "Unit tests cover each scale's header generation and bar geometry",
+            "Visual regression snapshots for light and dark themes"
+          ]
+        },
+        {
+          "id": "L12-US02-T03",
+          "title": "Build the Gantt screen with query and scale controls",
+          "layer": "frontend",
+          "description": "Assemble the Gantt page: query field with autocompletion (reusing the L06 editor), scale mat-button-toggle-group, synchronized table part (key, title, start, end, assignee) and canvas timeline, wired to the generated client via signals with loading, empty and error states.",
+          "done_when": [
+            "Component unit tests and a screen integration test pass",
+            "axe check passes; Transloco keys only"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L12-US03",
+      "title": "Reschedule tickets by drag and drop",
+      "level": "essential",
+      "as_a": "project manager",
+      "i_want": "to move and resize bars with the mouse",
+      "so_that": "I can adjust the plan directly on the timeline",
+      "acceptance": [
+        "Given a ticket bar, When I drag it by one week, Then its start and due dates move by one week and are saved",
+        "Given a ticket bar, When I resize its end, Then only the due date changes",
+        "Given the ticket was changed by someone else meanwhile, When I drop, Then the change is refused with a version conflict message and the bar returns to the server position",
+        "Given the ticket has assignments, When I move it, Then I am offered to shift its assignment segments by the same offset, and the overload check applies",
+        "Given I lack the edit permission on a ticket, When I try to drag it, Then the bar cannot be moved"
+      ],
+      "spec": ["§7", "§8", "§5"],
+      "mockups": ["docs/mockups/previews/02-gantt.png"],
+      "depends_on": ["L12-US02"],
+      "tech": [
+        {
+          "id": "L12-US03-T01",
+          "title": "Add a reschedule endpoint with assignment shifting",
+          "layer": "backend",
+          "description": "Implement `POST /api/v1/issues/{key}/reschedule` (new start/due, If-Match, option to shift assignment segments by the same offset in working or calendar days) in one transaction, applying the overload check from L08 and writing history entries.",
+          "done_when": [
+            "Domain unit tests cover segment shifting across holidays, part-time days and DST change weeks",
+            "Integration tests on a real PostgreSQL cover version conflicts, overload rejection, permission denial and history"
+          ]
+        },
+        {
+          "id": "L12-US03-T02",
+          "title": "Implement drag, resize and hit testing on the canvas",
+          "layer": "frontend",
+          "description": "Add pointer interactions to the engine: hit testing on bars and edges, drag to move, edge drag to resize, snapping to the current scale, ghost preview, and permission-aware disabled state. On drop, call the reschedule endpoint and roll back on error.",
+          "done_when": [
+            "Unit tests cover hit testing, snapping and rollback",
+            "Screen integration test covers a successful move and a version conflict"
+          ]
+        },
+        {
+          "id": "L12-US03-T03",
+          "title": "Offer to shift assignments after a move",
+          "layer": "frontend",
+          "description": "After a move on a ticket with assignments, show a dialog proposing to shift its assignments, with the overload result if any and the \"Force overload\" option for permitted roles.",
+          "done_when": [
+            "Component unit tests and a screen integration test pass; axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L12-US04",
+      "title": "Manage finish-to-start dependencies with lag",
+      "level": "essential",
+      "as_a": "project manager",
+      "i_want": "to create finish-to-start dependencies with positive or negative lag, including across projects, and see violations",
+      "so_that": "I keep the schedule consistent while scheduling manually",
+      "acceptance": [
+        "Given two tickets, When I drag from the end of the first to the second, Then a finish-to-start dependency is created and drawn as an arrow",
+        "Given a dependency with a lag of +2 days, When the successor starts before the predecessor's end plus 2 working days, Then the dependency is shown in red and an alert lists it",
+        "Given a dependency with negative lag, When the successor starts within the allowed overlap, Then it is not flagged",
+        "Given tickets in different projects, When I create a dependency between them, Then it is accepted and shown in the multi-project Gantt",
+        "Given a dependency that would create a cycle, When I try to create it, Then it is rejected with a stable Problem Details code",
+        "Given I move a predecessor later, When the dependency becomes violated, Then nothing is moved automatically and the violation is shown"
+      ],
+      "spec": ["§7"],
+      "mockups": ["docs/mockups/previews/02-gantt.png"],
+      "depends_on": ["L12-US02"],
+      "tech": [
+        {
+          "id": "L12-US04-T01",
+          "title": "Implement dependency rules in the domain crate",
+          "layer": "domain",
+          "description": "In crates/domain, model finish-to-start dependencies with a lag in working days, detect violations given ticket dates and calendars, and detect cycles. Manual scheduling only: no automatic date propagation.",
+          "done_when": [
+            "Unit tests cover positive and negative lag, holidays inside the lag, cross-project dependencies and cycle detection",
+            "Property-based tests check cycle detection on random graphs"
+          ]
+        },
+        {
+          "id": "L12-US04-T02",
+          "title": "Store dependencies and expose dependency endpoints",
+          "layer": "backend",
+          "description": "Store finish-to-start dependencies with lag (extend `issue_link` with a lag column for the \"blocks/depends on\" link type, or a dedicated table per the agreed model) with RLS, and implement create/delete endpoints plus violation computation returned with the Gantt payload.",
+          "done_when": [
+            "Migration applies cleanly",
+            "Integration tests on a real PostgreSQL cover create, delete, cycle rejection, cross-project links, permissions and tenant isolation"
+          ]
+        },
+        {
+          "id": "L12-US04-T03",
+          "title": "Draw dependencies and create them with the mouse",
+          "layer": "frontend",
+          "description": "Draw dependency arrows with routing on the canvas, red rendering for violated ones (token-based), a violation banner listing them, and a drag-from-bar-end interaction to create a dependency with a lag dialog.",
+          "done_when": [
+            "Unit tests cover arrow routing and violation styling",
+            "Screen integration test covers creation and the violation banner; violations are conveyed by text too"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L12-US05",
+      "title": "Use the Gantt with the keyboard and a table view",
+      "level": "essential",
+      "as_a": "keyboard or screen reader user",
+      "i_want": "to navigate, read and edit the Gantt without a mouse, and to switch to an equivalent table view",
+      "so_that": "the Gantt meets RGAA 4 / WCAG 2.1 AA",
+      "acceptance": [
+        "Given focus is in the Gantt, When I press arrow keys, Then focus moves between rows and the focused row is announced with key, title, dates and assignee",
+        "Given a focused ticket, When I use the documented shortcuts, Then I can move it or change its dates by one unit of the current scale",
+        "Given a focused ticket, When I open its dependencies menu, Then I can add or remove a finish-to-start dependency without the mouse",
+        "Given I click \"Show as table\", When the table view opens, Then it lists the same rows, dates, dependencies and violations in an accessible mat-table with virtual scrolling",
+        "Given focus is visible, When I navigate, Then the focus indicator uses the theme tokens and meets contrast requirements"
+      ],
+      "spec": ["§7", "§19"],
+      "mockups": ["docs/mockups/previews/02-gantt.png"],
+      "depends_on": ["L12-US03", "L12-US04"],
+      "tech": [
+        {
+          "id": "L12-US05-T01",
+          "title": "Add the keyboard and screen reader layer over the canvas",
+          "layer": "frontend",
+          "description": "Implement an accessible grid layer (roving tabindex on virtualized DOM rows, ARIA grid roles, live region for announcements) synchronized with the canvas, with keyboard shortcuts for navigation, moving, resizing and dependency management.",
+          "done_when": [
+            "Unit tests cover keyboard handling and announcements",
+            "Screen integration test performs a move and a dependency creation with the keyboard only",
+            "axe check passes"
+          ]
+        },
+        {
+          "id": "L12-US05-T02",
+          "title": "Build the equivalent table view",
+          "layer": "frontend",
+          "description": "Add the \"Show as table\" view: mat-table with cdk-virtual-scroll-viewport listing project groups, tickets, dates, assignees, dependencies and violations, with inline date editing using the same reschedule endpoint.",
+          "done_when": [
+            "Component unit tests and a screen integration test pass",
+            "Table view handles 5,000 rows with virtual scrolling; axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L12-US06",
+      "title": "See other users' changes live on the Gantt",
+      "level": "essential",
+      "as_a": "project manager",
+      "i_want": "the Gantt to update when another user changes dates, dependencies or tickets in view",
+      "so_that": "I always plan on current data",
+      "acceptance": [
+        "Given two users view the same Gantt, When one moves a bar, Then the other sees the bar move within a few seconds without reloading",
+        "Given a ticket matching my query is created elsewhere, When the event arrives, Then it appears in the Gantt",
+        "Given I am dragging a bar, When a remote change on the same ticket arrives, Then my drop is checked against the new version and conflicts are reported"
+      ],
+      "spec": ["§7", "§12"],
+      "mockups": ["docs/mockups/previews/02-gantt.png"],
+      "depends_on": ["L12-US03"],
+      "tech": [
+        {
+          "id": "L12-US06-T01",
+          "title": "Subscribe the Gantt to real-time ticket events",
+          "layer": "frontend",
+          "description": "Use the L05 real-time stream (SSE) to apply ticket date, dependency, creation and deletion events to the Gantt store incrementally, re-rendering only affected rows, and re-evaluating violations.",
+          "done_when": [
+            "Unit tests cover event application to the store",
+            "Screen integration test with a simulated event stream passes"
+          ]
+        },
+        {
+          "id": "L12-US06-T02",
+          "title": "Publish dependency events and filter by Gantt scope",
+          "layer": "backend",
+          "description": "Emit outbox events for dependency changes and reschedules, and let the real-time endpoint filter events by the projects in the subscriber's Gantt scope with permission checks.",
+          "done_when": [
+            "Unit tests for scope filtering",
+            "Integration tests on a real PostgreSQL and Valkey cover event emission, filtering and permission checks across two API instances"
+          ]
+        },
+        {
+          "id": "L12-US06-T03",
+          "title": "Test the Gantt flow end to end",
+          "layer": "e2e",
+          "description": "Playwright scenarios: open a program Gantt, switch scales, move a bar and shift its assignments, create a dependency and see the violation, navigate and edit with the keyboard, open the table view, and observe a change made in a second browser context.",
+          "done_when": [
+            "Scenarios pass in CI through the `just` e2e recipe",
+            "axe checks pass on the Gantt and table views"
+          ]
+        }
+      ]
+    }
+  ]
+}

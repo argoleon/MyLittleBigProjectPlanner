@@ -1,0 +1,334 @@
+{
+  "lot": "L07",
+  "title": "Resources and capacity",
+  "level": "essential",
+  "depends_on": ["L02"],
+  "summary": "Introduces resources as an entity separate from user accounts (persons with or without an account, generic resources), teams, historized weekly capacity patterns, calendars with public holidays (tenant, site/country, resource) and absences. It delivers the capacity-of-a-day rule (weekly pattern minus site public holidays minus absences) in crates/domain, which the workload engine (L08) and recurrences (L11) build on. Equipment, rooms, skills and absence approval are out of the MVP.",
+  "stories": [
+    {
+      "id": "L07-US01",
+      "title": "Manage resources: persons and generic resources",
+      "level": "essential",
+      "as_a": "tenant admin or resource manager",
+      "i_want": "to create, edit and deactivate resources that are either persons (linked to an account or not) or generic roles",
+      "so_that": "I can plan subcontractors who never log in and unnamed roles such as \"Rust developer\" alongside named people",
+      "acceptance": [
+        "Given I am a tenant admin, When I create a person resource linked to an existing member account, Then the resource shows the member's name and the link to the account",
+        "Given I am a tenant admin, When I create a person resource without an account, Then it is saved with its display name and no login is possible for it",
+        "Given I am a tenant admin, When I create a generic resource named \"Rust developer\", Then it is listed with the generic type and can later be assigned like any resource",
+        "Given an account is already linked to a person resource in this tenant, When I try to link it to a second resource, Then the API rejects the request with a stable Problem Details code",
+        "Given two tenants, When a user of tenant A lists resources, Then no resource of tenant B is returned"
+      ],
+      "spec": ["§8", "§18"],
+      "mockups": ["docs/mockups/previews/20-resource.png"],
+      "depends_on": [],
+      "tech": [
+        {
+          "id": "L07-US01-T01",
+          "title": "Create resource tables and migrations with RLS",
+          "layer": "database",
+          "description": "Add the `resource` table (tenant_id, kind: person | generic, extensible type column, display_name, optional account_id, site/calendar reference placeholder, active flag, version, timestamps) with UUID v7 keys. Enable Row-Level Security with the standard tenant policy and a unique constraint on (tenant_id, account_id) where account_id is not null. Keep the kind column extensible for equipment and rooms after the MVP.",
+          "done_when": [
+            "SQLx migration applies and rolls forward cleanly on an empty database",
+            "RLS policy denies cross-tenant reads and writes, proven by an integration test on a real PostgreSQL",
+            "Unique account-per-tenant constraint is covered by an integration test"
+          ]
+        },
+        {
+          "id": "L07-US01-T02",
+          "title": "Expose resource CRUD endpoints in the REST API",
+          "layer": "backend",
+          "description": "Implement `/api/v1/resources` (list with cursor pagination and filters by kind/team/active, get, create, update with If-Match, deactivate) in crates/api with repository code in crates/infra. Validation rules (person vs generic, account must be an internal member of the tenant) live in crates/domain. Errors are RFC 9457 Problem Details with stable codes; the OpenAPI contract is generated with utoipa.",
+          "done_when": [
+            "Domain validation rules have unit tests",
+            "Integration tests on a real PostgreSQL cover create/read/update/deactivate, ETag conflicts, permission denial and cross-tenant isolation",
+            "Endpoints appear in the generated OpenAPI document and the Angular client is regenerated"
+          ]
+        },
+        {
+          "id": "L07-US01-T03",
+          "title": "Build the resource list and resource form screens",
+          "layer": "frontend",
+          "description": "In web/projects/app, add a resource list (mat-table, filters with mat-chip-listbox) and a create/edit dialog (MatDialog, outline mat-form-field, mat-select for the linked account) using the generated API client through a signal-based store. All labels are Transloco keys (fr, en). Handle loading, empty and error states.",
+          "done_when": [
+            "Component and store unit tests pass",
+            "Integration test of the screen against the generated client (mocked HTTP layer) covers list, create and error display",
+            "axe check reports no violation; no hard-coded color, font or radius"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L07-US02",
+      "title": "Group resources into teams",
+      "level": "essential",
+      "as_a": "resource manager",
+      "i_want": "to create teams and add or remove resources in them",
+      "so_that": "I can filter views and availability by team while assignments still target individual resources",
+      "acceptance": [
+        "Given I am a resource manager, When I create the team \"Platform\" and add three resources, Then the team lists these three members",
+        "Given a resource belongs to two teams, When I filter the resource list by either team, Then the resource appears in both results",
+        "Given I remove a resource from a team, When I open the team, Then the resource is no longer listed and its assignments are unchanged",
+        "Given a team, When someone tries to create an assignment targeting the team itself, Then the API rejects it because assignments always target a resource"
+      ],
+      "spec": ["§8"],
+      "mockups": ["docs/mockups/previews/20-resource.png"],
+      "depends_on": ["L07-US01"],
+      "tech": [
+        {
+          "id": "L07-US02-T01",
+          "title": "Create team and team_member tables with RLS",
+          "layer": "database",
+          "description": "Add `team` (translatable name as JSONB {fr, en}, description) and `team_member` (team_id, resource_id) tables with tenant_id, RLS policies and indexes starting with tenant_id. A resource may belong to several teams.",
+          "done_when": [
+            "Migration applies cleanly",
+            "Integration tests prove RLS isolation and cascade behaviour when a team is deleted"
+          ]
+        },
+        {
+          "id": "L07-US02-T02",
+          "title": "Expose team and membership endpoints",
+          "layer": "backend",
+          "description": "Implement `/api/v1/teams` CRUD and `/api/v1/teams/{id}/members` add/remove in crates/api, with labels returned according to Accept-Language. Add a `team` filter to the resource list endpoint.",
+          "done_when": [
+            "Unit tests for label fallback and validation",
+            "Integration tests on a real PostgreSQL cover CRUD, membership changes, permissions and cross-tenant isolation",
+            "OpenAPI updated and client regenerated"
+          ]
+        },
+        {
+          "id": "L07-US02-T03",
+          "title": "Build the team management screen",
+          "layer": "frontend",
+          "description": "Add a team list and a team detail page showing members with add/remove actions (mat-table, MatDialog with resource autocomplete). Wire it to the generated client; Transloco keys only.",
+          "done_when": [
+            "Component unit tests and a screen integration test pass",
+            "Keyboard-only add/remove works; axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L07-US03",
+      "title": "Define historized weekly capacity patterns",
+      "level": "essential",
+      "as_a": "resource manager",
+      "i_want": "to define a resource's hours per weekday with an effective date, defaulting to the tenant capacity",
+      "so_that": "part-time work and changes such as switching to 80% on 1 March are reflected in the workload",
+      "acceptance": [
+        "Given a tenant default of 7 h × 5 days, When I create a resource without a pattern, Then its capacity is 7 h Monday to Friday and 0 h on weekends",
+        "Given a resource with 35 h/week since 1 January, When I add a period from 1 March with Wednesday at 0 h, Then days before 1 March keep 7 h on Wednesday and days from 1 March have 0 h",
+        "Given a pattern with Friday at 3.5 h, When the capacity of a Friday is computed, Then it returns 3 h 30 (210 minutes)",
+        "Given two periods with the same effective date, When I save the second one, Then the API rejects it with a stable Problem Details code",
+        "Given capacity periods exist, When I view the resource page, Then the table lists each period with its weekday hours and weekly total"
+      ],
+      "spec": ["§8", "§18"],
+      "mockups": ["docs/mockups/previews/20-resource.png"],
+      "depends_on": ["L07-US01"],
+      "tech": [
+        {
+          "id": "L07-US03-T01",
+          "title": "Implement capacity pattern rules in the domain crate",
+          "layer": "domain",
+          "description": "In crates/domain, model a weekly pattern (minutes per ISO weekday) with an effective date, and a function returning the pattern applicable to a local date (tenant default when none). No I/O. Durations are stored in minutes to avoid rounding issues.",
+          "done_when": [
+            "Unit tests cover the tenant default, period switches on the effective date and part-time patterns (e.g. 80%, 3.5 h Friday)",
+            "Property-based tests check that exactly one pattern applies to any date"
+          ]
+        },
+        {
+          "id": "L07-US03-T02",
+          "title": "Store capacity patterns and tenant default capacity",
+          "layer": "database",
+          "description": "Add `capacity_pattern` (resource_id, effective_from date, minutes per weekday, version) with a unique (tenant_id, resource_id, effective_from) constraint and RLS. Add the default weekly capacity and overload tolerance settings to the tenant settings if not already present from L02.",
+          "done_when": [
+            "Migration applies cleanly",
+            "Integration tests cover the uniqueness constraint and RLS isolation"
+          ]
+        },
+        {
+          "id": "L07-US03-T03",
+          "title": "Expose capacity pattern endpoints",
+          "layer": "backend",
+          "description": "Implement `/api/v1/resources/{id}/capacity-patterns` list/create/update/delete. Any change emits an outbox event (`resource.capacity_changed`) so that the load engine (L08) can recompute impacted days.",
+          "done_when": [
+            "Unit tests for request validation",
+            "Integration tests on a real PostgreSQL cover CRUD, duplicate effective date, outbox event written in the same transaction, and cross-tenant isolation"
+          ]
+        },
+        {
+          "id": "L07-US03-T04",
+          "title": "Build the weekly capacity card on the resource page",
+          "layer": "frontend",
+          "description": "On the resource page \"Capacity and calendar\" tab, show the historized periods in a mat-table (weekday hours, weekly total) and a \"New period\" dialog with one field per weekday. Hours are formatted with the user's locale. Transloco keys only.",
+          "done_when": [
+            "Component unit tests and a screen integration test pass",
+            "axe check passes; numbers formatted per locale"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L07-US04",
+      "title": "Manage calendars and public holidays",
+      "level": "essential",
+      "as_a": "tenant admin",
+      "i_want": "a tenant calendar, site or country calendars with preloaded public holidays, and resource calendars attached to a site",
+      "so_that": "public holidays automatically reduce capacity for the people working at each site",
+      "acceptance": [
+        "Given a new tenant, When I open calendars, Then a tenant calendar exists with default working days and a France calendar is available with its public holidays preloaded",
+        "Given the France calendar, When I add a custom exception day or remove a holiday, Then the change is saved for this tenant only",
+        "Given a resource attached to the \"Paris\" site using the France calendar, When I view December 2026, Then 25 December is shown as a public holiday",
+        "Given a resource calendar exception on a date, When capacity is computed for that date, Then the exception is applied on top of the site calendar",
+        "Given planning dates are local dates, When a user in another time zone views a holiday, Then it is shown on the same calendar day"
+      ],
+      "spec": ["§7", "§8", "§18"],
+      "mockups": ["docs/mockups/previews/20-resource.png"],
+      "depends_on": ["L07-US01"],
+      "tech": [
+        {
+          "id": "L07-US04-T01",
+          "title": "Model calendars and exceptions in the database",
+          "layer": "database",
+          "description": "Add `calendar` (kind: tenant | site | resource, parent calendar, working weekdays, translatable name) and `calendar_exception` (calendar_id, local date, kind: holiday | working | non_working, translatable label) with RLS. Add the site reference on `resource`.",
+          "done_when": [
+            "Migration applies cleanly; dates stored as `date`, never timestamptz",
+            "Integration tests cover RLS isolation and calendar inheritance references"
+          ]
+        },
+        {
+          "id": "L07-US04-T02",
+          "title": "Compute working days and holidays in the domain crate",
+          "layer": "domain",
+          "description": "In crates/domain, resolve whether a local date is a working day for a resource by combining tenant, site and resource calendars (resource exceptions override site, site overrides tenant). Include a French public holiday generator (fixed dates plus Easter-based holidays) used for preloading.",
+          "done_when": [
+            "Unit tests cover override precedence, Easter Monday, Ascension and Whit Monday for several years",
+            "Property-based tests check that resolution never depends on the time zone"
+          ]
+        },
+        {
+          "id": "L07-US04-T03",
+          "title": "Preload French holidays and expose calendar endpoints",
+          "layer": "backend",
+          "description": "Seed the France calendar per tenant (current year plus following years, refreshed by a yearly job) and implement `/api/v1/calendars` and `/api/v1/calendars/{id}/exceptions` CRUD. Changes emit an outbox event so impacted resource loads are recomputed in L08.",
+          "done_when": [
+            "Unit tests for seeding logic",
+            "Integration tests on a real PostgreSQL cover seeding, CRUD, outbox events, permissions and tenant isolation"
+          ]
+        },
+        {
+          "id": "L07-US04-T04",
+          "title": "Build calendar administration and resource calendar view",
+          "layer": "frontend",
+          "description": "Add an admin screen listing calendars and their exceptions, and the month calendar on the resource page showing holidays, absences and non-working days with a legend using `--app-*` tokens. The month grid is keyboard navigable with accessible names per day.",
+          "done_when": [
+            "Component unit tests and a screen integration test pass",
+            "Keyboard navigation of the month grid works; axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L07-US05",
+      "title": "Record absences",
+      "level": "essential",
+      "as_a": "team member or their manager",
+      "i_want": "to declare leave, training or half-day absences",
+      "so_that": "my capacity drops on those days and planners see that I am unavailable",
+      "acceptance": [
+        "Given I am a person resource linked to my account, When I declare a full-day leave on 4 December, Then my capacity on 4 December is 0",
+        "Given I declare a half-day training on a 7 h day, When capacity is computed, Then it is 3 h 30 for that day",
+        "Given I am the manager of a resource, When I declare an absence for them, Then it is saved with me recorded as the declarer",
+        "Given I am neither the person nor allowed to manage the resource, When I try to declare an absence for them, Then the API returns a permission error",
+        "Given an absence is created, changed or deleted, When the change is committed, Then an outbox event is emitted for load recomputation"
+      ],
+      "spec": ["§8"],
+      "mockups": ["docs/mockups/previews/20-resource.png"],
+      "depends_on": ["L07-US03", "L07-US04"],
+      "tech": [
+        {
+          "id": "L07-US05-T01",
+          "title": "Create the absence table with RLS",
+          "layer": "database",
+          "description": "Add `absence` (resource_id, kind: leave | training | other, start and end local dates, half-day flags for first/last day, comment, declared_by, version) with RLS and an index on (tenant_id, resource_id, start_date).",
+          "done_when": [
+            "Migration applies cleanly",
+            "Integration tests cover RLS isolation and date range checks"
+          ]
+        },
+        {
+          "id": "L07-US05-T02",
+          "title": "Expose absence endpoints with permission checks",
+          "layer": "backend",
+          "description": "Implement `/api/v1/resources/{id}/absences` CRUD. A person can manage their own absences; managers need the corresponding permission. Emit `resource.absence_changed` outbox events in the same transaction.",
+          "done_when": [
+            "Unit tests for validation (end before start, half-day on single day)",
+            "Integration tests on a real PostgreSQL cover self vs manager declaration, permission denial, outbox event and tenant isolation"
+          ]
+        },
+        {
+          "id": "L07-US05-T03",
+          "title": "Build the absence list and declaration dialog",
+          "layer": "frontend",
+          "description": "Add the \"Absences\" card on the resource page and a \"Declare an absence\" dialog (date range picker, half-day toggles, kind select). Dates are local dates formatted with the user's locale. Show conflict badges once L08 provides them.",
+          "done_when": [
+            "Component unit tests and a screen integration test pass",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L07-US06",
+      "title": "Compute and display the capacity of each day",
+      "level": "essential",
+      "as_a": "planner",
+      "i_want": "to see the actual capacity of a resource for any day or period",
+      "so_that": "I know how many hours a person really has, after public holidays and absences",
+      "acceptance": [
+        "Given a 7 h pattern, a public holiday on 25 December and a leave on 28 December, When I request capacity from 21 to 31 December, Then 25 and 28 December are 0 h and other working days are 7 h",
+        "Given a part-time pattern with Wednesday at 0 h, When I request capacity for a week, Then Wednesday is 0 h",
+        "Given a half-day absence on a 3.5 h Friday, When capacity is computed, Then it is 1 h 45",
+        "Given a capacity request across a pattern change date, When it is computed, Then each day uses the pattern effective on that day",
+        "Given 200 resources over 3 months, When capacity is requested in bulk, Then the API answers within the read performance target (p95 < 200 ms)"
+      ],
+      "spec": ["§8", "§19"],
+      "mockups": ["docs/mockups/previews/20-resource.png"],
+      "depends_on": ["L07-US03", "L07-US04", "L07-US05"],
+      "tech": [
+        {
+          "id": "L07-US06-T01",
+          "title": "Implement the day-capacity function in the domain crate",
+          "layer": "domain",
+          "description": "In crates/domain, implement `capacity(resource, date) = weekly pattern − site public holidays − absences` in minutes, plus a range variant. Inputs are plain structs loaded by infra; no I/O. This function is the single source used by L08 and L11.",
+          "done_when": [
+            "Unit tests cover part-time capacity, public holidays, full and half-day absences, and pattern switches",
+            "Property-based tests check capacity is never negative and never exceeds the pattern",
+            "Tests across DST change weekends prove local dates are unaffected"
+          ]
+        },
+        {
+          "id": "L07-US06-T02",
+          "title": "Expose a bulk capacity endpoint",
+          "layer": "backend",
+          "description": "Implement `GET /api/v1/capacity?resources=…&team=…&from=…&to=…` returning minutes per resource per day, loading patterns, calendars and absences in a few set-based queries. Used by the heatmap and availability search.",
+          "done_when": [
+            "Unit tests for parameter validation and range limits",
+            "Integration tests on a real PostgreSQL cover holidays, absences, pattern switches and tenant isolation",
+            "A benchmark test shows 200 resources × 3 months under 200 ms on the reference dataset"
+          ]
+        },
+        {
+          "id": "L07-US06-T03",
+          "title": "Test the resource capacity flow end to end",
+          "layer": "e2e",
+          "description": "Playwright scenario: create a person resource, set a part-time pattern, attach it to the Paris site, declare an absence, and check the resource calendar and capacity values shown.",
+          "done_when": [
+            "Playwright test passes in CI through the `just` e2e recipe",
+            "axe check on the resource page passes during the scenario"
+          ]
+        }
+      ]
+    }
+  ]
+}
