@@ -1,0 +1,463 @@
+{
+  "lot": "L04",
+  "title": "Project configuration",
+  "level": "essential",
+  "depends_on": ["L01"],
+  "summary": "A single, shareable project configuration replaces Jira's schemes: issue types and their hierarchy, system and custom fields with visible/required rules per type and workflow step, one workflow per issue type (statuses in three categories, table-based transitions with conditions, validators, post-functions and optional transition screens, read-only graph), creation/view/transition screens and notification rules. All labels are translatable JSONB with a fallback language. Changing a shared configuration shows the affected projects; a project can detach by duplicating; workflow or type changes open a mapping wizard that migrates tickets in the background. The workflow rule engine lives in `crates/domain` and is executed on tickets in L05; assigning a configuration to projects requires L03 nodes.",
+  "stories": [
+    {
+      "id": "L04-US01",
+      "title": "Create a shareable project configuration and assign it",
+      "level": "essential",
+      "as_a": "configuration admin",
+      "i_want": "to create a project configuration, assign it to several projects and see which projects share it",
+      "so_that": "projects that work the same way are configured once",
+      "acceptance": [
+        "Given I am configuration admin, When I create configuration \"Software development\", Then it is created with default issue types, fields and a standard workflow",
+        "Given a configuration used by 6 projects, When I open it, Then a chip shows \"Shared by 6 projects\" and the Projects tab lists them",
+        "Given I edit a shared configuration, When I publish my changes, Then I first see the list of affected projects and must confirm",
+        "Given project PLAT uses a shared configuration, When I detach PLAT, Then its configuration is duplicated and further changes to the original no longer affect it",
+        "Given a tenant admin or configuration admin, When they manage configurations, Then it is allowed; Given any other user, Then the API answers 403"
+      ],
+      "spec": ["§5", "§3"],
+      "mockups": ["docs/mockups/previews/11-workflows.png"],
+      "depends_on": [],
+      "tech": [
+        {
+          "id": "L04-US01-T01",
+          "title": "Create project_config tables with draft and published versions",
+          "layer": "database",
+          "description": "Create `project_config` (translatable name, published version, draft changes) and the project-to-configuration link on project nodes, with RLS. The mockup shows an unpublished draft with a change counter and a Publish action: store edits as a draft and apply them atomically on publish.",
+          "done_when": [
+            "Integration tests verify RLS isolation and that a project has exactly one configuration",
+            "Integration tests verify publish applies the draft atomically",
+            "Unit tests cover draft change counting"
+          ]
+        },
+        {
+          "id": "L04-US01-T02",
+          "title": "Implement configuration CRUD, assign, duplicate and publish",
+          "layer": "backend",
+          "description": "Add endpoints to create, list, read, duplicate (detach), assign to a project, preview publish impact (affected projects, whether a migration is needed) and publish. Seed a default configuration per tenant. Restricted to tenant and configuration admins.",
+          "done_when": [
+            "Unit tests cover impact computation",
+            "Integration tests cover sharing, detach by duplication, publish with impact list and 403 for regular users",
+            "Cross-tenant test proves configurations never leak"
+          ]
+        },
+        {
+          "id": "L04-US01-T03",
+          "title": "Build the translatable label input component",
+          "layer": "frontend",
+          "description": "Create a shared `ui-translatable-input` in `projects/ui` editing a `{fr, en}` JSONB label side by side (as in the custom fields mockup), with the fallback language required, and a pipe displaying a label in the user's language with fallback.",
+          "done_when": [
+            "Unit tests cover fallback resolution and validation",
+            "Integration tests render the input inside a reactive form",
+            "axe-core passes; each language field is labelled"
+          ]
+        },
+        {
+          "id": "L04-US01-T04",
+          "title": "Build the configurations list and configuration shell screen",
+          "layer": "frontend",
+          "description": "Build the \"Project configurations\" admin tab and the configuration page: header with sharing and draft chips, Duplicate and Publish buttons, routed tabs (Types, Fields, Workflows, Screens, Notifications, Projects) with `mat-tab-nav-bar`, and the publish confirmation dialog listing affected projects.",
+          "done_when": [
+            "Unit tests cover the publish dialog states",
+            "Integration tests render the page with mocked client",
+            "axe-core passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L04-US02",
+      "title": "Define issue types and their hierarchy",
+      "level": "essential",
+      "as_a": "configuration admin",
+      "i_want": "to define issue types such as Epic, Story, Task, Sub-task, Bug with their parent-child hierarchy",
+      "so_that": "tickets are structured to match how each team breaks down work",
+      "acceptance": [
+        "Given a configuration, When I add type \"Bug\" with an icon, FR/EN labels and stable identifier `bug`, Then it is available to the configuration's projects",
+        "Given types Epic > Story > Task > Sub-task, When I set Story's allowed parent to Epic, Then the hierarchy depth is defined by these rules",
+        "Given a hierarchy, When I try to make a type its own ancestor, Then it is refused",
+        "Given a type is used by tickets, When I remove it, Then publishing requires the mapping wizard to choose a replacement type",
+        "Given the identifier `bug` already exists in the configuration, When I add another `bug`, Then it is refused"
+      ],
+      "spec": ["§5"],
+      "mockups": ["docs/mockups/previews/11-workflows.png"],
+      "depends_on": ["L04-US01"],
+      "tech": [
+        {
+          "id": "L04-US02-T01",
+          "title": "Create issue_type table and hierarchy rules",
+          "layer": "database",
+          "description": "Create `issue_type` (configuration, stable identifier, translatable label, icon, color token key, allowed parent types, workflow reference, is_subtask flag) with RLS and uniqueness of identifiers per configuration.",
+          "done_when": [
+            "Integration tests verify uniqueness and RLS",
+            "Unit tests in the domain crate cover hierarchy cycle detection",
+            "Default types seeded for new configurations"
+          ]
+        },
+        {
+          "id": "L04-US02-T02",
+          "title": "Implement issue type endpoints in the configuration draft",
+          "layer": "backend",
+          "description": "Add endpoints to list, add, update, reorder and remove issue types within a configuration draft, validating the hierarchy and flagging removals that require ticket mapping at publish.",
+          "done_when": [
+            "Unit tests cover validation errors and their Problem Details codes",
+            "Integration tests cover the acceptance criteria",
+            "OpenAPI and client regenerated"
+          ]
+        },
+        {
+          "id": "L04-US02-T03",
+          "title": "Build the Types tab",
+          "layer": "frontend",
+          "description": "Build the Types tab: list with `ui-type-chip`, edit panel with translatable label, icon picker (Material Symbols), parent types multi-select and assigned workflow. Reorder with CDK drag and drop and keyboard alternative.",
+          "done_when": [
+            "Unit tests cover the form and reorder logic",
+            "Integration tests render the tab with mocked client",
+            "axe-core passes; reorder works with the keyboard"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L04-US03",
+      "title": "Define custom fields with rules per type and step",
+      "level": "essential",
+      "as_a": "configuration admin",
+      "i_want": "to create custom fields and set whether they are hidden, visible or required per issue type and workflow step",
+      "so_that": "each ticket captures exactly the information the team needs at each stage",
+      "acceptance": [
+        "Given a configuration, When I create field \"Application\" of type single select with values Directory, Mail, ERP and FR/EN labels, Then it is available on the selected types",
+        "Given the MVP field types (short text, rich long text, number, checkbox, date, date-time, single select, multi-select, cascading select, users, group, labels, URL, link to a ticket), When I create a field, Then each type is offered with its specific options",
+        "Given the rules grid for \"Application\", When I set Bug to Required at Creation and Task to Hidden, Then the rule is stored per type and per workflow step",
+        "Given system fields such as Points and Remaining work, When I view the fields list, Then they are marked System and cannot be deleted",
+        "Given a list value used by tickets, When I remove it, Then it is deactivated rather than deleted so existing tickets keep their value"
+      ],
+      "spec": ["§5"],
+      "mockups": ["docs/mockups/previews/12-custom-fields.png"],
+      "depends_on": ["L04-US02", "L04-US04"],
+      "tech": [
+        {
+          "id": "L04-US03-T01",
+          "title": "Create field_def and field_rule tables",
+          "layer": "database",
+          "description": "Create `field_def` (configuration, stable identifier, translatable label, type, options JSONB including list values with stable ids and translations, cascading parents, system flag) and `field_rule` (field, issue type, workflow status or creation, mode hidden/visible/required) with RLS.",
+          "done_when": [
+            "Integration tests verify RLS and uniqueness of identifiers",
+            "Integration test checks deactivated list values remain resolvable",
+            "Unit tests cover options validation per field type"
+          ]
+        },
+        {
+          "id": "L04-US03-T02",
+          "title": "Implement field types and rule evaluation in the domain",
+          "layer": "domain",
+          "description": "Implement in `crates/domain` the field type catalog with value validation (including cascading select and link to a ticket) and the rule evaluator returning hidden/visible/required for a (type, step) pair. Used by ticket validation in L05 and by portal forms in L13.",
+          "done_when": [
+            "Unit tests cover value validation for every MVP field type",
+            "Unit tests cover rule resolution including defaults",
+            "Integration coverage through T03 endpoints"
+          ]
+        },
+        {
+          "id": "L04-US03-T03",
+          "title": "Implement custom field endpoints",
+          "layer": "backend",
+          "description": "Add endpoints to list, create, update, deactivate list values and delete custom fields and to set rules within a configuration draft. System fields are read-only except rules.",
+          "done_when": [
+            "Unit tests cover system field protection",
+            "Integration tests cover the acceptance criteria and cross-tenant isolation",
+            "OpenAPI and client regenerated"
+          ]
+        },
+        {
+          "id": "L04-US03-T04",
+          "title": "Build the Fields tab with the rules grid",
+          "layer": "frontend",
+          "description": "Build the Fields tab: `mat-table` of fields (icon, label, identifier, type, issue types, languages, System chip), the edit side panel (translatable label, type select, values editor with drag reorder and FR/EN values, rules grid where each cell cycles Hidden > Visible > Required) and the New field action.",
+          "done_when": [
+            "Unit tests cover the rules grid cycling and values editor",
+            "Integration tests render the tab with mocked client",
+            "axe-core passes; rules grid cells are buttons with accessible names"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L04-US04",
+      "title": "Define workflows with statuses and transitions",
+      "level": "essential",
+      "as_a": "configuration admin",
+      "i_want": "to define one workflow per issue type with statuses, categories and transitions in tables, and see a read-only graph",
+      "so_that": "each type of work follows its own lifecycle while reports stay consistent",
+      "acceptance": [
+        "Given a workflow, When I add status \"In review\" with identifier `in_review`, category In progress, FR/EN labels and a portal label, Then it appears in the statuses table",
+        "Given every status, When I save, Then it belongs to exactly one category among To do, In progress and Done",
+        "Given statuses, When I add transition \"Start\" from To do to In progress, or from all statuses, Then it appears in the transitions table",
+        "Given the workflow, When I view it, Then a read-only graph shows statuses colored by category and transitions as labelled arrows",
+        "Given a workflow with no initial status or an unreachable status, When I publish, Then publishing is refused with an explicit error"
+      ],
+      "spec": ["§5", "§11"],
+      "mockups": ["docs/mockups/previews/11-workflows.png"],
+      "depends_on": ["L04-US01"],
+      "tech": [
+        {
+          "id": "L04-US04-T01",
+          "title": "Create workflow, workflow_status and workflow_transition tables",
+          "layer": "database",
+          "description": "Create `workflow`, `workflow_status` (stable identifier, translatable label, category, public portal label, order, initial flag) and `workflow_transition` (name, from status or any, to status, conditions, validators, post-functions as JSONB, optional screen) with RLS.",
+          "done_when": [
+            "Integration tests verify RLS and identifier uniqueness per workflow",
+            "Unit tests cover JSONB schema validation of transition rules",
+            "Default standard workflow seeded"
+          ]
+        },
+        {
+          "id": "L04-US04-T02",
+          "title": "Implement workflow structure validation in the domain",
+          "layer": "domain",
+          "description": "Implement in `crates/domain` the workflow model and validation: one initial status, every status reachable, valid categories, no duplicate transitions, and the function listing available transitions from a status.",
+          "done_when": [
+            "Unit tests cover valid and invalid workflows",
+            "Unit tests cover \"from all statuses\" transitions",
+            "Integration coverage through T03 endpoints"
+          ]
+        },
+        {
+          "id": "L04-US04-T03",
+          "title": "Implement workflow endpoints",
+          "layer": "backend",
+          "description": "Add endpoints to create, duplicate and edit workflows, statuses and transitions within a configuration draft, and to assign a workflow to issue types. Publishing validates every workflow.",
+          "done_when": [
+            "Unit tests cover error mapping",
+            "Integration tests cover the acceptance criteria and publish refusal",
+            "OpenAPI and client regenerated"
+          ]
+        },
+        {
+          "id": "L04-US04-T04",
+          "title": "Build the Workflows tab with tables and read-only graph",
+          "layer": "frontend",
+          "description": "Build the Workflows tab: list of workflows by issue type, statuses table (FR/EN label, identifier, category chip, portal label), transitions table, add/edit dialogs, and a read-only SVG graph using `--app-status-*` tokens with an accessible text alternative (the tables).",
+          "done_when": [
+            "Unit tests cover graph layout input and dialogs",
+            "Integration tests render the tab with mocked client",
+            "axe-core passes; graph has an accessible name and is not the only source of information"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L04-US05",
+      "title": "Configure transition conditions, validators and post-functions",
+      "level": "essential",
+      "as_a": "configuration admin",
+      "i_want": "to restrict transitions to roles or groups, require fields, run post-functions and show a transition screen",
+      "so_that": "the workflow enforces our process rules automatically",
+      "acceptance": [
+        "Given transition \"Validate\" restricted to role Reviewer, When a user without that role on the project requests it, Then it is not offered and the API refuses it",
+        "Given transition \"Send to review\" with validator \"Remaining work required\", When the field is empty, Then the transition is refused with the field named",
+        "Given transition \"Start\" with post-function \"Assign to current user\", When it runs, Then the ticket is assigned to the user",
+        "Given post-functions set or clear a field and add a comment, When the transition runs, Then they are applied in order in the same transaction",
+        "Given transition \"Reject\" with a transition screen asking for a rejection reason, When the user triggers it, Then the screen is shown before the transition"
+      ],
+      "spec": ["§5"],
+      "mockups": ["docs/mockups/previews/11-workflows.png"],
+      "depends_on": ["L04-US04", "L04-US03"],
+      "tech": [
+        {
+          "id": "L04-US05-T01",
+          "title": "Implement the transition rule engine in the domain",
+          "layer": "domain",
+          "description": "Implement in `crates/domain` conditions (roles, groups), validators (required fields) and post-functions (assign, set field, clear field, add comment) as data-driven rules, with a pure function evaluating a transition request against a ticket snapshot and actor context and returning either errors or the list of changes to apply. Executed on tickets in L05.",
+          "done_when": [
+            "Unit tests cover every condition, validator and post-function type and their combinations",
+            "Unit tests cover deterministic ordering of post-functions",
+            "Integration coverage through T02 endpoints and later L05 ticket transitions"
+          ]
+        },
+        {
+          "id": "L04-US05-T02",
+          "title": "Expose transition rule editing endpoints",
+          "layer": "backend",
+          "description": "Add endpoints to set conditions, validators, post-functions and the transition screen on a transition in a configuration draft, validating references (roles, groups, fields, screens) within the tenant.",
+          "done_when": [
+            "Unit tests cover reference validation",
+            "Integration tests cover saving each rule type and refusing references from another tenant",
+            "OpenAPI and client regenerated"
+          ]
+        },
+        {
+          "id": "L04-US05-T03",
+          "title": "Build the transition rules editor dialog",
+          "layer": "frontend",
+          "description": "Build the transition edit dialog with sections for conditions (role/group pickers), validators (field pickers), post-functions (ordered list with type-specific inputs) and transition screen select; summaries shown in the transitions table columns.",
+          "done_when": [
+            "Unit tests cover each rule type's sub-form",
+            "Integration tests render the dialog with mocked client",
+            "axe-core passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L04-US06",
+      "title": "Configure creation, view and transition screens",
+      "level": "essential",
+      "as_a": "configuration admin",
+      "i_want": "to choose and order the fields shown on the creation, view and transition screens",
+      "so_that": "users see a form adapted to each moment of the ticket's life",
+      "acceptance": [
+        "Given a configuration, When I edit the creation screen for type Bug, Then I can add, remove and reorder fields",
+        "Given a transition screen \"Rejection reason\", When I attach it to transition \"Reject\", Then it is used when that transition runs",
+        "Given a field hidden by a rule for the current type and step, When a screen includes it, Then the rule wins and the field is not shown",
+        "Given a screen referenced by a transition, When I try to delete it, Then deletion is refused and the transitions using it are listed"
+      ],
+      "spec": ["§5"],
+      "mockups": [],
+      "depends_on": ["L04-US03"],
+      "tech": [
+        {
+          "id": "L04-US06-T01",
+          "title": "Create screen table and screen resolution rules",
+          "layer": "database",
+          "description": "Create `screen` (configuration, kind creation/view/transition, translatable name, ordered field list, optional issue type scope) with RLS, and a domain function resolving the effective field list for (screen, type, step) by applying field rules.",
+          "done_when": [
+            "Integration tests verify RLS and reference integrity",
+            "Unit tests cover resolution with rules overriding screens",
+            "Default screens seeded"
+          ]
+        },
+        {
+          "id": "L04-US06-T02",
+          "title": "Implement screen endpoints",
+          "layer": "backend",
+          "description": "Add endpoints to list, create, update and delete screens in a configuration draft, with deletion refused when referenced, and a resolved-screen endpoint used by the ticket UI and portal forms.",
+          "done_when": [
+            "Unit tests cover deletion guard",
+            "Integration tests cover the acceptance criteria",
+            "OpenAPI and client regenerated"
+          ]
+        },
+        {
+          "id": "L04-US06-T03",
+          "title": "Build the Screens tab with drag-and-drop field ordering",
+          "layer": "frontend",
+          "description": "Build the Screens tab: list by kind, editor with available and selected fields (CDK drag and drop with keyboard alternative), and a preview showing hidden-by-rule fields as disabled.",
+          "done_when": [
+            "Unit tests cover add, remove and reorder",
+            "Integration tests render the tab with mocked client",
+            "axe-core passes; reordering works with the keyboard"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L04-US07",
+      "title": "Configure notification rules in the configuration",
+      "level": "essential",
+      "as_a": "configuration admin",
+      "i_want": "to choose which ticket events notify whom for the projects using a configuration",
+      "so_that": "the right people are informed without noise",
+      "acceptance": [
+        "Given the Notifications tab, When I set \"Ticket created\" to notify the reporter and the project role Project manager, Then the rule is saved",
+        "Given events such as created, assigned, status changed, commented and mentioned, When I configure them, Then each can target reporter, assignee, watchers, a role, a group or specific users",
+        "Given a rule targets a role, When the notification is dispatched in L05, Then recipients are resolved on the ticket's project with inheritance",
+        "Given a new configuration, When it is created, Then sensible default notification rules are seeded"
+      ],
+      "spec": ["§5", "§12"],
+      "mockups": [],
+      "depends_on": ["L04-US01"],
+      "tech": [
+        {
+          "id": "L04-US07-T01",
+          "title": "Store notification rules and expose their endpoints",
+          "layer": "backend",
+          "description": "Create notification rule storage per configuration (event type, recipient kinds) with RLS, endpoints to read and edit them in a draft, and a domain function resolving recipient kinds into a recipient spec consumed by the L05 notification dispatcher.",
+          "done_when": [
+            "Unit tests cover recipient spec resolution",
+            "Integration tests cover editing rules and RLS isolation",
+            "Default rules seeded"
+          ]
+        },
+        {
+          "id": "L04-US07-T02",
+          "title": "Build the Notifications tab",
+          "layer": "frontend",
+          "description": "Build the Notifications tab: table of events with the recipient kinds as chips, edit dialog with role, group and user pickers.",
+          "done_when": [
+            "Unit tests cover the edit dialog",
+            "Integration tests render the tab with mocked client",
+            "axe-core passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L04-US08",
+      "title": "Migrate tickets with the status and type mapping wizard",
+      "level": "essential",
+      "as_a": "configuration admin",
+      "i_want": "a wizard mapping removed statuses and types to new ones when I publish a workflow or configuration change",
+      "so_that": "existing tickets are migrated safely without losing their history",
+      "acceptance": [
+        "Given workflow \"Standard v2\" removes \"In test\" and adds \"In acceptance\" for 6 projects, When I publish, Then the wizard lists each current status with its ticket count and a target status select",
+        "Given every removed status or type is mapped, When I confirm \"Migrate 2,172 tickets\", Then the migration runs in the background and I can follow its progress",
+        "Given the migration runs, When a ticket is migrated, Then its history records the old and new status with origin \"system\"",
+        "Given a status that is unmapped, When I try to confirm, Then the button stays disabled",
+        "Given the migration fails midway, When the job is retried, Then it resumes without migrating a ticket twice"
+      ],
+      "spec": ["§5", "§17"],
+      "mockups": ["docs/mockups/previews/13-status-migration.png"],
+      "depends_on": ["L04-US04", "L04-US02"],
+      "tech": [
+        {
+          "id": "L04-US08-T01",
+          "title": "Compute required mappings and their ticket counts",
+          "layer": "backend",
+          "description": "Add an endpoint that, for a configuration draft, lists removed statuses and types with ticket counts per affected project and suggested targets (same identifier or same category), and validates a submitted mapping. Ticket counts rely on the `issue` table from L05; until then the endpoint returns zero counts.",
+          "done_when": [
+            "Unit tests cover suggestion logic and mapping validation",
+            "Integration tests cover counts on seeded tickets once L05 tables exist, and tenant isolation",
+            "Problem Details code `mapping_incomplete` documented"
+          ]
+        },
+        {
+          "id": "L04-US08-T02",
+          "title": "Run the resumable ticket migration job",
+          "layer": "worker",
+          "description": "Implement a background job applying the mapping in batches, idempotent per ticket (resumable after failure), writing audit entries with origin system, publishing the configuration only when complete, and reporting progress.",
+          "done_when": [
+            "Unit tests cover batch planning and idempotency",
+            "Integration tests kill the job midway and prove it resumes without double migration",
+            "Progress endpoint returns accurate counts"
+          ]
+        },
+        {
+          "id": "L04-US08-T03",
+          "title": "Build the status migration wizard dialog",
+          "layer": "frontend",
+          "description": "Build the MatDialog wizard following the mockup: explanation, table of current status, ticket count and target select (new statuses marked), affected project chips, background info note, confirm button with total count, then a progress view.",
+          "done_when": [
+            "Unit tests cover completeness check and count display",
+            "Integration tests render the wizard and progress with mocked client",
+            "axe-core passes"
+          ]
+        },
+        {
+          "id": "L04-US08-T04",
+          "title": "Add e2e test for publishing a workflow change with migration",
+          "layer": "e2e",
+          "description": "Playwright test: create tickets in two projects sharing a configuration (requires L05), remove a status, publish, map it in the wizard, wait for completion and check ticket statuses and history.",
+          "done_when": [
+            "Test passes headless in CI",
+            "axe-core checks run on the wizard"
+          ]
+        }
+      ]
+    }
+  ]
+}

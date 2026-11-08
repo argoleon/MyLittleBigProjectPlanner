@@ -1,0 +1,364 @@
+{
+  "lot": "L11",
+  "title": "Recurrences, time slots",
+  "level": "essential",
+  "depends_on": [
+    "L08"
+  ],
+  "summary": "Recurring tasks are series (RRULE, RFC 5545) acting as templates for occurrences, each a real ticket. A worker materializes occurrences over a rolling window (90 days by default); beyond it, future load is computed from the series and included in the heatmap and overload check (capacity checked over the series horizon, capped at 12 months for endless series). Series can be edited for one, following or all occurrences, missed occurrences are flagged late, and series with a fixed time slot are protected by a time-slot booking layer using a tstzrange exclusion constraint.",
+  "stories": [
+    {
+      "id": "L11-US01",
+      "title": "Create a recurring task series",
+      "level": "essential",
+      "as_a": "project manager",
+      "i_want": "to create a recurring task with a simple form (frequency, interval, days, start, end, non-working day policy, resources and duration)",
+      "so_that": "repetitive work such as a weekly on-call duty is planned once and appears in everyone's workload",
+      "acceptance": [
+        "Given I choose \"Every week\" on Monday and Thursday starting 9 November 2026, When I preview the series, Then the next occurrences are listed on those days and the generated rule is FREQ=WEEKLY;BYDAY=MO,TH",
+        "Given I choose \"Monthly on the 2nd Tuesday\", When I preview, Then occurrences fall on the second Tuesday of each month",
+        "Given an end \"after 10 occurrences\", When the series is saved, Then exactly 10 occurrences exist in its schedule",
+        "Given an occurrence falls on a public holiday with policy \"next working day\", When it is computed, Then it moves to the next working day of the resource calendar",
+        "Given I remove one specific occurrence date, When the schedule is computed, Then that date is excluded",
+        "Given the series time zone is Europe/Paris, When a daylight saving change occurs, Then occurrences keep their local time"
+      ],
+      "spec": [
+        "§9",
+        "§18"
+      ],
+      "mockups": [
+        "docs/mockups/previews/22-recurring-task.png"
+      ],
+      "depends_on": [],
+      "tech": [
+        {
+          "id": "L11-US01-T01",
+          "title": "Implement recurrence expansion in the domain crate",
+          "layer": "domain",
+          "description": "In crates/domain, expand an RRULE (daily, weekly by day, monthly by day or nth weekday, yearly, interval, UNTIL/COUNT, EXDATE) in the series' time zone into local dates and times, then apply the non-working day policy (next working day, previous working day, remove) using the L07 calendars. If a crate is used for RRULE parsing, it must be MIT/Apache-2.0 and pass cargo-deny.",
+          "done_when": [
+            "Unit tests cover each frequency, interval, COUNT, UNTIL, exceptions and the three non-working day policies",
+            "Tests cover DST transitions (spring forward and fall back) in Europe/Paris and another time zone",
+            "Tests cover public holidays and part-time non-working weekdays; property-based tests check occurrences are ordered and unique"
+          ]
+        },
+        {
+          "id": "L11-US01-T02",
+          "title": "Create recurring_series and series_assignment tables",
+          "layer": "database",
+          "description": "Add `recurring_series` (project, title, fields template JSONB, rrule text, time zone, start, duration in minutes, non-working policy, missed-occurrence policy, optional fixed time slot, version) and `series_assignment` (series, resource) with RLS. Add a `series_id` and occurrence date on `issue` for materialized occurrences.",
+          "done_when": [
+            "Migration applies cleanly",
+            "Integration tests cover RLS isolation and the unique (series_id, occurrence date) constraint"
+          ]
+        },
+        {
+          "id": "L11-US01-T03",
+          "title": "Expose series creation and preview endpoints",
+          "layer": "backend",
+          "description": "Implement `POST /api/v1/recurring-series`, `GET` and a `POST /api/v1/recurring-series/preview` returning the next occurrences. The API accepts structured form input and stores the generated RRULE; invalid rules return Problem Details with stable codes.",
+          "done_when": [
+            "Unit tests for form-to-RRULE conversion",
+            "Integration tests on a real PostgreSQL cover create, preview, validation errors, permissions and tenant isolation",
+            "OpenAPI updated and client regenerated"
+          ]
+        },
+        {
+          "id": "L11-US01-T04",
+          "title": "Build the \"New recurring task\" dialog",
+          "layer": "frontend",
+          "description": "MatDialog with title, project, frequency, interval, start date, weekday toggles, end (never, on date, after N), non-working day policy, resources and duration, plus the next occurrences preview and the generated rule. Transloco keys; dates in the user's locale.",
+          "done_when": [
+            "Component unit tests cover form-to-request mapping for each frequency",
+            "Screen integration test covers preview and save",
+            "Weekday toggles are real buttons with accessible names; axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L11-US02",
+      "title": "Materialize occurrences as tickets ahead of time",
+      "level": "essential",
+      "as_a": "team member",
+      "i_want": "the occurrences of a series to exist as real tickets over the coming weeks",
+      "so_that": "I can see, comment, log time on and close each occurrence like any other ticket",
+      "acceptance": [
+        "Given a weekly series and a 90-day window, When the series is saved, Then tickets exist for every occurrence in the next 90 days with the series' fields and assignments",
+        "Given the tenant window is set to 30 days, When the worker runs, Then occurrences are created 30 days ahead only",
+        "Given days pass, When the worker runs daily, Then new occurrences entering the window are created and none is duplicated",
+        "Given each occurrence is created, When I view it, Then it links back to its series and carries its assignment load"
+      ],
+      "spec": [
+        "§9",
+        "§17"
+      ],
+      "mockups": [
+        "docs/mockups/previews/22-recurring-task.png"
+      ],
+      "depends_on": [
+        "L11-US01"
+      ],
+      "tech": [
+        {
+          "id": "L11-US02-T01",
+          "title": "Add the occurrence materialization job",
+          "layer": "worker",
+          "description": "In crates/worker, a scheduled job and an on-save job expand each active series up to today + window and create missing occurrence tickets with their assignments (segments on the occurrence date with the series duration) in idempotent batches using the SKIP LOCKED queue.",
+          "done_when": [
+            "Unit tests for window computation",
+            "Integration tests on a real PostgreSQL cover first materialization, daily rolling, idempotent reruns, concurrent workers and tenant isolation"
+          ]
+        },
+        {
+          "id": "L11-US02-T02",
+          "title": "Make the materialization window a tenant setting",
+          "layer": "backend",
+          "description": "Add the materialization window (90 days default) to tenant settings with validation and expose it in tenant administration; changing it triggers rematerialization.",
+          "done_when": [
+            "Unit tests for validation bounds",
+            "Integration tests on a real PostgreSQL cover the setting change and resulting job"
+          ]
+        },
+        {
+          "id": "L11-US02-T03",
+          "title": "Show series link and occurrences on tickets and series page",
+          "layer": "frontend",
+          "description": "Show a series badge on occurrence tickets linking to a series page listing upcoming and past occurrences with their status, and the \"Recurring tasks\" tab on the resource page.",
+          "done_when": [
+            "Component unit tests and a screen integration test pass",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L11-US03",
+      "title": "Count future recurring load in the workload",
+      "level": "essential",
+      "as_a": "resource manager",
+      "i_want": "the load of occurrences beyond the materialization window to appear in the heatmap and the overload check",
+      "so_that": "long-running recurring duties do not hide future overloads",
+      "acceptance": [
+        "Given a weekly 3 h series and a 90-day window, When I view the heatmap 5 months ahead, Then the resource shows 3 h on each occurrence day",
+        "Given I create a series that would overload a resource on one day within 12 months, When I save in blocking mode, Then it is rejected and the conflicting day is listed",
+        "Given an endless series, When capacity is checked, Then the check covers 12 months from the start",
+        "Given an assignment is created in month 6 on a day already loaded by future occurrences, When the overload check runs, Then the future recurring load is included"
+      ],
+      "spec": [
+        "§8",
+        "§9"
+      ],
+      "mockups": [
+        "docs/mockups/previews/22-recurring-task.png",
+        "docs/mockups/previews/01-workload-heatmap.png"
+      ],
+      "depends_on": [
+        "L11-US01"
+      ],
+      "tech": [
+        {
+          "id": "L11-US03-T01",
+          "title": "Compute virtual occurrence load in the domain crate",
+          "layer": "domain",
+          "description": "In crates/domain, compute per-day load of non-materialized occurrences from the series rule, duration and assignments for a date range, with the series horizon capped at 12 months for endless series.",
+          "done_when": [
+            "Unit tests cover window boundary (no double counting with materialized occurrences), 12-month cap, DST changes, part-time capacity and public holidays"
+          ]
+        },
+        {
+          "id": "L11-US03-T02",
+          "title": "Store future recurring load and include it in checks",
+          "layer": "worker",
+          "description": "Write virtual occurrence load into `resource_day_load` (flagged as series load) beyond the window, recomputed on series changes and when the window rolls; include it in the overload check of assignments and series and in load aggregates.",
+          "done_when": [
+            "Unit tests for range diffing",
+            "Integration tests on a real PostgreSQL cover heatmap inclusion, overload rejection on series save and on later assignments, and handover when occurrences become materialized"
+          ]
+        },
+        {
+          "id": "L11-US03-T03",
+          "title": "Display horizon capacity check results in the series dialog",
+          "layer": "frontend",
+          "description": "Show the capacity check result over the series horizon in the dialog (\"Capacity checked over 12 months: 1 conflict\") with the conflicting occurrences marked in the preview list, using text and icons, not only color.",
+          "done_when": [
+            "Component unit tests and a screen integration test pass; axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L11-US04",
+      "title": "Edit a series: this, following or all occurrences",
+      "level": "essential",
+      "as_a": "project manager",
+      "i_want": "to choose whether a change applies to this occurrence, this and following, or all occurrences",
+      "so_that": "I can adjust a recurring duty without rewriting its history",
+      "acceptance": [
+        "Given I edit one occurrence and choose \"this occurrence\", When I save, Then only that ticket changes and it is detached from the series",
+        "Given I choose \"this and following\" from 1 February, When I save, Then the series is split and occurrences from 1 February follow the new values",
+        "Given I choose \"all\", When I save, Then all future open occurrences are updated",
+        "Given past or completed occurrences, When any series edit is applied, Then they are never changed",
+        "Given an individually edited (detached) occurrence, When I later edit \"all\", Then the detached occurrence keeps its own values"
+      ],
+      "spec": [
+        "§9"
+      ],
+      "mockups": [],
+      "depends_on": [
+        "L11-US02",
+        "L11-US03"
+      ],
+      "tech": [
+        {
+          "id": "L11-US04-T01",
+          "title": "Implement series edit scopes in the domain crate",
+          "layer": "domain",
+          "description": "In crates/domain, compute the edit plan for each scope: detach a single occurrence, split the series at a date (UNTIL on the old one, new series from the date), or update all; exclude past, completed and detached occurrences.",
+          "done_when": [
+            "Unit tests cover each scope, split dates on DST change days and exclusion rules"
+          ]
+        },
+        {
+          "id": "L11-US04-T02",
+          "title": "Expose series edit endpoints with scope",
+          "layer": "backend",
+          "description": "Implement `PATCH /api/v1/recurring-series/{id}` with `scope` (this, following, all) and occurrence reference, applying the plan in one transaction, re-running the capacity check and triggering rematerialization and load recomputation.",
+          "done_when": [
+            "Integration tests on a real PostgreSQL cover each scope, unchanged past occurrences, overload rejection and history entries",
+            "Unit tests for request validation"
+          ]
+        },
+        {
+          "id": "L11-US04-T03",
+          "title": "Add the edit scope choice in the UI",
+          "layer": "frontend",
+          "description": "When saving or deleting an occurrence or series, show a dialog with the three scope choices (mat-radio-group) and explain that past occurrences are kept.",
+          "done_when": [
+            "Component unit tests and a screen integration test pass; axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L11-US05",
+      "title": "Handle missed occurrences",
+      "level": "essential",
+      "as_a": "team member",
+      "i_want": "missed occurrences to be flagged late and to alert me, or to close automatically if the series is configured so",
+      "so_that": "recurring duties are not silently forgotten",
+      "acceptance": [
+        "Given an occurrence whose date has passed and is still open, When the worker runs, Then it is marked \"late\" and its assignee receives a notification",
+        "Given a series with \"close automatically when the next occurrence is created\", When the next occurrence is created, Then the missed one is closed as \"not done\"",
+        "Given an occurrence marked late, When I close it, Then the late flag no longer appears",
+        "Given I filter tickets with the query language, When I search for late occurrences, Then they can be found"
+      ],
+      "spec": [
+        "§9",
+        "§12"
+      ],
+      "mockups": [],
+      "depends_on": [
+        "L11-US02"
+      ],
+      "tech": [
+        {
+          "id": "L11-US05-T01",
+          "title": "Detect missed occurrences in the worker",
+          "layer": "worker",
+          "description": "A scheduled job marks open past occurrences as late and emits notification events to assignees; for series with the auto-close option, closes missed occurrences as \"not done\" through the workflow's Done category when the next occurrence is created.",
+          "done_when": [
+            "Unit tests for the missed detection rule in the series time zone",
+            "Integration tests on a real PostgreSQL cover late marking, notification event, auto-close and idempotency"
+          ]
+        },
+        {
+          "id": "L11-US05-T02",
+          "title": "Expose the late flag in the API and query language",
+          "layer": "backend",
+          "description": "Expose the late flag on occurrence tickets in the ticket API and add a queryable field for it in the query language compiler, so late occurrences can be filtered and counted.",
+          "done_when": [
+            "Unit tests for the query language field compilation",
+            "Integration tests on a real PostgreSQL cover the API field, the query filter and tenant isolation"
+          ]
+        },
+        {
+          "id": "L11-US05-T03",
+          "title": "Display the late chip on occurrence tickets",
+          "layer": "frontend",
+          "description": "Display a late chip on ticket views and lists using the shared ui-status-chip component and `--app-*` tokens, with a Transloco label.",
+          "done_when": [
+            "Component unit tests and a screen integration test pass",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L11-US06",
+      "title": "Book fixed time slots without overlap",
+      "level": "essential",
+      "as_a": "project manager",
+      "i_want": "to give a series a fixed time slot such as Monday 9:00–12:00",
+      "so_that": "a resource cannot be booked on two overlapping slots",
+      "acceptance": [
+        "Given a series with a fixed slot Monday 9:00–12:00, When occurrences are created, Then each one books a time slot for each assigned resource",
+        "Given a resource already has a slot 14:00–15:00 on 19 November, When a series slot 14:00–18:00 is created on that day, Then the conflict is reported and the overlapping booking is rejected",
+        "Given two concurrent requests booking overlapping slots for the same resource, When both commit, Then the database accepts only one",
+        "Given a 3 h fixed slot, When the daily load is computed, Then the slot counts 3 h in the resource's load",
+        "Given a series without fixed slot, When occurrences are created, Then no time slot is booked and only the daily load applies"
+      ],
+      "spec": [
+        "§9",
+        "§18"
+      ],
+      "mockups": [
+        "docs/mockups/previews/22-recurring-task.png"
+      ],
+      "depends_on": [
+        "L11-US02"
+      ],
+      "tech": [
+        {
+          "id": "L11-US06-T01",
+          "title": "Create the time_slot table with an exclusion constraint",
+          "layer": "database",
+          "description": "Add `time_slot` (resource_id, issue_id, period tstzrange, source) with RLS and an EXCLUDE USING gist constraint on (tenant_id, resource_id, period &&) via btree_gist, so overlaps are impossible even under concurrency.",
+          "done_when": [
+            "Migration applies cleanly with the btree_gist extension",
+            "Integration tests on a real PostgreSQL prove overlaps are rejected, including with two concurrent transactions, and RLS isolation"
+          ]
+        },
+        {
+          "id": "L11-US06-T02",
+          "title": "Book slots for occurrences and report conflicts",
+          "layer": "backend",
+          "description": "In crates/infra and worker, book slots when occurrences are materialized (local times converted with the series time zone, DST-aware), map exclusion violations to a Problem Details conflict listing the overlapping booking, and include slot duration in the daily load.",
+          "done_when": [
+            "Domain unit tests cover local-to-instant conversion across DST changes",
+            "Integration tests on a real PostgreSQL cover booking, conflict reporting, load inclusion and preview conflicts"
+          ]
+        },
+        {
+          "id": "L11-US06-T03",
+          "title": "Add fixed time slot fields to the series dialog",
+          "layer": "frontend",
+          "description": "Add the \"Fixed time\" mat-slide-toggle and per-weekday start/end fields to the series dialog, and show slot conflicts in the occurrence preview with the overlapping booking named.",
+          "done_when": [
+            "Component unit tests and a screen integration test pass; axe check passes"
+          ]
+        },
+        {
+          "id": "L11-US06-T04",
+          "title": "Test the recurring task flow end to end",
+          "layer": "e2e",
+          "description": "Playwright scenario: create a weekly series with fixed slots, see the preview with a slot conflict, fix it, save, check materialized occurrence tickets, the heatmap load beyond 90 days, and edit \"this and following\".",
+          "done_when": [
+            "Scenario passes in CI through the `just` e2e recipe",
+            "axe checks pass on the visited screens"
+          ]
+        }
+      ]
+    }
+  ]
+}

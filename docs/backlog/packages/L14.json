@@ -1,0 +1,198 @@
+{
+  "lot": "L14",
+  "title": "Dashboards",
+  "level": "important",
+  "depends_on": ["L06", "L08", "L09"],
+  "summary": "Composable dashboards, personal or shared, made of gadgets: filter results list, counter, bar or pie chart by field, sprint burndown, workload mini-heatmap and \"my tickets\". Every gadget is fed by the query language or an existing report, so permissions and RLS always apply. Dashboards update in real time and their charts have an accessible table alternative.",
+  "stories": [
+    {
+      "id": "L14-US01",
+      "title": "Create and arrange a personal dashboard",
+      "level": "important",
+      "as_a": "internal user",
+      "i_want": "to create dashboards and add, move, resize and remove gadgets",
+      "so_that": "I see the information I need at a glance",
+      "acceptance": [
+        "Given I am signed in, When I create a dashboard with a name, Then it is saved as personal and appears in my dashboard selector",
+        "Given a dashboard I own, When I add a gadget from the catalog, Then it appears in the grid and is persisted",
+        "Given a dashboard I own, When I move or resize gadgets with the mouse or the keyboard, Then the layout is saved",
+        "Given a dashboard changed by me in another tab, When I save a stale version, Then I am warned of the conflict instead of overwriting it",
+        "Given a dashboard I do not own and that is not shared with me, When I request it, Then it is not found"
+      ],
+      "spec": ["§13"],
+      "mockups": ["docs/mockups/previews/25-dashboard.png"],
+      "depends_on": [],
+      "tech": [
+        {
+          "id": "L14-US01-T01",
+          "title": "Create dashboard and gadget tables with RLS",
+          "layer": "database",
+          "description": "Add `dashboard` (tenant_id, owner account, translatable-free name, version) and `gadget` (dashboard_id, type, position x/y, width/height, JSONB settings such as query and field) tables with an SQLx migration, RLS and tenant-first indexes.",
+          "done_when": [
+            "Migration applies; integration test verifies RLS isolation",
+            "Deleting a dashboard cascades to its gadgets (integration test)"
+          ]
+        },
+        {
+          "id": "L14-US01-T02",
+          "title": "Expose dashboard and gadget CRUD endpoints",
+          "layer": "backend",
+          "description": "Add `/api/v1/dashboards` endpoints: create, list mine and shared with me, get, update layout with If-Match, delete, and gadget add/update/remove. Gadget settings are validated per gadget type in `crates/domain` (allowed types, required settings, valid query).",
+          "done_when": [
+            "Unit tests cover gadget settings validation per type",
+            "Integration tests cover CRUD, stale ETag 412, ownership checks and cross-tenant isolation",
+            "Angular client regenerated"
+          ]
+        },
+        {
+          "id": "L14-US01-T03",
+          "title": "Build the dashboard page with a gadget grid",
+          "layer": "frontend",
+          "description": "In `projects/app`, build the dashboard page: dashboard `mat-select` selector, Add gadget button opening a catalog `MatDialog`, and a responsive grid using CDK drag and drop, with keyboard move/resize actions in each gadget's `mat-menu`. Tokens and Transloco only.",
+          "done_when": [
+            "Component unit tests cover add, move, resize, remove and conflict display",
+            "Keyboard-only layout editing works; axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L14-US02",
+      "title": "Add query-based gadgets: list, counter and chart",
+      "level": "important",
+      "as_a": "internal user",
+      "i_want": "to add a filter results list, a counter and a bar or pie chart by field fed by a query",
+      "so_that": "I can track any set of tickets the way I want",
+      "acceptance": [
+        "Given a saved filter or a query, When I add a list gadget with chosen columns, Then it shows the matching tickets I am allowed to see, paginated",
+        "Given a query, When I add a counter gadget, Then it shows the number of matching tickets and opens the search when clicked",
+        "Given a query and a field such as status, When I add a bar or pie chart gadget, Then it shows the count per value with translated labels",
+        "Given a chart gadget, When a screen reader user reaches it, Then an equivalent data table is available",
+        "Given an invalid query, When I save the gadget, Then the query error is shown and the gadget is not saved"
+      ],
+      "spec": ["§13", "§6"],
+      "mockups": ["docs/mockups/previews/25-dashboard.png"],
+      "depends_on": ["L14-US01"],
+      "tech": [
+        {
+          "id": "L14-US02-T01",
+          "title": "Add a group-by count endpoint on the query language",
+          "layer": "backend",
+          "description": "Extend search with an aggregation endpoint (`POST /api/v1/search/aggregate` with query and group-by field) compiled to parameterized SQL by the query compiler, returning counts per stable value with labels in the Accept-Language language. Permissions and RLS apply.",
+          "done_when": [
+            "Unit tests in crates/domain cover group-by compilation for system and custom fields",
+            "Integration tests cover counts, permission filtering, confidential projects and cross-tenant isolation"
+          ]
+        },
+        {
+          "id": "L14-US02-T02",
+          "title": "Build list, counter and chart gadget components",
+          "layer": "frontend",
+          "description": "Build three gadget components: list (`mat-table` with displayed columns and pagination), counter (large number with link to search), and bar/pie chart drawn in SVG using --mat-sys-* and --app-* tokens, each with a toggleable accessible table view. Each has a settings dialog with the query editor from L06.",
+          "done_when": [
+            "Component unit tests cover settings, rendering, empty and error states",
+            "Chart colors come only from tokens; axe check passes on the table alternative"
+          ]
+        },
+        {
+          "id": "L14-US02-T03",
+          "title": "Refresh gadgets on real-time ticket events",
+          "layer": "frontend",
+          "description": "Subscribe dashboards to the real-time stream from L05 and refresh the affected gadgets with a debounce when ticket events arrive, without reloading the page.",
+          "done_when": [
+            "Unit tests cover debounced refresh on events",
+            "Integration test of the SSE subscription against a test server"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L14-US03",
+      "title": "Add agile and workload gadgets",
+      "level": "important",
+      "as_a": "team lead",
+      "i_want": "to add a sprint burndown, a workload mini-heatmap and a \"my tickets\" gadget",
+      "so_that": "my team's dashboard covers delivery and load in one place",
+      "acceptance": [
+        "Given a Scrum board with an active sprint, When I add a burndown gadget for that board, Then it shows the sprint burndown in points or hours as configured on the board",
+        "Given a team, When I add a workload mini-heatmap gadget over N weeks, Then it shows the occupation rate per resource and week with overloads highlighted, and links to the full heatmap",
+        "Given the \"my tickets\" gadget, When I view it, Then it lists unresolved tickets assigned to me (assignee = currentUser())",
+        "Given a confidential project in the team's load, When the mini-heatmap is shown, Then its time appears as Busy (confidential) without detail",
+        "Given each gadget, When rendered, Then an equivalent accessible table is available"
+      ],
+      "spec": ["§13", "§6", "§8"],
+      "mockups": ["docs/mockups/previews/25-dashboard.png"],
+      "depends_on": ["L14-US01"],
+      "tech": [
+        {
+          "id": "L14-US03-T01",
+          "title": "Validate agile and workload gadget settings and data access",
+          "layer": "backend",
+          "description": "Register burndown, mini-heatmap and my-tickets gadget types with their settings (board id, team id, number of weeks) and validate them. Data comes from the existing L08/L09 report endpoints; add any missing weekly aggregate read needed by the mini-heatmap.",
+          "done_when": [
+            "Unit tests cover settings validation",
+            "Integration tests cover data access permissions, confidential masking and cross-tenant isolation"
+          ]
+        },
+        {
+          "id": "L14-US03-T02",
+          "title": "Build burndown, mini-heatmap and my-tickets gadgets",
+          "layer": "frontend",
+          "description": "Reuse the burndown chart from L09 and the heatmap color scale (--app-heatmap-* tokens) from L08 in compact gadget components, plus a my-tickets list with `ui-status-chip`. Each provides an accessible table view and a link to the full screen.",
+          "done_when": [
+            "Component unit tests cover rendering, empty state (no active sprint, empty team) and links",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L14-US04",
+      "title": "Share a dashboard with users, groups or a team",
+      "level": "important",
+      "as_a": "dashboard owner",
+      "i_want": "to share a dashboard read-only or editable",
+      "so_that": "my team works from the same view",
+      "acceptance": [
+        "Given a dashboard I own, When I share it with a user or a group as viewer, Then they see it in their selector and cannot edit it",
+        "Given I share it as editor, When an editor changes the layout, Then the change is saved for everyone",
+        "Given a shared dashboard, When a viewer sees a gadget, Then its data is filtered by the viewer's own permissions",
+        "Given I revoke a share, When the former viewer reloads, Then the dashboard is no longer available"
+      ],
+      "spec": ["§13", "§14"],
+      "mockups": ["docs/mockups/previews/25-dashboard.png"],
+      "depends_on": ["L14-US01"],
+      "tech": [
+        {
+          "id": "L14-US04-T01",
+          "title": "Store dashboard shares and enforce them in the API",
+          "layer": "backend",
+          "description": "Add a `dashboard_share` table (dashboard, account or group, role viewer/editor) with RLS, and share/revoke endpoints. Dashboard reads and writes check ownership or share role; gadget data is always computed with the caller's permissions.",
+          "done_when": [
+            "Integration tests cover viewer read-only, editor write, revocation, group membership and per-viewer data filtering",
+            "Unit tests cover the access decision"
+          ]
+        },
+        {
+          "id": "L14-US04-T02",
+          "title": "Build the share dashboard dialog",
+          "layer": "frontend",
+          "description": "Add a Share `MatDialog` with a user/group autocomplete, role `mat-select` and current shares list with revoke actions; show the shared-with subtitle on the dashboard header.",
+          "done_when": [
+            "Component unit tests cover add, change role and revoke",
+            "axe check passes"
+          ]
+        },
+        {
+          "id": "L14-US04-T03",
+          "title": "Add Playwright test for building and sharing a dashboard",
+          "layer": "e2e",
+          "description": "End-to-end test: create a dashboard, add a counter and a chart gadget, share it read-only with another user, and verify that user sees it without edit controls and with data filtered to their permissions.",
+          "done_when": [
+            "Playwright test passes in CI through `just`, including an axe scan"
+          ]
+        }
+      ]
+    }
+  ]
+}

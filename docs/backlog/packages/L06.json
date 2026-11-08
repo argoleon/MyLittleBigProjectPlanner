@@ -1,0 +1,333 @@
+{
+  "lot": "L06",
+  "title": "Search and Kanban",
+  "level": "essential",
+  "depends_on": ["L05"],
+  "summary": "A single JQL-like query language, parsed and compiled to parameterized SQL under RLS and permissions, powers search, filters, boards, Gantt, dashboards, the API and MCP. This package delivers the parser and compiler, full-text search on PostgreSQL behind an abstraction, the search screen with a visual builder and an autocompleting editor, saved personal and shared filters, the Kanban board with WIP limits and swimlanes, and CSV export (essential) and Excel export (important) of list views.",
+  "stories": [
+    {
+      "id": "L06-US01",
+      "title": "Search tickets with the query language",
+      "level": "essential",
+      "as_a": "internal user",
+      "i_want": "to search tickets with a JQL-like query",
+      "so_that": "I can find exactly the tickets I need across projects, programs and portfolios",
+      "acceptance": [
+        "Given the query `assignee = currentUser() AND status IN (todo, in_progress) ORDER BY priority DESC`, When I run it, Then I get my open tickets sorted by priority",
+        "Given the query `project IN descendantsOf(\"PORTF-HR\")`, When I run it, Then I get tickets of every distinct descendant project I am allowed to view, each once",
+        "Given relative dates `created > -7d AND due < endOfWeek()`, When I run it, Then dates are evaluated in my time zone",
+        "Given a syntax error, When I run the query, Then I get a Problem Details error with the position and expected token",
+        "Given a query containing SQL fragments in a string value, When it runs, Then it is treated as a literal value (parameterized SQL, no injection)",
+        "Given tickets of another tenant or a confidential project I am not a member of, When I search, Then they are never returned"
+      ],
+      "spec": ["§6", "§15"],
+      "mockups": ["docs/mockups/previews/15-search.png"],
+      "depends_on": [],
+      "tech": [
+        {
+          "id": "L06-US01-T01",
+          "title": "Implement the query language parser and AST in domain",
+          "layer": "domain",
+          "description": "In `crates/domain`, implement a lexer and parser producing a typed AST: comparisons (=, !=, >, <, IN, IS EMPTY), AND/OR/NOT and parentheses, text `~`, relative dates, functions (currentUser, endOfWeek, descendantsOf, openSprints) and ORDER BY. Fields resolve to stable identifiers, never translated labels. Design the AST so other entity types can be added later.",
+          "done_when": [
+            "Unit tests cover every MVP construct, operator precedence and error positions",
+            "Property-based tests: parse(print(ast)) == ast"
+          ]
+        },
+        {
+          "id": "L06-US01-T02",
+          "title": "Compile the AST to parameterized SQL with permissions",
+          "layer": "backend",
+          "description": "Compile the AST to parameterized SQL (SQLx query builder with bind parameters only) over issue columns and the custom fields JSONB (GIN-friendly operators), joining node_closure for descendantsOf and the effective-permission set of the user. Evaluate relative dates in the user's time zone. Place the compiler in `crates/infra`.",
+          "done_when": [
+            "Unit tests for SQL generation of each construct (no value ever inlined)",
+            "Integration tests on real PostgreSQL with RLS: results, permission filtering, confidential projects, cross-tenant isolation, injection attempts"
+          ]
+        },
+        {
+          "id": "L06-US01-T03",
+          "title": "Expose POST /api/v1/search",
+          "layer": "backend",
+          "description": "Add `POST /api/v1/search` with `{query, fields, expand, cursor}`, cursor pagination and field selection, returning Problem Details with stable codes and positions on parse errors.",
+          "done_when": [
+            "Integration tests cover pagination, field selection, error responses and performance on a seeded dataset (p95 < 200 ms on 100k tickets)",
+            "OpenAPI and Angular client regenerated"
+          ]
+        },
+        {
+          "id": "L06-US01-T04",
+          "title": "Build the search results list",
+          "layer": "frontend",
+          "description": "Build the search screen results as a `mat-table` with configurable columns, sorting synced with ORDER BY, cursor-based infinite loading (`cdk-virtual-scroll-viewport`), and loading, empty and error states.",
+          "done_when": [
+            "Unit tests for the results table and column configuration",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L06-US02",
+      "title": "Build queries visually or with autocompletion",
+      "level": "essential",
+      "as_a": "internal user",
+      "i_want": "a visual filter builder and a query editor with autocompletion",
+      "so_that": "I can write queries without knowing the syntax by heart",
+      "acceptance": [
+        "Given the visual builder, When I pick Project = PLAT and Status = In progress, Then the equivalent query is generated in the editor",
+        "Given I type `stat` in the editor, When suggestions appear, Then I can choose `status` and then a list of valid status identifiers with their translated labels",
+        "Given a query the builder can represent, When I switch to builder mode, Then the builder shows the same criteria",
+        "Given the editor, When I use only the keyboard, Then I can open, browse and accept suggestions"
+      ],
+      "spec": ["§6"],
+      "mockups": ["docs/mockups/previews/15-search.png"],
+      "depends_on": ["L06-US01"],
+      "tech": [
+        {
+          "id": "L06-US02-T01",
+          "title": "Expose autocompletion endpoint for fields and values",
+          "layer": "backend",
+          "description": "Add an endpoint returning, for a query prefix and cursor position, the expected token kinds and suggestions (fields, operators, functions, values such as statuses, users, projects) with translated labels and stable identifiers, limited to what the user may see. Reuse the domain parser in tolerant mode.",
+          "done_when": [
+            "Unit tests for tolerant parsing and expected tokens",
+            "Integration tests for value suggestions with permissions and cross-tenant isolation"
+          ]
+        },
+        {
+          "id": "L06-US02-T02",
+          "title": "Build the query editor with autocompletion",
+          "layer": "frontend",
+          "description": "Build a query editor component (outlined field with `mat-autocomplete`-style suggestion panel, ARIA combobox pattern) that calls the autocompletion endpoint and highlights errors returned by the API.",
+          "done_when": [
+            "Unit tests for suggestion insertion and error highlighting",
+            "Keyboard-only usage verified and axe check passes"
+          ]
+        },
+        {
+          "id": "L06-US02-T03",
+          "title": "Build the visual query builder",
+          "layer": "frontend",
+          "description": "Build the builder using `mat-chip-listbox` and `mat-select` for common criteria (project, type, status, assignee, priority, dates). It generates the query text and parses back representable queries; unsupported queries stay in editor mode.",
+          "done_when": [
+            "Unit tests for query generation and round-trip",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L06-US03",
+      "title": "Search ticket text in full text",
+      "level": "essential",
+      "as_a": "internal user",
+      "i_want": "to search words in titles, descriptions and comments",
+      "so_that": "I can find a ticket even when I only remember a few words",
+      "acceptance": [
+        "Given a ticket whose description contains 'outage of the directory', When I search `text ~ \"outage\"`, Then it is returned, ranked by relevance",
+        "Given a typo such as `text ~ \"outgae\"`, When I search, Then trigram similarity still finds the ticket",
+        "Given a match only in an internal comment, When an external user searches through the portal, Then the ticket is not found by that comment",
+        "Given French and English content, When I search a stemmed word in either language, Then matching tickets are found"
+      ],
+      "spec": ["§6"],
+      "mockups": ["docs/mockups/previews/15-search.png"],
+      "depends_on": ["L06-US01"],
+      "tech": [
+        {
+          "id": "L06-US03-T01",
+          "title": "Add tsvector and pg_trgm indexes on tickets and comments",
+          "layer": "database",
+          "description": "Add generated `tsvector` columns (multilingual configuration) and GIN indexes on issue title and description and on comments, plus `pg_trgm` indexes on titles. Keep indexes tenant-scoped through composite indexing where useful.",
+          "done_when": [
+            "Integration tests on real PostgreSQL for stemming in FR and EN, trigram matching and RLS isolation"
+          ]
+        },
+        {
+          "id": "L06-US03-T02",
+          "title": "Implement full-text search behind an abstraction",
+          "layer": "backend",
+          "description": "Define a `TextSearch` trait in `crates/domain` and its PostgreSQL implementation in `crates/infra`, used by the query compiler for `text ~`. The abstraction allows a dedicated engine later. Respect comment visibility for portal contexts.",
+          "done_when": [
+            "Unit tests for the query compiler integration",
+            "Integration tests for ranking, internal comment exclusion and cross-tenant isolation"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L06-US04",
+      "title": "Save and share filters",
+      "level": "essential",
+      "as_a": "internal user",
+      "i_want": "to save a query as a personal or shared filter",
+      "so_that": "I and my team can reuse it in searches, boards and dashboards",
+      "acceptance": [
+        "Given a query on the search screen, When I save it as 'My open tickets', Then it appears in my saved filters",
+        "Given I share a filter with a group, When a member of that group opens the filter list, Then they can run it but not edit it",
+        "Given a shared filter, When a member runs it, Then results are limited to what that member may see",
+        "Given a status label is renamed, When the filter runs, Then it still works because it stores stable identifiers"
+      ],
+      "spec": ["§6", "§18"],
+      "mockups": ["docs/mockups/previews/15-search.png"],
+      "depends_on": ["L06-US01"],
+      "tech": [
+        {
+          "id": "L06-US04-T01",
+          "title": "Create saved_filter table and endpoints",
+          "layer": "backend",
+          "description": "Add the `saved_filter` table (tenant_id, owner, name, query, sharing: private, groups, node roles) with RLS, and CRUD endpoints. Only the owner edits; sharing grants run access. Queries are validated by the parser before saving.",
+          "done_when": [
+            "Integration tests cover owner-only edit, group sharing, invalid query rejection and cross-tenant isolation",
+            "OpenAPI and Angular client regenerated"
+          ]
+        },
+        {
+          "id": "L06-US04-T02",
+          "title": "Add saved filters panel to the search screen",
+          "layer": "frontend",
+          "description": "Add a saved filters side list (personal and shared sections), a save dialog with sharing options, and a URL that opens a saved filter.",
+          "done_when": [
+            "Unit tests for save dialog and filter list",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L06-US05",
+      "title": "Work on a Kanban board",
+      "level": "essential",
+      "as_a": "team member",
+      "i_want": "a Kanban board fed by a filter, with columns mapped to statuses, WIP limits and swimlanes",
+      "so_that": "the team visualizes and moves its work through the workflow",
+      "acceptance": [
+        "Given a board fed by the filter `project = PLAT` with columns To do, In progress, Review, Done mapped to statuses, When I open it, Then each ticket appears in the column of its status",
+        "Given I drag a card from In progress to Review, When the workflow allows the transition, Then the status changes; when it does not, the card returns and the reason is shown",
+        "Given a column with a WIP limit of 3 holding 4 cards, When I view the board, Then the column is highlighted as over limit",
+        "Given swimlanes by assignee or by epic, When I switch the swimlane mode, Then cards are grouped accordingly",
+        "Given another user moves a card, When I am on the board, Then I see the move in real time",
+        "Given I use only the keyboard, When I focus a card, Then I can move it to another column through an accessible action"
+      ],
+      "spec": ["§6", "§12"],
+      "mockups": ["docs/mockups/previews/04-kanban-board.png"],
+      "depends_on": ["L06-US04"],
+      "tech": [
+        {
+          "id": "L06-US05-T01",
+          "title": "Create board and board_column tables",
+          "layer": "database",
+          "description": "Add `board` (tenant_id, name, type kanban/scrum, filter query, estimation unit points/hours, swimlane mode) and `board_column` (board, position, mapped statuses, WIP limit) with RLS. Implement column mapping and WIP evaluation rules in `crates/domain`.",
+          "done_when": [
+            "Unit tests for status-to-column mapping and WIP limits",
+            "Integration tests for RLS isolation"
+          ]
+        },
+        {
+          "id": "L06-US05-T02",
+          "title": "Expose board endpoints and card transition",
+          "layer": "backend",
+          "description": "Add board CRUD (board admin permission), a board data endpoint returning columns, swimlanes and cards via the query compiler, and use the workflow transition service when a card moves (conditions, validators, post-functions apply). A transition requiring a screen returns a code so the front end opens it.",
+          "done_when": [
+            "Integration tests cover allowed and refused transitions, transition screen required, permission filtering and cross-tenant isolation",
+            "OpenAPI and Angular client regenerated"
+          ]
+        },
+        {
+          "id": "L06-US05-T03",
+          "title": "Build the Kanban board with CDK drag and drop",
+          "layer": "frontend",
+          "description": "Build the board screen following the mockup with CDK drag and drop between columns, WIP indicators, swimlanes, card component (key, title, type and priority, assignee avatar), keyboard move action, and real-time updates through the shared SSE service. Add the board settings dialog (filter, columns, WIP, swimlanes).",
+          "done_when": [
+            "Unit tests for board state, drop handling and settings dialog",
+            "Keyboard alternative to drag and drop works and axe check passes"
+          ]
+        },
+        {
+          "id": "L06-US05-T04",
+          "title": "Add Playwright test for the Kanban flow",
+          "layer": "e2e",
+          "description": "Scenario: create a board from a filter, drag a card to the next column, check the ticket status changed, try a forbidden transition and check the card returns.",
+          "done_when": [
+            "Scenario runs green in CI through `just`"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L06-US06",
+      "title": "Export a list view to CSV",
+      "level": "essential",
+      "as_a": "internal user",
+      "i_want": "to export any list view to CSV with the displayed columns",
+      "so_that": "I can share or process the data in other tools",
+      "acceptance": [
+        "Given search results with columns Key, Title, Status, Assignee, When I export to CSV, Then the file contains exactly these columns in that order with translated headers",
+        "Given 20,000 results, When I export, Then the export is generated in the background and I am notified when the file is ready",
+        "Given dates and numbers, When they are exported, Then they use an unambiguous format (ISO dates, dot decimal) and UTF-8 encoding with BOM",
+        "Given a cell starting with '=', '+', '-' or '@', When it is exported, Then it is escaped to prevent formula injection"
+      ],
+      "spec": ["§6"],
+      "mockups": ["docs/mockups/previews/15-search.png"],
+      "depends_on": ["L06-US01"],
+      "tech": [
+        {
+          "id": "L06-US06-T01",
+          "title": "Implement CSV export endpoint and background job",
+          "layer": "backend",
+          "description": "Add an export endpoint taking a query and column list: synchronous streaming for small results, background job beyond a threshold with the file stored in S3 and a presigned download link notified to the user. Implement the CSV writer with formula-injection escaping in `crates/domain`.",
+          "done_when": [
+            "Unit tests for CSV escaping and formatting",
+            "Integration tests for sync and async exports, permissions and cross-tenant isolation"
+          ]
+        },
+        {
+          "id": "L06-US06-T02",
+          "title": "Add export action to list views",
+          "layer": "frontend",
+          "description": "Add an Export menu (`mat-menu`) on the search results and other list views, sending the displayed columns, with progress feedback for background exports.",
+          "done_when": [
+            "Unit tests for the export menu and progress states",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L06-US07",
+      "title": "Export a list view to Excel",
+      "level": "important",
+      "as_a": "internal user",
+      "i_want": "to export any list view to an Excel file",
+      "so_that": "business users can open the data directly in a spreadsheet with proper types",
+      "acceptance": [
+        "Given search results, When I choose Export to Excel, Then I get an .xlsx file with the displayed columns and translated headers",
+        "Given date and number columns, When the file is opened, Then cells are typed as dates and numbers",
+        "Given a large result set, When I export, Then it runs in the background like the CSV export"
+      ],
+      "spec": ["§6"],
+      "mockups": [],
+      "depends_on": ["L06-US06"],
+      "tech": [
+        {
+          "id": "L06-US07-T01",
+          "title": "Add xlsx writer to the export pipeline",
+          "layer": "backend",
+          "description": "Add an xlsx output format to the export endpoint and job using an MIT or Apache-2.0 Rust crate (check with cargo-deny), with typed date and number cells.",
+          "done_when": [
+            "Unit tests for cell typing",
+            "Integration tests reading back the generated file",
+            "cargo-deny passes"
+          ]
+        },
+        {
+          "id": "L06-US07-T02",
+          "title": "Add Excel option to the export menu",
+          "layer": "frontend",
+          "description": "Add the Excel entry to the export menu with its translation keys.",
+          "done_when": [
+            "Unit test for the new menu entry"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,465 @@
+{
+  "lot": "L05",
+  "title": "Tickets and collaboration",
+  "level": "essential",
+  "depends_on": ["L03", "L04"],
+  "summary": "Tickets are the heart of the tool: created in projects according to their project configuration, identified by a readable per-tenant key, protected against lost updates, linked to each other and moved between projects. This package adds rich comments with mentions, attachments stored in S3 with antivirus scanning, a field-by-field history, and the event backbone (outbox) that feeds in-app and email notifications and real-time updates through Server-Sent Events and Valkey pub/sub.",
+  "stories": [
+    {
+      "id": "L05-US01",
+      "title": "Create and view a ticket in a project",
+      "level": "essential",
+      "as_a": "project member",
+      "i_want": "to create a ticket of a given type in a project and open its detail page",
+      "so_that": "work is captured with the fields required by the project configuration and can be referenced by a readable key",
+      "acceptance": [
+        "Given a project PLAT using a configuration with type Story, When I create a Story with its required fields, Then the ticket gets the next key PLAT-n, unique within the tenant, and I land on its detail page",
+        "Given a required field is missing for the chosen type, When I submit the creation screen, Then the ticket is not created and a Problem Details error names the missing field, shown next to that field",
+        "Given custom field values, When the ticket is saved, Then they are stored in the ticket's JSONB column and displayed with their translated labels in my language",
+        "Given a ticket of tenant A, When a user of tenant B requests it by id or key, Then the API answers 404 and no data leaks",
+        "Given the same creation request is replayed with the same Idempotency-Key, When it reaches the API, Then no duplicate ticket is created",
+        "Given a child type such as Sub-task, When I create it under a parent Story, Then the type hierarchy of the configuration is enforced"
+      ],
+      "spec": ["§5", "§15", "§18"],
+      "mockups": ["docs/mockups/previews/03-ticket.png"],
+      "depends_on": [],
+      "tech": [
+        {
+          "id": "L05-US01-T01",
+          "title": "Create issue, issue_key_alias and external_ref tables with RLS",
+          "layer": "database",
+          "description": "Add SQLx migrations for `issue` (tenant_id, project node, type, parent, key number, status, system fields, custom fields JSONB with GIN index, version, timestamps), `issue_key_alias` and `external_ref` (reserved for the future Jira/OpenProject import). Keys are allocated per project with a per-project counter, and the key string is unique per tenant. All tables get tenant_id, RLS policies and composite indexes starting with tenant_id.",
+          "done_when": [
+            "Migrations apply and roll forward cleanly on an empty database",
+            "Integration tests on real PostgreSQL prove RLS hides another tenant's issues, aliases and external refs",
+            "Integration test proves concurrent creations in one project never produce duplicate keys"
+          ]
+        },
+        {
+          "id": "L05-US01-T02",
+          "title": "Implement ticket creation and field validation rules in domain",
+          "layer": "domain",
+          "description": "In `crates/domain`, implement the validation of a new ticket against its project configuration: allowed type, parent type allowed by the type hierarchy, visible and required fields per type, value validation per custom field type (text, number, date, selects, users, labels, URL, ticket link). Pure functions, no I/O.",
+          "done_when": [
+            "Unit tests cover every MVP custom field type, required/visible rules and the type hierarchy",
+            "Validation errors map to stable Problem Details codes"
+          ]
+        },
+        {
+          "id": "L05-US01-T03",
+          "title": "Expose ticket create and read endpoints",
+          "layer": "backend",
+          "description": "In `crates/api`, add `POST /api/v1/projects/{key}/issues` and `GET /api/v1/issues/{idOrKey}` with utoipa annotations, `Idempotency-Key` support on creation, `ETag` on reads, labels in the `Accept-Language` language and `expand` for parent and links. Creation checks the 'create ticket' node permission and writes an outbox event in the same transaction.",
+          "done_when": [
+            "OpenAPI contract regenerated and the Angular client updated",
+            "Integration tests cover success, missing field, forbidden, cross-tenant 404 and idempotent replay",
+            "Outbox event `issue.created` written in the same transaction (integration test)"
+          ]
+        },
+        {
+          "id": "L05-US01-T04",
+          "title": "Build the ticket creation dialog and detail page",
+          "layer": "frontend",
+          "description": "In `projects/app`, build the creation `MatDialog` (project, type, dynamic fields from the configuration screen) and the ticket detail page following the mockup: header with type chip and key, description, details side panel, parent and node attachment. Use `ui-type-chip` / `ui-status-chip`, Transloco keys, tokens only, and data from the generated client through signals, with loading, empty and error states.",
+          "done_when": [
+            "Unit tests for the dynamic field form and the detail page components",
+            "axe check passes on the dialog and the page",
+            "French and English translation keys provided"
+          ]
+        },
+        {
+          "id": "L05-US01-T05",
+          "title": "Add Playwright test for ticket creation flow",
+          "layer": "e2e",
+          "description": "Playwright scenario: sign in, open a project, create a Story with required fields, land on PLAT-n, check the displayed fields; then submit with a missing required field and check the inline error.",
+          "done_when": [
+            "Scenario runs green in CI through `just`"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L05-US02",
+      "title": "Edit a ticket safely and move it to another project",
+      "level": "essential",
+      "as_a": "project member",
+      "i_want": "to edit a ticket's fields and move it to another project when needed",
+      "so_that": "tickets stay accurate without anyone silently overwriting someone else's change",
+      "acceptance": [
+        "Given I opened ticket PLAT-142 at version 5, When someone else saves it first and I then save, Then my save is rejected with a conflict error and I am offered to reload the latest version",
+        "Given I have edit permission, When I change a field and save, Then the ticket version increases and the new value is displayed",
+        "Given I move PLAT-142 to project CRM, When the move succeeds, Then it gets a new key CRM-n and PLAT-142 still resolves to it as an alias",
+        "Given the target project uses another configuration, When I move the ticket, Then I must map its type and status to the target configuration before confirming",
+        "Given I lack edit permission on the ticket's project, When I try to edit, Then the edit controls are hidden and the API answers 403"
+      ],
+      "spec": ["§5", "§12", "§15"],
+      "mockups": ["docs/mockups/previews/03-ticket.png"],
+      "depends_on": ["L05-US01"],
+      "tech": [
+        {
+          "id": "L05-US02-T01",
+          "title": "Implement ticket update and move rules in domain",
+          "layer": "domain",
+          "description": "In `crates/domain`, implement partial update validation (field rules per type and current workflow step) and the move rules: required type and status mapping when configurations differ, key reallocation, alias creation. No I/O.",
+          "done_when": [
+            "Unit tests cover field rules per step, same-configuration move and cross-configuration move with mapping"
+          ]
+        },
+        {
+          "id": "L05-US02-T02",
+          "title": "Expose ticket update and move endpoints with If-Match",
+          "layer": "backend",
+          "description": "Add `PATCH /api/v1/issues/{idOrKey}` requiring `If-Match` (412 on stale version, Problem Details code) and `POST /api/v1/issues/{idOrKey}/move`. Both check permissions on source and target nodes, write audit entries and outbox events in the same transaction. Key lookups resolve aliases.",
+          "done_when": [
+            "Integration tests cover stale ETag 412, missing If-Match 428, forbidden, cross-tenant 404, move with alias resolution",
+            "OpenAPI and Angular client regenerated"
+          ]
+        },
+        {
+          "id": "L05-US02-T03",
+          "title": "Add inline editing, conflict handling and move dialog",
+          "layer": "frontend",
+          "description": "Add field editing on the ticket page (Edit button and inline fields), a conflict snackbar or dialog offering reload when the API returns 412, and a move `MatDialog` with type and status mapping when needed. All texts via Transloco.",
+          "done_when": [
+            "Unit tests for edit form, conflict handling and move dialog",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L05-US03",
+      "title": "Link tickets and manage sub-tasks",
+      "level": "essential",
+      "as_a": "project member",
+      "i_want": "to link tickets (blocks, depends on, duplicates, relates to), including across projects, and see sub-tasks",
+      "so_that": "dependencies and breakdowns are visible from each ticket",
+      "acceptance": [
+        "Given PLAT-142 and CRM-224, When I add 'PLAT-142 blocks CRM-224', Then PLAT-142 shows 'Blocks CRM-224' and CRM-224 shows 'Blocked by PLAT-142'",
+        "Given a linked ticket in a project I cannot view, When I open my ticket, Then the link is not shown to me",
+        "Given a Story with sub-tasks, When I open it, Then the 'Sub-tasks and links' section lists each sub-task with its status chip",
+        "Given I try to link a ticket to itself or duplicate an existing link, When I submit, Then the API rejects it with a stable error code",
+        "Given a ticket of another tenant, When I try to link to its key, Then it is not found"
+      ],
+      "spec": ["§5"],
+      "mockups": ["docs/mockups/previews/03-ticket.png"],
+      "depends_on": ["L05-US01"],
+      "tech": [
+        {
+          "id": "L05-US03-T01",
+          "title": "Create issue_link table and link rules",
+          "layer": "database",
+          "description": "Add the `issue_link` table (tenant_id, source, target, link type: blocks, depends_on, duplicates, relates_to) with RLS, uniqueness on (source, target, type) and a check against self-links. Implement inward/outward label resolution in `crates/domain`.",
+          "done_when": [
+            "Unit tests for link direction labels and validation",
+            "Integration tests for RLS isolation, uniqueness and self-link rejection on real PostgreSQL"
+          ]
+        },
+        {
+          "id": "L05-US03-T02",
+          "title": "Expose link and sub-task endpoints",
+          "layer": "backend",
+          "description": "Add `POST/DELETE /api/v1/issues/{idOrKey}/links` and include links and children in `expand`. Links to tickets the user cannot view are filtered out. Changes are audited and emit outbox events.",
+          "done_when": [
+            "Integration tests cover cross-project link, permission filtering, duplicate link and cross-tenant rejection",
+            "OpenAPI and Angular client regenerated"
+          ]
+        },
+        {
+          "id": "L05-US03-T03",
+          "title": "Build the sub-tasks and links section of the ticket page",
+          "layer": "frontend",
+          "description": "Build the 'Sub-tasks and links' card: list with relation icon, key link, title and status chip, an add-link dialog with ticket search by key or text, and removal with confirmation. Real links (`<a>`), keyboard accessible.",
+          "done_when": [
+            "Unit tests for the section and the add-link dialog",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L05-US04",
+      "title": "Comment with rich text, mentions and visibility",
+      "level": "essential",
+      "as_a": "project member",
+      "i_want": "to write rich comments, mention people and reference tickets, as internal or public comments",
+      "so_that": "the team can collaborate on a ticket and choose what requesters see on the portal",
+      "acceptance": [
+        "Given the comment editor, When I type '@Cam' and pick Camille Martin, Then the comment contains a mention and Camille is notified",
+        "Given I type PLAT-120 in a comment, When it is saved, Then it is rendered as a link to that ticket",
+        "Given I choose 'Internal', When the comment is saved, Then it is never returned by portal endpoints",
+        "Given a comment containing a script or an unknown node, When it is rendered, Then the server-side sanitized HTML contains no executable code",
+        "Given I am the author, When I edit or delete my comment, Then the change is recorded in the history"
+      ],
+      "spec": ["§12"],
+      "mockups": ["docs/mockups/previews/03-ticket.png"],
+      "depends_on": ["L05-US01"],
+      "tech": [
+        {
+          "id": "L05-US04-T01",
+          "title": "Create comment table and rich content rendering",
+          "layer": "database",
+          "description": "Add the `comment` table (tenant_id, issue, author, visibility internal/public, content as Tiptap JSON, rendered HTML, version) with RLS. In `crates/domain`, implement extraction of mentions and ticket references from the JSON document; in `crates/infra` or api, render the JSON to sanitized HTML with an allowlist of nodes and marks.",
+          "done_when": [
+            "Unit tests for mention and reference extraction and for sanitization (XSS payloads)",
+            "Integration tests for RLS isolation of comments"
+          ]
+        },
+        {
+          "id": "L05-US04-T02",
+          "title": "Expose comment endpoints with visibility rules",
+          "layer": "backend",
+          "description": "Add list, create, edit and delete comment endpoints under the ticket. Check the 'comment' permission, keep internal comments out of any portal-facing response, and emit `comment.created` with mentioned accounts in the outbox.",
+          "done_when": [
+            "Integration tests cover permission, edit by non-author forbidden, internal vs public filtering and cross-tenant isolation",
+            "OpenAPI and Angular client regenerated"
+          ]
+        },
+        {
+          "id": "L05-US04-T03",
+          "title": "Build the Tiptap comment editor in projects/ui",
+          "layer": "frontend",
+          "description": "Create a shared rich text editor component in `projects/ui` wrapping Tiptap (MIT), with mention suggestions (@ people) and ticket references (#), themed with tokens. Add the comments tab on the ticket page with the Internal / Public (portal) `mat-button-toggle-group`.",
+          "done_when": [
+            "Unit tests for the editor wrapper and the comments tab",
+            "Keyboard navigation of suggestion lists works and axe check passes",
+            "License check confirms only MIT Tiptap extensions are used"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L05-US05",
+      "title": "Attach files to a ticket with antivirus scanning",
+      "level": "essential",
+      "as_a": "project member",
+      "i_want": "to attach files to a ticket and download them safely",
+      "so_that": "documents related to the work are kept with it without risking malware",
+      "acceptance": [
+        "Given I drop a file of 3 MB on a ticket, When the upload completes, Then the file goes directly to object storage through a presigned URL and appears as 'Scanning'",
+        "Given the antivirus marks the file clean, When I click it, Then I can download it and images show a thumbnail",
+        "Given the antivirus detects a virus, When the scan completes, Then the file is quarantined and cannot be downloaded",
+        "Given a file larger than the configured maximum (50 MB by default) or a tenant over quota, When I try to upload, Then the upload is refused with an explicit error",
+        "Given the same file is uploaded twice, When both are stored, Then only one object exists in storage (deduplicated by SHA-256)"
+      ],
+      "spec": ["§12"],
+      "mockups": ["docs/mockups/previews/03-ticket.png"],
+      "depends_on": ["L05-US01"],
+      "tech": [
+        {
+          "id": "L05-US05-T01",
+          "title": "Create attachment table and S3 storage adapter",
+          "layer": "database",
+          "description": "Add the `attachment` table (tenant_id, issue, name, size, media type, SHA-256, author, scan status, thumbnail key) with RLS. In `crates/infra`, implement the S3 adapter (SeaweedFS in dev) generating presigned upload and download URLs, with content-addressed object keys for deduplication.",
+          "done_when": [
+            "Integration tests against a real S3-compatible store (SeaweedFS container) for presigned upload and download",
+            "Integration tests for RLS isolation of attachment metadata"
+          ]
+        },
+        {
+          "id": "L05-US05-T02",
+          "title": "Expose attachment endpoints with size and quota checks",
+          "layer": "backend",
+          "description": "Add endpoints to request an upload URL (checks size limit and tenant quota), confirm the upload (verifies hash and enqueues scan), list attachments and get a download URL only when scan status is clean.",
+          "done_when": [
+            "Integration tests cover oversize, over quota, download before scan refused, cross-tenant 404",
+            "OpenAPI and Angular client regenerated"
+          ]
+        },
+        {
+          "id": "L05-US05-T03",
+          "title": "Add antivirus and thumbnail worker jobs",
+          "layer": "worker",
+          "description": "In `crates/worker`, add jobs that stream the object to ClamAV, update the scan status (clean, infected), quarantine infected files, and generate thumbnails and previews for images. Jobs use the SKIP LOCKED queue and are idempotent.",
+          "done_when": [
+            "Unit tests for job state transitions",
+            "Integration tests with real ClamAV (EICAR test file) and S3 containers"
+          ]
+        },
+        {
+          "id": "L05-US05-T04",
+          "title": "Build the attachments panel with direct upload",
+          "layer": "frontend",
+          "description": "Add an attachments section on the ticket page: file picker and drop zone (keyboard accessible), upload progress with `mat-progress-bar`, scan status chip, thumbnails, download link once clean. Upload goes straight to the presigned URL.",
+          "done_when": [
+            "Unit tests for upload states and error display",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L05-US06",
+      "title": "Track ticket history in the Activity tab",
+      "level": "essential",
+      "as_a": "project member",
+      "i_want": "to see who changed what and when on a ticket, and from where",
+      "so_that": "I can understand how a ticket evolved and trust the data",
+      "acceptance": [
+        "Given Lucas changes the status from To do to In progress, When I open the Activity tab, Then I see 'Lucas Bernard changed the status: To do → In progress' with the date in my time zone",
+        "Given a change made through MCP, When it appears in the activity, Then it is marked 'via MCP'",
+        "Given a field change, When it is saved, Then the audit entry holds the old value, new value, author, timestamp and origin (interface, API, MCP, import, system)",
+        "Given an anonymized author, When I view the history, Then they appear as 'Deleted user #n'"
+      ],
+      "spec": ["§12", "§18"],
+      "mockups": ["docs/mockups/previews/03-ticket.png"],
+      "depends_on": ["L05-US02"],
+      "tech": [
+        {
+          "id": "L05-US06-T01",
+          "title": "Create monthly-partitioned audit_log table",
+          "layer": "database",
+          "description": "Add `audit_log` partitioned by month (tenant_id, entity type and id, field, old and new values as JSONB, actor, origin, timestamp) with RLS and a job or migration that creates future partitions. Index on (tenant_id, entity_id, created_at).",
+          "done_when": [
+            "Integration tests prove partition creation, RLS isolation and query by ticket"
+          ]
+        },
+        {
+          "id": "L05-US06-T02",
+          "title": "Record field-level diffs in the shared write layer",
+          "layer": "backend",
+          "description": "Implement a diff function in `crates/domain` comparing before and after ticket states field by field, and call it from the ticket write services so every change writes audit rows in the same transaction. The origin comes from the request context (session, token, MCP client, system job).",
+          "done_when": [
+            "Unit tests for diffing system and custom fields",
+            "Integration tests prove audit rows are written atomically with the change and carry the right origin"
+          ]
+        },
+        {
+          "id": "L05-US06-T03",
+          "title": "Build the Activity tab",
+          "layer": "frontend",
+          "description": "Expose `GET /api/v1/issues/{idOrKey}/activity` with cursor pagination and build the Activity tab (`mat-tab-group`) listing entries with avatar, translated sentence, 'via MCP' chip and localized date.",
+          "done_when": [
+            "Integration tests for the activity endpoint (pagination, permission, cross-tenant)",
+            "Unit tests for the tab and the entry formatting in FR and EN",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L05-US07",
+      "title": "Receive notifications in the app and by email",
+      "level": "essential",
+      "as_a": "internal user",
+      "i_want": "to be notified of events that concern me, in the app and by email, according to my preferences",
+      "so_that": "I react quickly to mentions, assignments and status changes without being flooded",
+      "acceptance": [
+        "Given I am mentioned in a comment, When the event is processed, Then I get an in-app notification within seconds and an email if my preferences allow it",
+        "Given I disabled email for 'status changed', When a ticket I watch changes status, Then I only get the in-app notification",
+        "Given I enabled the daily digest, When the digest job runs, Then I receive one email summarizing the day's notifications instead of individual emails",
+        "Given I belong to two tenants, When I open the notification center, Then I see notifications of both tenants and can filter by tenant",
+        "Given I mark a notification as read, When I reload, Then it stays read"
+      ],
+      "spec": ["§5", "§12"],
+      "mockups": ["docs/mockups/previews/16-notifications.png"],
+      "depends_on": ["L05-US04"],
+      "tech": [
+        {
+          "id": "L05-US07-T01",
+          "title": "Create outbox_event, notification and notification_pref tables",
+          "layer": "database",
+          "description": "Add `outbox_event` (partitioned by month, purged after processing), `notification` (partitioned by month) and `notification_pref` (per account, tenant and event type, channels and digest flag), all with RLS. Notification reads across tenants for one account go through a dedicated, reviewed query path.",
+          "done_when": [
+            "Integration tests for RLS, partitioning and the cross-tenant notification read restricted to the account's memberships"
+          ]
+        },
+        {
+          "id": "L05-US07-T02",
+          "title": "Implement recipient resolution from configuration rules",
+          "layer": "domain",
+          "description": "In `crates/domain`, compute recipients for an event from the project configuration's notification rules (assignee, reporter, watchers, mentioned users, roles), minus the actor, filtered by user preferences and by view permission on the ticket.",
+          "done_when": [
+            "Unit tests cover each recipient rule, preference filtering and actor exclusion"
+          ]
+        },
+        {
+          "id": "L05-US07-T03",
+          "title": "Add outbox dispatcher, notification and email jobs",
+          "layer": "worker",
+          "description": "In `crates/worker`, consume outbox events with SKIP LOCKED, create notifications, send emails through the `crates/infra` mail adapter with localized templates, and run the daily digest job. Processing is idempotent and retried with backoff.",
+          "done_when": [
+            "Unit tests for template rendering in FR and EN",
+            "Integration tests with real PostgreSQL and a test SMTP server (e.g. Mailpit) for immediate and digest emails, and for exactly-once processing with two workers"
+          ]
+        },
+        {
+          "id": "L05-US07-T04",
+          "title": "Expose notification and preference endpoints",
+          "layer": "backend",
+          "description": "Add endpoints to list notifications (cursor pagination, tenant filter, unread count), mark as read, and read or update preferences per event type and channel.",
+          "done_when": [
+            "Integration tests cover tenant filter, other account's notifications not visible, preference update",
+            "OpenAPI and Angular client regenerated"
+          ]
+        },
+        {
+          "id": "L05-US07-T05",
+          "title": "Build notification center and preferences screen",
+          "layer": "frontend",
+          "description": "Build the notification bell with unread badge, the notification list with tenant filter chips, and the preferences table with `mat-slide-toggle` per event and channel, following the mockup. Transloco keys, tokens only.",
+          "done_when": [
+            "Unit tests for the list, filter and preferences components",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L05-US08",
+      "title": "See ticket changes in real time",
+      "level": "essential",
+      "as_a": "internal user",
+      "i_want": "the ticket I am viewing to update when someone else changes it",
+      "so_that": "I always work on current data and avoid conflicts",
+      "acceptance": [
+        "Given two users view PLAT-142 on different API instances, When one changes its status, Then the other sees the new status within a few seconds without reloading",
+        "Given I have unsaved edits and the ticket changes remotely, When the update arrives, Then I am warned instead of having my edits overwritten",
+        "Given a change on a ticket I cannot view, When it happens, Then I receive no event about it",
+        "Given the SSE connection drops, When the network comes back, Then the client reconnects and resynchronizes"
+      ],
+      "spec": ["§12"],
+      "mockups": [],
+      "depends_on": ["L05-US07"],
+      "tech": [
+        {
+          "id": "L05-US08-T01",
+          "title": "Publish outbox events to Valkey pub/sub",
+          "layer": "worker",
+          "description": "Publish processed outbox events to Valkey channels scoped by tenant, through the `crates/infra` Valkey adapter, so every API instance receives them.",
+          "done_when": [
+            "Integration tests with a real Valkey container prove events reach subscribers and are scoped by tenant"
+          ]
+        },
+        {
+          "id": "L05-US08-T02",
+          "title": "Expose the Server-Sent Events stream",
+          "layer": "backend",
+          "description": "Add `GET /api/v1/events` (SSE) authenticated by session, streaming events for the current tenant filtered by the user's view permissions on the related nodes, with heartbeat and `Last-Event-ID` resume support.",
+          "done_when": [
+            "Integration tests with two API instances and Valkey prove delivery, permission filtering and cross-tenant isolation",
+            "Unit tests for the event filter"
+          ]
+        },
+        {
+          "id": "L05-US08-T03",
+          "title": "Add a real-time event service in projects/ui",
+          "layer": "frontend",
+          "description": "Create a shared service exposing SSE events as signals, with automatic reconnection. Use it on the ticket page to refresh data, and show a conflict warning when local unsaved edits exist.",
+          "done_when": [
+            "Unit tests for reconnection and the ticket page refresh logic"
+          ]
+        },
+        {
+          "id": "L05-US08-T04",
+          "title": "Add Playwright test for collaboration on a ticket",
+          "layer": "e2e",
+          "description": "Two browser contexts on the same ticket: user A comments and changes the status; user B sees both updates live and receives the mention notification.",
+          "done_when": [
+            "Scenario runs green in CI through `just`"
+          ]
+        }
+      ]
+    }
+  ]
+}
