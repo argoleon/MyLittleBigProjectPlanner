@@ -28,14 +28,18 @@ use infra::idempotency::{Claim, StoredResponse};
 use infra::reference_items::{self as repo, ReferenceItem, WriteConflict};
 use infra::uuid::Uuid;
 use serde::{Deserialize, Serialize};
+use utoipa::{IntoParams, ToSchema};
 
 use crate::etag::{etag, if_none_match, require_if_match};
 use crate::extract::{AcceptLanguage, ApiJson, ApiPath, ApiQuery};
 use crate::fields::FieldSelection;
 use crate::idempotency;
 use crate::pagination::{PageBody, PageParams, encode_cursor};
-use crate::problem::{ErrorCode, Problem};
+use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
 use crate::tenant::TenantTx;
+
+/// OpenAPI tag of this resource.
+pub const TAG: &str = "reference-items";
 
 const PATH: &str = "/api/v1/reference-items";
 
@@ -63,12 +67,27 @@ const DEFAULT_FIELDS: &[&str] = &[
 
 /// Body of `POST` and `PUT`. Unknown fields are refused, so typos are not
 /// silently ignored.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[schema(
+    as = ReferenceItemInput,
+    example = json!({"code": "REF-1", "labelTranslations": {"fr": "Référence", "en": "Reference"}, "quantity": 3})
+)]
 pub struct ReferenceItemBody {
+    /// 2 to 20 characters among `A-Z`, `0-9` and `-`, starting with a letter;
+    /// unique in the tenant.
+    #[schema(
+        example = "REF-1",
+        min_length = 2,
+        max_length = 20,
+        pattern = "^[A-Z][A-Z0-9-]{1,19}$"
+    )]
     pub code: String,
+    /// Label per language (`fr`, `en`), at least one; 200 characters at most.
     pub label_translations: BTreeMap<String, String>,
+    /// From 0 to 1,000,000; 0 when absent.
     #[serde(default)]
+    #[schema(minimum = 0, maximum = 1_000_000, default = 0)]
     pub quantity: i32,
 }
 
@@ -83,17 +102,50 @@ impl From<ReferenceItemBody> for ReferenceItemInput {
 }
 
 /// What the API returns. `label` is resolved in the request's language.
-#[derive(Debug, Serialize)]
+/// With `?fields=`, only the selected fields are present.
+#[derive(Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
+#[schema(
+    as = ReferenceItem,
+    example = json!({
+        "id": "0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7a8b",
+        "code": "REF-1",
+        "label": "Reference",
+        "quantity": 3,
+        "version": 1,
+        "createdAt": "2026-11-09T10:00:00Z",
+        "updatedAt": "2026-11-09T10:00:00Z"
+    })
+)]
 pub struct ReferenceItemView {
     id: Uuid,
     code: String,
+    /// Label in the response language (`Content-Language`), falling back to
+    /// the tenant's default language, then to any translation; `null` when
+    /// the item has no label at all.
+    #[schema(required = true)]
     label: Option<String>,
+    /// Every translation; only returned when selected with `?fields=`.
+    #[schema(required = false)]
     label_translations: BTreeMap<String, String>,
     quantity: i32,
+    /// Incremented on every change; the `ETag` is this value in quotes.
     version: i64,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
+}
+
+// Documentation only: `list` builds a `PageBody` of JSON values, restricted
+// to the selected fields. (`///` comments here would end up in the contract.)
+/// A page of reference items, in creation order.
+#[derive(Debug, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+pub struct ReferenceItemPage {
+    items: Vec<ReferenceItemView>,
+    /// Cursor of the next page, `null` on the last page.
+    #[schema(required = true)]
+    next_cursor: Option<String>,
 }
 
 impl ReferenceItemView {
@@ -113,17 +165,25 @@ impl ReferenceItemView {
 }
 
 /// `?fields=` of single-resource endpoints.
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct FieldsParam {
+    /// Comma-separated fields to return, e.g. `id,code`. Default: every field
+    /// but `labelTranslations`.
     pub fields: Option<String>,
 }
 
 /// `?limit=&cursor=&fields=` of the list endpoint. (Not `#[serde(flatten)]`
 /// over `PageParams`: flattening breaks number parsing in query strings.)
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct ListParams {
+    /// Comma-separated fields to return for each item, e.g. `id,code`.
     pub fields: Option<String>,
+    /// Page size, from 1 to 200 (default 50).
+    #[param(minimum = 1, maximum = 200)]
     pub limit: Option<usize>,
+    /// `nextCursor` of the previous page.
     pub cursor: Option<String>,
 }
 
@@ -176,6 +236,32 @@ fn conflict_problem(conflict: WriteConflict) -> Problem {
 }
 
 /// `POST /api/v1/reference-items`: create; idempotent with `Idempotency-Key`.
+#[utoipa::path(
+    post,
+    path = "/reference-items",
+    tag = TAG,
+    operation_id = "createReferenceItem",
+    summary = "Create a reference item",
+    description = "Replaying the same request with the same `Idempotency-Key` within 24 hours \
+                   returns the first response (`Idempotent-Replayed: true`) without creating a duplicate.",
+    params(
+        FieldsParam,
+        ("Idempotency-Key" = Option<String>, Header, description = "Unique key of this creation, 1 to 255 visible ASCII characters"),
+        ("Accept-Language" = Option<String>, Header, description = "Language of `label`"),
+    ),
+    request_body = ReferenceItemBody,
+    responses(
+        (status = 201, description = "Created", body = ReferenceItemView, headers(
+            ("ETag" = String, description = "Version of the item"),
+            ("Location" = String, description = "URL of the item"),
+            ("Content-Language" = String, description = "Language of `label`"),
+        )),
+        (status = 400, description = "Invalid fields, JSON or `Idempotency-Key`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 409, description = "`reference_item.code_taken`, or `idempotency_key.in_flight`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 415, description = "Body is not JSON", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 422, description = "`Idempotency-Key` already used for another request", body = ProblemBody, content_type = PROBLEM_JSON),
+    )
+)]
 pub async fn create(
     mut tx: TenantTx,
     accept: AcceptLanguage,
@@ -231,6 +317,28 @@ pub async fn create(
 }
 
 /// `GET /api/v1/reference-items/{id}`; 304 if `If-None-Match` is current.
+#[utoipa::path(
+    get,
+    path = "/reference-items/{id}",
+    tag = TAG,
+    operation_id = "getReferenceItem",
+    summary = "Read a reference item",
+    params(
+        ("id" = Uuid, Path, description = "Id of the item"),
+        FieldsParam,
+        ("If-None-Match" = Option<String>, Header, description = "ETag already held: 304 if still current"),
+        ("Accept-Language" = Option<String>, Header, description = "Language of `label`"),
+    ),
+    responses(
+        (status = 200, description = "The item", body = ReferenceItemView, headers(
+            ("ETag" = String, description = "Version of the item"),
+            ("Content-Language" = String, description = "Language of `label`"),
+        )),
+        (status = 304, description = "Not modified since the `If-None-Match` ETag"),
+        (status = 400, description = "Unknown field in `fields`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 404, description = "No such item in this tenant", body = ProblemBody, content_type = PROBLEM_JSON),
+    )
+)]
 pub async fn read(
     mut tx: TenantTx,
     accept: AcceptLanguage,
@@ -259,6 +367,24 @@ pub async fn read(
 }
 
 /// `GET /api/v1/reference-items?limit=&cursor=&fields=`, in creation order.
+#[utoipa::path(
+    get,
+    path = "/reference-items",
+    tag = TAG,
+    operation_id = "listReferenceItems",
+    summary = "List reference items",
+    description = "In creation order. Follow `nextCursor` until it is `null`.",
+    params(
+        ListParams,
+        ("Accept-Language" = Option<String>, Header, description = "Language of `label`"),
+    ),
+    responses(
+        (status = 200, description = "A page of items", body = ReferenceItemPage, headers(
+            ("Content-Language" = String, description = "Language of `label`"),
+        )),
+        (status = 400, description = "Invalid `limit`, `cursor` or `fields`", body = ProblemBody, content_type = PROBLEM_JSON),
+    )
+)]
 pub async fn list(
     mut tx: TenantTx,
     accept: AcceptLanguage,
@@ -295,6 +421,31 @@ pub async fn list(
 }
 
 /// `PUT /api/v1/reference-items/{id}`: replace; requires `If-Match`.
+#[utoipa::path(
+    put,
+    path = "/reference-items/{id}",
+    tag = TAG,
+    operation_id = "updateReferenceItem",
+    summary = "Replace a reference item",
+    params(
+        ("id" = Uuid, Path, description = "Id of the item"),
+        FieldsParam,
+        ("If-Match" = String, Header, description = "ETag of the version being replaced, or `*`"),
+        ("Accept-Language" = Option<String>, Header, description = "Language of `label`"),
+    ),
+    request_body = ReferenceItemBody,
+    responses(
+        (status = 200, description = "The updated item", body = ReferenceItemView, headers(
+            ("ETag" = String, description = "New version of the item"),
+            ("Content-Language" = String, description = "Language of `label`"),
+        )),
+        (status = 400, description = "Invalid fields or JSON", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 404, description = "No such item in this tenant", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 409, description = "`reference_item.code_taken`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 412, description = "The item changed since this ETag", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 428, description = "`If-Match` is missing", body = ProblemBody, content_type = PROBLEM_JSON),
+    )
+)]
 pub async fn update(
     mut tx: TenantTx,
     accept: AcceptLanguage,
@@ -322,6 +473,23 @@ pub async fn update(
 }
 
 /// `DELETE /api/v1/reference-items/{id}`: requires `If-Match`.
+#[utoipa::path(
+    delete,
+    path = "/reference-items/{id}",
+    tag = TAG,
+    operation_id = "deleteReferenceItem",
+    summary = "Delete a reference item",
+    params(
+        ("id" = Uuid, Path, description = "Id of the item"),
+        ("If-Match" = String, Header, description = "ETag of the version being deleted, or `*`"),
+    ),
+    responses(
+        (status = 204, description = "Deleted"),
+        (status = 404, description = "No such item in this tenant", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 412, description = "The item changed since this ETag", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 428, description = "`If-Match` is missing", body = ProblemBody, content_type = PROBLEM_JSON),
+    )
+)]
 pub async fn delete(
     mut tx: TenantTx,
     headers: HeaderMap,

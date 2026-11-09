@@ -7,6 +7,8 @@ pub enum Command {
     Serve,
     /// Apply pending database migrations, then exit.
     Migrate,
+    /// Print the OpenAPI contract, then exit.
+    OpenApi,
     /// Print usage, then exit.
     Help,
 }
@@ -17,6 +19,7 @@ Usage: api [COMMAND]
 Commands:
   serve     Serve the REST API (default)
   migrate   Apply pending database migrations with DATABASE_MIGRATION_URL, then exit
+  openapi   Print the OpenAPI contract (JSON) on standard output, then exit
   help      Print this message
 
 Configuration is read from environment variables; see deploy/.env.example.";
@@ -29,6 +32,7 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Command, String> 
         [one] => match one.as_str() {
             "serve" => Ok(Command::Serve),
             "migrate" => Ok(Command::Migrate),
+            "openapi" => Ok(Command::OpenApi),
             "help" | "--help" | "-h" => Ok(Command::Help),
             other => Err(format!("unknown command: {other}")),
         },
@@ -51,8 +55,9 @@ mod tests {
     }
 
     #[test]
-    fn migrate_and_help_are_recognized() {
+    fn migrate_openapi_and_help_are_recognized() {
         assert_eq!(parse(args(&["migrate"])), Ok(Command::Migrate));
+        assert_eq!(parse(args(&["openapi"])), Ok(Command::OpenApi));
         for flag in ["help", "--help", "-h"] {
             assert_eq!(parse(args(&[flag])), Ok(Command::Help));
         }

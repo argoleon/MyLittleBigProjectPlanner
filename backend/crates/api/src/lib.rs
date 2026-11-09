@@ -10,6 +10,7 @@ pub mod extract;
 pub mod fields;
 pub mod idempotency;
 pub mod middleware;
+pub mod openapi;
 pub mod pagination;
 pub mod problem;
 pub mod reference_items;

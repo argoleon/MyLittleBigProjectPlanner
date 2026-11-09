@@ -1,0 +1,4 @@
+# Generated files: collapsed in GitHub diffs, regenerated with `just` recipes.
+backend/openapi.json linguist-generated=true
+backend/.sqlx/** linguist-generated=true
+web/projects/ui/src/lib/api/generated/** linguist-generated=true
