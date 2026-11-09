@@ -10,6 +10,8 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+sqlx.workspace = true
+uuid.workspace = true
 infra.workspace = true
 axum = "0.8.9"
 serde = { version = "1.0.229", features = ["derive"] }
@@ -19,7 +21,9 @@ tower = "0.5.3"
 tower-http = { version = "0.7.1", features = ["trace", "request-id", "timeout", "limit", "util"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+domain.workspace = true
 
 [dev-dependencies]
 http-body-util = "0.1.5"
 reqwest = { version = "0.13.5", default-features = false, features = ["json"] }
+testkit.workspace = true

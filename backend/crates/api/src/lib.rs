@@ -4,21 +4,24 @@
 //! Every route goes through the shared request layer in [`middleware`], so
 //! no feature can forget request IDs, timeouts or body limits.
 
+pub mod cli;
 pub mod middleware;
+pub mod problem;
 mod routes;
+pub mod tenant;
 
 use std::future::{Future, IntoFuture};
 use std::time::Duration;
 
 use axum::Router;
-use infra::config::ApiConfig;
 use tokio::net::TcpListener;
 
 pub use middleware::{HttpSettings, with_middleware};
+pub use tenant::{AppState, TenantTx};
 
 /// The complete API router, with the shared request layer applied.
-pub fn app(config: &ApiConfig) -> Router {
-    with_middleware(routes::router(), &HttpSettings::from(config))
+pub fn app(state: AppState, settings: &HttpSettings) -> Router {
+    with_middleware(routes::router(state), settings)
 }
 
 /// Serves `app` on `listener` until `shutdown` resolves, then lets in-flight

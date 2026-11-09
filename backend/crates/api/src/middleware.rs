@@ -45,7 +45,14 @@ pub fn with_middleware(router: Router, settings: &HttpSettings) -> Router {
                     .get(REQUEST_ID_HEADER)
                     .and_then(|v| v.to_str().ok())
                     .unwrap_or_default();
-                tracing::info_span!("request", method = %request.method(), uri = %request.uri(), request_id)
+                // `tenant` is filled in by the TenantTx extractor once resolved.
+                tracing::info_span!(
+                    "request",
+                    method = %request.method(),
+                    uri = %request.uri(),
+                    request_id,
+                    tenant = tracing::field::Empty
+                )
             }),
         )
         .layer(PropagateRequestIdLayer::new(REQUEST_ID_HEADER))

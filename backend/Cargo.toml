@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/domain", "crates/infra", "crates/api", "crates/worker", "crates/mcp"]
+members = ["crates/domain", "crates/infra", "crates/api", "crates/worker", "crates/mcp", "crates/testkit"]
 
 [workspace.package]
 version = "0.1.0"
@@ -12,6 +12,9 @@ publish = false
 [workspace.dependencies]
 domain = { path = "crates/domain" }
 infra = { path = "crates/infra" }
+testkit = { path = "crates/testkit" }
+sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "postgres", "macros", "migrate", "uuid"] }
+uuid = { version = "1.29.1", features = ["v7", "serde"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

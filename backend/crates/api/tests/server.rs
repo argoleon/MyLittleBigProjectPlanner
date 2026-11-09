@@ -5,21 +5,32 @@
 
 use std::time::{Duration, Instant};
 
+use api::{AppState, HttpSettings};
 use axum::Router;
 use axum::routing::get;
-use infra::config::{ApiConfig, CommonConfig};
+use domain::tenancy::Tenancy;
+use infra::sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 
-fn config() -> ApiConfig {
-    ApiConfig {
-        common: CommonConfig {
-            shutdown_grace: Duration::from_secs(5),
-        },
-        bind_addr: "127.0.0.1:0".parse().unwrap(),
+fn settings() -> HttpSettings {
+    HttpSettings {
         request_timeout: Duration::from_secs(10),
         body_limit_bytes: 1024,
     }
+}
+
+/// State whose pool never connects: these tests do not touch the database.
+fn offline_state() -> AppState {
+    let pool = PgPoolOptions::new()
+        .connect_lazy("postgres://localhost/unused")
+        .unwrap();
+    AppState::new(
+        pool,
+        Tenancy::Single {
+            default_slug: "default".to_owned(),
+        },
+    )
 }
 
 async fn listener() -> (TcpListener, String) {
@@ -34,7 +45,7 @@ async fn ping_answers_json_on_a_random_port() {
     let (stop_tx, stop_rx) = oneshot::channel::<()>();
     let server = tokio::spawn(api::serve(
         listener,
-        api::app(&config()),
+        api::app(offline_state(), &settings()),
         async move {
             let _ = stop_rx.await;
         },
@@ -64,7 +75,7 @@ async fn in_flight_request_completes_after_shutdown_signal() {
             "done"
         }),
     );
-    let app = api::with_middleware(slow, &api::HttpSettings::from(&config()));
+    let app = api::with_middleware(slow, &settings());
     let (stop_tx, stop_rx) = oneshot::channel::<()>();
     let server = tokio::spawn(api::serve(
         listener,

@@ -1,0 +1,32 @@
+# Development dependencies only: start with `just db-up`, stop with `just db-down`.
+# The full stack (api, worker, mcp, web, Traefik, Valkey, SeaweedFS…) comes in
+# deploy/compose.yaml with L01-US06.
+#
+# The passwords below are for local development only; production passwords
+# come from secrets (see deploy/.env.example).
+
+name: mlbpp-dev
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+      MLBPP_DB_NAME: mlbpp
+      MLBPP_OWNER_PASSWORD: mlbpp_owner_dev
+      MLBPP_APP_PASSWORD: mlbpp_app_dev
+    ports:
+      - "127.0.0.1:54329:5432"
+    volumes:
+      - ./postgres/init-roles.sh:/docker-entrypoint-initdb.d/10-init-roles.sh:ro
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  postgres-data:
