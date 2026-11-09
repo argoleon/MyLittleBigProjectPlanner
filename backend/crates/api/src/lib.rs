@@ -5,8 +5,14 @@
 //! no feature can forget request IDs, timeouts or body limits.
 
 pub mod cli;
+pub mod etag;
+pub mod extract;
+pub mod fields;
+pub mod idempotency;
 pub mod middleware;
+pub mod pagination;
 pub mod problem;
+pub mod reference_items;
 mod routes;
 pub mod tenant;
 

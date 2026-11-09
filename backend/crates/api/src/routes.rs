@@ -3,6 +3,9 @@
 
 use axum::routing::get;
 use axum::{Json, Router};
+
+use crate::problem::ErrorCode;
+use crate::reference_items;
 use infra::uuid::Uuid;
 use serde::Serialize;
 
@@ -12,8 +15,21 @@ use crate::tenant::{AppState, TenantTx};
 pub fn router(state: AppState) -> Router {
     let v1 = Router::new()
         .route("/ping", get(ping))
-        .route("/tenant", get(current_tenant));
-    Router::new().nest("/api/v1", v1).with_state(state)
+        .route("/tenant", get(current_tenant))
+        .route(
+            "/reference-items",
+            get(reference_items::list).post(reference_items::create),
+        )
+        .route(
+            "/reference-items/{id}",
+            get(reference_items::read)
+                .put(reference_items::update)
+                .delete(reference_items::delete),
+        );
+    Router::new()
+        .nest("/api/v1", v1)
+        .fallback(|| async { Problem::new(ErrorCode::NotFound) })
+        .with_state(state)
 }
 
 #[derive(Debug, Serialize)]

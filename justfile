@@ -48,6 +48,10 @@ reset:
 shell:
     {{be}} bash
 
+# Run any cargo command in the Rust toolchain container, e.g. `just cargo add -p api serde`
+cargo *args:
+    {{be}} cargo {{args}}
+
 # --- Backend quality gates --------------------------------------------------
 
 # Build every crate; warnings are errors
@@ -81,9 +85,10 @@ test-integration:
 check-domain:
     {{be}} scripts/check-domain.sh
 
-# Apply pending migrations to the development database
+# Apply pending migrations to the development database. Uses sqlx-cli rather
+# than `api migrate`, which needs the new queries' metadata to compile.
 migrate:
-    {{be}} bash -c 'DATABASE_MIGRATION_URL="$DEV_DATABASE_OWNER_URL" cargo run --quiet --locked -p api -- migrate'
+    {{be}} bash -c 'sqlx migrate run --source migrations --database-url "$DEV_DATABASE_OWNER_URL"'
 
 # Refresh backend/.sqlx after adding or changing a query (builds use it offline)
 sqlx-prepare: migrate

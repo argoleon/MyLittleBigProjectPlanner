@@ -127,3 +127,74 @@ async fn shutdown_does_not_wait_longer_than_the_grace_period() {
         started.elapsed()
     );
 }
+
+/// Serves `app` on a random port; returns the base URL and the stop handle.
+async fn serve_app(app: Router) -> (String, oneshot::Sender<()>) {
+    let (listener, base) = listener().await;
+    let (stop_tx, stop_rx) = oneshot::channel::<()>();
+    tokio::spawn(api::serve(
+        listener,
+        app,
+        async move {
+            let _ = stop_rx.await;
+        },
+        Duration::from_secs(1),
+    ));
+    (base, stop_tx)
+}
+
+async fn problem(res: reqwest::Response) -> (u16, serde_json::Value) {
+    let status = res.status().as_u16();
+    assert_eq!(res.headers()["content-type"], "application/problem+json");
+    assert!(res.headers().contains_key("x-request-id"));
+    (status, res.json().await.unwrap())
+}
+
+#[tokio::test]
+async fn framework_errors_are_problem_details() {
+    let (base, _stop) = serve_app(api::app(offline_state(), &settings())).await;
+    let client = reqwest::Client::new();
+
+    let (status, body) = problem(client.get(format!("{base}/api/v1/nowhere")).send().await.unwrap()).await;
+    assert_eq!((status, body["code"].as_str().unwrap()), (404, "not_found"));
+
+    let res = client.delete(format!("{base}/api/v1/ping")).send().await.unwrap();
+    assert!(res.headers().contains_key("allow"), "Allow header kept");
+    let (status, body) = problem(res).await;
+    assert_eq!(
+        (status, body["code"].as_str().unwrap()),
+        (405, "method_not_allowed")
+    );
+
+    let res = client
+        .post(format!("{base}/api/v1/reference-items"))
+        .header("content-type", "application/json")
+        .body(vec![b' '; 2048])
+        .send()
+        .await
+        .unwrap();
+    let (status, body) = problem(res).await;
+    assert_eq!(
+        (status, body["code"].as_str().unwrap()),
+        (413, "payload_too_large")
+    );
+}
+
+#[tokio::test]
+async fn a_panicking_handler_is_a_generic_500() {
+    let routes = Router::new().route(
+        "/boom",
+        get(|| async {
+            if std::hint::black_box(true) {
+                panic!("secret internal state");
+            }
+            "unreachable"
+        }),
+    );
+    let (base, _stop) = serve_app(api::with_middleware(routes, &settings())).await;
+    let res = reqwest::get(format!("{base}/boom")).await.unwrap();
+    let (status, body) = problem(res).await;
+    assert_eq!(status, 500);
+    assert_eq!(body["code"], "internal");
+    assert!(!body.to_string().contains("secret"), "{body}");
+}

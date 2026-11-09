@@ -1,19 +1,24 @@
 //! Shared request layer applied to every route.
 //!
 //! Order, from the outside in: request ID (generated if absent), tracing span
-//! carrying it, request ID echoed on the response, timeout, body size limit.
-//! The tenant transaction will join this layer in L01-US02.
+//! carrying it, request ID echoed on the response, Problem Details for
+//! framework errors, panic catcher, timeout, body size limit. The tenant
+//! transaction is opened per handler by the `TenantTx` extractor.
 
 use std::time::Duration;
 
 use axum::Router;
-use axum::http::{HeaderName, StatusCode};
+use axum::http::{HeaderName, HeaderValue, StatusCode, header};
+use axum::response::{IntoResponse, Response};
 use infra::config::ApiConfig;
 use tower::ServiceBuilder;
+use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
+
+use crate::problem::{ErrorCode, PROBLEM_JSON, Problem};
 
 /// Header carrying the correlation ID of a request.
 pub const REQUEST_ID_HEADER: HeaderName = HeaderName::from_static("x-request-id");
@@ -36,7 +41,17 @@ impl From<&ApiConfig> for HttpSettings {
 
 /// Wraps `router` in the shared request layer.
 pub fn with_middleware(router: Router, settings: &HttpSettings) -> Router {
-    let layers = ServiceBuilder::new()
+    // Closest to the handlers. Their responses carry their own body types,
+    // so they are applied first and converted back to axum responses.
+    let inner = ServiceBuilder::new()
+        .layer(CatchPanicLayer::custom(on_panic))
+        .layer(TimeoutLayer::with_status_code(
+            StatusCode::REQUEST_TIMEOUT,
+            settings.request_timeout,
+        ))
+        .layer(RequestBodyLimitLayer::new(settings.body_limit_bytes));
+
+    let outer = ServiceBuilder::new()
         .layer(SetRequestIdLayer::new(REQUEST_ID_HEADER, MakeRequestUuid))
         .layer(
             TraceLayer::new_for_http().make_span_with(|request: &axum::http::Request<_>| {
@@ -55,13 +70,50 @@ pub fn with_middleware(router: Router, settings: &HttpSettings) -> Router {
                 )
             }),
         )
-        .layer(PropagateRequestIdLayer::new(REQUEST_ID_HEADER))
-        .layer(TimeoutLayer::with_status_code(
-            StatusCode::REQUEST_TIMEOUT,
-            settings.request_timeout,
-        ))
-        .layer(RequestBodyLimitLayer::new(settings.body_limit_bytes));
-    router.layer(layers)
+        .layer(PropagateRequestIdLayer::new(REQUEST_ID_HEADER));
+
+    router
+        .layer(inner)
+        .layer(axum::middleware::map_response(problem_for_framework_errors))
+        .layer(outer)
+}
+
+/// Turns error responses produced outside handlers (unknown route, wrong
+/// method, timeout, body too large, panic) into Problem Details, keeping
+/// their other headers (`Allow`, `x-request-id`).
+async fn problem_for_framework_errors(response: Response) -> Response {
+    let status = response.status();
+    let is_problem = response
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .is_some_and(|v| v.as_bytes().starts_with(PROBLEM_JSON.as_bytes()));
+    if !(status.is_client_error() || status.is_server_error()) || is_problem {
+        return response;
+    }
+    let Some(code) = ErrorCode::for_status(status) else {
+        return response;
+    };
+    let (mut parts, _) = response.into_parts();
+    let problem = Problem::new(code).into_response();
+    parts.status = problem.status();
+    parts.headers.remove(header::CONTENT_LENGTH);
+    parts
+        .headers
+        .insert(header::CONTENT_TYPE, HeaderValue::from_static(PROBLEM_JSON));
+    Response::from_parts(parts, problem.into_body())
+}
+
+/// A panic in a handler is a bug: log it, answer a generic 500.
+// The signature is imposed by `CatchPanicLayer::custom`.
+#[allow(clippy::needless_pass_by_value)]
+fn on_panic(panic: Box<dyn std::any::Any + Send + 'static>) -> Response {
+    let message = panic
+        .downcast_ref::<String>()
+        .map(String::as_str)
+        .or_else(|| panic.downcast_ref::<&str>().copied())
+        .unwrap_or("unknown panic");
+    tracing::error!(panic = message, "handler panicked");
+    Problem::new(ErrorCode::Internal).into_response()
 }
 
 #[cfg(test)]

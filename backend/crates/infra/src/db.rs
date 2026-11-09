@@ -6,7 +6,7 @@
 
 use sqlx::migrate::Migrator;
 use sqlx::postgres::{PgConnection, PgPool, PgPoolOptions};
-use sqlx::{Postgres, Transaction};
+use sqlx::{Connection, Postgres, Transaction};
 use uuid::Uuid;
 
 use crate::config::{DatabaseConfig, Secret};
@@ -29,13 +29,12 @@ pub fn connect_lazy(config: &DatabaseConfig) -> Result<PgPool, sqlx::Error> {
 
 /// Applies pending migrations with the owner role. Already applied
 /// migrations are skipped; a modified applied migration is an error.
+/// Uses a single connection, not a pool: an unreachable database fails at
+/// once instead of after the pool's retries.
 pub async fn migrate(migration_url: &Secret) -> Result<(), sqlx::Error> {
-    let pool = PgPoolOptions::new()
-        .max_connections(1)
-        .connect(migration_url.expose())
-        .await?;
-    let result = MIGRATOR.run(&pool).await;
-    pool.close().await;
+    let mut conn = PgConnection::connect(migration_url.expose()).await?;
+    let result = MIGRATOR.run(&mut conn).await;
+    let _ = conn.close().await;
     result.map_err(Into::into)
 }
 
@@ -62,13 +61,30 @@ pub async fn set_tenant(conn: &mut PgConnection, tenant_id: Uuid) -> Result<(), 
     Ok(())
 }
 
-/// Tenant id for `slug`, or `None` if no such tenant exists. Works outside a
+/// A tenant found by its slug.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResolvedTenant {
+    pub id: Uuid,
+    /// Fallback language of translatable labels (`fr` or `en`).
+    pub default_locale: String,
+}
+
+/// The tenant for `slug`, or `None` if no such tenant exists. Works outside a
 /// tenant context (owner-defined function), without exposing other tenants.
-pub async fn resolve_tenant(conn: &mut PgConnection, slug: &str) -> Result<Option<Uuid>, sqlx::Error> {
-    let id = sqlx::query_scalar!("SELECT app_resolve_tenant($1) AS id", slug)
-        .fetch_one(conn)
-        .await?;
-    Ok(id)
+pub async fn resolve_tenant(
+    conn: &mut PgConnection,
+    slug: &str,
+) -> Result<Option<ResolvedTenant>, sqlx::Error> {
+    let row = sqlx::query!(
+        r#"SELECT id AS "id!", default_locale AS "default_locale!" FROM app_resolve_tenant($1)"#,
+        slug
+    )
+    .fetch_optional(conn)
+    .await?;
+    Ok(row.map(|r| ResolvedTenant {
+        id: r.id,
+        default_locale: r.default_locale,
+    }))
 }
 
 /// Tables of the `public` schema that break the tenant isolation rules:

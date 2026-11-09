@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT request_hash, response_status, response_body, response_location, response_etag\n        FROM idempotency_key\n        WHERE key = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "request_hash",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "idempotency_key",
+            "name": "request_hash"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "response_status",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "idempotency_key",
+            "name": "response_status"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "response_body",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "idempotency_key",
+            "name": "response_body"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "response_location",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "idempotency_key",
+            "name": "response_location"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "response_etag",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "idempotency_key",
+            "name": "response_etag"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "9b94cd92bb63fd5c454161571b32188170c0c936e1e081263ae43bcfdb7bec5a"
+}
