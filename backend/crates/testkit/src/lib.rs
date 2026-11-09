@@ -5,8 +5,10 @@
 //! Tests can therefore run in parallel without seeing each other's data.
 //! The database is dropped when the `TestDb` goes out of scope.
 //!
-//! It connects to the server started by `just db-up`. To use another server,
-//! set `TEST_DATABASE_ADMIN_URL` to a superuser URL, and
+//! Run the tests with `just test`: in the dev container,
+//! `TEST_DATABASE_ADMIN_URL` points to the `postgres` service of
+//! `deploy/compose.dev.yaml`. To use another server, set it to a superuser
+//! URL, and
 //! `TEST_DATABASE_OWNER_PASSWORD` / `TEST_DATABASE_APP_PASSWORD` if the
 //! `mlbpp_owner` / `mlbpp_app` roles already exist there with other passwords.
 //!
@@ -144,7 +146,7 @@ fn admin_options() -> PgConnectOptions {
         Ok(url) => {
             PgConnectOptions::from_str(&url).expect("TEST_DATABASE_ADMIN_URL is a valid PostgreSQL URL")
         }
-        // The development server of deploy/compose.dev.yaml.
+        // The development server of deploy/compose.dev.yaml, seen from the host.
         Err(_) => PgConnectOptions::new()
             .host("127.0.0.1")
             .port(54329)
@@ -166,7 +168,9 @@ fn app_password() -> String {
 /// then an empty database owned by `mlbpp_owner`.
 async fn create_database(admin: &PgConnectOptions, name: &str) {
     let mut conn = PgConnection::connect_with(admin).await.unwrap_or_else(|e| {
-        panic!("cannot reach the test PostgreSQL server ({e}); start it with `just db-up` or set TEST_DATABASE_ADMIN_URL")
+        panic!(
+            "cannot reach the test PostgreSQL server ({e}); run the tests with `just test`, which starts it"
+        )
     });
     sqlx::query("SELECT pg_advisory_lock($1)")
         .bind(SETUP_LOCK_KEY)

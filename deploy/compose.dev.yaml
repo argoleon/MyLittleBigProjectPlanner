@@ -1,11 +1,35 @@
-# Development dependencies only: start with `just db-up`, stop with `just db-down`.
-# The full stack (api, worker, mcp, web, Traefik, Valkey, SeaweedFS…) comes in
-# deploy/compose.yaml with L01-US06.
+# Development environment: everything runs in containers, nothing natively.
+# Drive it through the justfile (`just dev`, `just test`, `just lint`…).
 #
-# The passwords below are for local development only; production passwords
-# come from secrets (see deploy/.env.example).
+#   postgres  PostgreSQL 18 (host port 54329, for database tools)
+#   backend   Rust toolchain for one-off commands: build, lint, test, migrate
+#   api       REST API with live reload, on http://127.0.0.1:18080
+#   web       Angular dev server on http://127.0.0.1:4200 (profile "web",
+#             enabled once the Angular workspace exists, L01-US05)
+#
+# The production stack comes with deploy/compose.yaml in L01-US06.
+# Passwords here are for local development only.
 
 name: mlbpp-dev
+
+x-backend: &backend
+  build:
+    context: .
+    dockerfile: dev/backend.Dockerfile
+  image: mlbpp-dev-backend
+  volumes:
+    - ..:/workspace
+    - cargo-home:/cargo
+  environment: &backend-env
+    SQLX_OFFLINE: "true"
+    RUST_LOG: info
+    # Superuser URL used by testkit to create one database per test.
+    TEST_DATABASE_ADMIN_URL: postgres://postgres:postgres@postgres:5432/postgres # gitleaks:allow
+    # Owner-role URL of the development database (migrate, sqlx prepare).
+    DEV_DATABASE_OWNER_URL: postgres://mlbpp_owner:mlbpp_owner_dev@postgres:5432/mlbpp # gitleaks:allow
+  depends_on:
+    postgres:
+      condition: service_healthy
 
 services:
   postgres:
@@ -28,5 +52,60 @@ services:
       timeout: 3s
       retries: 30
 
+  backend:
+    <<: *backend
+    volumes:
+      - ..:/workspace
+      - cargo-home:/cargo
+      - cargo-target:/cargo-target
+    profiles: ["tools"]
+
+  api:
+    <<: *backend
+    volumes:
+      - ..:/workspace
+      - cargo-home:/cargo
+      # Separate build directory, so `just test` never waits for the server's build.
+      - api-target:/cargo-target
+    user: "${DEV_UID:-1000}:${DEV_GID:-1000}"
+    environment:
+      <<: *backend-env
+      API_BIND_ADDR: 0.0.0.0:8080
+      DATABASE_URL: postgres://mlbpp_app:mlbpp_app_dev@postgres:5432/mlbpp # gitleaks:allow
+      DATABASE_MIGRATION_URL: postgres://mlbpp_owner:mlbpp_owner_dev@postgres:5432/mlbpp # gitleaks:allow
+      TENANCY_MODE: single
+      TENANT_DEFAULT_SLUG: default
+    command:
+      - watchexec
+      - --restart
+      - --watch=crates
+      - --watch=migrations
+      - --exts=rs,toml,sql
+      # File events do not cross the Docker Desktop VM boundary: poll instead.
+      - --poll=1s
+      - --stop-signal=SIGTERM
+      - --
+      - cargo run --locked -p api
+    ports:
+      - "127.0.0.1:18080:8080"
+
+  web:
+    build:
+      context: .
+      dockerfile: dev/web.Dockerfile
+    image: mlbpp-dev-web
+    user: "${DEV_UID:-1000}:${DEV_GID:-1000}"
+    volumes:
+      - ..:/workspace
+      - npm-cache:/npm-cache
+    command: ["npx", "ng", "serve", "--host", "0.0.0.0", "--port", "4200"]
+    ports:
+      - "127.0.0.1:4200:4200"
+    profiles: ["web"]
+
 volumes:
   postgres-data:
+  cargo-home:
+  cargo-target:
+  api-target:
+  npm-cache:

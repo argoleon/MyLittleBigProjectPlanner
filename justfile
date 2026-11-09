@@ -1,85 +1,97 @@
-# Every CI step is a recipe here; GitHub Actions only calls them.
-# Run `just` to list the recipes. L01-US07 completes this file (web, licenses, e2e).
+# Every command runs in a container (deploy/compose.dev.yaml): the host only
+# needs Docker, git and just. Every CI step is a recipe here; GitHub Actions
+# only calls them. Run `just` to list the recipes.
+# L01-US07 completes this file (web, licenses, e2e).
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
-backend := "backend"
-compose_dev := "docker compose -f deploy/compose.dev.yaml"
+compose := "docker compose -f deploy/compose.dev.yaml"
 
-# Development database (deploy/compose.dev.yaml). Override in CI with real secrets.
-dev_owner_url := env("DATABASE_MIGRATION_URL", "postgres://mlbpp_owner:mlbpp_owner_dev@127.0.0.1:54329/mlbpp") # gitleaks:allow
+# Containers run with the host user's ids, so generated files belong to you.
+export DEV_UID := `id -u`
+export DEV_GID := `id -g`
 
-# Builds and lints use the query metadata committed in backend/.sqlx, so they
-# need no database. `just sqlx-prepare` refreshes it after changing a query.
-export SQLX_OFFLINE := "true"
+# One-off command in the Rust toolchain container (starts PostgreSQL if needed).
+be := compose + " run --rm --user $DEV_UID:$DEV_GID backend"
 
 # List the recipes
 default:
     @just --list
 
+# --- Development environment ------------------------------------------------
+
+# Build the development images
+images:
+    {{compose}} --profile tools build
+
+# Start PostgreSQL and the API with live reload (http://127.0.0.1:18080)
+dev:
+    {{compose}} up --build api
+
+# Stop every development container (data is kept)
+down:
+    {{compose}} --profile tools --profile web down
+
+# Start only PostgreSQL (host port 54329, for database tools)
+db-up:
+    {{compose}} up -d --wait postgres
+
+# Create the development tenant "default" (until tenant administration exists, L02)
+seed: migrate
+    {{compose}} exec -T postgres psql -v ON_ERROR_STOP=1 -U mlbpp_owner -d mlbpp -c "INSERT INTO tenant (id, slug, name) VALUES (uuidv7(), 'default', 'Development') ON CONFLICT (slug) DO NOTHING"
+
+# Delete the development database and build caches
+reset:
+    {{compose}} --profile tools --profile web down --volumes
+
+# Open a shell in the Rust toolchain container
+shell:
+    {{be}} bash
+
+# --- Backend quality gates --------------------------------------------------
+
 # Build every crate; warnings are errors
 build:
-    cd {{backend}} && RUSTFLAGS="-D warnings" cargo build --workspace --all-targets --locked
+    {{be}} env RUSTFLAGS="-D warnings" cargo build --workspace --all-targets --locked
 
 # Check formatting
 fmt-check:
-    cd {{backend}} && cargo fmt --all -- --check
+    {{be}} cargo fmt --all -- --check
 
 # Format the code
 fmt:
-    cd {{backend}} && cargo fmt --all
+    {{be}} cargo fmt --all
 
 # Lint with clippy; warnings are errors
 lint:
-    cd {{backend}} && cargo clippy --workspace --all-targets --locked -- -D warnings
+    {{be}} cargo clippy --workspace --all-targets --locked -- -D warnings
 
-# Run unit and integration tests (integration tests need `just db-up`)
+# Run unit and integration tests
 test: test-unit test-integration
 
 # Run unit tests only (no database)
 test-unit:
-    cd {{backend}} && cargo test --workspace --locked --lib --bins
+    {{be}} cargo test --workspace --locked --lib --bins
 
-# Run integration tests (each test gets its own database on the `just db-up` server)
+# Run integration tests (each test gets its own PostgreSQL database)
 test-integration:
-    cd {{backend}} && cargo test --workspace --locked --test '*' -- --test-threads 8
+    {{be}} cargo test --workspace --locked --test '*' -- --test-threads 8
 
 # Fail if the domain crate depends on any crate (it must stay free of I/O)
 check-domain:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    cd {{backend}}
-    deps=$(cargo tree -p domain --edges normal,build --prefix none --depth 1 --locked | tail -n +2 | sort -u)
-    if [ -n "$deps" ]; then
-        echo "crates/domain must not depend on other crates; found:"
-        echo "$deps"
-        exit 1
-    fi
-    echo "crates/domain has no dependency"
-
-# Start the development PostgreSQL (port 54329)
-db-up:
-    {{compose_dev}} up -d --wait postgres
-
-# Stop the development PostgreSQL (data is kept)
-db-down:
-    {{compose_dev}} down
-
-# Delete the development database volume
-db-reset:
-    {{compose_dev}} down --volumes
+    {{be}} scripts/check-domain.sh
 
 # Apply pending migrations to the development database
 migrate:
-    cd {{backend}} && DATABASE_MIGRATION_URL="{{dev_owner_url}}" cargo run --quiet --locked -p api -- migrate
+    {{be}} bash -c 'DATABASE_MIGRATION_URL="$DEV_DATABASE_OWNER_URL" cargo run --quiet --locked -p api -- migrate'
 
-# Refresh backend/.sqlx after adding or changing a query (needs `just db-up` and `just migrate`)
-sqlx-prepare:
-    cd {{backend}} && SQLX_OFFLINE=false DATABASE_URL="{{dev_owner_url}}" cargo sqlx prepare --workspace -- --all-targets
+# Refresh backend/.sqlx after adding or changing a query (builds use it offline)
+sqlx-prepare: migrate
+    {{be}} bash -c 'SQLX_OFFLINE=false DATABASE_URL="$DEV_DATABASE_OWNER_URL" cargo sqlx prepare --workspace -- --all-targets'
 
 # Fail if backend/.sqlx is out of date with the queries
-sqlx-check:
-    cd {{backend}} && SQLX_OFFLINE=false DATABASE_URL="{{dev_owner_url}}" cargo sqlx prepare --workspace --check -- --all-targets
+sqlx-check: migrate
+    {{be}} bash -c 'SQLX_OFFLINE=false DATABASE_URL="$DEV_DATABASE_OWNER_URL" cargo sqlx prepare --workspace --check -- --all-targets'
 
-# Everything the CI runs for the backend (needs `just db-up` and `just migrate`)
+# Everything the CI runs for the backend
 check: fmt-check lint check-domain sqlx-check test

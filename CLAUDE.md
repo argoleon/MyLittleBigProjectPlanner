@@ -35,6 +35,15 @@ docs/           specification (en, fr) and mockups
 
 Every CI step is a `just` recipe; GitHub Actions only calls them. Run the same recipes locally before declaring work done.
 
+## Development environment (containers only)
+
+**Nothing runs natively on the development machine.** The host only needs Docker, git and `just`; builds, tests, linters, code generators, database tools and dev servers all run in the containers of `deploy/compose.dev.yaml`.
+
+- `just dev` starts PostgreSQL and the API with live reload; the Angular dev server joins it once the workspace exists.
+- `just build`, `just lint`, `just test`, `just migrate`, `just sqlx-prepare`… run in the `backend` toolchain container; `just shell` opens a shell in it.
+- Never install a toolchain (Rust, Node, sqlx-cli, Playwright…) on the host for project work, and never call `cargo` or `npm` directly from the host. A new tool goes into the matching dev image (`deploy/dev/*.Dockerfile`) and is reached through a `just` recipe.
+- Containers run with the host user's uid and gid, so generated files (lock files, `.sqlx`, formatted code) belong to the developer.
+
 ## Tests (mandatory)
 
 Unit tests and integration tests are **mandatory** for every development. A feature without them is not done and must not be merged.
