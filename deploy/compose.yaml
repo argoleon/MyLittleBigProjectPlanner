@@ -247,11 +247,18 @@ services:
       - seaweedfs-data:/data
     networks: [backend]
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9333/cluster/healthz"]
-      interval: 10s
+      # Ready once the master, the filer and the S3 API all answer: the
+      # filer starts some seconds after the master.
+      test:
+        - CMD-SHELL
+        - >-
+          wget -q -O /dev/null http://127.0.0.1:9333/cluster/healthz &&
+          wget -q -O /dev/null http://127.0.0.1:8888/ &&
+          wget -q -O /dev/null http://127.0.0.1:8333/healthz
+      interval: 5s
       timeout: 5s
-      retries: 6
-      start_period: 20s
+      retries: 12
+      start_period: 60s
 
   # Antivirus scanning of attachments (L05). Downloads its signatures on
   # first start: allow a few minutes.
