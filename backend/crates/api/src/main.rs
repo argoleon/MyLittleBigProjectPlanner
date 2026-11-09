@@ -13,6 +13,7 @@ async fn main() -> ExitCode {
     match cli::parse(std::env::args().skip(1)) {
         Ok(Command::Serve) => serve().await,
         Ok(Command::Migrate) => migrate().await,
+        Ok(Command::OpenApi) => openapi(),
         Ok(Command::Help) => {
             println!("{}", cli::USAGE);
             ExitCode::SUCCESS
@@ -20,6 +21,20 @@ async fn main() -> ExitCode {
         Err(err) => {
             eprintln!("api: {err}\n\n{}", cli::USAGE);
             ExitCode::from(2)
+        }
+    }
+}
+
+/// Needs no configuration nor database: the contract comes from the code.
+fn openapi() -> ExitCode {
+    match api::openapi::contract_json() {
+        Ok(json) => {
+            print!("{json}");
+            ExitCode::SUCCESS
+        }
+        Err(err) => {
+            eprintln!("api: cannot serialize the OpenAPI contract: {err}");
+            ExitCode::FAILURE
         }
     }
 }

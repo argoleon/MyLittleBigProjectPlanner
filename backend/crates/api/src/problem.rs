@@ -17,11 +17,20 @@
 //! published. All codes live in [`ErrorCode`]; add new ones there. Generic
 //! codes are plain (`not_found`); codes specific to a resource are prefixed
 //! with it (`tenant.not_found`).
+//!
+//! The OpenAPI contract exports the catalog as the `ErrorCode` schema, and the
+//! body as the `Problem` schema ([`ProblemBody`]), so clients can rely on both.
+
+use std::borrow::Cow;
+use std::fmt::Write as _;
 
 use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use domain::validation::FieldError;
-use serde::Serialize;
+use serde::{Serialize, Serializer};
+use utoipa::ToSchema;
+use utoipa::openapi::RefOr;
+use utoipa::openapi::schema::{ObjectBuilder, Schema, Type};
 
 /// Catalog of every error code of the API.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -210,33 +219,97 @@ impl From<infra::sqlx::Error> for Problem {
     }
 }
 
-#[derive(Serialize)]
-struct Body<'a> {
-    #[serde(rename = "type")]
-    kind: String,
-    title: &'a str,
-    status: u16,
-    code: &'a str,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    detail: Option<&'a str>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    errors: Vec<FieldErrorBody<'a>>,
+impl Serialize for ErrorCode {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
 }
 
-#[derive(Serialize)]
-struct FieldErrorBody<'a> {
-    field: &'a str,
-    code: &'a str,
+/// The `ErrorCode` schema of the contract: a string enum built from
+/// [`ErrorCode::ALL`], with the status and title of each code.
+impl utoipa::PartialSchema for ErrorCode {
+    fn schema() -> RefOr<Schema> {
+        let mut description = String::from(
+            "Stable error code of a Problem Details response. Clients translate it; \
+             it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n",
+        );
+        for code in Self::ALL {
+            let _ = writeln!(
+                description,
+                "| `{}` | {} | {} |",
+                code.as_str(),
+                code.status().as_u16(),
+                code.title()
+            );
+        }
+        ObjectBuilder::new()
+            .schema_type(Type::String)
+            .enum_values(Some(Self::ALL.map(Self::as_str)))
+            .description(Some(description))
+            .into()
+    }
+}
+
+impl ToSchema for ErrorCode {
+    fn name() -> Cow<'static, str> {
+        Cow::Borrowed("ErrorCode")
+    }
+}
+
+/// Body of every error response (`application/problem+json`).
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(
+    as = Problem,
+    example = json!({
+        "type": "urn:mlbpp:problem:validation_failed",
+        "title": "The request contains invalid fields",
+        "status": 400,
+        "code": "validation_failed",
+        "errors": [{ "field": "code", "code": "format" }]
+    })
+)]
+pub struct ProblemBody<'a> {
+    /// `urn:mlbpp:problem:<code>`.
+    #[serde(rename = "type")]
+    #[schema(example = "urn:mlbpp:problem:not_found")]
+    pub kind: String,
+    /// English summary of the code; the interface translates `code` instead.
+    pub title: &'static str,
+    /// HTTP status, repeated from the response.
+    #[schema(example = 404)]
+    pub status: u16,
+    pub code: ErrorCode,
+    /// Explanation of this occurrence, in English.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub detail: Option<&'a str>,
+    /// Invalid fields, for `validation_failed` and similar codes.
+    #[serde(skip_serializing_if = "<[_]>::is_empty")]
+    #[schema(required = false)]
+    pub errors: Vec<FieldErrorBody<'a>>,
+}
+
+/// One invalid field of a request.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = FieldError)]
+pub struct FieldErrorBody<'a> {
+    /// Path of the field as sent, e.g. `code` or `labelTranslations.fr`.
+    #[schema(example = "code")]
+    pub field: &'a str,
+    /// Stable code the client translates, e.g. `required`, `format`,
+    /// `length`, `too_long`, `out_of_range`, `taken`, `unsupported_locale`,
+    /// `unknown_field`.
+    #[schema(example = "format")]
+    pub code: &'static str,
 }
 
 impl IntoResponse for Problem {
     fn into_response(self) -> Response {
         let code = self.code;
-        let body = Body {
+        let body = ProblemBody {
             kind: format!("urn:mlbpp:problem:{}", code.as_str()),
             title: code.title(),
             status: code.status().as_u16(),
-            code: code.as_str(),
+            code,
             detail: self.detail.as_deref(),
             errors: self
                 .errors

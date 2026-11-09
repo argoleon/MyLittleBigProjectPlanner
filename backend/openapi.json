@@ -1,0 +1,875 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "My Little Big Project Planner API",
+    "description": "REST API of My Little Big Project Planner. The web interface uses this same API.\n\n**Conventions**\n\n- Errors are RFC 9457 Problem Details (`application/problem+json`) with a stable `code`, listed in the `ErrorCode` schema.\n- Updates and deletions require `If-Match` with the resource's `ETag` (428 without it, 412 when the resource changed).\n- Creations accept an `Idempotency-Key` header: replaying the request does not create a duplicate.\n- Lists are paginated with an opaque cursor (`limit`, `cursor`, `nextCursor`).\n- `?fields=` selects the returned fields.\n- Translated labels follow `Accept-Language`, then the tenant's default language.",
+    "license": {
+      "name": "MIT",
+      "identifier": "MIT"
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/ping": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Check that the API answers",
+        "operationId": "ping",
+        "responses": {
+          "200": {
+            "description": "The API is up",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ping"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reference-items": {
+      "get": {
+        "tags": [
+          "reference-items"
+        ],
+        "summary": "List reference items",
+        "description": "In creation order. Follow `nextCursor` until it is `null`.",
+        "operationId": "listReferenceItems",
+        "parameters": [
+          {
+            "name": "fields",
+            "in": "query",
+            "description": "Comma-separated fields to return for each item, e.g. `id,code`.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, from 1 to 200 (default 50).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "`nextCursor` of the previous page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `label`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of items",
+            "headers": {
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Language of `label`"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenceItemPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid `limit`, `cursor` or `fields`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "reference-items"
+        ],
+        "summary": "Create a reference item",
+        "description": "Replaying the same request with the same `Idempotency-Key` within 24 hours returns the first response (`Idempotent-Replayed: true`) without creating a duplicate.",
+        "operationId": "createReferenceItem",
+        "parameters": [
+          {
+            "name": "fields",
+            "in": "query",
+            "description": "Comma-separated fields to return, e.g. `id,code`. Default: every field\nbut `labelTranslations`.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique key of this creation, 1 to 255 visible ASCII characters",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `label`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferenceItemInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "headers": {
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Language of `label`"
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the item"
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "URL of the item"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenceItem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid fields, JSON or `Idempotency-Key`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`reference_item.code_taken`, or `idempotency_key.in_flight`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Body is not JSON",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`Idempotency-Key` already used for another request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reference-items/{id}": {
+      "get": {
+        "tags": [
+          "reference-items"
+        ],
+        "summary": "Read a reference item",
+        "operationId": "getReferenceItem",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the item",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "description": "Comma-separated fields to return, e.g. `id,code`. Default: every field\nbut `labelTranslations`.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "description": "ETag already held: 304 if still current",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `label`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The item",
+            "headers": {
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Language of `label`"
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the item"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenceItem"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified since the `If-None-Match` ETag"
+          },
+          "400": {
+            "description": "Unknown field in `fields`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such item in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "reference-items"
+        ],
+        "summary": "Replace a reference item",
+        "operationId": "updateReferenceItem",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the item",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "description": "Comma-separated fields to return, e.g. `id,code`. Default: every field\nbut `labelTranslations`.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the version being replaced, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `label`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferenceItemInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The updated item",
+            "headers": {
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Language of `label`"
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "New version of the item"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenceItem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid fields or JSON",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such item in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`reference_item.code_taken`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The item changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "reference-items"
+        ],
+        "summary": "Delete a reference item",
+        "operationId": "deleteReferenceItem",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the item",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the version being deleted, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "404": {
+            "description": "No such item in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The item changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenant": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "The tenant addressed by the request",
+        "description": "Resolved from the request's host name in multi-tenant mode.",
+        "operationId": "getCurrentTenant",
+        "responses": {
+          "200": {
+            "description": "The current tenant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tenant"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`tenant.not_found`: no tenant for this host",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ErrorCode": {
+        "type": "string",
+        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `internal` | 500 | Internal server error |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n",
+        "enum": [
+          "bad_request",
+          "validation_failed",
+          "invalid_json",
+          "invalid_query",
+          "not_found",
+          "method_not_allowed",
+          "request_timeout",
+          "conflict",
+          "precondition_failed",
+          "payload_too_large",
+          "unsupported_media_type",
+          "precondition_required",
+          "internal",
+          "idempotency_key.invalid",
+          "idempotency_key.reused",
+          "idempotency_key.in_flight",
+          "tenant.not_found",
+          "reference_item.code_taken"
+        ]
+      },
+      "FieldError": {
+        "type": "object",
+        "description": "One invalid field of a request.",
+        "required": [
+          "field",
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Stable code the client translates, e.g. `required`, `format`,\n`length`, `too_long`, `out_of_range`, `taken`, `unsupported_locale`,\n`unknown_field`.",
+            "example": "format"
+          },
+          "field": {
+            "type": "string",
+            "description": "Path of the field as sent, e.g. `code` or `labelTranslations.fr`.",
+            "example": "code"
+          }
+        }
+      },
+      "Ping": {
+        "type": "object",
+        "required": [
+          "status",
+          "version"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          },
+          "version": {
+            "type": "string",
+            "description": "Version of the API binary.",
+            "example": "0.1.0"
+          }
+        }
+      },
+      "Problem": {
+        "type": "object",
+        "description": "Body of every error response (`application/problem+json`).",
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode"
+          },
+          "detail": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Explanation of this occurrence, in English."
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldError"
+            },
+            "description": "Invalid fields, for `validation_failed` and similar codes."
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP status, repeated from the response.",
+            "example": 404,
+            "minimum": 0
+          },
+          "title": {
+            "type": "string",
+            "description": "English summary of the code; the interface translates `code` instead."
+          },
+          "type": {
+            "type": "string",
+            "description": "`urn:mlbpp:problem:<code>`.",
+            "example": "urn:mlbpp:problem:not_found"
+          }
+        },
+        "example": {
+          "code": "validation_failed",
+          "errors": [
+            {
+              "code": "format",
+              "field": "code"
+            }
+          ],
+          "status": 400,
+          "title": "The request contains invalid fields",
+          "type": "urn:mlbpp:problem:validation_failed"
+        }
+      },
+      "ReferenceItem": {
+        "type": "object",
+        "description": "What the API returns. `label` is resolved in the request's language.\nWith `?fields=`, only the selected fields are present.",
+        "required": [
+          "id",
+          "code",
+          "label",
+          "quantity",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Label in the response language (`Content-Language`), falling back to\nthe tenant's default language, then to any translation; `null` when\nthe item has no label at all."
+          },
+          "labelTranslations": {
+            "type": "object",
+            "description": "Every translation; only returned when selected with `?fields=`.",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "quantity": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Incremented on every change; the `ETag` is this value in quotes."
+          }
+        },
+        "example": {
+          "code": "REF-1",
+          "createdAt": "2026-11-09T10:00:00Z",
+          "id": "0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7a8b",
+          "label": "Reference",
+          "quantity": 3,
+          "updatedAt": "2026-11-09T10:00:00Z",
+          "version": 1
+        }
+      },
+      "ReferenceItemInput": {
+        "type": "object",
+        "description": "Body of `POST` and `PUT`. Unknown fields are refused, so typos are not\nsilently ignored.",
+        "required": [
+          "code",
+          "labelTranslations"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "2 to 20 characters among `A-Z`, `0-9` and `-`, starting with a letter;\nunique in the tenant.",
+            "example": "REF-1",
+            "maxLength": 20,
+            "minLength": 2,
+            "pattern": "^[A-Z][A-Z0-9-]{1,19}$"
+          },
+          "labelTranslations": {
+            "type": "object",
+            "description": "Label per language (`fr`, `en`), at least one; 200 characters at most.",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "quantity": {
+            "type": "integer",
+            "format": "int32",
+            "description": "From 0 to 1,000,000; 0 when absent.",
+            "default": 0,
+            "maximum": 1000000,
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "code": "REF-1",
+          "labelTranslations": {
+            "en": "Reference",
+            "fr": "Référence"
+          },
+          "quantity": 3
+        }
+      },
+      "ReferenceItemPage": {
+        "type": "object",
+        "description": "A page of reference items, in creation order.",
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReferenceItem"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cursor of the next page, `null` on the last page."
+          }
+        }
+      },
+      "Tenant": {
+        "type": "object",
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "defaultLocale",
+          "timeZone"
+        ],
+        "properties": {
+          "defaultLocale": {
+            "type": "string",
+            "description": "Language used when the request names no supported language.",
+            "example": "fr"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Acme"
+          },
+          "slug": {
+            "type": "string",
+            "example": "acme"
+          },
+          "timeZone": {
+            "type": "string",
+            "example": "Europe/Paris"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "system",
+      "description": "Technical endpoints"
+    },
+    {
+      "name": "reference-items",
+      "description": "Reference resource showing every API convention; new endpoints copy it"
+    }
+  ]
+}

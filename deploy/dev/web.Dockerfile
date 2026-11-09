@@ -1,6 +1,6 @@
-# Development image of the Angular front end (ng serve, lint, unit tests).
-# Used by the `web` service of deploy/compose.dev.yaml once the Angular
-# workspace exists (L01-US05). Playwright gets its own image with L01-US07.
+# Development image of the Angular front end (ng serve, ng test, client
+# generation). Used by the `web` service of deploy/compose.dev.yaml.
+# Playwright gets its own image with L01-US07.
 
 FROM node:24-trixie
 

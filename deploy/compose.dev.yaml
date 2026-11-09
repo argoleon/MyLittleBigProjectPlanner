@@ -4,8 +4,9 @@
 #   postgres  PostgreSQL 18 (host port 54329, for database tools)
 #   backend   Rust toolchain for one-off commands: build, lint, test, migrate
 #   api       REST API with live reload, on http://127.0.0.1:18080
-#   web       Angular dev server on http://127.0.0.1:4200 (profile "web",
-#             enabled once the Angular workspace exists, L01-US05)
+#   web       Node toolchain for one-off commands (npm, ng, client generator);
+#             with the profile "web", the Angular dev server on
+#             http://127.0.0.1:4200 once an application exists (L01-US05)
 #
 # The production stack comes with deploy/compose.yaml in L01-US06.
 # Passwords here are for local development only.
