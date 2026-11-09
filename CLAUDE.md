@@ -71,6 +71,8 @@ The project follows **Gitflow**.
 
 The project is MIT. Only add dependencies under MIT, Apache-2.0, BSD, ISC or 0BSD. Fonts may be OFL-1.1. Never add GPL, LGPL, AGPL, SSPL or commercial dependencies; `cargo-deny` and the npm license check fail the build otherwise. If a needed library has an incompatible license, stop and ask.
 
+Accepted exception (decided 2026-11-09): npm **development dependencies** that are build or test tools and never end up in the shipped bundle may also be under Python-2.0, MPL-2.0, CC-BY-4.0, BlueOak-1.0.0 or CC0-1.0. Today these are `argparse` (via ng-openapi-gen), `lightningcss` (via Vite), `caniuse-lite`, `lru-cache`, `sax` and `mdn-data` (via the Angular toolchain). Runtime dependencies stay limited to the list above.
+
 ## Backend rules (summary)
 
 - Axum, Tokio, SQLx with compile-time checked queries, serde, utoipa, tracing. Keep Rust simple: few generics, no custom macros.
