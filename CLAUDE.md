@@ -42,6 +42,7 @@ Every CI step is a `just` recipe; GitHub Actions only calls them. Run the same r
 - `just dev` starts PostgreSQL, the API (http://127.0.0.1:18080) and the internal application (http://127.0.0.1:4200, `/api` proxied to the API), all with live reload.
 - `just build`, `just lint`, `just test`, `just migrate`, `just sqlx-prepare`… run in the `backend` toolchain container; `just shell` opens a shell in it.
 - `just web-lint`, `just web-test`, `just web-build`, `just generate-client`… run in the `web` container; `just e2e` runs Playwright in the `e2e` container. `just check` (backend) and `just web-check` (front end) are what the CI runs.
+- The production stack (`deploy/compose.yaml`, see `deploy/README.md`) also runs locally: `just compose-up` (https://localhost:18443), `just compose-test`, `just images-test` (images and SBOMs), `just deploy-lint`, `just compose-down`. A change to a Dockerfile, the compose file or a service's configuration must keep these green.
 - Never install a toolchain (Rust, Node, sqlx-cli, Playwright…) on the host for project work, and never call `cargo` or `npm` directly from the host. A new tool goes into the matching dev image (`deploy/dev/*.Dockerfile`) and is reached through a `just` recipe.
 - Containers run with the host user's uid and gid, so generated files (lock files, `.sqlx`, formatted code) belong to the developer.
 

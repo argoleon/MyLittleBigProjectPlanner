@@ -44,9 +44,51 @@ pub async fn poll_jobs() -> Batch {
     Batch::Idle
 }
 
+/// Serves `GET /health/live` on `listener` until `token` is cancelled. The
+/// worker exposes nothing else over HTTP.
+pub async fn serve_health(listener: tokio::net::TcpListener, token: CancellationToken) {
+    let app = axum::Router::new().route(
+        infra::health::LIVE_PATH,
+        axum::routing::get(|| async {
+            (
+                [(axum::http::header::CONTENT_TYPE, "application/json")],
+                infra::health::LIVE_BODY,
+            )
+        }),
+    );
+    let server = axum::serve(listener, app).with_graceful_shutdown(async move { token.cancelled().await });
+    if let Err(err) = server.await {
+        tracing::error!(error = %err, "health endpoint stopped with an error");
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn health_endpoint_answers_until_cancelled() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let token = CancellationToken::new();
+        let server = tokio::spawn(serve_health(listener, token.clone()));
+
+        infra::health::probe(addr, infra::health::LIVE_PATH, infra::health::PROBE_TIMEOUT)
+            .await
+            .unwrap();
+        assert!(
+            infra::health::probe(addr, "/other", infra::health::PROBE_TIMEOUT)
+                .await
+                .is_err(),
+            "only the health endpoint exists"
+        );
+
+        token.cancel();
+        tokio::time::timeout(Duration::from_secs(2), server)
+            .await
+            .expect("stops when cancelled")
+            .unwrap();
+    }
     use std::sync::Arc;
     use std::sync::atomic::{AtomicU32, Ordering};
 

@@ -3,8 +3,12 @@
 //!
 //! Routes are declared with `utoipa_axum::routes!`, which registers each
 //! handler and its `#[utoipa::path]` documentation together: a route cannot
-//! be served without appearing in the OpenAPI contract.
+//! be served without appearing in the OpenAPI contract. The only exception
+//! is the liveness probe, meant for the platform, not for API clients.
 
+use axum::http::header;
+use axum::response::IntoResponse;
+use axum::routing::get;
 use axum::{Json, Router};
 use infra::uuid::Uuid;
 use serde::Serialize;
@@ -23,8 +27,17 @@ const SYSTEM_TAG: &str = "system";
 pub fn router(state: AppState) -> Router {
     let (api, contract) = documented_routes().split_for_parts();
     api.merge(openapi::docs(contract))
+        .route(infra::health::LIVE_PATH, get(live))
         .fallback(|| async { Problem::new(ErrorCode::NotFound) })
         .with_state(state)
+}
+
+/// `GET /health/live`: the process answers. Touches no database.
+async fn live() -> impl IntoResponse {
+    (
+        [(header::CONTENT_TYPE, "application/json")],
+        infra::health::LIVE_BODY,
+    )
 }
 
 /// Every documented route, with the contract they make up.

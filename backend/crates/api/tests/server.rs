@@ -66,6 +66,28 @@ async fn ping_answers_json_on_a_random_port() {
 }
 
 #[tokio::test]
+async fn liveness_needs_no_tenant_nor_database() {
+    let (listener, base) = listener().await;
+    let (stop_tx, stop_rx) = oneshot::channel::<()>();
+    let server = tokio::spawn(api::serve(
+        listener,
+        api::app(offline_state(), &settings()),
+        async move {
+            let _ = stop_rx.await;
+        },
+        Duration::from_secs(5),
+    ));
+
+    let res = reqwest::get(format!("{base}/health/live")).await.unwrap();
+    assert_eq!(res.status(), 200);
+    assert_eq!(res.headers()["content-type"], "application/json");
+    assert_eq!(res.text().await.unwrap(), r#"{"status":"ok"}"#);
+
+    stop_tx.send(()).unwrap();
+    server.await.unwrap().unwrap();
+}
+
+#[tokio::test]
 async fn in_flight_request_completes_after_shutdown_signal() {
     let (listener, base) = listener().await;
     let slow = Router::new().route(

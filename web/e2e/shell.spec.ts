@@ -1,9 +1,15 @@
 import { TENANT, accessibilityViolations, expect, test } from './fixtures';
 
 test.describe('application shell', () => {
-  test('loads fonts and icons from its own origin only', async ({ page, baseURL }) => {
+  test('loads fonts and icons from its own origin only, without console error', async ({ page, baseURL }) => {
     const requests: string[] = [];
     page.on('request', (request) => requests.push(request.url()));
+    // A Content-Security-Policy violation (production stack) shows up here.
+    const errors: string[] = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error') errors.push(message.text());
+    });
+    page.on('pageerror', (error) => errors.push(error.message));
 
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Home');
@@ -23,6 +29,7 @@ test.describe('application shell', () => {
       symbols: document.fonts.check('24px "Material Symbols Outlined"'),
     }));
     expect(fonts).toEqual({ roboto: true, symbols: true });
+    expect(errors).toEqual([]);
   });
 
   test('shows the tenant from the API and highlights the current screen', async ({ page }) => {

@@ -11,6 +11,7 @@ workspace = true
 
 [dependencies]
 infra.workspace = true
+axum = "0.8.9"
 tokio = { version = "1.54.1", features = ["full"] }
 tokio-util = "0.7.20"
 tracing = "0.1.44"

@@ -14,6 +14,7 @@ async fn main() -> ExitCode {
         Ok(Command::Serve) => serve().await,
         Ok(Command::Migrate) => migrate().await,
         Ok(Command::OpenApi) => openapi(),
+        Ok(Command::Healthcheck) => healthcheck().await,
         Ok(Command::Help) => {
             println!("{}", cli::USAGE);
             ExitCode::SUCCESS
@@ -21,6 +22,17 @@ async fn main() -> ExitCode {
         Err(err) => {
             eprintln!("api: {err}\n\n{}", cli::USAGE);
             ExitCode::from(2)
+        }
+    }
+}
+
+/// Health check of the container image, which has no shell nor curl.
+async fn healthcheck() -> ExitCode {
+    match Env::from_process().required::<std::net::SocketAddr>("API_BIND_ADDR") {
+        Ok(bind) => infra::health::healthcheck("api", bind).await,
+        Err(err) => {
+            eprintln!("api: configuration error: {err}");
+            ExitCode::FAILURE
         }
     }
 }

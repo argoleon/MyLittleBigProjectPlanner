@@ -17,7 +17,7 @@ sqlx.workspace = true
 uuid.workspace = true
 domain.workspace = true
 thiserror = "2.0.21"
-tokio = { version = "1.54.1", features = ["signal", "macros", "rt"] }
+tokio = { version = "1.54.1", features = ["signal", "macros", "rt", "net", "io-util", "time"] }
 tracing = "0.1.44"
 
 [dev-dependencies]
