@@ -1,0 +1,14 @@
+[data-category='todo'] {
+  --chip-container: var(--app-status-todo-container);
+  --chip-on: var(--app-status-todo-on);
+}
+
+[data-category='progress'] {
+  --chip-container: var(--app-status-progress-container);
+  --chip-on: var(--app-status-progress-on);
+}
+
+[data-category='done'] {
+  --chip-container: var(--app-status-done-container);
+  --chip-on: var(--app-status-done-on);
+}

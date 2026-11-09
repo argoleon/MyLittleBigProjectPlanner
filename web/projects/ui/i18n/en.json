@@ -1,0 +1,97 @@
+{
+  "app": {
+    "name": "My Little Big Project Planner",
+    "portalName": "Request portal"
+  },
+  "shell": {
+    "skipToContent": "Skip to content",
+    "openNavigation": "Open navigation",
+    "mainNavigation": "Main navigation",
+    "tenant": "Organization",
+    "language": "Language: {{ language }}",
+    "theme": {
+      "label": "Theme: {{ mode }}",
+      "system": "System default",
+      "light": "Light",
+      "dark": "Dark"
+    }
+  },
+  "nav": {
+    "home": "Home",
+    "myTickets": "My tickets",
+    "search": "Search",
+    "boards": "Boards",
+    "gantt": "Gantt",
+    "workload": "Workload",
+    "portfolios": "Portfolios",
+    "portals": "Portals",
+    "dashboards": "Dashboards",
+    "administration": "Administration"
+  },
+  "page": {
+    "comingSoon": {
+      "title": "Coming soon",
+      "message": "This screen comes with a later work package."
+    },
+    "portalHome": {
+      "title": "Welcome to the portal",
+      "message": "Request forms come with a later work package."
+    }
+  },
+  "status": {
+    "label": "Status:",
+    "todo": "To do",
+    "progress": "In progress",
+    "done": "Done"
+  },
+  "type": {
+    "label": "Type:",
+    "story": "Story",
+    "bug": "Bug",
+    "task": "Task",
+    "epic": "Epic"
+  },
+  "state": {
+    "loading": "Loading…",
+    "errorTitle": "Something went wrong",
+    "retry": "Try again"
+  },
+  "errors": {
+    "bad_request": "The request is malformed.",
+    "validation_failed": "Some fields are invalid.",
+    "invalid_json": "The data sent is invalid.",
+    "invalid_query": "The request parameters are invalid.",
+    "not_found": "This item does not exist or is no longer available.",
+    "method_not_allowed": "This action is not possible on this item.",
+    "request_timeout": "The server took too long to answer. Try again.",
+    "conflict": "This action conflicts with the current state.",
+    "precondition_failed": "Someone changed this item in the meantime. Reload it before trying again.",
+    "payload_too_large": "The data sent is too large.",
+    "unsupported_media_type": "This data format is not accepted.",
+    "precondition_required": "Reload the item before changing it.",
+    "internal": "The server ran into an error. Try again later.",
+    "idempotency_key": {
+      "invalid": "The request is malformed.",
+      "reused": "This request was already sent with different data.",
+      "in_flight": "This request is already being processed."
+    },
+    "tenant": {
+      "not_found": "This organization cannot be found."
+    },
+    "reference_item": {
+      "code_taken": "This code is already used."
+    },
+    "network": "The server cannot be reached. Check your connection.",
+    "unknown": "An unexpected error occurred.",
+    "field": {
+      "required": "This field is required.",
+      "format": "The format is invalid.",
+      "length": "The length is invalid.",
+      "too_long": "The text is too long.",
+      "out_of_range": "The value is out of the allowed range.",
+      "taken": "This value is already used.",
+      "unsupported_locale": "This language is not supported.",
+      "unknown_field": "This field does not exist."
+    }
+  }
+}

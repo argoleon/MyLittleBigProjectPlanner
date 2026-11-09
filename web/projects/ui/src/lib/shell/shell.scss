@@ -1,0 +1,95 @@
+@use '@angular/material' as mat;
+
+:host {
+  display: block;
+  height: 100dvh;
+}
+
+.container {
+  height: 100%;
+  background: var(--mat-sys-surface);
+}
+
+.drawer {
+  width: var(--app-nav-drawer-width);
+  padding: var(--app-space-3);
+  box-sizing: border-box;
+  border-radius: 0;
+  background: var(--mat-sys-surface-container-low);
+
+  @include mat.sidenav-overrides(
+    (
+      container-background-color: var(--mat-sys-surface-container-low),
+      container-divider-color: transparent,
+    )
+  );
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-3);
+  padding: var(--app-space-3) var(--app-space-4) var(--app-space-4);
+  font: var(--mat-sys-title-medium);
+}
+
+.brand-icon {
+  color: var(--mat-sys-primary);
+}
+
+.nav {
+  @include mat.list-overrides(
+    (
+      active-indicator-color: var(--mat-sys-secondary-container),
+      active-indicator-shape: var(--mat-sys-corner-full),
+      list-item-one-line-container-height: 56px,
+      list-item-label-text-font: var(--mat-sys-label-large-font),
+      list-item-label-text-weight: var(--mat-sys-label-large-weight),
+    )
+  );
+
+  // Filled icon on the active entry, as in M3 navigation drawers.
+  .mdc-list-item--activated .mat-icon {
+    font-variation-settings: 'FILL' 1;
+  }
+}
+
+.top-bar {
+  @include mat.toolbar-overrides(
+    (
+      container-background-color: var(--mat-sys-surface),
+    )
+  );
+
+  gap: var(--app-space-1);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.main {
+  padding: var(--app-page-padding);
+
+  // Focused by the skip link only; not an interactive element.
+  &:focus {
+    outline: none;
+  }
+}
+
+.skip-link {
+  position: absolute;
+  z-index: 10;
+  top: var(--app-space-2);
+  left: var(--app-space-2);
+  padding: var(--app-space-2) var(--app-space-4);
+  border-radius: var(--mat-sys-corner-small);
+  background: var(--mat-sys-inverse-surface);
+  color: var(--mat-sys-inverse-on-surface);
+  font: var(--mat-sys-label-large);
+  transform: translateY(-200%);
+
+  &:focus {
+    transform: none;
+  }
+}

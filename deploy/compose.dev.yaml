@@ -4,9 +4,12 @@
 #   postgres  PostgreSQL 18 (host port 54329, for database tools)
 #   backend   Rust toolchain for one-off commands: build, lint, test, migrate
 #   api       REST API with live reload, on http://127.0.0.1:18080
-#   web       Node toolchain for one-off commands (npm, ng, client generator);
-#             with the profile "web", the Angular dev server on
-#             http://127.0.0.1:4200 once an application exists (L01-US05)
+#   web       Node toolchain for one-off commands (npm, ng, client generator,
+#             unit tests); with the profile "web", the dev server of the
+#             internal application on http://127.0.0.1:4200, proxying /api
+#             to the api service
+#   e2e       Playwright and its browsers, for the end-to-end tests
+#             (profile "e2e")
 #
 # The production stack comes with deploy/compose.yaml in L01-US06.
 # Passwords here are for local development only.
@@ -99,10 +102,24 @@ services:
     volumes:
       - ..:/workspace
       - npm-cache:/npm-cache
-    command: ["npx", "ng", "serve", "--host", "0.0.0.0", "--port", "4200"]
+    # File events do not cross the Docker Desktop VM boundary: poll instead.
+    command: ["npx", "ng", "serve", "app", "--host", "0.0.0.0", "--port", "4200", "--poll", "1000"]
     ports:
       - "127.0.0.1:4200:4200"
     profiles: ["web"]
+
+  e2e:
+    build:
+      context: .
+      dockerfile: dev/e2e.Dockerfile
+    image: mlbpp-dev-e2e
+    user: "${DEV_UID:-1000}:${DEV_GID:-1000}"
+    volumes:
+      - ..:/workspace
+      - npm-cache:/npm-cache
+    # Chromium needs more shared memory than Docker's default 64 MB.
+    ipc: host
+    profiles: ["e2e"]
 
 volumes:
   postgres-data:

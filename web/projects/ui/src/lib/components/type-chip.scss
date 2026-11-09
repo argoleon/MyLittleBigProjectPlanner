@@ -1,0 +1,19 @@
+[data-kind='story'] {
+  --chip-container: var(--app-type-story-container);
+  --chip-on: var(--app-type-story-on);
+}
+
+[data-kind='bug'] {
+  --chip-container: var(--app-type-bug-container);
+  --chip-on: var(--app-type-bug-on);
+}
+
+[data-kind='task'] {
+  --chip-container: var(--app-type-task-container);
+  --chip-on: var(--app-type-task-on);
+}
+
+[data-kind='epic'] {
+  --chip-container: var(--app-type-epic-container);
+  --chip-on: var(--app-type-epic-on);
+}
