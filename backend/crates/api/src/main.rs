@@ -1,20 +1,18 @@
+use std::future::Future;
 use std::process::ExitCode;
 
 use api::cli::{self, Command};
-use infra::config::{ApiConfig, Env, MigrateConfig};
-use tracing_subscriber::EnvFilter;
+use infra::config::{ApiConfig, Env, MigrateConfig, TelemetryConfig};
+use infra::telemetry::Telemetry;
 
-#[tokio::main]
-async fn main() -> ExitCode {
-    tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
-        .init();
-
+// Not `#[tokio::main]`: telemetry starts before the runtime and stops after
+// it (see infra::telemetry).
+fn main() -> ExitCode {
     match cli::parse(std::env::args().skip(1)) {
-        Ok(Command::Serve) => serve().await,
-        Ok(Command::Migrate) => migrate().await,
+        Ok(Command::Serve) => serve(),
+        Ok(Command::Migrate) => run_with_logs(migrate()),
         Ok(Command::OpenApi) => openapi(),
-        Ok(Command::Healthcheck) => healthcheck().await,
+        Ok(Command::Healthcheck { ready }) => runtime_block_on(healthcheck(ready)),
         Ok(Command::Help) => {
             println!("{}", cli::USAGE);
             ExitCode::SUCCESS
@@ -26,10 +24,44 @@ async fn main() -> ExitCode {
     }
 }
 
+fn runtime_block_on(task: impl Future<Output = ExitCode>) -> ExitCode {
+    match tokio::runtime::Runtime::new() {
+        Ok(runtime) => runtime.block_on(task),
+        Err(err) => {
+            eprintln!("api: cannot start the async runtime: {err}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// Runs a one-off command with logs on standard output, no export.
+fn run_with_logs(task: impl Future<Output = ExitCode>) -> ExitCode {
+    let telemetry = match TelemetryConfig::from_env(&Env::from_process()) {
+        Ok(mut config) => {
+            config.otlp_endpoint = None;
+            infra::telemetry::init("api", &config)
+        }
+        Err(err) => {
+            eprintln!("api: configuration error: {err}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let code = runtime_block_on(task);
+    if let Ok(telemetry) = telemetry {
+        telemetry.shutdown();
+    }
+    code
+}
+
 /// Health check of the container image, which has no shell nor curl.
-async fn healthcheck() -> ExitCode {
+async fn healthcheck(ready: bool) -> ExitCode {
+    let path = if ready {
+        infra::health::READY_PATH
+    } else {
+        infra::health::LIVE_PATH
+    };
     match Env::from_process().required::<std::net::SocketAddr>("API_BIND_ADDR") {
-        Ok(bind) => infra::health::healthcheck("api", bind).await,
+        Ok(bind) => infra::health::healthcheck("api", bind, path).await,
         Err(err) => {
             eprintln!("api: configuration error: {err}");
             ExitCode::FAILURE
@@ -71,7 +103,7 @@ async fn migrate() -> ExitCode {
     }
 }
 
-async fn serve() -> ExitCode {
+fn serve() -> ExitCode {
     let config = match ApiConfig::from_env(&Env::from_process()) {
         Ok(config) => config,
         Err(err) => {
@@ -79,7 +111,19 @@ async fn serve() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    let telemetry: Telemetry = match infra::telemetry::init("api", &config.telemetry) {
+        Ok(telemetry) => telemetry,
+        Err(err) => {
+            eprintln!("api: cannot start telemetry: {err}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let code = runtime_block_on(run(config));
+    telemetry.shutdown();
+    code
+}
 
+async fn run(config: ApiConfig) -> ExitCode {
     if let Some(migration_url) = &config.migration_url {
         if let Err(err) = infra::db::migrate(migration_url).await {
             eprintln!("api: migration failed: {err}");
@@ -95,6 +139,7 @@ async fn serve() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    infra::telemetry::observe_pool(&pool);
 
     let listener = match tokio::net::TcpListener::bind(config.bind_addr).await {
         Ok(listener) => listener,
@@ -105,7 +150,8 @@ async fn serve() -> ExitCode {
     };
     tracing::info!(addr = %config.bind_addr, "api listening");
 
-    let state = api::AppState::new(pool, config.tenancy.clone());
+    let state =
+        api::AppState::new(pool, config.tenancy.clone()).with_dependencies(config.shared.dependencies());
     let app = api::app(state, &api::HttpSettings::from(&config));
     match api::serve(
         listener,

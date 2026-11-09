@@ -3,10 +3,11 @@
 //!
 //! Routes are declared with `utoipa_axum::routes!`, which registers each
 //! handler and its `#[utoipa::path]` documentation together: a route cannot
-//! be served without appearing in the OpenAPI contract. The only exception
-//! is the liveness probe, meant for the platform, not for API clients.
+//! be served without appearing in the OpenAPI contract. The only exceptions
+//! are the health probes, meant for the platform, not for API clients.
 
-use axum::http::header;
+use axum::extract::State;
+use axum::http::{StatusCode, header};
 use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::{Json, Router};
@@ -28,6 +29,7 @@ pub fn router(state: AppState) -> Router {
     let (api, contract) = documented_routes().split_for_parts();
     api.merge(openapi::docs(contract))
         .route(infra::health::LIVE_PATH, get(live))
+        .route(infra::health::READY_PATH, get(ready))
         .fallback(|| async { Problem::new(ErrorCode::NotFound) })
         .with_state(state)
 }
@@ -37,6 +39,18 @@ async fn live() -> impl IntoResponse {
     (
         [(header::CONTENT_TYPE, "application/json")],
         infra::health::LIVE_BODY,
+    )
+}
+
+/// `GET /health/ready`: 200 when PostgreSQL and the shared services answer,
+/// 503 otherwise, with the state of each one.
+async fn ready(State(state): State<AppState>) -> impl IntoResponse {
+    let report = infra::health::readiness(&state.dependencies).await;
+    let status = StatusCode::from_u16(report.status_code()).unwrap_or(StatusCode::SERVICE_UNAVAILABLE);
+    (
+        status,
+        [(header::CONTENT_TYPE, "application/json")],
+        report.to_json(),
     )
 }
 

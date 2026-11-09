@@ -27,9 +27,9 @@ The whole stack runs with Docker Compose on a single machine (specification §17
 | `clamav` | `clamav/clamav:1.5` | Antivirus of attachments (used from L05); downloads its signatures on first start | 1 |
 
 Profile `sso`: `keycloak` (under `/auth`) and `keycloak-db-init`, which creates its database in the shared PostgreSQL.
-Profile `observability`: `prometheus` (scrapes Traefik; the services' metrics come with L01-US08), `loki` (30-day retention), `alloy` (ships every container's logs to Loki), `grafana` (under `/grafana`, data sources provisioned).
+Profile `observability`: `alloy` (ships every container's logs to Loki; receives the services' traces and metrics), `loki` (logs), `tempo` (traces), `prometheus` (metrics of the services and of Traefik), `grafana` (under `/grafana`, data sources and the "Services" dashboard provisioned). See "Observability" below.
 
-Our images (`api`, `worker`, `mcp`: distroless; `web`: nginx-unprivileged) run as non-root, hold no secret, and check their own health (`/health/live`) with a Docker `HEALTHCHECK`. Each one gets an SBOM (`just images-test` writes them to `deploy/build/sbom/`; the Rust ones list every crate thanks to `cargo auditable`).
+Our images (`api`, `worker`, `mcp`: distroless; `web`: nginx-unprivileged) run as non-root, hold no secret, and check their own health with a Docker `HEALTHCHECK`. Each one gets an SBOM (`just images-test` writes them to `deploy/build/sbom/`; the Rust ones list every crate thanks to `cargo auditable`).
 
 ## Install on a server
 
@@ -44,7 +44,7 @@ Requirements: Docker Engine with Compose v2.24 or later, ports 80 and 443 open, 
    | `mlbpp_owner_password`, `mlbpp_app_password` | Passwords of the owner role (migrations) and of the runtime role |
    | `database_url`, `database_migration_url` | `postgres://mlbpp_app:<password>@postgres:5432/mlbpp`, and the same with `mlbpp_owner` |
    | `pgbackrest_cipher_pass` | Encryption key of the backups. **Keep a copy off the server**: without it, no restore is possible |
-   | `valkey_password` | Valkey password |
+   | `valkey_password`, `valkey_url` | Valkey password, and `redis://:<password>@valkey:6379` for the services |
    | `seaweedfs_s3_config` | SeaweedFS S3 identities (JSON) |
    | `keycloak_db_password`, `keycloak_admin_password` | Profile `sso` |
    | `grafana_admin_password` | Profile `observability` (user `admin`) |
@@ -94,9 +94,42 @@ The restore procedure and its timed drill come with L17. Back up the files of Se
 | `valkey-data` | Valkey append-only file |
 | `clamav-db` | Antivirus signatures |
 | `letsencrypt` | Certificates |
-| `prometheus-data`, `loki-data`, `alloy-data`, `grafana-data` | Profile `observability` |
+| `prometheus-data`, `loki-data`, `tempo-data`, `alloy-data`, `grafana-data` | Profile `observability` |
 
 `docker compose down` keeps them; only `down --volumes` deletes them.
+
+## Observability
+
+### Health
+
+Every service answers two endpoints, never exposed through Traefik:
+
+| Endpoint | Answers 200 when | Used by |
+| --- | --- | --- |
+| `/health/live` | the process runs | the image's own `HEALTHCHECK` (`api healthcheck`), later Kubernetes liveness probes |
+| `/health/ready` | its dependencies are reachable (api and worker: PostgreSQL, Valkey, S3; mcp: the API); 503 otherwise, with the state of each one | the compose health checks (`healthcheck --ready`), Traefik's choice of instances, later Kubernetes readiness probes |
+
+`docker compose ps` therefore shows `api` unhealthy while PostgreSQL is down, and Traefik sends no request to an instance that cannot serve it.
+
+### Logs
+
+The services write one JSON object per line on standard output. Each request yields one INFO line with its status and duration, and every line of a request carries its span: `request_id` (the `x-request-id` correlation ID, also returned in the response), `method`, `route`, `tenant` and `client_ip` (from Traefik's `X-Forwarded-For`).
+
+These technical logs hold client IP addresses (GDPR, specification §14):
+
+- on the host, Docker rotates each container's logs by size (`LOG_MAX_SIZE`, `LOG_MAX_FILES`);
+- with the `observability` profile, Loki keeps them `LOG_RETENTION` (default 6 months, in line with the CNIL recommendation), then deletes them;
+- Traefik's access log also holds them and follows the same path.
+
+### Traces and metrics
+
+The services export OpenTelemetry traces and metrics when `OTEL_EXPORTER_OTLP_ENDPOINT` is set. To run the profile, add `OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318` to the stack variables, then start it with `--profile observability`.
+
+- **Traces** (Tempo, kept `TRACE_RETENTION`, 14 days by default): one server span per request, named after its route (`GET /api/v1/reference-items/{id}`). A W3C `traceparent` header from the caller continues its trace.
+- **Metrics** (Prometheus): `http_server_request_duration_seconds` (histogram by method, route and status: rate, latency percentiles, errors) and `db_client_connection_count` (PostgreSQL pool, used and idle), with the service as `job`; Traefik's own metrics too.
+- **Dashboard**: Grafana › Dashboards › My Little Big Project Planner › Services (`deploy/observability/dashboards/mlbpp-services.json`), with the latency targets of the specification.
+
+To send telemetry to another backend, point Alloy at it (`deploy/observability/config.alloy`): the services only talk to the collector, in plain HTTP inside the network.
 
 ## Running the stack locally
 

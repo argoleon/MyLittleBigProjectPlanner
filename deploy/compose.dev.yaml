@@ -83,6 +83,8 @@ services:
       DATABASE_MIGRATION_URL: postgres://mlbpp_owner:mlbpp_owner_dev@postgres:5432/mlbpp # gitleaks:allow
       TENANCY_MODE: single
       TENANT_DEFAULT_SLUG: default
+      # Readable logs in the terminal; production writes JSON lines.
+      LOG_FORMAT: text
     command:
       - watchexec
       - --restart

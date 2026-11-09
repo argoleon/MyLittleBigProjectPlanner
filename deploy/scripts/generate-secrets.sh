@@ -44,6 +44,7 @@ write database_url "postgres://mlbpp_app:$(read_secret mlbpp_app_password)@postg
 write database_migration_url "postgres://mlbpp_owner:$(read_secret mlbpp_owner_password)@postgres:5432/mlbpp"
 write pgbackrest_cipher_pass "$(random)"
 write valkey_password "$(random)"
+write valkey_url "redis://:$(read_secret valkey_password)@valkey:6379"
 write seaweedfs_s3_config "$(printf '{"identities":[{"name":"mlbpp","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","List","Tagging","Write"]}]}' "$(random)" "$(random)")"
 write keycloak_db_password "$(random)"
 write keycloak_admin_password "$(random)"

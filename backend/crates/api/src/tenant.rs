@@ -21,6 +21,7 @@ use axum::extract::FromRequestParts;
 use axum::http::header::HOST;
 use axum::http::request::Parts;
 use domain::tenancy::{Tenancy, tenant_slug_from_host};
+use infra::health::Dependency;
 use infra::sqlx::postgres::{PgConnection, PgPool};
 use infra::sqlx::{Postgres, Transaction};
 use infra::uuid::Uuid;
@@ -32,14 +33,27 @@ use crate::problem::{ErrorCode, Problem};
 pub struct AppState {
     pub(crate) pool: PgPool,
     pub(crate) tenancy: Arc<Tenancy>,
+    /// Checked by `/health/ready`: PostgreSQL, plus the shared services.
+    pub(crate) dependencies: Arc<[Dependency]>,
 }
 
 impl AppState {
     pub fn new(pool: PgPool, tenancy: Tenancy) -> Self {
+        let dependencies = Arc::from([Dependency::Postgres(pool.clone())]);
         Self {
             pool,
             tenancy: Arc::new(tenancy),
+            dependencies,
         }
+    }
+
+    /// Adds dependencies to the readiness checks (Valkey, S3…).
+    #[must_use]
+    pub fn with_dependencies(mut self, more: impl IntoIterator<Item = Dependency>) -> Self {
+        let mut all = self.dependencies.to_vec();
+        all.extend(more);
+        self.dependencies = all.into();
+        self
     }
 }
 
