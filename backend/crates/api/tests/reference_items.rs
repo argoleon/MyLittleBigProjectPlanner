@@ -321,7 +321,7 @@ async fn delete_requires_if_match_and_then_the_item_is_gone() {
 async fn idempotency_key_replays_the_first_response_without_duplicate() {
     let db = TestDb::new().await;
     let api = start(&db, multi()).await;
-    let key = "8b4f1c1e-6a0c-4a0e-9f55-0d5c2b8f9e11";
+    let key = "8b4f1c1e-6a0c-4a0e-9f55-0d5c2b8f9e11"; // gitleaks:allow (an Idempotency-Key, not a secret)
 
     let first = api
         .request(Method::POST, &db.tenant_a, PATH)

@@ -25,7 +25,9 @@ export default defineConfig({
     baseURL: external ?? `http://127.0.0.1:${PORT}`,
     // The local stack uses Traefik's self-signed certificate.
     ignoreHTTPSErrors: !!external,
+    // Kept as CI artifacts (web/dist/e2e/) when a test fails.
     trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
   },
   projects: [
     {

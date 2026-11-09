@@ -33,7 +33,7 @@ deploy/         docker-compose and profiles (sso, observability)
 docs/           specification (en, fr) and mockups
 ```
 
-Every CI step is a `just` recipe; GitHub Actions only calls them. Run the same recipes locally before declaring work done.
+Every CI step is a `just` recipe; GitHub Actions only calls them (one `ci-*` recipe per job, see `docs/en/developer-guide/ci.md`). Run the same recipes locally before declaring work done: `just ci` is the whole pipeline. Never put logic in the workflow files: add or change a recipe instead.
 
 ## Development environment (containers only)
 
@@ -41,7 +41,7 @@ Every CI step is a `just` recipe; GitHub Actions only calls them. Run the same r
 
 - `just dev` starts PostgreSQL, the API (http://127.0.0.1:18080) and the internal application (http://127.0.0.1:4200, `/api` proxied to the API), all with live reload.
 - `just build`, `just lint`, `just test`, `just migrate`, `just sqlx-prepare`… run in the `backend` toolchain container; `just shell` opens a shell in it.
-- `just web-lint`, `just web-test`, `just web-build`, `just generate-client`… run in the `web` container; `just e2e` runs Playwright in the `e2e` container. `just check` (backend) and `just web-check` (front end) are what the CI runs.
+- `just web-lint`, `just web-test`, `just web-build`, `just generate-client`… run in the `web` container; `just e2e` runs Playwright in the `e2e` container. Before a pull request: `just ci-backend` and `just ci-web` (quality gates, licenses, vulnerabilities), and `just gitleaks`.
 - The production stack (`deploy/compose.yaml`, see `deploy/README.md`) also runs locally: `just compose-up` (https://localhost:18443), `just compose-test`, `just images-test` (images and SBOMs), `just deploy-lint`, `just compose-down`. A change to a Dockerfile, the compose file or a service's configuration must keep these green.
 - Never install a toolchain (Rust, Node, sqlx-cli, Playwright…) on the host for project work, and never call `cargo` or `npm` directly from the host. A new tool goes into the matching dev image (`deploy/dev/*.Dockerfile`) and is reached through a `just` recipe.
 - Containers run with the host user's uid and gid, so generated files (lock files, `.sqlx`, formatted code) belong to the developer.
@@ -71,7 +71,7 @@ The project follows **Gitflow**.
 
 ## Licensing (blocking)
 
-The project is MIT. Only add dependencies under MIT, Apache-2.0, BSD, ISC or 0BSD. Fonts may be OFL-1.1. Never add GPL, LGPL, AGPL, SSPL or commercial dependencies; `cargo-deny` and the npm license check fail the build otherwise. If a needed library has an incompatible license, stop and ask.
+The project is MIT. Only add dependencies under MIT, Apache-2.0, BSD, ISC, 0BSD, Zlib or Unicode-3.0 (the last two decided on 2026-11-09: permissive, and unavoidable in Rust through `foldhash` and the Unicode/ICU4X crates). Fonts may be OFL-1.1. Never add GPL, LGPL, AGPL, SSPL or commercial dependencies; `cargo-deny` and the npm license check fail the build otherwise. If a needed library has an incompatible license, stop and ask.
 
 Accepted exception (decided 2026-11-09): npm packages that are build or test tools and never end up in the shipped bundles may also be under Python-2.0, MPL-2.0, CC-BY-4.0, BlueOak-1.0.0, CC0-1.0 or MIT-0. Today these are, among others, `argparse` (via ng-openapi-gen and Transloco's config tooling), `lightningcss` (via Vite), `axe-core` (accessibility tests), `caniuse-lite`, `lru-cache`, `sax`, `mdn-data` and the `@csstools/*` packages of stylelint. `just web-licenses` enforces it on the bundles themselves (esbuild metafiles of `ng build --stats-json`). Everything shipped stays limited to the list above.
 

@@ -11,7 +11,11 @@
 #   e2e       Playwright and its browsers, for the end-to-end tests
 #             (profile "e2e")
 #
-# The production stack comes with deploy/compose.yaml in L01-US06.
+# The production stack is deploy/compose.yaml (deploy/README.md).
+#
+# Build caches are named volumes. CI replaces them with directories it can
+# save between runs: CARGO_HOME_MOUNT, CARGO_TARGET_MOUNT and NPM_CACHE_MOUNT
+# hold absolute paths (bind mounts) instead of volume names.
 # Passwords here are for local development only.
 
 name: mlbpp-dev
@@ -23,7 +27,7 @@ x-backend: &backend
   image: mlbpp-dev-backend
   volumes:
     - ..:/workspace
-    - cargo-home:/cargo
+    - ${CARGO_HOME_MOUNT:-cargo-home}:/cargo
   environment: &backend-env
     SQLX_OFFLINE: "true"
     RUST_LOG: info
@@ -60,15 +64,15 @@ services:
     <<: *backend
     volumes:
       - ..:/workspace
-      - cargo-home:/cargo
-      - cargo-target:/cargo-target
+      - ${CARGO_HOME_MOUNT:-cargo-home}:/cargo
+      - ${CARGO_TARGET_MOUNT:-cargo-target}:/cargo-target
     profiles: ["tools"]
 
   api:
     <<: *backend
     volumes:
       - ..:/workspace
-      - cargo-home:/cargo
+      - ${CARGO_HOME_MOUNT:-cargo-home}:/cargo
       # Separate build directory, so `just test` never waits for the server's build.
       - api-target:/cargo-target
     user: "${DEV_UID:-1000}:${DEV_GID:-1000}"
@@ -101,7 +105,7 @@ services:
     user: "${DEV_UID:-1000}:${DEV_GID:-1000}"
     volumes:
       - ..:/workspace
-      - npm-cache:/npm-cache
+      - ${NPM_CACHE_MOUNT:-npm-cache}:/npm-cache
     # File events do not cross the Docker Desktop VM boundary: poll instead.
     command: ["npx", "ng", "serve", "app", "--host", "0.0.0.0", "--port", "4200", "--poll", "1000"]
     ports:
@@ -116,7 +120,7 @@ services:
     user: "${DEV_UID:-1000}:${DEV_GID:-1000}"
     volumes:
       - ..:/workspace
-      - npm-cache:/npm-cache
+      - ${NPM_CACHE_MOUNT:-npm-cache}:/npm-cache
     # Chromium needs more shared memory than Docker's default 64 MB.
     ipc: host
     profiles: ["e2e"]

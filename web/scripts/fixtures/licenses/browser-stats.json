@@ -1,0 +1,6 @@
+{
+  "inputs": {
+    "node_modules/allowed-runtime/index.js": {},
+    "node_modules/tool-license-in-bundle/index.js": {}
+  }
+}

@@ -1,0 +1,144 @@
+# Continuous integration. Every step is a `just` recipe (justfile, section
+# "Continuous integration"): this file only prepares the runner (checkout,
+# just, caches, registry login) and calls one ci-* recipe per job. Run
+# `just ci` to reproduce the whole pipeline locally.
+#
+# Third-party actions are pinned to a commit (the version is in the comment).
+
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main, "release/**", "hotfix/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Build caches of the development containers, saved between runs
+  # (deploy/compose.dev.yaml).
+  CARGO_HOME_MOUNT: ${{ github.workspace }}/.ci-cache/cargo-home
+  CARGO_TARGET_MOUNT: ${{ github.workspace }}/.ci-cache/cargo-target
+  NPM_CACHE_MOUNT: ${{ github.workspace }}/.ci-cache/npm
+  # Optional: a Docker Hub account avoids the anonymous pull rate limit.
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+
+jobs:
+  security:
+    name: Secrets (gitleaks)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the whole history is scanned
+      - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.59.0"
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        if: env.DOCKERHUB_USERNAME != ''
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - run: just ci-security
+
+  backend:
+    name: Backend (fmt, clippy, tests on PostgreSQL, cargo-deny)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.59.0"
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        if: env.DOCKERHUB_USERNAME != ''
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .ci-cache/cargo-home
+            .ci-cache/cargo-target
+          key: cargo-${{ hashFiles('backend/Cargo.lock', 'backend/rust-toolchain.toml') }}
+          restore-keys: cargo-
+      # Bind-mounted caches must exist and belong to the runner user.
+      - run: mkdir -p .ci-cache/cargo-home .ci-cache/cargo-target .ci-cache/npm
+      - run: just ci-backend
+
+  web:
+    name: Front end (lint, tests, licenses, audit, e2e and axe-core)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.59.0"
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        if: env.DOCKERHUB_USERNAME != ''
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          # The client check builds the api to export the contract.
+          path: |
+            .ci-cache/npm
+            .ci-cache/cargo-home
+            .ci-cache/cargo-target
+          key: web-${{ hashFiles('web/package-lock.json', 'backend/Cargo.lock') }}
+          restore-keys: web-
+      - run: mkdir -p .ci-cache/cargo-home .ci-cache/cargo-target .ci-cache/npm
+      - run: just ci-web
+      - name: Keep the Playwright traces and screenshots
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-results
+          path: web/dist/e2e/
+          retention-days: 14
+
+  deploy:
+    name: Deployment (images, SBOM, compose stack, e2e)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.59.0"
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        if: env.DOCKERHUB_USERNAME != ''
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .ci-cache/npm
+          key: deploy-${{ hashFiles('web/package-lock.json') }}
+          restore-keys: deploy-
+      - run: mkdir -p .ci-cache/cargo-home .ci-cache/cargo-target .ci-cache/npm
+      - run: just ci-deploy
+      - name: Keep the SBOMs of the images
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sbom
+          path: deploy/build/sbom/
+          if-no-files-found: ignore
+      - name: Keep the Playwright traces and screenshots
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-results-stack
+          path: web/dist/e2e/
+          retention-days: 14

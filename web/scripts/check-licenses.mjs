@@ -7,13 +7,22 @@
 // `ng build --stats-json` list every file each bundle contains.
 //
 // Usage: node scripts/check-licenses.mjs (from web/; `just web-licenses`,
-// after `just web-build`).
+// after `just web-build`). Tests pass other files:
+//   node scripts/check-licenses.mjs --lock <package-lock.json> --bundle <stats.json>…
+// (see check-licenses.test.mjs).
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { parseArgs } from 'node:util';
 
-const ALLOWED = ['MIT', 'Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'ISC', '0BSD', 'OFL-1.1'];
+const ALLOWED = ['MIT', 'Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'ISC', '0BSD', 'Zlib', 'Unicode-3.0', 'OFL-1.1'];
 const TOOLS_ONLY = ['Python-2.0', 'MPL-2.0', 'CC-BY-4.0', 'BlueOak-1.0.0', 'CC0-1.0', 'MIT-0'];
-const BUNDLES = ['dist/app/browser-stats.json', 'dist/portal/browser-stats.json'];
+const { values: args } = parseArgs({
+  options: {
+    lock: { type: 'string', default: 'package-lock.json' },
+    bundle: { type: 'string', multiple: true, default: ['dist/app/browser-stats.json', 'dist/portal/browser-stats.json'] },
+  },
+});
+const BUNDLES = args.bundle;
 
 /** Whether an SPDX expression is satisfied by the `accepted` licenses. */
 function satisfies(expression, accepted) {
@@ -43,7 +52,7 @@ if (missingBundles.length > 0) {
 const bundled = BUNDLES.flatMap((file) => Object.keys(JSON.parse(readFileSync(file, 'utf8')).inputs));
 const inBundle = (path) => bundled.some((input) => input.startsWith(`${path}/`));
 
-const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));
+const lock = JSON.parse(readFileSync(args.lock, 'utf8'));
 const problems = [];
 let count = 0;
 let toolsOnly = 0;
