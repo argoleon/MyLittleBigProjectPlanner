@@ -1,0 +1,18 @@
+.top-bar {
+  gap: var(--app-space-3);
+  font: var(--mat-sys-title-medium);
+}
+
+.brand-icon {
+  color: var(--mat-sys-primary);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--app-page-padding);
+}

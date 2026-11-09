@@ -1,0 +1,97 @@
+{
+  "app": {
+    "name": "My Little Big Project Planner",
+    "portalName": "Portail de demandes"
+  },
+  "shell": {
+    "skipToContent": "Aller au contenu",
+    "openNavigation": "Ouvrir la navigation",
+    "mainNavigation": "Navigation principale",
+    "tenant": "Organisation",
+    "language": "Langue : {{ language }}",
+    "theme": {
+      "label": "Thème : {{ mode }}",
+      "system": "Selon le système",
+      "light": "Clair",
+      "dark": "Sombre"
+    }
+  },
+  "nav": {
+    "home": "Accueil",
+    "myTickets": "Mes tickets",
+    "search": "Recherche",
+    "boards": "Boards",
+    "gantt": "Gantt",
+    "workload": "Charge",
+    "portfolios": "Portefeuilles",
+    "portals": "Portails",
+    "dashboards": "Tableaux de bord",
+    "administration": "Administration"
+  },
+  "page": {
+    "comingSoon": {
+      "title": "Bientôt disponible",
+      "message": "Cet écran arrive avec un prochain lot."
+    },
+    "portalHome": {
+      "title": "Bienvenue sur le portail",
+      "message": "Les formulaires de demande arrivent avec un prochain lot."
+    }
+  },
+  "status": {
+    "label": "Statut :",
+    "todo": "À faire",
+    "progress": "En cours",
+    "done": "Terminé"
+  },
+  "type": {
+    "label": "Type :",
+    "story": "Story",
+    "bug": "Bug",
+    "task": "Tâche",
+    "epic": "Epic"
+  },
+  "state": {
+    "loading": "Chargement…",
+    "errorTitle": "Une erreur est survenue",
+    "retry": "Réessayer"
+  },
+  "errors": {
+    "bad_request": "La requête est mal formée.",
+    "validation_failed": "Certains champs sont invalides.",
+    "invalid_json": "Les données envoyées sont invalides.",
+    "invalid_query": "Les paramètres de la requête sont invalides.",
+    "not_found": "Cet élément n’existe pas ou n’est plus accessible.",
+    "method_not_allowed": "Cette action n’est pas possible sur cet élément.",
+    "request_timeout": "Le serveur a mis trop de temps à répondre. Réessayez.",
+    "conflict": "Cette action est en conflit avec l’état actuel.",
+    "precondition_failed": "Quelqu’un a modifié cet élément entre-temps. Rechargez-le avant de recommencer.",
+    "payload_too_large": "Les données envoyées sont trop volumineuses.",
+    "unsupported_media_type": "Ce format de données n’est pas accepté.",
+    "precondition_required": "Rechargez l’élément avant de le modifier.",
+    "internal": "Le serveur a rencontré une erreur. Réessayez plus tard.",
+    "idempotency_key": {
+      "invalid": "La requête est mal formée.",
+      "reused": "Cette demande a déjà été envoyée avec d’autres données.",
+      "in_flight": "Cette demande est déjà en cours de traitement."
+    },
+    "tenant": {
+      "not_found": "Cette organisation est introuvable."
+    },
+    "reference_item": {
+      "code_taken": "Ce code est déjà utilisé."
+    },
+    "network": "Le serveur est injoignable. Vérifiez votre connexion.",
+    "unknown": "Une erreur inattendue est survenue.",
+    "field": {
+      "required": "Ce champ est obligatoire.",
+      "format": "Le format est invalide.",
+      "length": "La longueur est invalide.",
+      "too_long": "Le texte est trop long.",
+      "out_of_range": "La valeur est hors des limites autorisées.",
+      "taken": "Cette valeur est déjà utilisée.",
+      "unsupported_locale": "Cette langue n’est pas prise en charge.",
+      "unknown_field": "Ce champ n’existe pas."
+    }
+  }
+}

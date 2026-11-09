@@ -17,6 +17,9 @@ be := compose + " run --rm --user $DEV_UID:$DEV_GID backend"
 # One-off command in the Node toolchain container, from web/.
 fe := compose + " run --rm --no-deps --user $DEV_UID:$DEV_GID web"
 
+# One-off command in the Playwright container, from web/.
+pw := compose + " --profile e2e run --rm --no-deps --user $DEV_UID:$DEV_GID e2e"
+
 # List the recipes
 default:
     @just --list
@@ -25,15 +28,16 @@ default:
 
 # Build the development images
 images:
-    {{compose}} --profile tools --profile web build
+    {{compose}} --profile tools --profile web --profile e2e build
 
-# Start PostgreSQL and the API with live reload (http://127.0.0.1:18080)
-dev:
-    {{compose}} up --build api
+# Start PostgreSQL, the API (http://127.0.0.1:18080) and the internal
+# application (http://127.0.0.1:4200), both with live reload
+dev: web-deps
+    {{compose}} --profile web up --build api web
 
 # Stop every development container (data is kept)
 down:
-    {{compose}} --profile tools --profile web down
+    {{compose}} --profile tools --profile web --profile e2e down
 
 # Start only PostgreSQL (host port 54329, for database tools)
 db-up:
@@ -45,7 +49,7 @@ seed: migrate
 
 # Delete the development database and build caches
 reset:
-    {{compose}} --profile tools --profile web down --volumes
+    {{compose}} --profile tools --profile web --profile e2e down --volumes
 
 # Open a shell in the Rust toolchain container
 shell:
@@ -141,13 +145,30 @@ client-check:
 web-deps:
     {{fe}} bash -c '[ node_modules/.package-lock.json -nt package-lock.json ] || npm ci --no-audit --no-fund'
 
-# Run the front-end unit and integration tests
-web-test: web-deps
-    {{fe}} npx ng test ui --watch=false
+# Lint TypeScript and templates (ESLint, accessibility rules included) and styles
+# (stylelint: no hard-coded color, font, radius or shadow)
+web-lint: web-deps
+    {{fe}} bash -c 'npx eslint . && npx stylelint "projects/**/*.scss" && node scripts/check-style-rules.mjs'
 
-# Build the front-end projects
+# Fail if a translation key is missing in fr.json or en.json
+web-i18n: web-deps
+    {{fe}} node scripts/check-i18n.mjs
+
+# Run the front-end unit and integration tests (Vitest)
+web-test: web-deps
+    {{fe}} bash -c 'for project in ui app portal; do npx ng test "$project" --watch=false || exit 1; done'
+
+# Build the library and both applications (production)
 web-build: web-deps
-    {{fe}} npx ng build ui
+    {{fe}} bash -c 'npx ng build ui && npx ng build app --stats-json && npx ng build portal --stats-json'
+
+# Fail if an npm dependency has a license that is not allowed (CLAUDE.md)
+web-licenses: web-build
+    {{fe}} node scripts/check-licenses.mjs
+
+# Run the end-to-end tests (Playwright, axe-core) against the production build
+e2e *args: web-deps
+    {{pw}} npx playwright test {{args}}
 
 # Everything the CI runs for the front end
-web-check: client-check web-build web-test
+web-check: web-lint web-i18n client-check web-licenses web-test e2e
