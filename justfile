@@ -30,8 +30,7 @@ default:
 images:
     {{compose}} --profile tools --profile web --profile e2e build
 
-# Start PostgreSQL, the API (http://127.0.0.1:18080) and the internal
-# application (http://127.0.0.1:4200), both with live reload
+# Start PostgreSQL, the API (:18080) and the internal application (:4200) with live reload
 dev: web-deps
     {{compose}} --profile web up --build api web
 
@@ -96,8 +95,8 @@ test-integration:
 check-domain:
     {{be}} scripts/check-domain.sh
 
-# Apply pending migrations to the development database. Uses sqlx-cli rather
-# than `api migrate`, which needs the new queries' metadata to compile.
+# (sqlx-cli rather than `api migrate`, which needs the new queries' metadata to compile)
+# Apply pending migrations to the development database
 migrate:
     {{be}} bash -c 'sqlx migrate run --source migrations --database-url "$DEV_DATABASE_OWNER_URL"'
 
@@ -109,7 +108,13 @@ sqlx-prepare: migrate
 sqlx-check: migrate
     {{be}} bash -c 'SQLX_OFFLINE=false DATABASE_URL="$DEV_DATABASE_OWNER_URL" cargo sqlx prepare --workspace --check -- --all-targets'
 
-# Everything the CI runs for the backend
+# (also checks that the license policy still rejects GPL code)
+# Check licenses, security advisories and crate sources of the Rust dependencies
+deny:
+    {{be}} cargo deny --locked check
+    {{be}} scripts/check-deny-policy.sh
+
+# Backend quality gates: format, lint, domain purity, query metadata, tests
 check: fmt-check lint check-domain sqlx-check test
 
 # --- API contract and generated client ---------------------------------------
@@ -122,8 +127,8 @@ openapi:
 generate-client: openapi web-deps
     {{fe}} npx ng-openapi-gen --config ng-openapi-gen.json
 
-# Fail, showing the diff, if the contract or the client on disk (in CI: the
-# committed ones) is out of date with the code
+# (on disk: in CI, the committed ones)
+# Fail, showing the diff, if the contract or the client is out of date with the code
 client-check:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -145,8 +150,8 @@ client-check:
 web-deps:
     {{fe}} bash -c '[ node_modules/.package-lock.json -nt package-lock.json ] || npm ci --no-audit --no-fund'
 
-# Lint TypeScript and templates (ESLint, accessibility rules included) and styles
-# (stylelint: no hard-coded color, font, radius or shadow)
+# (ESLint with accessibility rules; stylelint: no hard-coded color, font, radius or shadow)
+# Lint TypeScript, templates and styles
 web-lint: web-deps
     {{fe}} bash -c 'npx eslint . && npx stylelint "projects/**/*.scss" && node scripts/check-style-rules.mjs'
 
@@ -164,13 +169,22 @@ web-build: web-deps
 
 # Fail if an npm dependency has a license that is not allowed (CLAUDE.md)
 web-licenses: web-build
+    {{fe}} node --test scripts/check-licenses.test.mjs
     {{fe}} node scripts/check-licenses.mjs
 
 # Run the end-to-end tests (Playwright, axe-core) against the production build
 e2e *args: web-deps
     {{pw}} npx playwright test {{args}}
 
-# Everything the CI runs for the front end
+# (none allowed in what ships, none high or critical in the build and test tools)
+# Fail on known vulnerabilities of the npm dependencies
+web-audit: web-deps
+    {{fe}} bash -c 'npm audit --omit=dev --audit-level=low && npm audit --audit-level=high'
+
+# Accessibility checks only (axe-core in the end-to-end tests)
+a11y: (e2e "--grep" "axe-core")
+
+# Front-end quality gates: lint, translations, client, licenses, tests, e2e
 web-check: web-lint web-i18n client-check web-licenses web-test e2e
 
 # --- Production stack (deploy/compose.yaml) ------------------------------------
@@ -179,9 +193,10 @@ web-check: web-lint web-i18n client-check web-licenses web-test e2e
 
 stack := "MLBPP_DOMAIN=localhost MLBPP_REGISTRY=mlbpp-local MLBPP_VERSION=local MLBPP_PUBLIC_PORT=:18443 docker compose -f deploy/compose.yaml -f deploy/compose.local.yaml"
 
-# Lint the deployment scripts (shellcheck) and validate the compose files
+# Lint the scripts (shellcheck) and the CI workflows (actionlint), validate the compose files
 deploy-lint: compose-secrets
-    docker run --rm -v "$PWD:/mnt:ro" -w /mnt koalaman/shellcheck:v0.11.0 -x -P deploy/tests deploy/tests/*.sh deploy/scripts/*.sh deploy/postgres/*.sh
+    docker run --rm -v "$PWD:/repo:ro" -w /repo rhysd/actionlint:1.7.12 -no-color
+    docker run --rm -v "$PWD:/mnt:ro" -w /mnt koalaman/shellcheck:v0.11.0 -x -P deploy/tests deploy/tests/*.sh deploy/scripts/*.sh deploy/postgres/*.sh scripts/*.sh backend/scripts/*.sh
     {{stack}} --profile sso --profile observability config --quiet
 
 # Create the missing secret files of the stack in deploy/secrets/
@@ -191,6 +206,18 @@ compose-secrets:
 # Build the production images (api, worker, mcp, web, postgres)
 images-build:
     {{stack}} build web api worker mcp postgres
+
+# Push the production images as VERSION and latest (release workflow; needs a registry login)
+images-publish version registry="ghcr.io/argoleon":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [[ "{{version}}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "version must be vX.Y.Z, got '{{version}}'" >&2; exit 1; }
+    for name in api worker mcp web postgres; do
+        for tag in "{{version}}" latest; do
+            docker tag "mlbpp-local/mlbpp-$name:local" "{{registry}}/mlbpp-$name:$tag"
+            docker push "{{registry}}/mlbpp-$name:$tag"
+        done
+    done
 
 # Test the images: health alone, non-root, no secret, SBOM (deploy/build/sbom/)
 images-test: images-build
@@ -208,8 +235,8 @@ compose-down:
 compose-reset:
     {{stack}} --profile sso --profile observability down --volumes
 
-# End-to-end tests against the local production stack (nginx, its
-# Content-Security-Policy, Traefik), from the e2e container on its network
+# (nginx, its Content-Security-Policy, Traefik; from the e2e container on its network)
+# Run the end-to-end tests against the local production stack
 compose-e2e *args: web-deps
     {{compose}} --profile e2e build e2e
     docker run --rm --network mlbpp_edge --ipc host --user $DEV_UID:$DEV_GID \
@@ -224,3 +251,26 @@ compose-test: compose-up
     deploy/tests/scale.sh
     deploy/tests/profiles.sh
     just compose-e2e
+
+# --- Continuous integration ---------------------------------------------------
+# GitHub Actions runs one job per ci-* recipe (.github/workflows/ci.yml) and
+# nothing else: `just ci` reproduces the whole pipeline locally.
+
+# Secret scan of the git history (gitleaks), with a self-test
+gitleaks:
+    scripts/gitleaks.sh
+
+# CI job "backend": quality gates and dependency policy of the Rust code
+ci-backend: check deny
+
+# CI job "web": quality gates, vulnerabilities and accessibility of the front end
+ci-web: web-check web-audit
+
+# CI job "deploy": images, compose stack and end-to-end tests on it
+ci-deploy: deploy-lint images-test compose-test
+
+# CI job "security": secrets in the repository
+ci-security: gitleaks
+
+# The whole CI pipeline, as GitHub Actions runs it
+ci: ci-security ci-backend ci-web ci-deploy

@@ -1,4 +1,5 @@
-# Development image of the Rust backend: toolchain, sqlx-cli and watchexec.
+# Development image of the Rust backend: toolchain, sqlx-cli, watchexec and
+# cargo-deny.
 # Used by the `backend` (one-off commands: build, lint, test, migrate) and
 # `api` (server with live reload) services of deploy/compose.dev.yaml.
 # Nothing in it is shipped: production images come with L01-US06.
@@ -15,6 +16,7 @@ RUN rustup component add rustfmt clippy \
 # sqlx-cli 0.9 ships no lock file, so --locked does not apply to it.
 RUN cargo install sqlx-cli@0.9.0 --no-default-features --features postgres \
     && cargo install --locked watchexec-cli \
+    && cargo install --locked cargo-deny@0.20.2 \
     && rm -rf /usr/local/cargo/registry /usr/local/cargo/git
 
 # Commands run with the host user's uid (see the justfile), so files created

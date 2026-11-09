@@ -1,0 +1,6 @@
+# Findings of `just gitleaks` checked by hand and known to be false
+# positives, as commit:file:rule:line fingerprints. In new code, prefer an
+# inline `gitleaks:allow` comment with the reason.
+
+# An Idempotency-Key (UUID) in a test, flagged as a generic API key.
+7ea1fb81467f9a264f8aa7488257a6ce0adc4906:backend/crates/api/tests/reference_items.rs:generic-api-key:324

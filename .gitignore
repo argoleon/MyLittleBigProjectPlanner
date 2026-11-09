@@ -22,6 +22,9 @@
 # Build output of the deployment tests (SBOMs, exported image files)
 /deploy/build/
 
+# Build caches of the CI runners (.github/workflows/ci.yml)
+/.ci-cache/
+
 # Rust build output
 /backend/target/
 

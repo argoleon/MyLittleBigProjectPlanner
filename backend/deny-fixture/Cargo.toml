@@ -1,0 +1,14 @@
+# Fixture of scripts/check-deny-policy.sh: an MIT crate depending on a GPL
+# one. `cargo deny` with backend/deny.toml must reject it. Its own workspace,
+# outside the backend one; never built.
+[workspace]
+
+[package]
+name = "deny-fixture"
+version = "0.0.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[dependencies]
+gpl-dependency = { path = "gpl-dependency", version = "0.0.0" }

@@ -1,6 +1,8 @@
 [workspace]
 resolver = "3"
 members = ["crates/domain", "crates/infra", "crates/api", "crates/worker", "crates/mcp", "crates/testkit"]
+# Fixture of scripts/check-deny-policy.sh, never built.
+exclude = ["deny-fixture"]
 
 [workspace.package]
 version = "0.1.0"

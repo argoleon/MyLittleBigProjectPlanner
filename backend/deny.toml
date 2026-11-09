@@ -1,0 +1,40 @@
+# cargo-deny configuration (`just deny`): licenses, security advisories,
+# banned crates and crate sources. License policy: CLAUDE.md, "Licensing".
+
+[graph]
+all-features = true
+
+[advisories]
+# RustSec advisory database: known vulnerabilities and unmaintained crates.
+version = 2
+yanked = "deny"
+ignore = []
+
+[licenses]
+version = 2
+confidence-threshold = 0.9
+# The list is the policy, not an inventory: allowed licenses may be unused.
+unused-allowed-license = "allow"
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "0BSD",
+    # Permissive; allowed on 2026-11-09 (foldhash, Unicode and ICU4X crates).
+    "Zlib",
+    "Unicode-3.0",
+]
+exceptions = []
+
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+# Path dependencies of the workspace have no version: not wildcards.
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
