@@ -14,6 +14,8 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 
+use domain::tenancy::Tenancy;
+
 /// A configuration problem. The message always names the variable.
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
@@ -154,6 +156,87 @@ impl CommonConfig {
     }
 }
 
+/// A sensitive value (password, connection URL with credentials).
+/// Its `Debug` output is redacted, so it never ends up in logs.
+#[derive(Clone, PartialEq, Eq)]
+pub struct Secret(String);
+
+impl Secret {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    /// The actual value; pass it straight to the library that needs it.
+    pub fn expose(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Debug for Secret {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Secret(***)")
+    }
+}
+
+impl FromStr for Secret {
+    type Err = std::convert::Infallible;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(s.to_owned()))
+    }
+}
+
+/// PostgreSQL connection settings of a service.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DatabaseConfig {
+    /// Connection URL of the runtime role (`mlbpp_app`).
+    pub url: Secret,
+    pub max_connections: u32,
+    pub acquire_timeout: Duration,
+}
+
+impl DatabaseConfig {
+    pub fn from_env(env: &Env) -> Result<Self, ConfigError> {
+        let max_connections: u32 = env.optional("DATABASE_MAX_CONNECTIONS", 10)?;
+        if max_connections == 0 {
+            return Err(invalid("DATABASE_MAX_CONNECTIONS", "must be greater than 0"));
+        }
+        Ok(Self {
+            url: env.required("DATABASE_URL")?,
+            max_connections,
+            acquire_timeout: env.seconds("DATABASE_ACQUIRE_TIMEOUT_SECS", 5)?,
+        })
+    }
+}
+
+/// Single- or multi-tenant mode (specification §3).
+pub fn tenancy_from_env(env: &Env) -> Result<Tenancy, ConfigError> {
+    let mode: String = env.optional("TENANCY_MODE", "single".to_owned())?;
+    match mode.as_str() {
+        "single" => {
+            let default_slug: String = env.optional("TENANT_DEFAULT_SLUG", "default".to_owned())?;
+            if !domain::tenancy::is_valid_slug(&default_slug) {
+                return Err(invalid(
+                    "TENANT_DEFAULT_SLUG",
+                    "must be 1-63 characters among a-z, 0-9 and -, not starting or ending with -",
+                ));
+            }
+            Ok(Tenancy::Single { default_slug })
+        }
+        "multi" => {
+            let base_domain: String = env.required("TENANT_BASE_DOMAIN")?;
+            let base_domain = base_domain.trim_end_matches('.').to_ascii_lowercase();
+            if base_domain.is_empty() || base_domain.contains([':', '/', ' ']) {
+                return Err(invalid(
+                    "TENANT_BASE_DOMAIN",
+                    "must be a bare domain such as example.org",
+                ));
+            }
+            Ok(Tenancy::Multi { base_domain })
+        }
+        _ => Err(invalid("TENANCY_MODE", "must be single or multi")),
+    }
+}
+
 /// Configuration of the `api` service.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ApiConfig {
@@ -161,6 +244,10 @@ pub struct ApiConfig {
     pub bind_addr: SocketAddr,
     pub request_timeout: Duration,
     pub body_limit_bytes: usize,
+    pub database: DatabaseConfig,
+    /// Owner-role URL; when set, the api applies pending migrations at startup.
+    pub migration_url: Option<Secret>,
+    pub tenancy: Tenancy,
 }
 
 impl ApiConfig {
@@ -174,6 +261,24 @@ impl ApiConfig {
             bind_addr: env.required("API_BIND_ADDR")?,
             request_timeout: env.seconds("API_REQUEST_TIMEOUT_SECS", 30)?,
             body_limit_bytes,
+            database: DatabaseConfig::from_env(env)?,
+            migration_url: env.get("DATABASE_MIGRATION_URL")?.map(Secret),
+            tenancy: tenancy_from_env(env)?,
+        })
+    }
+}
+
+/// Configuration of the `api migrate` command.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MigrateConfig {
+    /// Owner-role URL (`mlbpp_owner`).
+    pub migration_url: Secret,
+}
+
+impl MigrateConfig {
+    pub fn from_env(env: &Env) -> Result<Self, ConfigError> {
+        Ok(Self {
+            migration_url: env.required("DATABASE_MIGRATION_URL")?,
         })
     }
 }
@@ -250,14 +355,85 @@ mod tests {
         assert!(err.to_string().contains("API_BIND_ADDR"));
     }
 
+    // Fake credentials, test only.
+    const DB_URL: &str = "postgres://mlbpp_app:secret@db/mlbpp"; // gitleaks:allow
+    const OWNER_URL: &str = "postgres://mlbpp_owner:hunter2@db/mlbpp"; // gitleaks:allow
+
     #[test]
     fn defaults_apply_when_optional_values_are_absent() {
-        let env = Env::from_pairs([("API_BIND_ADDR", "0.0.0.0:8080")]);
+        let env = Env::from_pairs([("API_BIND_ADDR", "0.0.0.0:8080"), ("DATABASE_URL", DB_URL)]);
         let cfg = ApiConfig::from_env(&env).unwrap();
         assert_eq!(cfg.bind_addr, "0.0.0.0:8080".parse().unwrap());
         assert_eq!(cfg.request_timeout, Duration::from_secs(30));
         assert_eq!(cfg.body_limit_bytes, 2 * 1024 * 1024);
         assert_eq!(cfg.common.shutdown_grace, Duration::from_secs(30));
+        assert_eq!(cfg.database.url.expose(), DB_URL);
+        assert_eq!(cfg.database.max_connections, 10);
+        assert_eq!(cfg.database.acquire_timeout, Duration::from_secs(5));
+        assert_eq!(cfg.migration_url, None);
+        assert_eq!(
+            cfg.tenancy,
+            Tenancy::Single {
+                default_slug: "default".to_owned()
+            }
+        );
+    }
+
+    #[test]
+    fn api_requires_a_database_url() {
+        let env = Env::from_pairs([("API_BIND_ADDR", "0.0.0.0:8080")]);
+        let err = ApiConfig::from_env(&env).unwrap_err();
+        assert!(matches!(&err, ConfigError::Missing { name } if name == "DATABASE_URL"));
+    }
+
+    #[test]
+    fn secrets_are_redacted_in_debug_output() {
+        let env = Env::from_pairs([
+            ("API_BIND_ADDR", "0.0.0.0:8080"),
+            ("DATABASE_URL", DB_URL),
+            ("DATABASE_MIGRATION_URL", OWNER_URL),
+        ]);
+        let debug = format!("{:?}", ApiConfig::from_env(&env).unwrap());
+        assert!(!debug.contains("secret") && !debug.contains("hunter2"), "{debug}");
+        assert!(debug.contains("Secret(***)"));
+    }
+
+    #[test]
+    fn multi_tenancy_requires_a_base_domain() {
+        let env = Env::from_pairs([("TENANCY_MODE", "multi")]);
+        let err = tenancy_from_env(&env).unwrap_err();
+        assert!(matches!(&err, ConfigError::Missing { name } if name == "TENANT_BASE_DOMAIN"));
+
+        let env = Env::from_pairs([("TENANCY_MODE", "multi"), ("TENANT_BASE_DOMAIN", "Example.ORG.")]);
+        assert_eq!(
+            tenancy_from_env(&env).unwrap(),
+            Tenancy::Multi {
+                base_domain: "example.org".to_owned()
+            }
+        );
+
+        let env = Env::from_pairs([
+            ("TENANCY_MODE", "multi"),
+            ("TENANT_BASE_DOMAIN", "https://example.org"),
+        ]);
+        assert!(matches!(tenancy_from_env(&env), Err(ConfigError::Invalid { .. })));
+    }
+
+    #[test]
+    fn tenancy_mode_and_default_slug_are_validated() {
+        let env = Env::from_pairs([("TENANCY_MODE", "both")]);
+        let err = tenancy_from_env(&env).unwrap_err();
+        assert!(matches!(&err, ConfigError::Invalid { name, .. } if name == "TENANCY_MODE"));
+
+        let env = Env::from_pairs([("TENANT_DEFAULT_SLUG", "Not Valid")]);
+        let err = tenancy_from_env(&env).unwrap_err();
+        assert!(matches!(&err, ConfigError::Invalid { name, .. } if name == "TENANT_DEFAULT_SLUG"));
+    }
+
+    #[test]
+    fn migrate_command_requires_the_owner_url() {
+        let err = MigrateConfig::from_env(&Env::default()).unwrap_err();
+        assert!(matches!(&err, ConfigError::Missing { name } if name == "DATABASE_MIGRATION_URL"));
     }
 
     #[test]
@@ -266,8 +442,14 @@ mod tests {
             ("API_REQUEST_TIMEOUT_SECS", "0"),
             ("API_BODY_LIMIT_BYTES", "0"),
             ("SHUTDOWN_GRACE_SECS", "0"),
+            ("DATABASE_MAX_CONNECTIONS", "0"),
+            ("DATABASE_ACQUIRE_TIMEOUT_SECS", "0"),
         ] {
-            let env = Env::from_pairs([("API_BIND_ADDR", "127.0.0.1:1"), (name, value)]);
+            let env = Env::from_pairs([
+                ("API_BIND_ADDR", "127.0.0.1:1"),
+                ("DATABASE_URL", DB_URL),
+                (name, value),
+            ]);
             let err = ApiConfig::from_env(&env).unwrap_err();
             assert!(
                 matches!(&err, ConfigError::Invalid { name: n, .. } if n == name),
@@ -280,7 +462,10 @@ mod tests {
     fn value_can_come_from_a_mounted_file() {
         let mut file = tempfile::NamedTempFile::new().unwrap();
         writeln!(file, "127.0.0.1:9000").unwrap();
-        let env = Env::from_pairs([("API_BIND_ADDR_FILE", file.path().to_str().unwrap())]);
+        let env = Env::from_pairs([
+            ("API_BIND_ADDR_FILE", file.path().to_str().unwrap()),
+            ("DATABASE_URL", DB_URL),
+        ]);
         let cfg = ApiConfig::from_env(&env).unwrap();
         assert_eq!(cfg.bind_addr, "127.0.0.1:9000".parse().unwrap());
     }

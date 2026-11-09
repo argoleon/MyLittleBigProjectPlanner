@@ -10,9 +10,14 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+sqlx.workspace = true
+uuid.workspace = true
+domain.workspace = true
 thiserror = "2.0.21"
 tokio = { version = "1.54.1", features = ["signal", "macros", "rt"] }
 tracing = "0.1.44"
 
 [dev-dependencies]
 tempfile = "3.27.0"
+testkit.workspace = true
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros"] }
