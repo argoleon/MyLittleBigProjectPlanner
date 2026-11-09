@@ -9,6 +9,7 @@ pub mod idempotency;
 pub mod pagination;
 pub mod reference_items;
 pub mod shutdown;
+pub mod telemetry;
 
 pub use sqlx;
 pub use uuid;

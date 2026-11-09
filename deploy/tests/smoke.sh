@@ -60,6 +60,26 @@ if ! grep -q "\"code\":\"$code\"" <<< "$read_back" || ! grep -q '"label":"Fumée
 fi
 pass "read back in French"
 
+section "logs and readiness"
+request_id="smoke-$(date +%s)"
+curl_edge --output /dev/null -H "x-request-id: $request_id" https://localhost/api/v1/ping
+log_line() {
+    compose logs --no-log-prefix --since 2m api | grep "\"request_id\":\"$request_id\"" | grep -q '"message":"finished processing request"'
+}
+wait_until "the api logs the request as a JSON line holding its x-request-id" 30 log_line
+
+api_ready() { compose exec -T api /usr/local/bin/api healthcheck --ready; }
+api_ready > /dev/null || fail "the api is not ready"
+pass "the api is ready"
+compose stop postgres > /dev/null 2>&1
+if api_ready > /dev/null 2>&1; then
+    fail "the api still reports ready without PostgreSQL"
+fi
+compose exec -T api /usr/local/bin/api healthcheck > /dev/null || fail "the api should stay alive without PostgreSQL"
+pass "without PostgreSQL the api is alive but not ready (503)"
+compose start postgres > /dev/null 2>&1
+wait_until "the api is ready again once PostgreSQL is back" 90 api_ready
+
 section "data survives a full restart"
 curl_backend -F "file=@/etc/hostname" "http://seaweedfs:8888/smoke/$code.txt" > /dev/null
 stored="$(curl_backend "http://seaweedfs:8888/smoke/$code.txt")"

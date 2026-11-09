@@ -5,6 +5,7 @@
 //! no feature can forget request IDs, timeouts or body limits.
 
 pub mod cli;
+pub mod correlation;
 pub mod etag;
 pub mod extract;
 pub mod fields;

@@ -1,0 +1,28 @@
+# Tempo of the "observability" profile: traces received from Alloy (OTLP),
+# stored on the local volume.
+server:
+  http_listen_port: 3200
+  log_level: warn
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        http:
+          endpoint: 0.0.0.0:4318
+
+storage:
+  trace:
+    backend: local
+    local:
+      path: /var/tempo/traces
+    wal:
+      path: /var/tempo/wal
+
+compactor:
+  compaction:
+    # TRACE_RETENTION of the stack (default 336h, 14 days).
+    block_retention: ${TRACE_RETENTION:-336h}
+
+usage_report:
+  reporting_enabled: false

@@ -138,6 +138,59 @@ async fn healthcheck_command_follows_the_running_server() {
     assert!(!healthcheck(port).success(), "the server is gone");
 }
 
+/// Starts `api` on a free port with `database_url`; returns it and the port
+/// once it answers its liveness probe.
+async fn spawn_api(database_url: &str) -> (std::process::Child, u16) {
+    let port = std::net::TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let mut child = Command::new(BIN)
+        .env_clear()
+        .env("API_BIND_ADDR", format!("127.0.0.1:{port}"))
+        .env("DATABASE_URL", database_url)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while !healthcheck(port).success() {
+        if Instant::now() > deadline {
+            let _ = child.kill();
+            panic!("api never became alive");
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    (child, port)
+}
+
+fn healthcheck_ready(port: u16) -> std::process::ExitStatus {
+    Command::new(BIN)
+        .env_clear()
+        .env("API_BIND_ADDR", format!("0.0.0.0:{port}"))
+        .args(["healthcheck", "--ready"])
+        .stderr(Stdio::null())
+        .status()
+        .unwrap()
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn healthcheck_ready_follows_the_database() {
+    let db = testkit::TestDb::new().await;
+    let (mut up, port) = spawn_api(&db.owner_url()).await;
+    assert!(healthcheck_ready(port).success(), "the database answers");
+    up.kill().unwrap();
+    up.wait().unwrap();
+
+    let (mut down, port) = spawn_api("postgres://app@127.0.0.1:1/mlbpp").await;
+    assert!(healthcheck(port).success(), "alive without database");
+    assert!(!healthcheck_ready(port).success(), "not ready without database");
+    down.kill().unwrap();
+    down.wait().unwrap();
+}
+
 #[test]
 fn healthcheck_command_requires_the_bind_address() {
     let output = Command::new(BIN).env_clear().arg("healthcheck").output().unwrap();

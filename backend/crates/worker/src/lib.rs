@@ -44,18 +44,41 @@ pub async fn poll_jobs() -> Batch {
     Batch::Idle
 }
 
-/// Serves `GET /health/live` on `listener` until `token` is cancelled. The
+/// Serves the health endpoints on `listener` until `token` is cancelled:
+/// `/health/live`, and `/health/ready`, which checks `dependencies`. The
 /// worker exposes nothing else over HTTP.
-pub async fn serve_health(listener: tokio::net::TcpListener, token: CancellationToken) {
-    let app = axum::Router::new().route(
-        infra::health::LIVE_PATH,
-        axum::routing::get(|| async {
-            (
-                [(axum::http::header::CONTENT_TYPE, "application/json")],
-                infra::health::LIVE_BODY,
-            )
-        }),
-    );
+pub async fn serve_health(
+    listener: tokio::net::TcpListener,
+    token: CancellationToken,
+    dependencies: std::sync::Arc<[infra::health::Dependency]>,
+) {
+    use axum::http::{StatusCode, header};
+    let app = axum::Router::new()
+        .route(
+            infra::health::LIVE_PATH,
+            axum::routing::get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "application/json")],
+                    infra::health::LIVE_BODY,
+                )
+            }),
+        )
+        .route(
+            infra::health::READY_PATH,
+            axum::routing::get(move || {
+                let dependencies = dependencies.clone();
+                async move {
+                    let report = infra::health::readiness(&dependencies).await;
+                    let status =
+                        StatusCode::from_u16(report.status_code()).unwrap_or(StatusCode::SERVICE_UNAVAILABLE);
+                    (
+                        status,
+                        [(header::CONTENT_TYPE, "application/json")],
+                        report.to_json(),
+                    )
+                }
+            }),
+        );
     let server = axum::serve(listener, app).with_graceful_shutdown(async move { token.cancelled().await });
     if let Err(err) = server.await {
         tracing::error!(error = %err, "health endpoint stopped with an error");
@@ -67,11 +90,40 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    async fn readiness_reports_unreachable_dependencies() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let closed = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let closed_addr = closed.local_addr().unwrap().to_string();
+        drop(closed);
+        let token = CancellationToken::new();
+        let server = tokio::spawn(serve_health(
+            listener,
+            token.clone(),
+            std::sync::Arc::from([infra::health::Dependency::Tcp {
+                name: "valkey",
+                address: closed_addr,
+            }]),
+        ));
+
+        infra::health::probe(addr, infra::health::LIVE_PATH, infra::health::PROBE_TIMEOUT)
+            .await
+            .unwrap();
+        let ready = infra::health::probe(addr, infra::health::READY_PATH, infra::health::PROBE_TIMEOUT).await;
+        assert!(
+            matches!(&ready, Err(infra::health::ProbeError::Status(line)) if line.contains("503")),
+            "{ready:?}"
+        );
+        token.cancel();
+        server.await.unwrap();
+    }
+
+    #[tokio::test]
     async fn health_endpoint_answers_until_cancelled() {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
         let token = CancellationToken::new();
-        let server = tokio::spawn(serve_health(listener, token.clone()));
+        let server = tokio::spawn(serve_health(listener, token.clone(), std::sync::Arc::from([])));
 
         infra::health::probe(addr, infra::health::LIVE_PATH, infra::health::PROBE_TIMEOUT)
             .await

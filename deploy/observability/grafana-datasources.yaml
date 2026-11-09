@@ -16,3 +16,16 @@ datasources:
     access: proxy
     url: http://loki:3100
     editable: false
+
+  - name: Tempo
+    uid: tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    editable: false
+    jsonData:
+      # From a span, open the logs of its service around that time.
+      tracesToLogsV2:
+        datasourceUid: loki
+        customQuery: true
+        query: '{service="$${__span.tags["service.name"]}"}'

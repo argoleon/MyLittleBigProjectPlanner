@@ -237,6 +237,52 @@ pub fn tenancy_from_env(env: &Env) -> Result<Tenancy, ConfigError> {
     }
 }
 
+/// Shared services a service depends on besides PostgreSQL. Each one is
+/// optional until the code using it arrives (Valkey: L02, S3: L05); when
+/// configured, `/health/ready` checks that it is reachable.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct SharedServices {
+    /// `host:port` of Valkey, from `VALKEY_URL` (secret: it holds the password).
+    pub valkey: Option<String>,
+    /// `host:port` of the S3 storage, from `S3_ENDPOINT`.
+    pub s3: Option<String>,
+}
+
+impl SharedServices {
+    pub fn from_env(env: &Env) -> Result<Self, ConfigError> {
+        let address = |name: &str| -> Result<Option<String>, ConfigError> {
+            match env.get(name)? {
+                None => Ok(None),
+                Some(url) => crate::health::address_of(&url)
+                    .map(Some)
+                    .ok_or_else(|| invalid(name, "must be a URL such as scheme://host:port")),
+            }
+        };
+        Ok(Self {
+            valkey: address("VALKEY_URL")?,
+            s3: address("S3_ENDPOINT")?,
+        })
+    }
+
+    /// The readiness checks of these services.
+    pub fn dependencies(&self) -> Vec<crate::health::Dependency> {
+        let mut dependencies = Vec::new();
+        if let Some(address) = &self.valkey {
+            dependencies.push(crate::health::Dependency::Tcp {
+                name: "valkey",
+                address: address.clone(),
+            });
+        }
+        if let Some(address) = &self.s3 {
+            dependencies.push(crate::health::Dependency::Tcp {
+                name: "s3",
+                address: address.clone(),
+            });
+        }
+        dependencies
+    }
+}
+
 /// Configuration of the `api` service.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ApiConfig {
@@ -248,6 +294,8 @@ pub struct ApiConfig {
     /// Owner-role URL; when set, the api applies pending migrations at startup.
     pub migration_url: Option<Secret>,
     pub tenancy: Tenancy,
+    pub shared: SharedServices,
+    pub telemetry: TelemetryConfig,
 }
 
 impl ApiConfig {
@@ -264,6 +312,8 @@ impl ApiConfig {
             database: DatabaseConfig::from_env(env)?,
             migration_url: env.get("DATABASE_MIGRATION_URL")?.map(Secret),
             tenancy: tenancy_from_env(env)?,
+            shared: SharedServices::from_env(env)?,
+            telemetry: TelemetryConfig::from_env(env)?,
         })
     }
 }
@@ -291,6 +341,11 @@ pub struct WorkerConfig {
     pub poll_interval: Duration,
     /// Address of the health endpoint (the worker serves nothing else).
     pub health_addr: SocketAddr,
+    /// Optional until the job queue arrives (L02): when set, readiness
+    /// checks PostgreSQL.
+    pub database: Option<DatabaseConfig>,
+    pub shared: SharedServices,
+    pub telemetry: TelemetryConfig,
 }
 
 /// Default address of the worker's health endpoint.
@@ -298,10 +353,17 @@ pub const WORKER_HEALTH_ADDR: &str = "0.0.0.0:8081";
 
 impl WorkerConfig {
     pub fn from_env(env: &Env) -> Result<Self, ConfigError> {
+        let database = match env.get("DATABASE_URL")? {
+            Some(_) => Some(DatabaseConfig::from_env(env)?),
+            None => None,
+        };
         Ok(Self {
             common: CommonConfig::from_env(env)?,
             poll_interval: env.millis("WORKER_POLL_INTERVAL_MS", 1000)?,
             health_addr: worker_health_addr(env)?,
+            database,
+            shared: SharedServices::from_env(env)?,
+            telemetry: TelemetryConfig::from_env(env)?,
         })
     }
 }
@@ -319,6 +381,7 @@ pub struct McpConfig {
     pub bind_addr: SocketAddr,
     /// Base URL of the public API the MCP server calls, e.g. `http://api:8080`.
     pub api_base_url: String,
+    pub telemetry: TelemetryConfig,
 }
 
 impl McpConfig {
@@ -331,6 +394,53 @@ impl McpConfig {
             common: CommonConfig::from_env(env)?,
             bind_addr: env.required("MCP_BIND_ADDR")?,
             api_base_url: api_base_url.trim_end_matches('/').to_owned(),
+            telemetry: TelemetryConfig::from_env(env)?,
+        })
+    }
+}
+
+/// Format of the log lines on standard output.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LogFormat {
+    /// One JSON object per line (production, log collectors).
+    Json,
+    /// Human-readable lines (development).
+    Text,
+}
+
+/// Logs, traces and metrics of a service (see `crate::telemetry`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TelemetryConfig {
+    /// `LOG_FORMAT`: `json` (default) or `text`.
+    pub log_format: LogFormat,
+    /// `OTEL_EXPORTER_OTLP_ENDPOINT`, e.g. `http://alloy:4318`: base URL of
+    /// an OpenTelemetry collector (OTLP over HTTP). Traces and metrics are
+    /// exported only when it is set.
+    pub otlp_endpoint: Option<String>,
+}
+
+impl TelemetryConfig {
+    pub fn from_env(env: &Env) -> Result<Self, ConfigError> {
+        let log_format = match env.optional("LOG_FORMAT", "json".to_owned())?.as_str() {
+            "json" => LogFormat::Json,
+            "text" => LogFormat::Text,
+            _ => return Err(invalid("LOG_FORMAT", "must be json or text")),
+        };
+        let otlp_endpoint = match env.get("OTEL_EXPORTER_OTLP_ENDPOINT")? {
+            None => None,
+            // Exports go to a collector of the same network (Alloy), in plain
+            // HTTP; a remote backend is reached through that collector.
+            Some(url) if url.starts_with("http://") => Some(url.trim_end_matches('/').to_owned()),
+            Some(_) => {
+                return Err(invalid(
+                    "OTEL_EXPORTER_OTLP_ENDPOINT",
+                    "must be an http:// URL of a collector on the same network, such as http://alloy:4318",
+                ));
+            }
+        };
+        Ok(Self {
+            log_format,
+            otlp_endpoint,
         })
     }
 }
@@ -519,6 +629,75 @@ mod tests {
             WorkerConfig::from_env(&env),
             Err(ConfigError::Invalid { .. })
         ));
+    }
+
+    #[test]
+    fn telemetry_defaults_to_json_logs_without_export() {
+        let cfg = TelemetryConfig::from_env(&Env::default()).unwrap();
+        assert_eq!(cfg.log_format, LogFormat::Json);
+        assert_eq!(cfg.otlp_endpoint, None);
+
+        let text = Env::from_pairs([
+            ("LOG_FORMAT", "text"),
+            ("OTEL_EXPORTER_OTLP_ENDPOINT", "http://alloy:4318/"),
+        ]);
+        let cfg = TelemetryConfig::from_env(&text).unwrap();
+        assert_eq!(cfg.log_format, LogFormat::Text);
+        assert_eq!(cfg.otlp_endpoint.as_deref(), Some("http://alloy:4318"));
+    }
+
+    #[test]
+    fn telemetry_settings_are_validated() {
+        let bad_format = Env::from_pairs([("LOG_FORMAT", "xml")]);
+        assert!(matches!(
+            TelemetryConfig::from_env(&bad_format),
+            Err(ConfigError::Invalid { name, .. }) if name == "LOG_FORMAT"
+        ));
+        let tls = Env::from_pairs([("OTEL_EXPORTER_OTLP_ENDPOINT", "https://otlp.example.org")]);
+        assert!(matches!(
+            TelemetryConfig::from_env(&tls),
+            Err(ConfigError::Invalid { name, .. }) if name == "OTEL_EXPORTER_OTLP_ENDPOINT"
+        ));
+    }
+
+    #[test]
+    fn shared_services_are_optional_and_reduced_to_addresses() {
+        assert_eq!(
+            SharedServices::from_env(&Env::default()).unwrap(),
+            SharedServices::default()
+        );
+        assert!(SharedServices::default().dependencies().is_empty());
+
+        let both = Env::from_pairs([
+            ("VALKEY_URL", "redis://:pw@valkey:6379/0"), // gitleaks:allow (fake test password)
+            ("S3_ENDPOINT", "http://seaweedfs:8333"),
+        ]);
+        let shared = SharedServices::from_env(&both).unwrap();
+        assert_eq!(
+            shared.valkey.as_deref(),
+            Some("valkey:6379"),
+            "the password is dropped"
+        );
+        assert_eq!(shared.s3.as_deref(), Some("seaweedfs:8333"));
+        let names: Vec<_> = shared
+            .dependencies()
+            .iter()
+            .map(crate::health::Dependency::name)
+            .collect();
+        assert_eq!(names, ["valkey", "s3"]);
+
+        let bad = Env::from_pairs([("S3_ENDPOINT", "seaweedfs:8333")]);
+        assert!(matches!(
+            SharedServices::from_env(&bad),
+            Err(ConfigError::Invalid { name, .. }) if name == "S3_ENDPOINT"
+        ));
+    }
+
+    #[test]
+    fn worker_database_is_optional() {
+        assert_eq!(WorkerConfig::from_env(&Env::default()).unwrap().database, None);
+        let env = Env::from_pairs([("DATABASE_URL", "postgres://app@postgres/mlbpp")]);
+        assert!(WorkerConfig::from_env(&env).unwrap().database.is_some());
     }
 
     #[test]

@@ -16,10 +16,26 @@ name: mlbpp
 
 x-restart: &restart
   restart: unless-stopped
+  # Container logs kept on the host, rotated by size. With the observability
+  # profile, Loki keeps them for LOG_RETENTION (they hold client IPs: §14).
+  logging:
+    driver: json-file
+    options:
+      max-size: ${LOG_MAX_SIZE:-20m}
+      max-file: "${LOG_MAX_FILES:-5}"
 
 x-rust-logs: &rust-logs
   RUST_LOG: ${RUST_LOG:-info}
+  LOG_FORMAT: ${LOG_FORMAT:-json}
   SHUTDOWN_GRACE_SECS: ${SHUTDOWN_GRACE_SECS:-30}
+  # Traces and metrics go to Alloy when the observability profile runs:
+  # set OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318 in deploy/.env.
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+
+# Readiness checks of the shared services (Valkey, S3).
+x-shared-services: &shared-services
+  VALKEY_URL_FILE: /run/secrets/valkey_url
+  S3_ENDPOINT: http://seaweedfs:8333
 
 # Public routes answer on MLBPP_DOMAIN and its subdomains (one per tenant in
 # multi-tenant mode), unless MLBPP_HOST_RULE replaces that Traefik rule.
@@ -82,33 +98,58 @@ services:
     <<: *restart
     image: ${MLBPP_REGISTRY:-ghcr.io/argoleon}/mlbpp-api:${MLBPP_VERSION:-latest}
     environment:
-      <<: *rust-logs
+      <<: [*rust-logs, *shared-services]
       DATABASE_URL_FILE: /run/secrets/database_url
       DATABASE_MAX_CONNECTIONS: ${DATABASE_MAX_CONNECTIONS:-10}
       TENANCY_MODE: ${TENANCY_MODE:-single}
       TENANT_DEFAULT_SLUG: ${TENANT_DEFAULT_SLUG:-default}
       TENANT_BASE_DOMAIN: ${TENANT_BASE_DOMAIN:-}
-    secrets: [database_url]
+    secrets: [database_url, valkey_url]
     networks: [edge, backend]
     depends_on:
       migrate:
         condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+    # Healthy = ready: PostgreSQL, Valkey and S3 reachable.
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/api", "healthcheck", "--ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     labels:
       - traefik.enable=true
       - traefik.http.routers.mlbpp-api.rule=${MLBPP_HOST_RULE:-(Host(`${MLBPP_DOMAIN}`) || HostRegexp(`^[a-z0-9-]+[.]${MLBPP_DOMAIN}$`))} && PathPrefix(`/api`)
       - traefik.http.services.mlbpp-api.loadbalancer.server.port=8080
-      - traefik.http.services.mlbpp-api.loadbalancer.healthcheck.path=/health/live
+      # An instance that cannot reach its dependencies gets no traffic.
+      - traefik.http.services.mlbpp-api.loadbalancer.healthcheck.path=/health/ready
 
   worker:
     <<: *restart
     image: ${MLBPP_REGISTRY:-ghcr.io/argoleon}/mlbpp-worker:${MLBPP_VERSION:-latest}
     environment:
-      <<: *rust-logs
+      <<: [*rust-logs, *shared-services]
       WORKER_POLL_INTERVAL_MS: ${WORKER_POLL_INTERVAL_MS:-1000}
-    networks: [backend]
+      DATABASE_URL_FILE: /run/secrets/database_url
+    secrets: [database_url, valkey_url]
+    # The observability profile's collector is on the edge network.
+    networks: [backend, edge]
     depends_on:
       migrate:
         condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/worker", "healthcheck", "--ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   mcp:
     <<: *restart
@@ -117,11 +158,21 @@ services:
       <<: *rust-logs
       MCP_API_BASE_URL: http://api:8080
     networks: [edge, backend]
+    depends_on:
+      api:
+        condition: service_healthy
+    # Healthy = ready: the API answers.
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/mcp", "healthcheck", "--ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     labels:
       - traefik.enable=true
       - traefik.http.routers.mlbpp-mcp.rule=${MLBPP_HOST_RULE:-(Host(`${MLBPP_DOMAIN}`) || HostRegexp(`^[a-z0-9-]+[.]${MLBPP_DOMAIN}$`))} && PathPrefix(`/mcp`)
       - traefik.http.services.mlbpp-mcp.loadbalancer.server.port=8090
-      - traefik.http.services.mlbpp-mcp.loadbalancer.healthcheck.path=/health/live
+      - traefik.http.services.mlbpp-mcp.loadbalancer.healthcheck.path=/health/ready
 
   # Applies pending database migrations, then exits; api and worker wait for it.
   migrate:
@@ -354,6 +405,8 @@ services:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
       - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}
+      # Metrics of the services arrive from Alloy (OpenTelemetry → remote write).
+      - --web.enable-remote-write-receiver
     volumes:
       - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
@@ -368,7 +421,11 @@ services:
     <<: *restart
     profiles: [observability]
     image: grafana/loki:3.7.0
-    command: ["-config.file=/etc/loki/loki.yaml"]
+    command: ["-config.file=/etc/loki/loki.yaml", "-config.expand-env=true"]
+    environment:
+      # Technical logs hold client IP addresses: limited retention, 6 months
+      # by default (specification §14, CNIL recommendation).
+      LOG_RETENTION: ${LOG_RETENTION:-4320h}
     volumes:
       - ./observability/loki.yaml:/etc/loki/loki.yaml:ro
       - loki-data:/loki
@@ -376,7 +433,8 @@ services:
     # No shell nor HTTP client in the image for a health check; readiness is
     # GET /ready on port 3100 (checked by deploy/tests/profiles.sh).
 
-  # Ships the logs of every container of the stack to Loki.
+  # Ships the logs of every container of the stack to Loki, and receives the
+  # services' traces and metrics (OTLP) for Tempo and Prometheus.
   alloy:
     <<: *restart
     profiles: [observability]
@@ -390,6 +448,21 @@ services:
     depends_on:
       loki:
         condition: service_started
+      tempo:
+        condition: service_started
+
+  # Traces of the services, received from Alloy.
+  tempo:
+    <<: *restart
+    profiles: [observability]
+    image: grafana/tempo:2.10.0
+    command: ["-config.file=/etc/tempo/tempo.yaml", "-config.expand-env=true"]
+    environment:
+      TRACE_RETENTION: ${TRACE_RETENTION:-336h}
+    volumes:
+      - ./observability/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    networks: [edge]
 
   grafana:
     <<: *restart
@@ -405,6 +478,8 @@ services:
     secrets: [grafana_admin_password]
     volumes:
       - ./observability/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/mlbpp.yaml:ro
+      - ./observability/grafana-dashboards.yaml:/etc/grafana/provisioning/dashboards/mlbpp.yaml:ro
+      - ./observability/dashboards:/var/lib/grafana/dashboards/mlbpp:ro
       - grafana-data:/var/lib/grafana
     networks: [edge]
     depends_on:
@@ -435,6 +510,7 @@ volumes:
   letsencrypt:
   prometheus-data:
   loki-data:
+  tempo-data:
   alloy-data:
   grafana-data:
 
@@ -450,6 +526,8 @@ secrets:
     file: ./secrets/database_url
   database_migration_url:
     file: ./secrets/database_migration_url
+  valkey_url:
+    file: ./secrets/valkey_url
   pgbackrest_cipher_pass:
     file: ./secrets/pgbackrest_cipher_pass
   valkey_password:

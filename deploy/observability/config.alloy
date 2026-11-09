@@ -1,5 +1,12 @@
-// Grafana Alloy of the "observability" profile: ships the logs of the
-// stack's containers (compose project "mlbpp") to Loki, labelled by service.
+// Grafana Alloy of the "observability" profile:
+// - ships the logs of the stack's containers (compose project "mlbpp") to
+//   Loki, labelled by service;
+// - receives the traces and metrics of the services (OpenTelemetry, OTLP
+//   over HTTP on port 4318) and forwards traces to Tempo, metrics to
+//   Prometheus. Services send them when OTEL_EXPORTER_OTLP_ENDPOINT is
+//   http://alloy:4318.
+
+// --- Logs -----------------------------------------------------------------
 
 discovery.docker "containers" {
   host = "unix:///var/run/docker.sock"
@@ -34,5 +41,44 @@ loki.source.docker "containers" {
 loki.write "local" {
   endpoint {
     url = "http://loki:3100/loki/api/v1/push"
+  }
+}
+
+// --- Traces and metrics -----------------------------------------------------
+
+otelcol.receiver.otlp "services" {
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+
+  output {
+    traces  = [otelcol.processor.batch.services.input]
+    metrics = [otelcol.processor.batch.services.input]
+  }
+}
+
+otelcol.processor.batch "services" {
+  output {
+    traces  = [otelcol.exporter.otlphttp.tempo.input]
+    metrics = [otelcol.exporter.prometheus.services.input]
+  }
+}
+
+otelcol.exporter.otlphttp "tempo" {
+  client {
+    endpoint = "http://tempo:4318"
+    tls {
+      insecure = true
+    }
+  }
+}
+
+otelcol.exporter.prometheus "services" {
+  forward_to = [prometheus.remote_write.local.receiver]
+}
+
+prometheus.remote_write "local" {
+  endpoint {
+    url = "http://prometheus:9090/api/v1/write"
   }
 }
