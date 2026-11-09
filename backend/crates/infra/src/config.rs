@@ -289,15 +289,27 @@ pub struct WorkerConfig {
     pub common: CommonConfig,
     /// Pause between two polls of the job queue when it is empty.
     pub poll_interval: Duration,
+    /// Address of the health endpoint (the worker serves nothing else).
+    pub health_addr: SocketAddr,
 }
+
+/// Default address of the worker's health endpoint.
+pub const WORKER_HEALTH_ADDR: &str = "0.0.0.0:8081";
 
 impl WorkerConfig {
     pub fn from_env(env: &Env) -> Result<Self, ConfigError> {
         Ok(Self {
             common: CommonConfig::from_env(env)?,
             poll_interval: env.millis("WORKER_POLL_INTERVAL_MS", 1000)?,
+            health_addr: worker_health_addr(env)?,
         })
     }
+}
+
+/// `WORKER_HEALTH_ADDR`, also read alone by `worker healthcheck`.
+pub fn worker_health_addr(env: &Env) -> Result<SocketAddr, ConfigError> {
+    let raw = env.get("WORKER_HEALTH_ADDR")?;
+    parse("WORKER_HEALTH_ADDR", raw.as_deref().unwrap_or(WORKER_HEALTH_ADDR))
 }
 
 /// Configuration of the `mcp` service.
@@ -491,6 +503,17 @@ mod tests {
     fn worker_config_has_defaults_and_validates() {
         let cfg = WorkerConfig::from_env(&Env::default()).unwrap();
         assert_eq!(cfg.poll_interval, Duration::from_millis(1000));
+        assert_eq!(cfg.health_addr, "0.0.0.0:8081".parse().unwrap());
+        let custom = Env::from_pairs([("WORKER_HEALTH_ADDR", "127.0.0.1:9100")]);
+        assert_eq!(
+            WorkerConfig::from_env(&custom).unwrap().health_addr,
+            "127.0.0.1:9100".parse().unwrap()
+        );
+        let bad = Env::from_pairs([("WORKER_HEALTH_ADDR", "nowhere")]);
+        assert!(matches!(
+            WorkerConfig::from_env(&bad),
+            Err(ConfigError::Invalid { name, .. }) if name == "WORKER_HEALTH_ADDR"
+        ));
         let env = Env::from_pairs([("WORKER_POLL_INTERVAL_MS", "abc")]);
         assert!(matches!(
             WorkerConfig::from_env(&env),

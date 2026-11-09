@@ -3,6 +3,7 @@
 
 pub mod config;
 pub mod db;
+pub mod health;
 pub mod id;
 pub mod idempotency;
 pub mod pagination;

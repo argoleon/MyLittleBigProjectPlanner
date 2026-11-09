@@ -16,6 +16,12 @@
 /.env
 /deploy/.env
 
+# Secret files of the compose stack (deploy/scripts/generate-secrets.sh)
+/deploy/secrets/
+
+# Build output of the deployment tests (SBOMs, exported image files)
+/deploy/build/
+
 # Rust build output
 /backend/target/
 

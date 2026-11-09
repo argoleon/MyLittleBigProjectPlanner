@@ -1,5 +1,8 @@
 //! Integration tests: the compiled `api` binary, as Docker runs it.
 
+// Test helpers sit outside `#[test]` functions; a panic there is a test failure.
+#![allow(clippy::unwrap_used)]
+
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
@@ -84,6 +87,62 @@ fn exits_with_an_error_on_a_malformed_variable() {
         stderr.contains("API_REQUEST_TIMEOUT_SECS"),
         "stderr was: {stderr}"
     );
+}
+
+/// `api healthcheck` against a server bound to `port`: the exit status.
+fn healthcheck(port: u16) -> std::process::ExitStatus {
+    Command::new(BIN)
+        .env_clear()
+        .env("API_BIND_ADDR", format!("0.0.0.0:{port}"))
+        .arg("healthcheck")
+        .stderr(Stdio::null())
+        .status()
+        .unwrap()
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn healthcheck_command_follows_the_running_server() {
+    let port = std::net::TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    assert!(!healthcheck(port).success(), "nothing listens yet");
+
+    let mut child = Command::new(BIN)
+        .env_clear()
+        .env("API_BIND_ADDR", format!("127.0.0.1:{port}"))
+        .env("DATABASE_URL", "postgres://localhost/unused")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while !healthcheck(port).success() {
+        if Instant::now() > deadline {
+            let _ = child.kill();
+            panic!("healthcheck never succeeded");
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+
+    let res = reqwest::get(format!("http://127.0.0.1:{port}/health/live"))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), 200);
+    assert_eq!(res.text().await.unwrap(), r#"{"status":"ok"}"#);
+
+    child.kill().unwrap();
+    child.wait().unwrap();
+    assert!(!healthcheck(port).success(), "the server is gone");
+}
+
+#[test]
+fn healthcheck_command_requires_the_bind_address() {
+    let output = Command::new(BIN).env_clear().arg("healthcheck").output().unwrap();
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("API_BIND_ADDR"));
 }
 
 #[cfg(unix)]

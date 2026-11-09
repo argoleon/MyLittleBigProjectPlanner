@@ -1,0 +1,10 @@
+# Build context of deploy/docker/*.Dockerfile is the repository root: keep
+# it small and free of local secrets and build output.
+.git
+**/node_modules
+**/target
+web/dist
+web/.angular
+deploy/secrets
+deploy/.env
+docs

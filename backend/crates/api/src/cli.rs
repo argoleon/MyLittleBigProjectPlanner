@@ -9,6 +9,8 @@ pub enum Command {
     Migrate,
     /// Print the OpenAPI contract, then exit.
     OpenApi,
+    /// Probe the running server's liveness endpoint (container health check).
+    Healthcheck,
     /// Print usage, then exit.
     Help,
 }
@@ -20,6 +22,8 @@ Commands:
   serve     Serve the REST API (default)
   migrate   Apply pending database migrations with DATABASE_MIGRATION_URL, then exit
   openapi   Print the OpenAPI contract (JSON) on standard output, then exit
+  healthcheck
+            Exit 0 if the server listening on API_BIND_ADDR is alive, 1 otherwise
   help      Print this message
 
 Configuration is read from environment variables; see deploy/.env.example.";
@@ -33,6 +37,7 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Command, String> 
             "serve" => Ok(Command::Serve),
             "migrate" => Ok(Command::Migrate),
             "openapi" => Ok(Command::OpenApi),
+            "healthcheck" => Ok(Command::Healthcheck),
             "help" | "--help" | "-h" => Ok(Command::Help),
             other => Err(format!("unknown command: {other}")),
         },
@@ -58,6 +63,7 @@ mod tests {
     fn migrate_openapi_and_help_are_recognized() {
         assert_eq!(parse(args(&["migrate"])), Ok(Command::Migrate));
         assert_eq!(parse(args(&["openapi"])), Ok(Command::OpenApi));
+        assert_eq!(parse(args(&["healthcheck"])), Ok(Command::Healthcheck));
         for flag in ["help", "--help", "-h"] {
             assert_eq!(parse(args(&[flag])), Ok(Command::Help));
         }

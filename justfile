@@ -172,3 +172,55 @@ e2e *args: web-deps
 
 # Everything the CI runs for the front end
 web-check: web-lint web-i18n client-check web-licenses web-test e2e
+
+# --- Production stack (deploy/compose.yaml) ------------------------------------
+# Run locally with compose.local.yaml: images built from the sources,
+# https://localhost:18443 with a self-signed certificate. See deploy/README.md.
+
+stack := "MLBPP_DOMAIN=localhost MLBPP_REGISTRY=mlbpp-local MLBPP_VERSION=local MLBPP_PUBLIC_PORT=:18443 docker compose -f deploy/compose.yaml -f deploy/compose.local.yaml"
+
+# Lint the deployment scripts (shellcheck) and validate the compose files
+deploy-lint: compose-secrets
+    docker run --rm -v "$PWD:/mnt:ro" -w /mnt koalaman/shellcheck:v0.11.0 -x -P deploy/tests deploy/tests/*.sh deploy/scripts/*.sh deploy/postgres/*.sh
+    {{stack}} --profile sso --profile observability config --quiet
+
+# Create the missing secret files of the stack in deploy/secrets/
+compose-secrets:
+    deploy/scripts/generate-secrets.sh
+
+# Build the production images (api, worker, mcp, web, postgres)
+images-build:
+    {{stack}} build web api worker mcp postgres
+
+# Test the images: health alone, non-root, no secret, SBOM (deploy/build/sbom/)
+images-test: images-build
+    deploy/tests/images.sh
+
+# Start the production stack locally (https://localhost:18443)
+compose-up: compose-secrets
+    {{stack}} up -d --build --wait --wait-timeout 900
+
+# Stop the local production stack, profiles included (data is kept)
+compose-down:
+    {{stack}} --profile sso --profile observability down
+
+# Delete the local production stack and its data
+compose-reset:
+    {{stack}} --profile sso --profile observability down --volumes
+
+# End-to-end tests against the local production stack (nginx, its
+# Content-Security-Policy, Traefik), from the e2e container on its network
+compose-e2e *args: web-deps
+    {{compose}} --profile e2e build e2e
+    docker run --rm --network mlbpp_edge --ipc host --user $DEV_UID:$DEV_GID \
+        -v "$PWD:/workspace" -w /workspace/web \
+        -e E2E_BASE_URL=https://localhost -e "E2E_HOST_RULES=MAP localhost traefik" \
+        mlbpp-dev-e2e npx playwright test {{args}}
+
+# Deployment tests: smoke, backups, scaling, optional profiles, end to end
+compose-test: compose-up
+    deploy/tests/smoke.sh
+    deploy/tests/backup.sh
+    deploy/tests/scale.sh
+    deploy/tests/profiles.sh
+    just compose-e2e
