@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO idempotency_key (id, tenant_id, key, request_hash, expires_at)\n        VALUES ($1, app_current_tenant(), $2, $3, now() + make_interval(secs => $4))\n        ON CONFLICT (tenant_id, key) DO UPDATE\n            SET request_hash = EXCLUDED.request_hash,\n                response_status = NULL,\n                response_body = NULL,\n                response_location = NULL,\n                response_etag = NULL,\n                expires_at = EXCLUDED.expires_at,\n                version = idempotency_key.version + 1\n            WHERE idempotency_key.expires_at <= now()\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "idempotency_key",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Bytea",
+        "Float8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "1be08f23824e065c73fb72407dd6a4b757ddda50416c786205cf1de84f1e0859"
+}

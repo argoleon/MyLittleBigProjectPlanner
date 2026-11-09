@@ -25,7 +25,7 @@ use infra::sqlx::postgres::{PgConnection, PgPool};
 use infra::sqlx::{Postgres, Transaction};
 use infra::uuid::Uuid;
 
-use crate::problem::Problem;
+use crate::problem::{ErrorCode, Problem};
 
 /// Shared state of the API.
 #[derive(Debug, Clone)]
@@ -47,12 +47,18 @@ impl AppState {
 #[derive(Debug)]
 pub struct TenantTx {
     tenant_id: Uuid,
+    default_locale: String,
     tx: Transaction<'static, Postgres>,
 }
 
 impl TenantTx {
     pub fn tenant_id(&self) -> Uuid {
         self.tenant_id
+    }
+
+    /// The tenant's default language, fallback of translated labels.
+    pub fn default_locale(&self) -> &str {
+        &self.default_locale
     }
 
     pub async fn commit(self) -> Result<(), Problem> {
@@ -82,14 +88,19 @@ impl FromRequestParts<AppState> for TenantTx {
             .get(HOST)
             .and_then(|v| v.to_str().ok())
             .or_else(|| parts.uri.authority().map(axum::http::uri::Authority::as_str));
-        let slug = tenant_slug_from_host(&state.tenancy, host).map_err(|_| Problem::TENANT_NOT_FOUND)?;
+        let slug = tenant_slug_from_host(&state.tenancy, host)
+            .map_err(|_| Problem::new(ErrorCode::TenantNotFound))?;
 
         let mut tx = state.pool.begin().await?;
-        let tenant_id = infra::db::resolve_tenant(&mut tx, &slug)
+        let tenant = infra::db::resolve_tenant(&mut tx, &slug)
             .await?
-            .ok_or(Problem::TENANT_NOT_FOUND)?;
-        infra::db::set_tenant(&mut tx, tenant_id).await?;
+            .ok_or(Problem::new(ErrorCode::TenantNotFound))?;
+        infra::db::set_tenant(&mut tx, tenant.id).await?;
         tracing::Span::current().record("tenant", tracing::field::display(&slug));
-        Ok(Self { tenant_id, tx })
+        Ok(Self {
+            tenant_id: tenant.id,
+            default_locale: tenant.default_locale,
+            tx,
+        })
     }
 }

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM reference_item WHERE id = $1 AND ($2::bigint[] IS NULL OR version = ANY($2))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4ad27928a4dc86227ce1c094acc8d272f5b5757fa73a96a7bdd9693e21ab786a"
+}

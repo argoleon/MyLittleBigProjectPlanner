@@ -191,7 +191,10 @@ async fn tenant_table_is_resolvable_by_slug_but_only_readable_in_context() {
 
     assert_eq!(
         db::resolve_tenant(&mut conn, "alpha").await.unwrap(),
-        Some(db.tenant_a.id)
+        Some(db::ResolvedTenant {
+            id: db.tenant_a.id,
+            default_locale: "fr".to_owned()
+        })
     );
     assert_eq!(db::resolve_tenant(&mut conn, "nobody").await.unwrap(), None);
 

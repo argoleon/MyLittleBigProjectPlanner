@@ -3,56 +3,11 @@
 
 #![allow(clippy::unwrap_used)]
 
-use std::time::Duration;
+mod common;
 
-use api::{AppState, HttpSettings};
+use common::{TestApi, multi, start};
 use domain::tenancy::Tenancy;
 use testkit::TestDb;
-use tokio::net::TcpListener;
-use tokio::sync::oneshot;
-
-/// A running API; stops when dropped.
-struct TestApi {
-    base: String,
-    stop: Option<oneshot::Sender<()>>,
-}
-
-impl Drop for TestApi {
-    fn drop(&mut self) {
-        if let Some(stop) = self.stop.take() {
-            let _ = stop.send(());
-        }
-    }
-}
-
-async fn start(db: &TestDb, tenancy: Tenancy) -> TestApi {
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let base = format!("http://{}", listener.local_addr().unwrap());
-    let settings = HttpSettings {
-        request_timeout: Duration::from_secs(10),
-        body_limit_bytes: 1024,
-    };
-    let app = api::app(AppState::new(db.app_pool.clone(), tenancy), &settings);
-    let (stop, stopped) = oneshot::channel::<()>();
-    tokio::spawn(api::serve(
-        listener,
-        app,
-        async move {
-            let _ = stopped.await;
-        },
-        Duration::from_secs(1),
-    ));
-    TestApi {
-        base,
-        stop: Some(stop),
-    }
-}
-
-fn multi() -> Tenancy {
-    Tenancy::Multi {
-        base_domain: "example.test".to_owned(),
-    }
-}
 
 async fn get_tenant(api: &TestApi, host: &str) -> reqwest::Response {
     reqwest::Client::new()
