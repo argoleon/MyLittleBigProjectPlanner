@@ -32,7 +32,7 @@ async function afterPassword(page: Page, stage: 'mfa_challenge' | 'mfa_enrollmen
 
 test('the TOTP helper of the tests matches RFC 6238', () => {
   // Appendix B: secret "12345678901234567890", T = 59 s, 6 digits.
-  const secret = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
+  const secret = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ'; // gitleaks:allow (public RFC 6238 test vector)
   expect(base32Decode(secret).toString()).toBe('12345678901234567890');
   expect(totp(secret, 0, 59_000)).toBe('287082');
 });
