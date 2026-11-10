@@ -1,0 +1,413 @@
+{
+  "lot": "L13",
+  "title": "Portal",
+  "level": "essential",
+  "depends_on": ["L02", "L04", "L05"],
+  "summary": "Request portals let internal users, customers and suppliers submit and track requests. A tenant can run one or more portals, each attached to a single project, with its own visibility mode (public, authenticated, internal, invitation only), request types whose forms are built from the project's fields, external accounts (invitation or self-service, password or magic link), optional anonymous access with a signed tracking link and abuse protection, outgoing email notifications, runtime branding from a brand color, and dedicated quotas and rate limiting. Internal comments are never visible on the portal.",
+  "stories": [
+    {
+      "id": "L13-US01",
+      "title": "Create and configure a portal attached to a project",
+      "level": "essential",
+      "as_a": "tenant admin",
+      "i_want": "to create a portal attached to a project and choose who can access it",
+      "so_that": "requesters have a dedicated entry point that only the intended audience can reach",
+      "acceptance": [
+        "Given I am a tenant admin, When I create a portal with a name, a slug and a target project, Then the portal is saved in draft and listed in the tenant's portals",
+        "Given a portal, When I set its visibility to Public, Authenticated, Internal or Invitation only, Then access is enforced accordingly for every portal request",
+        "Given a portal in Internal mode, When an external account opens it, Then access is denied with a Problem Details error",
+        "Given a portal, When I publish or unpublish it, Then it becomes reachable or returns not found to requesters",
+        "Given I am not a tenant admin, When I call the portal administration API, Then the request is rejected with 403"
+      ],
+      "spec": ["§11", "§3", "§14"],
+      "mockups": ["docs/mockups/previews/23-portal-settings.png"],
+      "depends_on": [],
+      "tech": [
+        {
+          "id": "L13-US01-T01",
+          "title": "Create portal tables with RLS and migrations",
+          "layer": "database",
+          "description": "Add the `portal` table (tenant_id, project node id, slug unique per tenant, visibility enum, anonymous_enabled, self_signup_enabled, published flag, translatable welcome text JSONB, brand color, logo attachment id, version) with an SQLx migration. Enable Row-Level Security like every business table and add composite indexes starting with tenant_id.",
+          "done_when": [
+            "Migration applies and rolls forward on a clean database",
+            "RLS policy prevents reading another tenant's portals (integration test on real PostgreSQL)",
+            "Slug uniqueness per tenant is enforced by a constraint (integration test)"
+          ]
+        },
+        {
+          "id": "L13-US01-T02",
+          "title": "Implement portal access rules in the domain crate",
+          "layer": "domain",
+          "description": "In `crates/domain`, model portal visibility and the access decision: given visibility, account type (none, internal, external), membership and invitation status, decide whether access is granted. External accounts never reach the internal application; internal mode requires an internal account of the tenant.",
+          "done_when": [
+            "Pure function covers the 4 visibility modes x account types matrix",
+            "Unit tests cover every cell of the matrix, including anonymous with anonymous access disabled"
+          ]
+        },
+        {
+          "id": "L13-US01-T03",
+          "title": "Expose portal administration endpoints",
+          "layer": "backend",
+          "description": "In `crates/api`, add CRUD endpoints under `/api/v1/portals` (create, update with If-Match, publish, unpublish, list, get), documented with utoipa. Only tenant admins may manage portals. Errors use RFC 9457 Problem Details with stable codes.",
+          "done_when": [
+            "OpenAPI contract contains the endpoints and the Angular client is regenerated",
+            "Integration tests cover create, update with stale ETag (412), publish, permission denial and cross-tenant isolation",
+            "Unit tests cover request validation"
+          ]
+        },
+        {
+          "id": "L13-US01-T04",
+          "title": "Build the portal settings General tab",
+          "layer": "frontend",
+          "description": "In `web/projects/app`, add the portals list and the portal settings page with `mat-tab-nav-bar` (General, Request types, Appearance, Emails). The General tab shows the visibility choice as a radio card group, the anonymous access and self sign-up `mat-slide-toggle`s, and publish/save actions. Labels come from Transloco keys (fr, en); data flows through the generated client with loading, empty and error states.",
+          "done_when": [
+            "Component unit tests cover form state, validation and save",
+            "No hard-coded color, font or text; axe check passes",
+            "Integration test of the page against a mocked generated client service covers error display"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L13-US02",
+      "title": "Define request types with forms built from project fields",
+      "level": "essential",
+      "as_a": "tenant admin",
+      "i_want": "to define request types whose forms reuse the project's fields",
+      "so_that": "requesters fill in exactly the information the team needs, in their language",
+      "acceptance": [
+        "Given a portal, When I add a request type with a translatable name, an icon, a target issue type and a selection of project fields, Then it appears on the portal in the configured order",
+        "Given a field required by the project configuration for that issue type, When I build the form, Then the field cannot be removed or made optional",
+        "Given a request type, When I reorder request types by drag and drop, Then the new order is saved and shown on the portal",
+        "Given labels in French and English, When a requester views the portal in English, Then the English labels are shown, falling back to the tenant default language when missing",
+        "Given each workflow status, When I set its public label, Then requesters see that label instead of the internal status name"
+      ],
+      "spec": ["§11", "§5"],
+      "mockups": ["docs/mockups/previews/23-portal-settings.png"],
+      "depends_on": ["L13-US01"],
+      "tech": [
+        {
+          "id": "L13-US02-T01",
+          "title": "Create request type and public status label tables",
+          "layer": "database",
+          "description": "Add `request_type` (tenant_id, portal_id, issue_type_id, translatable name and description JSONB, icon, position, field list with per-field label overrides and required flag, version) and a public status label mapping per portal and workflow status. RLS enabled.",
+          "done_when": [
+            "Migration applies; RLS isolation verified by an integration test",
+            "Foreign keys prevent referencing an issue type outside the portal's project configuration (integration test)"
+          ]
+        },
+        {
+          "id": "L13-US02-T02",
+          "title": "Validate request type forms against project field rules",
+          "layer": "domain",
+          "description": "In `crates/domain`, compute the effective form of a request type from the project configuration's field rules (visible / required per type and at creation) and the request type overrides. A field required by the configuration stays required; hidden fields cannot be added.",
+          "done_when": [
+            "Unit tests cover required-by-config, optional, hidden and override cases",
+            "Unit tests cover label fallback to the tenant default language"
+          ]
+        },
+        {
+          "id": "L13-US02-T03",
+          "title": "Expose request type and public label endpoints",
+          "layer": "backend",
+          "description": "Add admin endpoints to create, update, reorder and delete request types and to set public status labels, plus a portal-side endpoint returning the effective forms in the `Accept-Language` language. Document with utoipa.",
+          "done_when": [
+            "Integration tests cover CRUD, reorder, required-field enforcement, language negotiation and cross-tenant isolation",
+            "Unit tests cover payload validation; client regenerated"
+          ]
+        },
+        {
+          "id": "L13-US02-T04",
+          "title": "Build the request types tab and form editor",
+          "layer": "frontend",
+          "description": "Add the Request types tab: a CDK drag-and-drop list of request types, and a `MatDialog` editor to pick the issue type, fields (from the project configuration), translatable labels (fr, en) and public status labels. Use Material components and Transloco keys only.",
+          "done_when": [
+            "Component unit tests cover reorder, add, edit and required-field locking",
+            "Keyboard reordering works; axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L13-US03",
+      "title": "Submit and track my requests on the portal",
+      "level": "essential",
+      "as_a": "requester with an account",
+      "i_want": "to submit a request from a form and follow its status and comments",
+      "so_that": "I know where my request stands without contacting the team",
+      "acceptance": [
+        "Given an accessible portal, When I pick a request type and submit a valid form, Then a ticket is created in the portal's project with my account as reporter and I see its key",
+        "Given a required field left empty, When I submit, Then the form shows the field error and no ticket is created",
+        "Given I have submitted requests, When I open My requests, Then I only see my own tickets with their public status label",
+        "Given a ticket with internal and public comments, When I open it on the portal, Then only public comments are shown",
+        "Given my open request, When I add a comment, Then it is stored as a public comment visible to the team"
+      ],
+      "spec": ["§11", "§12", "§14"],
+      "mockups": ["docs/mockups/previews/06-requester-portal.png"],
+      "depends_on": ["L13-US02"],
+      "tech": [
+        {
+          "id": "L13-US03-T01",
+          "title": "Expose portal request submission and tracking endpoints",
+          "layer": "backend",
+          "description": "Add portal-scoped endpoints: submit a request (Idempotency-Key supported), list my requests, get a request with public comments only, add a public comment. Ticket creation reuses the ticket service from L05 so workflows, fields, history and outbox events apply. Requesters only ever see tickets they reported.",
+          "done_when": [
+            "Integration tests prove internal comments and other requesters' tickets are never returned",
+            "Integration tests cover idempotent replay, validation errors (Problem Details) and cross-tenant isolation",
+            "Unit tests cover the visibility filter"
+          ]
+        },
+        {
+          "id": "L13-US03-T02",
+          "title": "Build the portal application shell and home page",
+          "layer": "frontend",
+          "description": "In `web/projects/portal`, build the portal shell (header with logo, language switch, account menu) and the home page listing request types as cards with the welcome text. Reuse `projects/ui` components; strings through Transloco.",
+          "done_when": [
+            "Component unit tests cover request type listing and empty/error states",
+            "axe check passes at mobile and desktop widths"
+          ]
+        },
+        {
+          "id": "L13-US03-T03",
+          "title": "Build the request form and My requests pages",
+          "layer": "frontend",
+          "description": "Render the request form dynamically from the effective form (outlined `mat-form-field`s, selects, date pickers, attachments via presigned upload), then the My requests list (`mat-table`) and request detail with status chip and public comment thread using the shared rich editor.",
+          "done_when": [
+            "Component unit tests cover dynamic field rendering, validation and comment posting",
+            "All fields have labels; axe check passes"
+          ]
+        },
+        {
+          "id": "L13-US03-T04",
+          "title": "Add Playwright test for submitting and tracking a request",
+          "layer": "e2e",
+          "description": "End-to-end test: an external requester signs in, submits a request, sees it in My requests, an agent adds an internal and a public comment in the internal app, and the requester sees only the public one.",
+          "done_when": [
+            "Playwright test passes in CI through `just`",
+            "Test includes an axe scan of the portal pages"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L13-US04",
+      "title": "Sign up and sign in to a portal with an external account",
+      "level": "essential",
+      "as_a": "customer or supplier",
+      "i_want": "to join a portal by invitation or self-service and sign in with a password or a magic link",
+      "so_that": "I can use the portal without an internal account",
+      "acceptance": [
+        "Given an invitation-only portal, When an admin invites my email, Then I receive an invitation email and can create my external account from it",
+        "Given a portal with self sign-up enabled, When I sign up and verify my email, Then my external account is created as a member of the tenant",
+        "Given self sign-up disabled, When I try to sign up, Then the request is rejected",
+        "Given an external account, When I request a magic link and open it within its validity, Then I am signed in to the portal; an expired or reused link is rejected",
+        "Given an external account, When I try to reach the internal application or its API, Then access is denied whatever my role"
+      ],
+      "spec": ["§11", "§3", "§14"],
+      "mockups": ["docs/mockups/previews/06-requester-portal.png"],
+      "depends_on": ["L13-US01"],
+      "tech": [
+        {
+          "id": "L13-US04-T01",
+          "title": "Store portal invitations and magic link tokens",
+          "layer": "database",
+          "description": "Add tables for portal invitations (email, portal, inviter, expiry, accepted_at) and single-use magic link tokens (hashed token, account, expiry, used_at). Tokens are stored hashed only. RLS on tenant-scoped tables.",
+          "done_when": [
+            "Migration applies; integration tests verify RLS and single-use constraint"
+          ]
+        },
+        {
+          "id": "L13-US04-T02",
+          "title": "Implement external sign-up, invitation and magic link flows",
+          "layer": "backend",
+          "description": "Add endpoints to invite, accept an invitation, self sign-up with email verification, request and consume a magic link, and sign in with password (Argon2id from L02). Sessions are cookie-based and limited to the portal; the shared request layer rejects external accounts on internal routes. Emails are queued as jobs.",
+          "done_when": [
+            "Integration tests cover invitation acceptance, self sign-up on/off, expired and reused magic links",
+            "Integration test proves an external session gets 403 on every internal route family",
+            "Unit tests cover token generation and expiry rules"
+          ]
+        },
+        {
+          "id": "L13-US04-T03",
+          "title": "Build portal sign-up, sign-in and invitation screens",
+          "layer": "frontend",
+          "description": "In `projects/portal`, add sign-in (password or magic link), sign-up, email verification and invitation acceptance pages, and an invite dialog in the internal portal settings. Material form fields with labels and Transloco texts.",
+          "done_when": [
+            "Component unit tests cover each form's validation and error states",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L13-US05",
+      "title": "Submit a request anonymously and follow it through a link",
+      "level": "essential",
+      "as_a": "anonymous requester",
+      "i_want": "to submit a request with only my email and follow it through a signed link",
+      "so_that": "I can get help without creating an account",
+      "acceptance": [
+        "Given a public portal with anonymous access enabled, When I submit a request with a valid email and pass the proof-of-work captcha, Then a ticket is created and I receive an email with a signed tracking link",
+        "Given a valid tracking link, When I open it, Then I can view the request's public status and public comments and add a comment, but no other ticket",
+        "Given a tampered or revoked tracking link, When I open it, Then access is denied",
+        "Given the per-IP or per-email limit (5 requests per hour by default) is reached, or the honeypot field is filled, When I submit, Then the request is rejected",
+        "Given I later create an account with the same verified email, When the account is verified, Then my anonymous tickets are attached to it automatically"
+      ],
+      "spec": ["§11", "§14"],
+      "mockups": ["docs/mockups/previews/24-request-tracking.png"],
+      "depends_on": ["L13-US03", "L13-US04"],
+      "tech": [
+        {
+          "id": "L13-US05-T01",
+          "title": "Create anonymous requester table and tracking link signing",
+          "layer": "database",
+          "description": "Add `anonymous_requester` (tenant_id, email, verified flag, created_at) linked to tickets as reporter, with RLS. Tracking links are signed (HMAC with a secret from configuration) and carry ticket id and requester id; a revocation version allows invalidating them.",
+          "done_when": [
+            "Migration applies; integration test verifies RLS",
+            "Unit tests cover signature creation, verification, tampering and revocation"
+          ]
+        },
+        {
+          "id": "L13-US05-T02",
+          "title": "Integrate self-hosted proof-of-work captcha and honeypot",
+          "layer": "backend",
+          "description": "Select a self-hosted proof-of-work captcha under an MIT-compatible license (check with cargo-deny / npm license check) and verify its solution server-side on anonymous submissions. Add an invisible honeypot field and per-IP and per-email rate limits in Valkey.",
+          "done_when": [
+            "License of the chosen captcha is MIT/Apache/BSD/ISC and recorded in the PR",
+            "Integration tests (real Valkey) cover rate limit per IP, per email, honeypot rejection and invalid captcha",
+            "Unit tests cover limit counters"
+          ]
+        },
+        {
+          "id": "L13-US05-T03",
+          "title": "Expose anonymous submission and tracking endpoints",
+          "layer": "backend",
+          "description": "Add anonymous submit, tracking-link view and comment endpoints, restricted to the single ticket in the link and to public data. On verification of a new account with the same email, a job attaches anonymous tickets to the account. GDPR: anonymous requesters can be erased by email (hook into L02 erasure).",
+          "done_when": [
+            "Integration tests cover submit with anonymous disabled (rejected), link scope limited to one ticket, attachment on account verification",
+            "Unit tests cover email normalization and matching"
+          ]
+        },
+        {
+          "id": "L13-US05-T04",
+          "title": "Build anonymous form and tracking page in the portal",
+          "layer": "frontend",
+          "description": "Show the email field, the captcha widget and the hidden honeypot on the request form when anonymous access is enabled, and build the tracking page reached by the signed link (status, public comment thread, add comment). Transloco texts, Material components.",
+          "done_when": [
+            "Component unit tests cover anonymous mode toggling and tracking page states (valid, invalid link)",
+            "Honeypot is hidden from assistive technologies; axe check passes"
+          ]
+        },
+        {
+          "id": "L13-US05-T05",
+          "title": "Add Playwright test for anonymous request and tracking link",
+          "layer": "e2e",
+          "description": "End-to-end test: submit an anonymous request, capture the tracking link from the test mail catcher, open it, add a comment, then verify a tampered link is rejected.",
+          "done_when": [
+            "Playwright test passes in CI through `just`"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L13-US06",
+      "title": "Notify requesters by email about their requests",
+      "level": "essential",
+      "as_a": "requester",
+      "i_want": "to receive emails on acknowledgment, status change and new public comment",
+      "so_that": "I do not need to check the portal to stay informed",
+      "acceptance": [
+        "Given I submit a request, When the ticket is created, Then I receive an acknowledgment email in my language with the ticket key and a link",
+        "Given my request, When its status changes, Then I receive an email showing the public status label",
+        "Given my request, When an agent adds a public comment, Then I receive an email; When an internal comment is added, Then no email is sent",
+        "Given an anonymous request, When an email is sent, Then it contains the signed tracking link",
+        "Given an admin edits the portal email templates in the Emails tab, When an email is sent, Then the customized translated template is used"
+      ],
+      "spec": ["§11", "§12"],
+      "mockups": ["docs/mockups/previews/23-portal-settings.png"],
+      "depends_on": ["L13-US03"],
+      "tech": [
+        {
+          "id": "L13-US06-T01",
+          "title": "Generate portal notification jobs from outbox events",
+          "layer": "worker",
+          "description": "In `crates/worker`, consume ticket created, status changed and comment added outbox events for portal tickets and enqueue email jobs for the requester only when the event is public. Rendering uses translated templates with the requester's language, falling back to the tenant default.",
+          "done_when": [
+            "Integration tests (real PostgreSQL, mail catcher) cover each event and the internal-comment exclusion",
+            "Unit tests cover the event-to-email decision and template variable resolution"
+          ]
+        },
+        {
+          "id": "L13-US06-T02",
+          "title": "Store and expose portal email templates",
+          "layer": "backend",
+          "description": "Add per-portal email template overrides (subject and body, fr/en JSONB, with default templates shipped) and admin endpoints to read, update and preview them. Bodies are sanitized server-side.",
+          "done_when": [
+            "Integration tests cover update, preview, sanitization and cross-tenant isolation",
+            "Unit tests cover default template fallback"
+          ]
+        },
+        {
+          "id": "L13-US06-T03",
+          "title": "Build the portal Emails settings tab",
+          "layer": "frontend",
+          "description": "Add the Emails tab with one expansion panel per notification type, translatable subject and body fields, and a preview action. Material components and Transloco only.",
+          "done_when": [
+            "Component unit tests cover edit, preview and save",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L13-US07",
+      "title": "Brand a portal and protect it with its own quotas",
+      "level": "essential",
+      "as_a": "tenant admin",
+      "i_want": "to set a portal's logo, brand color and welcome text, and give it its own rate limits",
+      "so_that": "the portal looks like our service and a support spike does not slow down internal users",
+      "acceptance": [
+        "Given I pick a brand color, When the portal loads, Then its full Material 3 color scheme is derived from that color at runtime in light and dark modes",
+        "Given I upload a logo, When requesters open the portal, Then the logo is shown in the header with an alternative text",
+        "Given a welcome text in French and English, When the portal is viewed in either language, Then the matching text is shown",
+        "Given portal-specific quotas, When portal traffic exceeds them, Then portal requests receive 429 with RateLimit headers while internal API requests are unaffected"
+      ],
+      "spec": ["§11", "§17", "§14"],
+      "mockups": ["docs/mockups/previews/23-portal-settings.png", "docs/mockups/previews/06-requester-portal.png"],
+      "depends_on": ["L13-US01"],
+      "tech": [
+        {
+          "id": "L13-US07-T01",
+          "title": "Expose portal appearance and public branding endpoint",
+          "layer": "backend",
+          "description": "Add endpoints to update the brand color (validated hex), logo (attachment uploaded via presigned URL, scanned before use) and welcome texts, and a public unauthenticated endpoint returning the branding of a published portal.",
+          "done_when": [
+            "Integration tests cover update, invalid color, unscanned logo refusal and unpublished portal",
+            "Unit tests cover color validation"
+          ]
+        },
+        {
+          "id": "L13-US07-T02",
+          "title": "Apply portal theme at runtime and build Appearance tab",
+          "layer": "frontend",
+          "description": "In `projects/portal`, call `applyPortalTheme()` from `projects/ui` with the brand color at startup. In the internal app, build the Appearance tab (color swatches plus custom color, logo upload, translatable welcome texts, live preview using the same theming function).",
+          "done_when": [
+            "Unit tests verify applyPortalTheme sets the expected --mat-sys-* tokens for light and dark",
+            "Automated contrast check (axe) passes for several brand colors",
+            "Component unit tests cover upload and preview"
+          ]
+        },
+        {
+          "id": "L13-US07-T03",
+          "title": "Apply portal-specific quotas and rate limiting",
+          "layer": "backend",
+          "description": "Add a rate-limit bucket per portal and per tenant for portal routes in Valkey, separate from internal buckets, with limits configurable per portal and tenant defaults. Responses include RateLimit-* headers and 429 Problem Details.",
+          "done_when": [
+            "Integration tests (real Valkey) prove saturating a portal does not consume internal quotas",
+            "Unit tests cover limit configuration resolution"
+          ]
+        }
+      ]
+    }
+  ]
+}

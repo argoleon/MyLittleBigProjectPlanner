@@ -1,0 +1,493 @@
+{
+  "lot": "L02",
+  "title": "Identities, roles, permissions",
+  "level": "essential",
+  "depends_on": ["L01"],
+  "summary": "Global accounts that can belong to several tenants, tenant administration by the platform super admin, memberships with internal or external account types, local authentication (Argon2id, reset by email), OIDC and TOTP MFA under a per-tenant authentication policy, secure cookie sessions holding a single tenant, groups, tenant-defined node roles as permission sets with a cached permission engine, the members and roles administration screens, the My account screen, and GDPR rights (personal data export, erasure by anonymization). Grants of roles on hierarchy nodes and their inheritance are delivered in L03; API tokens and the OAuth server in L15.",
+  "stories": [
+    {
+      "id": "L02-US01",
+      "title": "Platform super admin manages tenants",
+      "level": "essential",
+      "as_a": "platform super admin",
+      "i_want": "to create, configure and delete tenants",
+      "so_that": "each organization gets an isolated space with its own defaults",
+      "acceptance": [
+        "Given I am super admin, When I create tenant `acme` with a default language, time zone, default capacity and overload tolerance, Then it is reachable at `acme.<domain>` (or the single domain in single-tenant mode)",
+        "Given a tenant exists, When I set its storage and API rate quotas, Then they are stored and exposed to the services that enforce them",
+        "Given a tenant, When I delete it after typing its key to confirm, Then all its data is removed in the background and its subdomain no longer resolves",
+        "Given a tenant admin who is not super admin, When they call the tenant management API, Then they get 403 Problem Details `forbidden`",
+        "Given single-tenant mode is configured, When the platform starts for the first time, Then a default tenant and an initial super admin are bootstrapped from environment variables"
+      ],
+      "spec": ["§3", "§14"],
+      "mockups": [],
+      "depends_on": [],
+      "tech": [
+        {
+          "id": "L02-US01-T01",
+          "title": "Extend the tenant table with settings and quotas",
+          "layer": "database",
+          "description": "Add tenant settings: key/subdomain (unique), default language, time zone, default weekly capacity, overload tolerance, overload mode, quotas (storage, API rate), multi-tenant flag. Add a platform-level role marker on accounts for super admin, outside RLS.",
+          "done_when": [
+            "Migration applies and rolls forward cleanly",
+            "Integration tests verify uniqueness of the tenant key and default values",
+            "Unit tests cover settings validation (time zone, tolerance range)"
+          ]
+        },
+        {
+          "id": "L02-US01-T02",
+          "title": "Expose super admin tenant management endpoints",
+          "layer": "backend",
+          "description": "Add `/api/v1/platform/tenants` endpoints (list, create, update, delete) restricted to super admin. Deletion enqueues a background purge job. Bootstrap command creates the default tenant and first super admin in single-tenant mode.",
+          "done_when": [
+            "Unit tests cover authorization and validation rules",
+            "Integration tests cover create, update, delete and 403 for non super admins on real PostgreSQL",
+            "Purge job integration test proves no row of the deleted tenant remains"
+          ]
+        },
+        {
+          "id": "L02-US01-T03",
+          "title": "Implement the SKIP LOCKED job queue in the worker",
+          "layer": "worker",
+          "description": "Create the `job` table and a worker loop polling with `FOR UPDATE SKIP LOCKED`, retries with backoff, and per-job tenant context (`SET LOCAL`). First consumers: tenant purge and transactional emails. Reused by every later background job.",
+          "done_when": [
+            "Unit tests cover retry and backoff computation",
+            "Integration tests with two worker instances prove each job is processed exactly once",
+            "Jobs run under the job's tenant RLS context"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L02-US02",
+      "title": "Sign in with a local account and reset my password",
+      "level": "essential",
+      "as_a": "internal user",
+      "i_want": "to sign in with my email and password and reset it by email if I forget it",
+      "so_that": "I can access my tenant securely without an external identity provider",
+      "acceptance": [
+        "Given a valid email and password, When I sign in on `acme.<domain>`, Then a session cookie (`httpOnly`, `Secure`, `SameSite`) is set for tenant Acme only",
+        "Given a wrong password, When I sign in 5 times in a row, Then further attempts are rate limited and the error never reveals whether the email exists",
+        "Given I requested a reset, When I open the emailed link within its validity, Then I can set a new password and all my other sessions are revoked",
+        "Given a state-changing request without a valid CSRF token, When it reaches the API, Then it is rejected with 403",
+        "Given I sign out, When I reuse the old cookie, Then the API answers 401"
+      ],
+      "spec": ["§3", "§14"],
+      "mockups": ["docs/mockups/previews/07-sign-in-mfa.png"],
+      "depends_on": ["L02-US01"],
+      "tech": [
+        {
+          "id": "L02-US02-T01",
+          "title": "Create account, membership and credential tables",
+          "layer": "database",
+          "description": "Create `account` (global, the only business table without `tenant_id`, unique verified email), `membership` (account, tenant, type internal/external, status, tenant roles) with RLS, and credentials with Argon2id hashes and password reset tokens (hashed, expiring).",
+          "done_when": [
+            "Integration tests prove membership rows are isolated per tenant under RLS",
+            "Unit tests cover email normalization",
+            "CI RLS check whitelists only `account`"
+          ]
+        },
+        {
+          "id": "L02-US02-T02",
+          "title": "Implement Argon2id authentication and Valkey sessions",
+          "layer": "backend",
+          "description": "Implement sign-in, sign-out and session endpoints: Argon2id verification, sessions stored in Valkey holding a single tenant, secure cookie flags, CSRF double-submit token, rate limiting per IP and per email. The session extractor rejects accounts without an active membership in the resolved tenant.",
+          "done_when": [
+            "Unit tests cover password hashing parameters and CSRF validation",
+            "Integration tests on real PostgreSQL and Valkey cover sign-in, wrong password, rate limit, sign-out and cross-tenant cookie reuse rejected",
+            "No user enumeration in error responses (asserted by tests)"
+          ]
+        },
+        {
+          "id": "L02-US02-T03",
+          "title": "Send password reset emails through the job queue",
+          "layer": "worker",
+          "description": "Add an email module in `infra` (SMTP, templated FR/EN messages in the tenant or user language) and a password reset flow: request endpoint, emailed signed single-use link, reset endpoint revoking other sessions.",
+          "done_when": [
+            "Unit tests cover token expiry and single use",
+            "Integration tests use a local SMTP catcher to assert the email content and link",
+            "Reset revokes other sessions (asserted)"
+          ]
+        },
+        {
+          "id": "L02-US02-T04",
+          "title": "Build the sign-in, forgot and reset password screens",
+          "layer": "frontend",
+          "description": "Build sign-in, forgot password and reset password pages in `projects/app` following the sign-in mockup: `mat-form-field appearance=\"outline\"`, labelled fields, error messages from Problem Details codes via Transloco, loading and error states. Use the generated API client only.",
+          "done_when": [
+            "Unit tests cover form validation and error mapping",
+            "Integration tests render each page against a mocked client",
+            "axe-core passes; all texts are Transloco keys in FR and EN"
+          ]
+        },
+        {
+          "id": "L02-US02-T05",
+          "title": "Add e2e test for sign-in, sign-out and password reset",
+          "layer": "e2e",
+          "description": "Playwright test on the compose stack: sign in, reach the shell, sign out, request a reset, read the email from the SMTP catcher, set a new password and sign in again.",
+          "done_when": [
+            "Test passes headless in CI",
+            "axe-core checks run on each page of the flow"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L02-US03",
+      "title": "Two-step verification with an authenticator app",
+      "level": "essential",
+      "as_a": "internal user",
+      "i_want": "to enable TOTP two-step verification with backup codes",
+      "so_that": "my account stays protected even if my password leaks",
+      "acceptance": [
+        "Given I am signed in, When I enable two-step verification and confirm a valid TOTP code, Then MFA is active and 8 single-use backup codes are shown once",
+        "Given MFA is active, When I sign in with my password, Then I must enter a valid TOTP or backup code before a session is created",
+        "Given an invalid code entered repeatedly, When the limit is reached, Then attempts are rate limited",
+        "Given a used backup code, When I try it again, Then it is refused",
+        "Given the tenant policy requires MFA for local accounts, When a member without MFA signs in, Then they are forced to enroll before accessing the application"
+      ],
+      "spec": ["§3", "§14"],
+      "mockups": ["docs/mockups/previews/07-sign-in-mfa.png", "docs/mockups/previews/10-my-account.png"],
+      "depends_on": ["L02-US02"],
+      "tech": [
+        {
+          "id": "L02-US03-T01",
+          "title": "Implement TOTP enrollment, verification and backup codes",
+          "layer": "backend",
+          "description": "Store an encrypted TOTP secret per account and hashed backup codes. Add enrollment (secret + otpauth URI), confirmation, verification step in sign-in (pending-MFA session state) and disable endpoints. Use an MIT/Apache TOTP crate.",
+          "done_when": [
+            "Unit tests cover TOTP window tolerance and backup code single use",
+            "Integration tests cover the full sign-in with MFA and rate limiting",
+            "Secrets are encrypted at rest with a key from a secret file"
+          ]
+        },
+        {
+          "id": "L02-US03-T02",
+          "title": "Build the MFA challenge and enrollment screens",
+          "layer": "frontend",
+          "description": "Build the verification step of the sign-in flow and the enrollment dialog (QR code rendered locally, code confirmation, backup codes display with copy/download) using MatDialog and Material form fields.",
+          "done_when": [
+            "Unit tests cover the step state machine",
+            "Integration tests render enrollment and challenge with mocked API",
+            "axe-core passes; QR code has a text alternative (secret key)"
+          ]
+        },
+        {
+          "id": "L02-US03-T03",
+          "title": "Add e2e test for MFA enrollment and sign-in",
+          "layer": "e2e",
+          "description": "Playwright test enabling MFA (TOTP computed in the test), signing out, signing in with TOTP, then with a backup code.",
+          "done_when": [
+            "Test passes headless in CI",
+            "axe-core checks run on each step"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L02-US04",
+      "title": "Sign in through the tenant's OIDC provider and auth policy",
+      "level": "essential",
+      "as_a": "tenant admin",
+      "i_want": "to configure an OIDC provider and an authentication policy for my tenant",
+      "so_that": "my users sign in with our corporate SSO and MFA is enforced where we require it",
+      "acceptance": [
+        "Given I configure an OIDC provider (issuer, client ID, secret) for Acme, When a user clicks \"Sign in with Entra ID\", Then they are authenticated through the provider and their membership is matched by verified email",
+        "Given the policy \"internal accounts must use SSO\", When an internal member tries a password sign-in, Then it is refused with a message pointing to SSO",
+        "Given the policy \"local accounts require MFA\", When a local account signs in, Then MFA is required",
+        "Given an account member of tenants A and B with different policies, When they enter tenant B, Then B's policy applies",
+        "Given an OIDC callback with an invalid state or nonce, When it reaches the API, Then it is rejected"
+      ],
+      "spec": ["§3", "§14"],
+      "mockups": ["docs/mockups/previews/07-sign-in-mfa.png", "docs/mockups/previews/09-members-roles.png"],
+      "depends_on": ["L02-US02", "L02-US03"],
+      "tech": [
+        {
+          "id": "L02-US04-T01",
+          "title": "Store per-tenant OIDC providers and authentication policy",
+          "layer": "database",
+          "description": "Create tables for OIDC provider configuration per tenant (issuer, client ID, encrypted secret, display name, email claim) and the authentication policy (SSO required for internal accounts, MFA required for local accounts, portal methods). RLS applies.",
+          "done_when": [
+            "Integration tests prove isolation of provider configs between tenants",
+            "Unit tests cover policy evaluation for each account type",
+            "Client secrets encrypted at rest"
+          ]
+        },
+        {
+          "id": "L02-US04-T02",
+          "title": "Implement the OIDC authorization code flow with PKCE",
+          "layer": "backend",
+          "description": "Implement OIDC login and callback endpoints (discovery, PKCE, state, nonce, ID token validation) with an MIT/Apache crate, account matching by verified email, and policy enforcement at sign-in. Keycloak in the `sso` profile serves as the integration test provider.",
+          "done_when": [
+            "Unit tests cover policy enforcement and ID token claim validation",
+            "Integration tests against Keycloak cover success, invalid state and policy refusals",
+            "SAML/LDAP documented as handled through Keycloak"
+          ]
+        },
+        {
+          "id": "L02-US04-T03",
+          "title": "Build the authentication administration tab",
+          "layer": "frontend",
+          "description": "Build the \"Authentication\" tab of the administration screen: OIDC provider form, policy toggles (`mat-slide-toggle`), test connection action, and the SSO buttons on the sign-in page driven by the tenant configuration.",
+          "done_when": [
+            "Unit tests cover form validation",
+            "Integration tests render the tab and the sign-in page with and without providers",
+            "axe-core passes; all labels are Transloco keys"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L02-US05",
+      "title": "Belong to several tenants and switch between them",
+      "level": "essential",
+      "as_a": "internal user",
+      "i_want": "to see the tenants I belong to and switch the active one",
+      "so_that": "I can work for several organizations with a single account",
+      "acceptance": [
+        "Given I am a member of Acme and Acme Services, When I open the tenant switcher, Then I see both with my role in each",
+        "Given I switch to Acme Services, When the switch completes, Then a new session for that tenant is established under its authentication policy and no Acme data is visible",
+        "Given an external (portal-only) membership, When that account calls any internal application endpoint, Then the API answers 403 whatever its role",
+        "Given I am not a member of a tenant, When I open its subdomain, Then I cannot sign in to it"
+      ],
+      "spec": ["§3"],
+      "mockups": ["docs/mockups/previews/10-my-account.png"],
+      "depends_on": ["L02-US02"],
+      "tech": [
+        {
+          "id": "L02-US05-T01",
+          "title": "Expose my memberships and tenant switch endpoints",
+          "layer": "backend",
+          "description": "Add `/api/v1/me` and `/api/v1/me/memberships` (read across tenants through a dedicated, audited query path that only returns the caller's memberships) and a switch endpoint that issues a session for the target tenant after applying its policy. Enforce the external-account restriction in the shared request layer.",
+          "done_when": [
+            "Unit tests cover the external account guard",
+            "Integration tests cover switching, policy re-evaluation and 403 for external accounts on internal endpoints",
+            "Cross-tenant test proves no data from the previous tenant is reachable after switching"
+          ]
+        },
+        {
+          "id": "L02-US05-T02",
+          "title": "Implement the tenant switcher in the shell",
+          "layer": "frontend",
+          "description": "Implement the organization selector in the navigation drawer (mat-select) and the \"My organizations\" card, redirecting to the target subdomain or re-establishing the session. Clear all client state on switch.",
+          "done_when": [
+            "Unit tests cover state reset on switch",
+            "Integration tests render the switcher with one and several memberships",
+            "axe-core passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L02-US06",
+      "title": "Invite and manage tenant members and groups",
+      "level": "essential",
+      "as_a": "tenant admin",
+      "i_want": "to invite members, set their account type and tenant role, and organize them in groups",
+      "so_that": "the right people get access and permissions can be granted to groups",
+      "acceptance": [
+        "Given I am tenant admin, When I invite `p.durand@client.example` as external, Then an invitation email is sent and the member appears as \"Invitation sent\"",
+        "Given the members list, When I filter by internal or external or pending invitations and search by name or email, Then the table shows matching members with type, tenant role, groups, MFA and status",
+        "Given a member, When I change their tenant role to configuration admin, Then they can manage configurations but not members",
+        "Given a group \"Platform\", When I add and remove members, Then group membership is updated and audited",
+        "Given a configuration admin, When they try to invite a member, Then they get 403",
+        "Given I remove a member from the tenant, When they next call the API, Then their sessions for this tenant are rejected"
+      ],
+      "spec": ["§3", "§14"],
+      "mockups": ["docs/mockups/previews/09-members-roles.png"],
+      "depends_on": ["L02-US02"],
+      "tech": [
+        {
+          "id": "L02-US06-T01",
+          "title": "Create invitation, group and group member tables",
+          "layer": "database",
+          "description": "Create `invitation` (tenant, email, type, role, token hash, expiry, status), `group` and `group_member` with RLS and indexes starting with `tenant_id`.",
+          "done_when": [
+            "Integration tests verify RLS isolation of groups and invitations",
+            "Unit tests cover invitation expiry",
+            "Unique group name per tenant enforced"
+          ]
+        },
+        {
+          "id": "L02-US06-T02",
+          "title": "Implement member, invitation and group endpoints",
+          "layer": "backend",
+          "description": "Add endpoints to list and search members (cursor pagination), invite, accept an invitation (creating or linking a global account), change type and tenant role, remove a member (revoking sessions) and manage groups. Restricted to tenant admins; configuration admins are refused.",
+          "done_when": [
+            "Unit tests cover role checks for tenant admin vs configuration admin",
+            "Integration tests cover invite, accept, change role, remove with session revocation, and cross-tenant isolation",
+            "Invitation email sent through the job queue (SMTP catcher assertion)"
+          ]
+        },
+        {
+          "id": "L02-US06-T03",
+          "title": "Build the Members and Groups administration tabs",
+          "layer": "frontend",
+          "description": "Build the administration screen with `mat-tab-nav-bar` (Members, Groups, Roles, Authentication, Project configurations, Quotas). Members tab: search field, filter chips, invite dialog, `mat-table` with type and status chips. Groups tab: list, create, edit members. Loading, empty and error states.",
+          "done_when": [
+            "Unit tests cover filters and the invite dialog form",
+            "Integration tests render tabs with mocked client data",
+            "axe-core passes; table is keyboard navigable"
+          ]
+        },
+        {
+          "id": "L02-US06-T04",
+          "title": "Add e2e test for inviting and accepting a member",
+          "layer": "e2e",
+          "description": "Playwright test: tenant admin invites an internal member, the invitee opens the email link, sets a password and lands in the application; then the admin removes them and access is lost.",
+          "done_when": [
+            "Test passes headless in CI",
+            "axe-core checks run on the admin screen"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L02-US07",
+      "title": "Define node roles as sets of permissions",
+      "level": "essential",
+      "as_a": "tenant admin",
+      "i_want": "to define node roles such as \"Project manager\" by toggling permissions",
+      "so_that": "permissions match how my organization works and can be granted on hierarchy nodes",
+      "acceptance": [
+        "Given I am tenant admin, When I create role \"Project manager\" with view, create ticket, edit, comment, log time, assign resources, force overload and manage sprints, Then the role is saved with those permissions",
+        "Given a role, When I edit its labels in French and English, Then the labels are stored as translatable JSONB and shown in the user's language",
+        "Given a role used by grants, When I change its permissions, Then the permission cache is invalidated and the change applies within seconds",
+        "Given a role used by grants, When I try to delete it, Then I am told how many grants use it and deletion is refused",
+        "Given an endpoint protected by permission `comment`, When a user without it calls it, Then the API answers 403 with a stable code"
+      ],
+      "spec": ["§14"],
+      "mockups": ["docs/mockups/previews/09-members-roles.png"],
+      "depends_on": ["L02-US06"],
+      "tech": [
+        {
+          "id": "L02-US07-T01",
+          "title": "Define the permission catalog and role model in the domain",
+          "layer": "domain",
+          "description": "Define in `crates/domain` the fixed permission catalog (view, create ticket, edit, comment, log time, assign resources, force overload, manage sprints, manage members, administer node, plus later permissions) as stable identifiers, the role entity and the effective-permission computation interface used by L03 inheritance.",
+          "done_when": [
+            "Unit tests cover permission set operations (union, contains)",
+            "Integration test not applicable to pure domain code; covered through T02 endpoints",
+            "Catalog exported in OpenAPI as an enum"
+          ]
+        },
+        {
+          "id": "L02-US07-T02",
+          "title": "Implement role tables, endpoints and the cached permission check",
+          "layer": "backend",
+          "description": "Create `role` table (translatable labels JSONB, permission list) with RLS, CRUD endpoints for tenant admins, and a permission check middleware/helper with a Valkey cache invalidated by events. Seed default roles per new tenant.",
+          "done_when": [
+            "Unit tests cover the check helper and cache key building",
+            "Integration tests on PostgreSQL and Valkey cover CRUD, deletion refusal when used, cache invalidation and 403 responses",
+            "Cross-tenant test proves roles are not visible across tenants"
+          ]
+        },
+        {
+          "id": "L02-US07-T03",
+          "title": "Build the Roles tab with permission toggles",
+          "layer": "frontend",
+          "description": "Build the Roles tab: role list, role detail panel with a `mat-slide-toggle` per permission (labels from Transloco), FR/EN label fields, create, duplicate and delete actions with confirmation dialog.",
+          "done_when": [
+            "Unit tests cover dirty state and save",
+            "Integration tests render a role and toggle permissions with mocked client",
+            "axe-core passes; every toggle has an accessible label"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L02-US08",
+      "title": "Manage my account: preferences, sessions and security",
+      "level": "essential",
+      "as_a": "internal user",
+      "i_want": "to set my language and time zone, change my password, manage MFA and my active sessions",
+      "so_that": "the application fits me and I control access to my account",
+      "acceptance": [
+        "Given I set my language to English and time zone to Europe/Paris, When I reload, Then texts are in English and timestamps are shown in Paris time",
+        "Given I change my password with my current password, When it succeeds, Then my other sessions are revoked",
+        "Given the active sessions list, When I revoke a device, Then that session is rejected on its next request",
+        "Given MFA is active, When I disable it, Then I must confirm with a valid code, unless the tenant policy requires MFA in which case disabling is refused"
+      ],
+      "spec": ["§3", "§14", "§19"],
+      "mockups": ["docs/mockups/previews/10-my-account.png"],
+      "depends_on": ["L02-US03", "L02-US05"],
+      "tech": [
+        {
+          "id": "L02-US08-T01",
+          "title": "Implement preferences, password change and session endpoints",
+          "layer": "backend",
+          "description": "Add account preferences (language, time zone) on the global account, password change, list and revoke sessions (device, last activity) stored in Valkey.",
+          "done_when": [
+            "Unit tests cover time zone validation and session listing",
+            "Integration tests cover password change revoking other sessions and individual session revocation",
+            "Policy-required MFA cannot be disabled (asserted)"
+          ]
+        },
+        {
+          "id": "L02-US08-T02",
+          "title": "Build the My account screen",
+          "layer": "frontend",
+          "description": "Build the My account page: Preferences card (language, time zone selects applied immediately), Security card (MFA toggle, sessions dialog, password change dialog), My organizations card. The API tokens and authorized applications cards are added in L15.",
+          "done_when": [
+            "Unit tests cover preference application to Transloco and date formatting",
+            "Integration tests render the page with mocked client",
+            "axe-core passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L02-US09",
+      "title": "GDPR: export my data and erase accounts by anonymization",
+      "level": "essential",
+      "as_a": "internal user",
+      "i_want": "to export my personal data and request the erasure of my account",
+      "so_that": "my GDPR rights of access and erasure are respected",
+      "acceptance": [
+        "Given I am signed in, When I click \"Export (JSON)\", Then I download a JSON file with my account, memberships, preferences and the content I authored",
+        "Given I confirm erasure of my global account, When it completes, Then my name, email and avatar are removed and I appear as \"Deleted user #1234\" everywhere, history included",
+        "Given a tenant admin removes and erases a member, When erasure runs, Then only that tenant's membership is anonymized and the global account is untouched",
+        "Given the erasure option \"purge comments\", When it is chosen, Then the user's comments are deleted, otherwise content is kept",
+        "Given technical logs with IP addresses, When they are older than the configured retention (6 months by default), Then they are purged"
+      ],
+      "spec": ["§14"],
+      "mockups": ["docs/mockups/previews/10-my-account.png"],
+      "depends_on": ["L02-US08"],
+      "tech": [
+        {
+          "id": "L02-US09-T01",
+          "title": "Implement personal data export and anonymization jobs",
+          "layer": "worker",
+          "description": "Implement an export job producing JSON (downloadable via a short-lived link) and an anonymization job replacing personal data by a stable pseudonym `Deleted user #N` across all tenants (super admin or self) or one tenant (tenant admin), with optional comment purge. Design an extension point so later tables (comments, history) register their anonymization step.",
+          "done_when": [
+            "Unit tests cover pseudonym generation and scope rules",
+            "Integration tests prove no personal field remains after erasure and that other tenants are untouched for tenant-scoped erasure",
+            "Every erasure is audited"
+          ]
+        },
+        {
+          "id": "L02-US09-T02",
+          "title": "Expose export and erasure endpoints with confirmation",
+          "layer": "backend",
+          "description": "Add endpoints for self export, self erasure (with re-authentication), tenant admin member erasure and super admin global erasure, plus a scheduled purge of technical logs with IPs after the configured retention.",
+          "done_when": [
+            "Unit tests cover authorization per actor",
+            "Integration tests cover each actor and re-authentication requirement",
+            "Retention purge integration test removes old log rows only"
+          ]
+        },
+        {
+          "id": "L02-US09-T03",
+          "title": "Build the My personal data card and erasure dialog",
+          "layer": "frontend",
+          "description": "Build the \"My personal data\" card: export button with progress and download, erasure dialog explaining consequences, requiring password (or SSO re-auth) and typed confirmation.",
+          "done_when": [
+            "Unit tests cover the confirmation form",
+            "Integration tests render the card and dialog with mocked client",
+            "axe-core passes"
+          ]
+        }
+      ]
+    }
+  ]
+}

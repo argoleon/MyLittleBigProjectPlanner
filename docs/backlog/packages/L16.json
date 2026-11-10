@@ -1,0 +1,216 @@
+{
+  "lot": "L16",
+  "title": "MCP",
+  "level": "important",
+  "depends_on": ["L15"],
+  "summary": "A separate, thin Rust MCP server (`crates/mcp`) built on the official MCP SDK for Rust, exposed over Streamable HTTP and secured by the built-in OAuth 2.1 server. It calls the public API on behalf of the user with exactly their permissions, has no business logic of its own, marks every change as \"via MCP\" in the history, and exposes 12 tools (6 read, 6 write) with MCP annotations, compact paginated responses, and no deletion or administration.",
+  "stories": [
+    {
+      "id": "L16-US01",
+      "title": "Connect an AI assistant to the MCP server with OAuth",
+      "level": "important",
+      "as_a": "internal user",
+      "i_want": "to connect my AI assistant to the MCP server and authorize it for one tenant",
+      "so_that": "the assistant can work with my tickets and workload using exactly my permissions",
+      "acceptance": [
+        "Given an MCP client without a token, When it calls the MCP endpoint, Then it receives 401 with the protected resource metadata pointing to the authorization server",
+        "Given I complete the OAuth consent for tenant A, When the client calls the MCP server, Then it lists the 12 tools and every call runs as me on tenant A only",
+        "Given an expired or revoked token, When the client calls a tool, Then the call is rejected and the client must re-authorize",
+        "Given several MCP server instances, When a session's requests reach different instances, Then calls still succeed",
+        "Given the MCP service, When it is deployed with Docker Compose, Then it is reachable through Traefik and exposes health endpoints"
+      ],
+      "spec": ["§16", "§15", "§17"],
+      "mockups": ["docs/mockups/previews/08-oauth-consent.png"],
+      "depends_on": [],
+      "tech": [
+        {
+          "id": "L16-US01-T01",
+          "title": "Bootstrap the mcp crate with the official Rust MCP SDK",
+          "layer": "backend",
+          "description": "Create the `crates/mcp` binary using the official MCP Rust SDK (check license with cargo-deny) with Streamable HTTP transport, stateless operation so it scales horizontally, configuration through environment variables, tracing/OpenTelemetry and `/health/live` and `/health/ready`.",
+          "done_when": [
+            "Unit tests cover configuration loading",
+            "Integration test starts the server and performs an MCP initialize and tools/list handshake",
+            "SDK license passes cargo-deny"
+          ]
+        },
+        {
+          "id": "L16-US01-T02",
+          "title": "Validate OAuth tokens and forward them to the public API",
+          "layer": "backend",
+          "description": "Serve protected resource metadata, validate the incoming OAuth access token (audience MCP, single tenant) and call the public API with the user's token and an `X-Origin: mcp` marker so the API records \"via MCP\" in the history. The MCP server holds no credentials of its own and no business rules.",
+          "done_when": [
+            "Integration tests (real API, PostgreSQL) cover missing, expired, revoked and wrong-audience tokens",
+            "Integration test verifies history entries created through MCP have origin MCP"
+          ]
+        },
+        {
+          "id": "L16-US01-T03",
+          "title": "Add the mcp service to Docker Compose and CI",
+          "layer": "infra",
+          "description": "Add the `mcp` service image (with SBOM) to the compose file behind Traefik, and `just` recipes for its build, lint and tests called by GitHub Actions.",
+          "done_when": [
+            "`docker compose up` serves MCP through Traefik; health checks pass",
+            "CI runs the mcp crate tests"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L16-US02",
+      "title": "Search and read tickets through MCP",
+      "level": "important",
+      "as_a": "AI assistant user",
+      "i_want": "my assistant to search tickets, read their details and know the options of a project",
+      "so_that": "it can answer questions about the work in progress",
+      "acceptance": [
+        "Given search_tickets with a query, When it is called, Then it returns a compact page of matching tickets I may see and a cursor for the next page",
+        "Given an invalid query, When search_tickets is called, Then the tool returns the query error message so the assistant can correct it",
+        "Given get_ticket with a key, When it is called, Then it returns fields, comments, links and assignments within my permissions",
+        "Given list_options with a project, When it is called, Then it returns types, statuses, available transitions and fields with stable identifiers",
+        "Given these tools, When the client lists tools, Then they are annotated read-only"
+      ],
+      "spec": ["§16", "§6"],
+      "mockups": [],
+      "depends_on": ["L16-US01"],
+      "tech": [
+        {
+          "id": "L16-US02-T01",
+          "title": "Implement search_tickets, get_ticket and list_options tools",
+          "layer": "backend",
+          "description": "Implement the three read tools in `crates/mcp` with JSON schemas for inputs, calling the generated or hand-written Rust API client. Responses are compact (selected fields, truncated long texts) and paginated by cursor.",
+          "done_when": [
+            "Unit tests cover input validation and response compaction",
+            "Integration tests against the real API cover permissions, confidential projects and pagination"
+          ]
+        },
+        {
+          "id": "L16-US02-T02",
+          "title": "Add MCP annotations and response size budget tests",
+          "layer": "backend",
+          "description": "Annotate the tools as read-only per the MCP specification and enforce a maximum response size with a test on a large dataset to avoid saturating the model's context.",
+          "done_when": [
+            "Integration test asserts annotations in tools/list",
+            "Integration test asserts response size stays under the budget on a seeded large project"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L16-US03",
+      "title": "Explore hierarchy, workload and availability through MCP",
+      "level": "important",
+      "as_a": "project manager using an AI assistant",
+      "i_want": "my assistant to browse portfolios and projects, read a resource's load and find available people",
+      "so_that": "it can help me plan and staff work",
+      "acceptance": [
+        "Given browse_hierarchy on a node, When it is called, Then it returns children with type and aggregates (load, progress, open and late tickets), confidential projects counted anonymously",
+        "Given get_resource_load for a resource or team and a period, When it is called, Then it returns load and capacity per day or week",
+        "Given find_availability with N free hours or days, a period and a team, When it is called, Then it returns matching resources with their free time",
+        "Given I lack workload:read, When these tools are called, Then they return an authorization error"
+      ],
+      "spec": ["§16", "§4", "§8"],
+      "mockups": [],
+      "depends_on": ["L16-US01"],
+      "tech": [
+        {
+          "id": "L16-US03-T01",
+          "title": "Implement browse_hierarchy, get_resource_load, find_availability",
+          "layer": "backend",
+          "description": "Implement the three read tools in `crates/mcp` on top of the hierarchy, workload and availability endpoints, with weekly aggregation when the period is long to keep responses compact. Annotate as read-only.",
+          "done_when": [
+            "Unit tests cover input validation and period aggregation choice",
+            "Integration tests against the real API cover confidential masking, missing scope and pagination"
+          ]
+        },
+        {
+          "id": "L16-US03-T02",
+          "title": "Document MCP read tools with usage examples",
+          "layer": "infra",
+          "description": "Write tool descriptions that guide the model (when to use which tool, query language examples) and a short `docs/en/mcp.md` page with the French version.",
+          "done_when": [
+            "Descriptions reviewed; docs page published in both languages"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L16-US04",
+      "title": "Create, update, transition and comment tickets through MCP",
+      "level": "important",
+      "as_a": "AI assistant user",
+      "i_want": "my assistant to create and update tickets, change their status and comment",
+      "so_that": "it can carry out routine ticket work after my confirmation",
+      "acceptance": [
+        "Given create_ticket with project, type and fields, When it is called, Then the ticket is created with the workflow's initial status and its key is returned",
+        "Given update_ticket on a ticket changed meanwhile, When it is called with a stale version, Then a conflict is returned instead of overwriting",
+        "Given transition_ticket with a transition not allowed by the workflow or my role, When it is called, Then it is rejected with the reason",
+        "Given add_comment with visibility internal or public, When it is called, Then the comment is added with that visibility",
+        "Given these tools, When the client lists tools, Then they are annotated as modifying, and every change appears as via MCP in the history",
+        "Given any MCP tool, When I look for deletion or administration operations, Then none exists"
+      ],
+      "spec": ["§16", "§5", "§12"],
+      "mockups": [],
+      "depends_on": ["L16-US02"],
+      "tech": [
+        {
+          "id": "L16-US04-T01",
+          "title": "Implement create, update, transition and comment tools",
+          "layer": "backend",
+          "description": "Implement create_ticket, update_ticket (with version for lost-update protection), transition_ticket and add_comment in `crates/mcp`, passing an Idempotency-Key per tool call for creations. Workflow, validators and permissions are enforced by the API only.",
+          "done_when": [
+            "Unit tests cover input mapping and error translation to tool errors",
+            "Integration tests against the real API cover success, stale version, forbidden transition, missing required field and comment visibility"
+          ]
+        },
+        {
+          "id": "L16-US04-T02",
+          "title": "Annotate write tools and test the no-admin guarantee",
+          "layer": "backend",
+          "description": "Annotate write tools as modifying (not read-only, not destructive) and add a test asserting the tool list contains exactly the 12 MVP tools with no deletion or administration.",
+          "done_when": [
+            "Integration test asserts the exact tool list and annotations"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L16-US05",
+      "title": "Log time and assign resources through MCP",
+      "level": "important",
+      "as_a": "AI assistant user",
+      "i_want": "my assistant to log time and create assignments",
+      "so_that": "I can keep my time and plans up to date conversationally",
+      "acceptance": [
+        "Given log_time with ticket, date, duration and comment, When it is called, Then a time entry is created for me",
+        "Given assign_resource with resource, ticket and segments, When the assignment would overload the resource in blocking mode, Then it is rejected and the conflicting days are returned",
+        "Given assign_resource within capacity, When it is called, Then the assignment is created and the load updated",
+        "Given I lack time:write or workload:write, When these tools are called, Then they return an authorization error"
+      ],
+      "spec": ["§16", "§8", "§10"],
+      "mockups": [],
+      "depends_on": ["L16-US01"],
+      "tech": [
+        {
+          "id": "L16-US05-T01",
+          "title": "Implement log_time and assign_resource tools",
+          "layer": "backend",
+          "description": "Implement log_time and assign_resource in `crates/mcp` on the time entry and assignment endpoints. The overload check stays in the API; the tool returns the conflicting days in a compact, model-readable form.",
+          "done_when": [
+            "Unit tests cover segment input validation and conflict formatting",
+            "Integration tests against the real API cover success, blocked overload, missing scope and via MCP history"
+          ]
+        },
+        {
+          "id": "L16-US05-T02",
+          "title": "Add end-to-end MCP scenario test",
+          "layer": "e2e",
+          "description": "Scripted end-to-end test with an MCP test client: OAuth authorization, search a ticket, transition it, log time, attempt an overloading assignment, and check the history shows via MCP. Runs in CI against the compose stack.",
+          "done_when": [
+            "Scenario passes in CI through `just`"
+          ]
+        }
+      ]
+    }
+  ]
+}

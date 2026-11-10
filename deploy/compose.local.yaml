@@ -1,0 +1,70 @@
+# Runs the production stack (compose.yaml) on a development machine, for
+# `just compose-up` and the deployment tests (`just compose-test`):
+#
+# - images built from the sources (mlbpp-local/*:local);
+# - https://localhost:18443 (http://localhost:18081 redirects to it), with
+#   Traefik's self-signed certificate instead of Let's Encrypt.
+#
+# The justfile sets MLBPP_DOMAIN=localhost, MLBPP_REGISTRY=mlbpp-local,
+# MLBPP_VERSION=local and MLBPP_PUBLIC_PORT=:18443 for it.
+
+x-build: &build
+  context: ..
+
+services:
+  traefik:
+    command: !override
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=mlbpp_edge
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.http.tls=true
+      - --entrypoints.metrics.address=:8082
+      - --metrics.prometheus=true
+      - --metrics.prometheus.entrypoint=metrics
+      - --ping=true
+      - --log.format=json
+      - --accesslog=true
+      - --accesslog.format=json
+    ports: !override
+      - "127.0.0.1:${LOCAL_HTTP_PORT:-18081}:80"
+      - "127.0.0.1:${LOCAL_HTTPS_PORT:-18443}:443"
+
+  web:
+    build:
+      <<: *build
+      dockerfile: deploy/docker/web.Dockerfile
+
+  api:
+    build:
+      <<: *build
+      dockerfile: deploy/docker/backend.Dockerfile
+      target: api
+
+  worker:
+    build:
+      <<: *build
+      dockerfile: deploy/docker/backend.Dockerfile
+      target: worker
+
+  mcp:
+    build:
+      <<: *build
+      dockerfile: deploy/docker/backend.Dockerfile
+      target: mcp
+
+  postgres:
+    build:
+      <<: *build
+      dockerfile: deploy/docker/postgres.Dockerfile
+
+  # Same images as api and postgres, built above: never pulled.
+  migrate:
+    pull_policy: never
+  backup:
+    pull_policy: never
+  keycloak-db-init:
+    pull_policy: never

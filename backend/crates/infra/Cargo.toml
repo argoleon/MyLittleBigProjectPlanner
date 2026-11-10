@@ -1,0 +1,32 @@
+[package]
+name = "infra"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+chrono.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+uuid.workspace = true
+domain.workspace = true
+thiserror = "2.0.21"
+tokio = { version = "1.54.1", features = ["signal", "macros", "rt", "net", "io-util", "time"] }
+tracing = "0.1.44"
+opentelemetry = { version = "0.33.1", default-features = false, features = ["trace", "metrics"] }
+opentelemetry_sdk = { version = "0.33.1", default-features = false, features = ["trace", "metrics", "rt-tokio"] }
+opentelemetry-otlp = { version = "0.33.1", default-features = false, features = ["http-proto", "reqwest-blocking-client", "trace", "metrics"] }
+tracing-opentelemetry = "0.34.0"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
+
+[dev-dependencies]
+opentelemetry = { version = "0.33.1", default-features = false, features = ["metrics"] }
+tempfile = "3.27.0"
+testkit.workspace = true
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros"] }

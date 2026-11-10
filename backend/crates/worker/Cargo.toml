@@ -1,0 +1,17 @@
+[package]
+name = "worker"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+infra.workspace = true
+axum = "0.8.9"
+tokio = { version = "1.54.1", features = ["full"] }
+tokio-util = "0.7.20"
+tracing = "0.1.44"

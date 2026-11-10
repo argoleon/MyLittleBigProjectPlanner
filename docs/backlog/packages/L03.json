@@ -1,0 +1,324 @@
+{
+  "lot": "L03",
+  "title": "Hierarchy",
+  "level": "essential",
+  "depends_on": ["L02"],
+  "summary": "Portfolios, programs and projects in a multi-parent directed acyclic graph: a single `node` table, `node_edge` with optional weighting and the `node_closure` closure table. The attachment matrix and cycle prevention are enforced by the API and the database. Roles defined in L02 are granted on nodes and inherited downwards (union across parents, additive only); a confidential project blocks inheritance and is counted anonymously. A worker precomputes aggregates over distinct descendant projects (planned load, consumed capacity, progress by status category, open and late tickets), which light up as tickets (L05) and workload (L08) arrive. Projects can be archived to read-only.",
+  "stories": [
+    {
+      "id": "L03-US01",
+      "title": "Create portfolios, programs and projects",
+      "level": "essential",
+      "as_a": "tenant admin or node admin",
+      "i_want": "to create portfolios, programs and projects with their description, owners, dates, status and objectives",
+      "so_that": "the organization's work is structured before tickets are created",
+      "acceptance": [
+        "Given I am tenant admin, When I create project \"Identity platform\" with key `PLAT`, Then it is created at the root and `PLAT` is unique within the tenant",
+        "Given another tenant already uses key `PLAT`, When I create `PLAT` in my tenant, Then it succeeds",
+        "Given I am node admin of program \"IT Modernization\", When I create a child project under it, Then it is created and attached to the program",
+        "Given I am a user without \"administer node\" permission, When I try to create a child, Then I get 403",
+        "Given a portfolio, When I edit its owners, dates, status and objectives, Then changes are saved with optimistic concurrency (`If-Match`)"
+      ],
+      "spec": ["§4", "§18"],
+      "mockups": ["docs/mockups/previews/05-portfolio.png", "docs/mockups/previews/14-project-parents-permissions.png"],
+      "depends_on": [],
+      "tech": [
+        {
+          "id": "L03-US01-T01",
+          "title": "Create node table with type-specific attributes",
+          "layer": "database",
+          "description": "Create `node` (type portfolio/program/project, name, description, key for projects unique per tenant, owners, start/end dates, status, objectives, archived flag, confidential flag, version) with RLS and indexes starting with `tenant_id`. Prepare `external_ref` usage for nodes.",
+          "done_when": [
+            "Integration tests verify key uniqueness per tenant and RLS isolation",
+            "Unit tests cover project key format validation",
+            "Migration reviewed against §18 conventions (UUID v7, timestamptz, version)"
+          ]
+        },
+        {
+          "id": "L03-US01-T02",
+          "title": "Implement node CRUD endpoints",
+          "layer": "backend",
+          "description": "Add `/api/v1/nodes` endpoints (create, read, update, list with cursor and filters by type) with permission checks: tenant admin anywhere, node admin for children of nodes they administer. ETag/If-Match and Idempotency-Key as in the reference endpoint.",
+          "done_when": [
+            "Unit tests cover authorization rules for creation",
+            "Integration tests cover CRUD, 403, 412 on stale version and cross-tenant 404",
+            "OpenAPI and generated client updated"
+          ]
+        },
+        {
+          "id": "L03-US01-T03",
+          "title": "Build node creation dialog and General settings tab",
+          "layer": "frontend",
+          "description": "Build the \"Add a child\" / \"New node\" dialog (type, name, key for projects, owners, dates) and the General tab of node settings. Use Material form fields, user pickers, date pickers in local dates; handle loading and error states.",
+          "done_when": [
+            "Unit tests cover form validation per node type",
+            "Integration tests render the dialog and tab with mocked client",
+            "axe-core passes; texts are Transloco keys"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L03-US02",
+      "title": "Attach a node to several parents with weighting",
+      "level": "essential",
+      "as_a": "node admin",
+      "i_want": "to attach a project to several programs or portfolios, with an optional weighting per link",
+      "so_that": "shared projects are represented once and budgets can be allocated across parents",
+      "acceptance": [
+        "Given project PLAT under program \"IT Modernization\", When I add program \"Compliance\" as a second parent with weighting 40%, Then both links exist and the default weighting of the first stays 100%",
+        "Given a program, When I try to attach it under a project, Then it is refused because the matrix only allows portfolio or program parents",
+        "Given sub-project \"Cyber permissions\" is a descendant of PLAT, When I try to make it a parent of PLAT, Then it is refused because the link would create a cycle, and the parent picker shows it disabled with that reason",
+        "Given two concurrent requests that together would create a cycle, When they run, Then the database rejects one of them",
+        "Given I remove a parent link, When it completes, Then the closure table and aggregates are updated"
+      ],
+      "spec": ["§4", "§18"],
+      "mockups": ["docs/mockups/previews/14-project-parents-permissions.png"],
+      "depends_on": ["L03-US01"],
+      "tech": [
+        {
+          "id": "L03-US02-T01",
+          "title": "Create node_edge and node_closure with cycle and matrix checks",
+          "layer": "database",
+          "description": "Create `node_edge` (parent, child, weighting default 100) and `node_closure` (ancestor, descendant, path count) with RLS. Maintain the closure in the same transaction as edge changes; enforce the attachment matrix and reject cycles with constraints/triggers, serialized with an advisory lock per tenant hierarchy to survive concurrent writes.",
+          "done_when": [
+            "Integration tests cover matrix violations, direct and indirect cycles, and concurrent cycle creation on real PostgreSQL",
+            "Integration tests check closure path counts after add/remove in diamond graphs",
+            "Unit tests cover the matrix rules in the domain crate"
+          ]
+        },
+        {
+          "id": "L03-US02-T02",
+          "title": "Implement parent link endpoints and descendant queries",
+          "layer": "backend",
+          "description": "Add endpoints to add, update weighting and remove parent links, list parents and children, and list ancestors/descendants via the closure table. Add a candidate-parent search endpoint returning each candidate with an allowed flag and refusal reason (matrix, cycle). Emit a hierarchy-changed event for aggregates and permission cache invalidation.",
+          "done_when": [
+            "Unit tests cover refusal reason computation",
+            "Integration tests cover each acceptance criterion and cross-tenant isolation",
+            "Problem Details codes `hierarchy_cycle` and `hierarchy_matrix` documented"
+          ]
+        },
+        {
+          "id": "L03-US02-T03",
+          "title": "Build the Parents and Children cards of node settings",
+          "layer": "frontend",
+          "description": "Build the \"Attachments and permissions\" tab: Parents card with weighting fields and unlink buttons, \"Add a parent\" search panel showing allowed and refused candidates with the reason, Children card with links to open them.",
+          "done_when": [
+            "Unit tests cover weighting validation (0-100%) and candidate rendering",
+            "Integration tests render the cards with mocked client",
+            "axe-core passes; icon buttons have aria-labels"
+          ]
+        },
+        {
+          "id": "L03-US02-T04",
+          "title": "Add e2e test for multi-parent attachment and cycle refusal",
+          "layer": "e2e",
+          "description": "Playwright test: create a portfolio, two programs and a project, attach the project to both programs with weightings, then try to attach a descendant as parent and see the refusal.",
+          "done_when": [
+            "Test passes headless in CI",
+            "axe-core checks run on the settings tab"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L03-US03",
+      "title": "Grant roles on nodes, inherited by descendants",
+      "level": "essential",
+      "as_a": "node admin",
+      "i_want": "to grant a role to a user or group on a node and see the effective access on any node",
+      "so_that": "permissions are set once at the right level and apply to everything below",
+      "acceptance": [
+        "Given group \"Managers\" has role \"Project manager\" on portfolio \"Digital transformation\", When a member opens a project under it, Then they have the role's permissions there",
+        "Given PLAT has two parents granting \"Contributor\" and \"Reader\" to different groups, When a user belongs to both groups, Then their access is the union of both roles plus direct roles",
+        "Given the effective access card of PLAT, When I open it, Then each user or group shows its role and whether it is direct or inherited from which node",
+        "Given a grant is removed on the portfolio, When the user next calls the API, Then the inherited permissions are gone within seconds (cache invalidated)",
+        "Given a user without any grant on a node, When they request it, Then they get 404 and it does not appear in lists"
+      ],
+      "spec": ["§4", "§14"],
+      "mockups": ["docs/mockups/previews/14-project-parents-permissions.png", "docs/mockups/previews/09-members-roles.png"],
+      "depends_on": ["L03-US02"],
+      "tech": [
+        {
+          "id": "L03-US03-T01",
+          "title": "Implement effective permission computation over the closure",
+          "layer": "domain",
+          "description": "Implement in `crates/domain` the rule: effective permissions on node N = union of roles granted on N and on every ancestor reachable without crossing a node that blocks inheritance, for the user and their groups. Pure function over grants and ancestry data.",
+          "done_when": [
+            "Unit tests cover single parent, diamond multi-parent, group plus direct grants and blocked inheritance",
+            "Property-based tests check that adding a grant never removes a permission",
+            "Integration coverage through T02"
+          ]
+        },
+        {
+          "id": "L03-US03-T02",
+          "title": "Create node_role_grant and the cached permission resolver",
+          "layer": "backend",
+          "description": "Create `node_role_grant` (node, role, user or group) with RLS, grant endpoints, an effective-access endpoint listing direct and inherited grants with their origin, and an SQL resolver using `node_closure`, cached in Valkey and invalidated on grant, group, role or hierarchy events. Node listing endpoints filter by view permission.",
+          "done_when": [
+            "Unit tests cover cache invalidation triggers",
+            "Integration tests cover inheritance, union, removal propagation and 404 for invisible nodes on real PostgreSQL and Valkey",
+            "Cross-tenant test proves grants never leak between tenants"
+          ]
+        },
+        {
+          "id": "L03-US03-T03",
+          "title": "Build the Effective access card and grant dialog",
+          "layer": "frontend",
+          "description": "Build the \"Effective access\" card listing users and groups with role chips and origin (direct, inherited from X), and the \"Add\" dialog to grant a role to a user or group on the node.",
+          "done_when": [
+            "Unit tests cover origin labels",
+            "Integration tests render the card with direct and inherited grants",
+            "axe-core passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L03-US04",
+      "title": "Mark a project as confidential",
+      "level": "essential",
+      "as_a": "node admin",
+      "i_want": "to make a project confidential so that only its direct members can access it",
+      "so_that": "sensitive projects stay private while still counting in their parents' figures",
+      "acceptance": [
+        "Given PLAT is confidential, When a user with an inherited role from the portfolio opens it, Then they get 404",
+        "Given PLAT is confidential, When a direct member opens it, Then they have their direct role's permissions",
+        "Given a portfolio containing a confidential project, When a non-member views the portfolio, Then the project appears as \"Confidential project\" without name or details but its load is counted in aggregates",
+        "Given I toggle confidentiality on, When it is saved, Then the permission cache is invalidated and the change is audited"
+      ],
+      "spec": ["§4", "§14"],
+      "mockups": ["docs/mockups/previews/14-project-parents-permissions.png", "docs/mockups/previews/05-portfolio.png"],
+      "depends_on": ["L03-US03"],
+      "tech": [
+        {
+          "id": "L03-US04-T01",
+          "title": "Apply inheritance blocking and anonymous projection",
+          "layer": "backend",
+          "description": "Wire the confidential flag into the permission resolver (blocks inherited roles) and into node and aggregate read models: non-members get an anonymized projection (type, opaque id, load figures only). Add the toggle endpoint with audit.",
+          "done_when": [
+            "Unit tests cover the anonymized projection",
+            "Integration tests cover direct member access, inherited access refused, and anonymized listing in the parent",
+            "No confidential name appears in any API response to non-members (asserted on list, search and aggregate endpoints)"
+          ]
+        },
+        {
+          "id": "L03-US04-T02",
+          "title": "Build the Confidentiality card and anonymous rows",
+          "layer": "frontend",
+          "description": "Build the Confidentiality card with a `mat-slide-toggle` and explanatory text, and render anonymized projects in hierarchy tables with a lock icon and the \"You do not have access\" hint.",
+          "done_when": [
+            "Unit tests cover anonymized row rendering",
+            "Integration tests render both states",
+            "axe-core passes; lock icon has an accessible label"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L03-US05",
+      "title": "Portfolio view with aggregated indicators",
+      "level": "essential",
+      "as_a": "portfolio manager",
+      "i_want": "to see a portfolio or program with its children and aggregated load, progress, open and late tickets",
+      "so_that": "I can steer the whole portfolio at a glance",
+      "acceptance": [
+        "Given a portfolio, When I open it, Then I see the indicators planned load, consumed capacity, open tickets and late tickets, and a tree table of programs and projects with owner, status, progress, planned load, open and late",
+        "Given a project reached through two programs, When portfolio aggregates are computed, Then it is counted once at portfolio level, and each program applies its own link weighting",
+        "Given a ticket is created or closed in a descendant project, When a few seconds pass, Then the aggregates of every ancestor are updated",
+        "Given archived projects, When aggregates are computed, Then they are excluded",
+        "Given a portfolio with no descendants, When I open it, Then an empty state invites me to add a child"
+      ],
+      "spec": ["§4", "§13"],
+      "mockups": ["docs/mockups/previews/05-portfolio.png"],
+      "depends_on": ["L03-US02", "L03-US04"],
+      "tech": [
+        {
+          "id": "L03-US05-T01",
+          "title": "Implement aggregate rules over distinct descendants",
+          "layer": "domain",
+          "description": "Implement in `crates/domain` the aggregation over distinct descendant projects: deduplication of projects reached by several paths, weighting applied only to the direct parent's aggregate, progress by status category, exclusion of archived projects. Inputs are per-project figures; ticket and load sources are plugged in by L05 and L08.",
+          "done_when": [
+            "Unit tests cover diamond graphs, weighting, archived exclusion and confidential projects",
+            "Property-based test: a project's contribution to an ancestor never exceeds 100%",
+            "Integration coverage through T02"
+          ]
+        },
+        {
+          "id": "L03-US05-T02",
+          "title": "Precompute node aggregates in the worker",
+          "layer": "worker",
+          "description": "Create `load_aggregate`/`node_aggregate` storage and a worker job that recomputes the aggregates of all ancestors of a changed project, triggered by outbox events (hierarchy changes now; ticket and load events once L05/L08 exist). Debounce bursts so updates land within seconds.",
+          "done_when": [
+            "Unit tests cover the debounce and ancestor set computation",
+            "Integration tests prove aggregates are updated after a hierarchy change and stay tenant-isolated",
+            "Recompute of a 1,000-project tenant measured and documented"
+          ]
+        },
+        {
+          "id": "L03-US05-T03",
+          "title": "Expose hierarchy browse and aggregate endpoints",
+          "layer": "backend",
+          "description": "Add endpoints returning a node with its aggregate indicators and its children tree (lazy-loaded levels), respecting view permissions and anonymizing confidential projects. Also used later by the MCP `browse_hierarchy` tool.",
+          "done_when": [
+            "Unit tests cover tree assembly",
+            "Integration tests cover permissions, anonymization and deduplication on real PostgreSQL",
+            "p95 under 200 ms on seeded data (measured in the test)"
+          ]
+        },
+        {
+          "id": "L03-US05-T04",
+          "title": "Build the portfolio view and the portfolios list",
+          "layer": "frontend",
+          "description": "Build the Portfolios navigation entry (list of root nodes) and the node view: header with owner and dates, action buttons (Gantt, team workload, add child), four indicator cards, explanatory note on distinct descendants, and a tree `mat-table` with status chips and `mat-progress-bar`. Loading, empty and error states; updates on real-time events later (L05).",
+          "done_when": [
+            "Unit tests cover tree expansion and number formatting by locale",
+            "Integration tests render the view with mocked aggregates",
+            "axe-core passes; tree rows are keyboard expandable"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L03-US06",
+      "title": "Archive and restore a project",
+      "level": "essential",
+      "as_a": "node admin",
+      "i_want": "to archive a finished project and restore it if needed",
+      "so_that": "active lists and aggregates only show live work while history is preserved",
+      "acceptance": [
+        "Given an active project, When I archive it after confirmation, Then it becomes read-only and disappears from active lists and aggregates",
+        "Given an archived project, When any user tries to edit it or its future tickets, Then the API answers 409 with code `node_archived`",
+        "Given the archived filter, When I list nodes, Then archived projects are shown",
+        "Given an archived project, When I restore it, Then it becomes editable and is counted again in aggregates"
+      ],
+      "spec": ["§4"],
+      "mockups": ["docs/mockups/previews/14-project-parents-permissions.png"],
+      "depends_on": ["L03-US05"],
+      "tech": [
+        {
+          "id": "L03-US06-T01",
+          "title": "Implement archive and restore with read-only enforcement",
+          "layer": "backend",
+          "description": "Add archive and restore endpoints (administer node permission), a reusable guard rejecting writes on archived projects (used by ticket endpoints in L05), list filters, and an event triggering aggregate recomputation.",
+          "done_when": [
+            "Unit tests cover the guard",
+            "Integration tests cover archive, write refusal, list filtering, restore and aggregate update",
+            "Archive and restore are audited"
+          ]
+        },
+        {
+          "id": "L03-US06-T02",
+          "title": "Build the Archiving tab",
+          "layer": "frontend",
+          "description": "Build the Archiving tab of node settings with an archive/restore button, confirmation dialog explaining consequences, and a read-only banner shown on archived project pages.",
+          "done_when": [
+            "Unit tests cover the confirmation flow",
+            "Integration tests render both states",
+            "axe-core passes"
+          ]
+        }
+      ]
+    }
+  ]
+}

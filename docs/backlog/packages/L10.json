@@ -1,0 +1,165 @@
+{
+  "lot": "L10",
+  "title": "Time tracking",
+  "level": "important",
+  "depends_on": ["L05"],
+  "summary": "Simple time logging on tickets: date, duration, comment and billable flag, entered by the person (and later through the API and MCP, delivered in L15 and L16). Resources re-estimate the remaining work on their tickets, which feeds the burndown in hours and prepares the planned vs. actual comparison. Timesheets, approval, rates and budgets are out of the MVP. This package is important: it can slip just after the MVP.",
+  "stories": [
+    {
+      "id": "L10-US01",
+      "title": "Log time on a ticket",
+      "level": "important",
+      "as_a": "internal user",
+      "i_want": "to log time spent on a ticket with a date, duration, comment and billable flag",
+      "so_that": "the time actually spent is recorded and visible on the ticket",
+      "acceptance": [
+        "Given I have the 'log time' permission on the project, When I log 3 h on 6 November with a comment, Then the entry appears in the ticket's time tab and the ticket's time spent increases by 3 h",
+        "Given I enter a duration such as '1h30' or '1.5', When I save, Then it is stored as 90 minutes",
+        "Given a duration of zero, negative or over 24 h for one day, When I save, Then it is refused with an explicit error",
+        "Given I lack the 'log time' permission, When I open the ticket, Then the log time action is not available and the API answers 403",
+        "Given time entries of another tenant, When I list entries, Then they are never returned"
+      ],
+      "spec": ["§10", "§14"],
+      "mockups": ["docs/mockups/previews/19-time-logging.png", "docs/mockups/previews/03-ticket.png"],
+      "depends_on": [],
+      "tech": [
+        {
+          "id": "L10-US01-T01",
+          "title": "Create time_entry table with RLS",
+          "layer": "database",
+          "description": "Add `time_entry` (tenant_id, issue, resource or account, local work date as `date`, minutes, comment, billable flag, origin, version, timestamps) with RLS and indexes starting with tenant_id on (issue) and (account, date).",
+          "done_when": [
+            "Migrations apply cleanly",
+            "Integration tests on real PostgreSQL prove RLS isolation"
+          ]
+        },
+        {
+          "id": "L10-US01-T02",
+          "title": "Implement duration parsing and time entry rules in domain",
+          "layer": "domain",
+          "description": "In `crates/domain`, parse durations ('1h30', '1.5', '90m') to minutes with locale-aware decimal separator and validate entries (positive, at most 24 h per entry, work date as local date).",
+          "done_when": [
+            "Unit tests for every accepted format, FR and EN decimal separators and invalid inputs"
+          ]
+        },
+        {
+          "id": "L10-US01-T03",
+          "title": "Expose time entry endpoints",
+          "layer": "backend",
+          "description": "Add create, list (per ticket and per user over a period, cursor pagination), edit and delete endpoints for time entries, checking the 'log time' permission; only the author or a node admin edits or deletes. Changes are audited with their origin and emit outbox events.",
+          "done_when": [
+            "Integration tests cover permission, author-only edit, period listing and cross-tenant isolation",
+            "OpenAPI and Angular client regenerated"
+          ]
+        },
+        {
+          "id": "L10-US01-T04",
+          "title": "Build the time logging dialog and ticket time tab",
+          "layer": "frontend",
+          "description": "Build the log time `MatDialog` following the mockup (date picker, duration, comment, billable `mat-slide-toggle`) and the 'Time spent' tab on the ticket listing entries with totals, localized dates and durations.",
+          "done_when": [
+            "Unit tests for the dialog validation and the tab",
+            "axe check passes and FR/EN keys provided"
+          ]
+        },
+        {
+          "id": "L10-US01-T05",
+          "title": "Add Playwright test for time logging",
+          "layer": "e2e",
+          "description": "Scenario: open a ticket, log 1h30 with a comment, check the entry and the updated time spent, then edit and delete it.",
+          "done_when": [
+            "Scenario runs green in CI through `just`"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L10-US02",
+      "title": "Re-estimate remaining work on my tickets",
+      "level": "important",
+      "as_a": "assigned resource",
+      "i_want": "to update the remaining work on the tickets I work on",
+      "so_that": "the burndown in hours reflects reality",
+      "acceptance": [
+        "Given I log 3 h on a ticket with 10 h remaining, When the dialog opens, Then it proposes 7 h remaining, which I can change",
+        "Given I set remaining work to 4 h, When I save, Then the ticket shows 4 h remaining and the change appears in the history",
+        "Given remaining work changes during an active sprint on an hours board, When I open the burndown, Then the new value is reflected on that day",
+        "Given a negative remaining value, When I save, Then it is refused"
+      ],
+      "spec": ["§10", "§6"],
+      "mockups": ["docs/mockups/previews/19-time-logging.png", "docs/mockups/previews/03-ticket.png"],
+      "depends_on": ["L10-US01"],
+      "tech": [
+        {
+          "id": "L10-US02-T01",
+          "title": "Create remaining_estimate storage and history",
+          "layer": "database",
+          "description": "Add `remaining_estimate` (tenant_id, issue, minutes, author, effective timestamp) keeping every value so the burndown can read the value per day, with RLS. Expose the current value on the issue.",
+          "done_when": [
+            "Integration tests for RLS isolation and 'value at a given day' query"
+          ]
+        },
+        {
+          "id": "L10-US02-T02",
+          "title": "Expose remaining work update with suggestion rule",
+          "layer": "backend",
+          "description": "Implement the suggestion rule (previous remaining minus logged time, floored at zero) in `crates/domain`, and an endpoint to set remaining work, optionally together with a time entry in one transaction. Audited and emitted to the outbox.",
+          "done_when": [
+            "Unit tests for the suggestion rule",
+            "Integration tests for the combined transaction, permission and cross-tenant isolation",
+            "OpenAPI and Angular client regenerated"
+          ]
+        },
+        {
+          "id": "L10-US02-T03",
+          "title": "Add remaining work field to the time dialog and ticket",
+          "layer": "frontend",
+          "description": "Add the remaining work field to the log time dialog with the suggested value, and inline editing of 'Remaining' in the ticket details panel.",
+          "done_when": [
+            "Unit tests for the suggestion display and inline edit",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L10-US03",
+      "title": "Review my logged time over a period",
+      "level": "important",
+      "as_a": "internal user",
+      "i_want": "to see the time I logged over a week, with billable totals",
+      "so_that": "I can check my entries and correct mistakes",
+      "acceptance": [
+        "Given I logged time on several tickets this week, When I open 'My time', Then I see entries grouped by day with daily and weekly totals",
+        "Given billable and non-billable entries, When I view the totals, Then billable time is shown separately",
+        "Given an entry, When I edit its duration from the list, Then the totals and the ticket's time spent update",
+        "Given I switch to the previous week, When the list reloads, Then the period is computed in my time zone on local dates"
+      ],
+      "spec": ["§10"],
+      "mockups": ["docs/mockups/previews/19-time-logging.png"],
+      "depends_on": ["L10-US01"],
+      "tech": [
+        {
+          "id": "L10-US03-T01",
+          "title": "Add period totals to the time entries endpoint",
+          "layer": "backend",
+          "description": "Extend the per-user listing with daily, weekly and billable totals over a period of local dates.",
+          "done_when": [
+            "Integration tests for totals and period boundaries",
+            "OpenAPI and Angular client regenerated"
+          ]
+        },
+        {
+          "id": "L10-US03-T02",
+          "title": "Build the 'My time' screen",
+          "layer": "frontend",
+          "description": "Build a 'My time' screen with week navigation, a `mat-table` of entries grouped by day with totals, billable split, and edit and delete actions reusing the time dialog.",
+          "done_when": [
+            "Unit tests for grouping, totals and week navigation",
+            "axe check passes"
+          ]
+        }
+      ]
+    }
+  ]
+}

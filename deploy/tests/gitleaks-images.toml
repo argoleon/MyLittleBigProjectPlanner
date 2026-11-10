@@ -1,0 +1,11 @@
+# gitleaks configuration of the image scan (deploy/tests/images.sh): the
+# default rules, minus known false positives in third-party system files of
+# the base images. Keep each exception narrow and explained.
+title = "mlbpp image scan"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Perl C headers of the Debian base (macro names look like API keys)"
+paths = ['''^/scan/usr/lib/[^/]+/perl/[0-9.]+/CORE/[a-z_]+\.h$''']

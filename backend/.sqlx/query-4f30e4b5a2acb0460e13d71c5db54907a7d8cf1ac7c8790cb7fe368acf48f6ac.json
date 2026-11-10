@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT c.relname AS \"name!\"\n        FROM pg_class c\n        JOIN pg_namespace n ON n.oid = c.relnamespace\n        WHERE n.nspname = 'public'\n          AND c.relkind IN ('r', 'p')\n          AND c.relname <> '_sqlx_migrations'\n          AND (\n                NOT c.relrowsecurity\n             OR NOT EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid = c.oid)\n             OR (\n                    c.relname <> ALL ($1::text[])\n                AND (\n                        NOT c.relforcerowsecurity\n                     OR NOT EXISTS (\n                            SELECT 1 FROM pg_attribute a\n                            WHERE a.attrelid = c.oid\n                              AND a.attname = 'tenant_id'\n                              AND a.attnotnull\n                              AND NOT a.attisdropped\n                        )\n                    )\n                )\n          )\n        ORDER BY 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name!",
+        "type_info": "Name",
+        "origin": {
+          "Table": {
+            "table": "pg_class",
+            "name": "relname"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "4f30e4b5a2acb0460e13d71c5db54907a7d8cf1ac7c8790cb7fe368acf48f6ac"
+}

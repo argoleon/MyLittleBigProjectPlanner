@@ -9,6 +9,7 @@
 // application tokens (--app-*, see _app-tokens.scss). Components must only
 // use these variables: no hard-coded colors, fonts or radii.
 
+@use '@angular/cdk' as cdk;
 @use '@angular/material' as mat;
 @use 'palettes';
 @use 'app-tokens';
@@ -32,9 +33,11 @@ html {
     // side grid) may use mat.theme((density: -2)) on a container.
     density: 0,
   ));
-
   @include app-tokens.tokens;
 }
+
+// .cdk-visually-hidden: text for screen readers only.
+@include cdk.a11y-visually-hidden;
 
 html[data-theme='light'] {
   color-scheme: light;

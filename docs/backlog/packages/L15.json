@@ -1,0 +1,383 @@
+{
+  "lot": "L15",
+  "title": "Public API and OAuth",
+  "level": "essential",
+  "depends_on": ["L02", "L03", "L04", "L05", "L06", "L07", "L08", "L09", "L10", "L11", "L12", "L13", "L14"],
+  "summary": "Opens the REST API used by the front end to scripts, integrations, BI tools and third-party applications. This package owns the built-in OAuth 2.1 authorization server (authorization code + PKCE, consent per tenant, revocation), personal API tokens with scopes and expiry, service accounts for tenant automations, the fine-grained scope model, bulk operations (synchronous up to 100 items, background beyond with tracking), rate limiting per token and per tenant with RateLimit-* headers, and the published OpenAPI documentation. Cross-cutting conventions (cursor pagination, ETag, idempotency, Problem Details) are delivered by each functional package; here they are audited for consistency.",
+  "stories": [
+    {
+      "id": "L15-US01",
+      "title": "Create and revoke personal API tokens with scopes",
+      "level": "essential",
+      "as_a": "internal user",
+      "i_want": "to create personal API tokens limited to one tenant, some scopes and an expiry date",
+      "so_that": "my scripts can call the API with only the access they need",
+      "acceptance": [
+        "Given I am signed in to a tenant, When I create a token with a name, scopes and an expiry, Then the token value is shown once and only its hash is stored",
+        "Given a valid token, When a script calls the API with it as a Bearer token, Then the call succeeds within my permissions and the token's scopes",
+        "Given a token without `tickets:write`, When it is used to create a ticket, Then the call is rejected with 403 and an insufficient_scope Problem Details code",
+        "Given an expired or revoked token, When it is used, Then the call is rejected with 401",
+        "Given a token issued for tenant A, When it is used on tenant B, Then the call is rejected",
+        "Given my tokens list, When I view it, Then I see each token's tenant, scopes, expiry and last use"
+      ],
+      "spec": ["§15", "§3", "§14"],
+      "mockups": ["docs/mockups/previews/10-my-account.png"],
+      "depends_on": ["L15-US02"],
+      "tech": [
+        {
+          "id": "L15-US01-T01",
+          "title": "Create api_token table with hashed secrets",
+          "layer": "database",
+          "description": "Add `api_token` (tenant_id, account or service account owner, name, token prefix, secret hash, scopes array, expires_at, last_used_at, revoked_at) with RLS and an index on the lookup prefix. Secrets are random, high-entropy and stored hashed only.",
+          "done_when": [
+            "Migration applies; integration test verifies RLS",
+            "Integration test verifies no plaintext secret is stored"
+          ]
+        },
+        {
+          "id": "L15-US01-T02",
+          "title": "Authenticate Bearer tokens in the shared request layer",
+          "layer": "backend",
+          "description": "In `crates/api`, add token authentication to the shared request layer: resolve the token by prefix, verify the hash in constant time, check expiry, revocation and tenant, set the tenant context (SET LOCAL) and attach scopes. Update last_used_at asynchronously. Every route declares its required scope.",
+          "done_when": [
+            "Unit tests cover hash verification, expiry and scope matching",
+            "Integration tests cover valid, expired, revoked, wrong-tenant and insufficient-scope tokens on real PostgreSQL",
+            "A test fails if a route is registered without a required scope"
+          ]
+        },
+        {
+          "id": "L15-US01-T03",
+          "title": "Expose personal token management endpoints",
+          "layer": "backend",
+          "description": "Add endpoints to create (value returned once), list and revoke my tokens. A token can only carry scopes the owner is entitled to; expiry is mandatory with a tenant-configurable maximum.",
+          "done_when": [
+            "Integration tests cover create, list, revoke, maximum expiry and entitlement checks",
+            "Angular client regenerated"
+          ]
+        },
+        {
+          "id": "L15-US01-T04",
+          "title": "Build the API tokens section of My account",
+          "layer": "frontend",
+          "description": "In My account, build the personal API tokens `mat-table` (name, tenant, scopes as chips, expiry, last use, revoke icon button with aria-label) and a create `MatDialog` with scope checkboxes, expiry date picker and a one-time display of the value with a copy button.",
+          "done_when": [
+            "Component unit tests cover creation, one-time display and revocation confirmation",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L15-US02",
+      "title": "Define fine-grained API scopes",
+      "level": "essential",
+      "as_a": "tenant admin",
+      "i_want": "every API operation to require a documented scope",
+      "so_that": "tokens and third-party applications only get the access they were granted",
+      "acceptance": [
+        "Given the scope catalog (tickets:read, tickets:write, workload:read, workload:write, time:write, admin and others), When I read the API documentation, Then each operation shows its required scope",
+        "Given a token with scopes and a user with roles, When an operation is called, Then access requires both the scope and the user's permission on the node",
+        "Given an external account, When it obtains any token, Then internal-only scopes are never granted",
+        "Given a cookie session from the web front end, When an operation is called, Then scopes do not restrict it and only permissions apply"
+      ],
+      "spec": ["§15", "§14"],
+      "mockups": [],
+      "depends_on": [],
+      "tech": [
+        {
+          "id": "L15-US02-T01",
+          "title": "Model scopes and the scope check in the domain crate",
+          "layer": "domain",
+          "description": "In `crates/domain`, define the scope catalog as an enum with stable string codes and implication rules (write implies read, admin implies tenant administration operations), and a function combining scopes with effective permissions.",
+          "done_when": [
+            "Unit tests cover parsing, implication rules and the scope x permission combination"
+          ]
+        },
+        {
+          "id": "L15-US02-T02",
+          "title": "Annotate all routes with scopes in the OpenAPI contract",
+          "layer": "backend",
+          "description": "Declare the required scope on every route and publish it as an OAuth2 security requirement in the utoipa-generated contract. Add a contract test listing every operation and its scope.",
+          "done_when": [
+            "Integration test asserts every operation in the generated OpenAPI has a security requirement",
+            "Integration tests cover scope enforcement on one route per resource family"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L15-US03",
+      "title": "Authorize a third-party application with OAuth 2.1",
+      "level": "essential",
+      "as_a": "internal user",
+      "i_want": "to authorize an application such as an MCP client for one tenant and chosen scopes",
+      "so_that": "it can act on my behalf without my password, and I can revoke it anytime",
+      "acceptance": [
+        "Given a registered client, When it starts the authorization code flow with PKCE (S256), Then I sign in if needed and see a consent screen naming the client, the tenant to choose and the requested scopes",
+        "Given I approve, When the client exchanges the code with the correct code_verifier, Then it receives an access token and a rotating refresh token valid for the chosen tenant only",
+        "Given a wrong code_verifier, a reused code or a redirect URI not registered, When the client calls the token endpoint, Then the request is rejected",
+        "Given I refuse consent, When I click Refuse, Then the client receives access_denied",
+        "Given an authorized application, When I revoke it from My account, Then its tokens stop working immediately",
+        "Given the authorization server metadata endpoint, When a client fetches it, Then it describes endpoints, PKCE methods and scopes as RFC 8414 requires"
+      ],
+      "spec": ["§15", "§16", "§14"],
+      "mockups": ["docs/mockups/previews/08-oauth-consent.png", "docs/mockups/previews/10-my-account.png"],
+      "depends_on": ["L15-US02"],
+      "tech": [
+        {
+          "id": "L15-US03-T01",
+          "title": "Create OAuth client, grant, code and token tables",
+          "layer": "database",
+          "description": "Add `oauth_client` (client id, name, redirect URIs, public/confidential, hashed secret), consent grants (account, tenant, client, scopes, granted_at, revoked_at), authorization codes (hashed, PKCE challenge, expiry, used) and refresh tokens (hashed, family id for rotation and reuse detection). Tenant-scoped tables use RLS.",
+          "done_when": [
+            "Migration applies; integration tests verify RLS and single-use code constraint"
+          ]
+        },
+        {
+          "id": "L15-US03-T02",
+          "title": "Implement authorization, token and revocation endpoints",
+          "layer": "backend",
+          "description": "Using a maintained MIT/Apache OAuth library where it helps, implement `/oauth/authorize`, `/oauth/token` (authorization_code with mandatory PKCE S256, refresh_token with rotation and reuse detection), `/oauth/revoke`, RFC 8414 metadata and the protected resource metadata needed by MCP clients. Exact redirect URI matching; short-lived access tokens bound to one tenant.",
+          "done_when": [
+            "Unit tests cover PKCE verification, code expiry and refresh rotation logic",
+            "Integration tests cover full flow, wrong verifier, code reuse, refresh token reuse revoking the family, wrong redirect URI and wrong tenant",
+            "Library licenses pass cargo-deny"
+          ]
+        },
+        {
+          "id": "L15-US03-T03",
+          "title": "Support client registration for MCP clients",
+          "layer": "backend",
+          "description": "Allow tenant admins to register clients, and support dynamic client registration (RFC 7591) for public clients as expected by the MCP authorization specification, behind a tenant setting. Registered clients are listed for admins.",
+          "done_when": [
+            "Integration tests cover admin registration, dynamic registration enabled and disabled",
+            "Unit tests cover redirect URI validation"
+          ]
+        },
+        {
+          "id": "L15-US03-T04",
+          "title": "Build the consent screen and authorized applications list",
+          "layer": "frontend",
+          "description": "Build the OAuth consent page (client, signed-in user, tenant radio cards, scopes with readable descriptions from Transloco keys, MCP notice, Refuse and Authorize buttons) and the Authorized applications section of My account with revoke buttons.",
+          "done_when": [
+            "Component unit tests cover tenant selection, refuse and authorize",
+            "axe check passes"
+          ]
+        },
+        {
+          "id": "L15-US03-T05",
+          "title": "Add Playwright test for the OAuth authorization code flow",
+          "layer": "e2e",
+          "description": "End-to-end test with a test client: start the flow, sign in, pick a tenant, approve, exchange the code, call the API, revoke from My account and verify the token is rejected.",
+          "done_when": [
+            "Playwright test passes in CI through `just`"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L15-US04",
+      "title": "Manage service accounts for tenant automations",
+      "level": "essential",
+      "as_a": "tenant admin",
+      "i_want": "to create service accounts with roles and tokens",
+      "so_that": "automations do not depend on a person's account",
+      "acceptance": [
+        "Given I am a tenant admin, When I create a service account with a name, Then it appears in the members list as a service account",
+        "Given a service account, When I grant it node roles and create a token for it, Then the automation can call the API within those roles and the token's scopes",
+        "Given a service account, When it acts, Then the history records it as the author with origin API",
+        "Given I disable a service account, When its tokens are used, Then they are rejected",
+        "Given a service account, When anyone tries to sign in to the web interface with it, Then sign-in is impossible"
+      ],
+      "spec": ["§15", "§3", "§14"],
+      "mockups": ["docs/mockups/previews/09-members-roles.png"],
+      "depends_on": ["L15-US01"],
+      "tech": [
+        {
+          "id": "L15-US04-T01",
+          "title": "Model service accounts as tenant-scoped principals",
+          "layer": "database",
+          "description": "Add a service account principal (tenant_id, name, description, disabled_at, created_by) usable in role grants and as token owner, with RLS. It has no password and no global account.",
+          "done_when": [
+            "Migration applies; integration test verifies RLS and grant usage"
+          ]
+        },
+        {
+          "id": "L15-US04-T02",
+          "title": "Expose service account management endpoints",
+          "layer": "backend",
+          "description": "Add admin endpoints to create, disable, list service accounts and manage their tokens; integrate them in permission computation and audit log authorship.",
+          "done_when": [
+            "Integration tests cover create, grant, token use, disable, audit authorship and non-admin denial",
+            "Unit tests cover principal resolution"
+          ]
+        },
+        {
+          "id": "L15-US04-T03",
+          "title": "Add service accounts to the members administration screen",
+          "layer": "frontend",
+          "description": "In the members and roles administration, add a Service accounts tab with a `mat-table`, creation dialog, role assignment reuse and token management dialog.",
+          "done_when": [
+            "Component unit tests cover create, disable and token creation",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L15-US05",
+      "title": "Run bulk operations on tickets with progress tracking",
+      "level": "essential",
+      "as_a": "internal user",
+      "i_want": "to edit, transition or move many tickets at once",
+      "so_that": "I can reorganize work quickly from the interface or a script",
+      "acceptance": [
+        "Given 100 tickets or fewer, When I submit a bulk edit, transition or move, Then it runs synchronously and returns a per-ticket result",
+        "Given more than 100 tickets, When I submit the operation, Then it is queued as a background job and I get a job id to track progress",
+        "Given a running bulk job, When I poll it or watch the real-time stream, Then I see processed, succeeded and failed counts and per-ticket errors",
+        "Given tickets I may not edit or transitions not allowed by the workflow, When the bulk runs, Then those tickets fail individually with a reason and the others succeed",
+        "Given a bulk request replayed with the same Idempotency-Key, When it arrives, Then no second operation is started"
+      ],
+      "spec": ["§15", "§17"],
+      "mockups": ["docs/mockups/previews/15-search.png"],
+      "depends_on": [],
+      "tech": [
+        {
+          "id": "L15-US05-T01",
+          "title": "Create bulk operation tracking table",
+          "layer": "database",
+          "description": "Add `bulk_operation` (tenant_id, requester, kind, payload JSONB, total, processed, succeeded, failed, per-item errors JSONB, status, idempotency key) with RLS.",
+          "done_when": [
+            "Migration applies; integration test verifies RLS and idempotency key uniqueness"
+          ]
+        },
+        {
+          "id": "L15-US05-T02",
+          "title": "Expose bulk edit, transition and move endpoints",
+          "layer": "backend",
+          "description": "Add `/api/v1/tickets/bulk` endpoints that validate the selection (explicit ids or a query), run up to 100 items synchronously in per-ticket transactions reusing ticket services, and enqueue a job beyond that. Each item records history with its origin.",
+          "done_when": [
+            "Integration tests cover sync path, async threshold, partial failures, permission and workflow errors and idempotent replay",
+            "Unit tests cover selection validation and threshold logic"
+          ]
+        },
+        {
+          "id": "L15-US05-T03",
+          "title": "Process large bulk operations in the worker",
+          "layer": "worker",
+          "description": "In `crates/worker`, process bulk jobs in batches with SKIP LOCKED, update progress counters, publish progress events on the outbox for real-time display, and resume safely after a crash.",
+          "done_when": [
+            "Integration tests cover batch processing, two workers without double processing and resume after interruption"
+          ]
+        },
+        {
+          "id": "L15-US05-T04",
+          "title": "Build bulk action bar and progress display",
+          "layer": "frontend",
+          "description": "In search results, add row selection and a bulk action bar (edit fields, transition, move) with dialogs, then a progress `mat-progress-bar` and a results summary listing failed tickets.",
+          "done_when": [
+            "Component unit tests cover selection, dialogs, sync results and async progress",
+            "axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L15-US06",
+      "title": "Enforce rate limits per token, user, IP and tenant",
+      "level": "essential",
+      "as_a": "platform operator",
+      "i_want": "API calls to be rate limited per token, user, IP and tenant with standard headers",
+      "so_that": "one script or tenant cannot degrade the service for others",
+      "acceptance": [
+        "Given a token under its limit, When it calls the API, Then responses include RateLimit-Limit, RateLimit-Remaining and RateLimit-Reset headers",
+        "Given a token exceeding its limit, When it calls the API, Then it receives 429 with a Problem Details body and Retry-After",
+        "Given a tenant exceeding its API quota, When any of its tokens call the API, Then they are limited while other tenants are unaffected",
+        "Given several API instances, When the same token calls them, Then the limit is shared across instances",
+        "Given a tenant admin, When I view the tenant settings, Then I see the configured API quotas"
+      ],
+      "spec": ["§15", "§14", "§3"],
+      "mockups": [],
+      "depends_on": [],
+      "tech": [
+        {
+          "id": "L15-US06-T01",
+          "title": "Implement distributed rate limiting middleware on Valkey",
+          "layer": "backend",
+          "description": "Add an Axum middleware implementing a sliding-window or token-bucket limiter in Valkey (atomic script) keyed by token, user, IP and tenant, with limits from tenant settings and defaults from environment configuration. Emit RateLimit-* and Retry-After headers.",
+          "done_when": [
+            "Unit tests cover limit resolution and header computation",
+            "Integration tests (real Valkey, two API instances) cover shared limits, tenant isolation and 429 responses"
+          ]
+        },
+        {
+          "id": "L15-US06-T02",
+          "title": "Expose tenant API quota settings",
+          "layer": "backend",
+          "description": "Add API quota fields to tenant settings (read for tenant admin, write for super admin) and show them in the tenant administration screen.",
+          "done_when": [
+            "Integration tests cover read and write permissions",
+            "Frontend component unit test covers display; axe check passes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L15-US07",
+      "title": "Publish the OpenAPI contract and interactive documentation",
+      "level": "essential",
+      "as_a": "integration developer",
+      "i_want": "a published OpenAPI specification and interactive documentation served by the API",
+      "so_that": "I can build integrations and BI extractions without reading the code",
+      "acceptance": [
+        "Given a running API, When I open the documentation URL, Then I see the interactive documentation generated from the current contract, self-hosted without third-party CDN",
+        "Given the contract, When I download it, Then it is a valid OpenAPI document describing every MVP resource family with scopes, errors and examples",
+        "Given a BI extraction, When I follow the documentation, Then I can page through tickets with cursors and select returned fields",
+        "Given a pull request changing the API, When CI runs, Then a breaking change against the previous v1 contract fails the build unless marked as an announced deprecation"
+      ],
+      "spec": ["§15", "§13"],
+      "mockups": [],
+      "depends_on": ["L15-US02"],
+      "tech": [
+        {
+          "id": "L15-US07-T01",
+          "title": "Serve the OpenAPI document and self-hosted docs UI",
+          "layer": "backend",
+          "description": "Serve `/api/v1/openapi.json` and an interactive documentation page bundled locally (MIT/Apache UI, no CDN, GDPR). Enrich utoipa annotations with descriptions, examples and Problem Details error codes per operation.",
+          "done_when": [
+            "Integration test fetches the document and validates it against the OpenAPI schema",
+            "Docs UI loads without any external request (test asserts CSP compliance)"
+          ]
+        },
+        {
+          "id": "L15-US07-T02",
+          "title": "Add contract breaking-change check to CI",
+          "layer": "infra",
+          "description": "Add a `just` recipe that compares the generated contract with the last released v1 contract using an MIT/Apache diff tool and fails on removals or incompatible changes; GitHub Actions calls it.",
+          "done_when": [
+            "Recipe fails on a test fixture with a removed field and passes on an additive change",
+            "Recipe wired into CI"
+          ]
+        },
+        {
+          "id": "L15-US07-T03",
+          "title": "Audit API conventions across all resource families",
+          "layer": "backend",
+          "description": "Write contract-level integration tests checking, for every list endpoint, cursor pagination and field selection; for every update, ETag/If-Match; for every creation, Idempotency-Key; and for every error, RFC 9457 format with a stable code. Fix deviations in the owning packages.",
+          "done_when": [
+            "Convention test suite runs in CI and passes for all MVP endpoints"
+          ]
+        },
+        {
+          "id": "L15-US07-T04",
+          "title": "Write the public API guide",
+          "layer": "infra",
+          "description": "Write `docs/en/api-guide.md` and its French version: authentication options, scopes, pagination, idempotency, ETag, errors, rate limits, bulk operations and a BI extraction example.",
+          "done_when": [
+            "Guide reviewed; every code sample is executed by an integration test or a script in CI"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -33,11 +33,47 @@ deploy/         docker-compose and profiles (sso, observability)
 docs/           specification (en, fr) and mockups
 ```
 
-Every CI step is a `just` recipe; GitHub Actions only calls them. Run the same recipes locally before declaring work done.
+Every CI step is a `just` recipe; GitHub Actions only calls them (one `ci-*` recipe per job, see `docs/en/developer-guide/ci.md`). Run the same recipes locally before declaring work done: `just ci` is the whole pipeline. Never put logic in the workflow files: add or change a recipe instead.
+
+## Development environment (containers only)
+
+**Nothing runs natively on the development machine.** The host only needs Docker, git and `just`; builds, tests, linters, code generators, database tools and dev servers all run in the containers of `deploy/compose.dev.yaml`.
+
+- `just dev` starts PostgreSQL, the API (http://127.0.0.1:18080) and the internal application (http://127.0.0.1:4200, `/api` proxied to the API), all with live reload.
+- `just build`, `just lint`, `just test`, `just migrate`, `just sqlx-prepare`… run in the `backend` toolchain container; `just shell` opens a shell in it.
+- `just web-lint`, `just web-test`, `just web-build`, `just generate-client`… run in the `web` container; `just e2e` runs Playwright in the `e2e` container. Before a pull request: `just ci-backend` and `just ci-web` (quality gates, licenses, vulnerabilities), and `just gitleaks`.
+- The production stack (`deploy/compose.yaml`, see `deploy/README.md`) also runs locally: `just compose-up` (https://localhost:18443), `just compose-test`, `just images-test` (images and SBOMs), `just deploy-lint`, `just compose-down`. A change to a Dockerfile, the compose file or a service's configuration must keep these green.
+- Never install a toolchain (Rust, Node, sqlx-cli, Playwright…) on the host for project work, and never call `cargo` or `npm` directly from the host. A new tool goes into the matching dev image (`deploy/dev/*.Dockerfile`) and is reached through a `just` recipe.
+- Containers run with the host user's uid and gid, so generated files (lock files, `.sqlx`, formatted code) belong to the developer.
+
+## Tests (mandatory)
+
+Unit tests and integration tests are **mandatory** for every development. A feature without them is not done and must not be merged.
+
+- **Unit tests**: every business rule, service, component and utility gets unit tests. Backend rules in `crates/domain` are tested without a database; Angular components and services are tested in isolation.
+- **Integration tests**: every API endpoint, repository, worker job and MCP tool gets integration tests against real dependencies (real PostgreSQL with RLS enabled, S3-compatible storage, Valkey), never against mocks of them. Test the error cases (Problem Details codes, permission denials, cross-tenant isolation) as well as the happy path.
+- Key user flows also get a Playwright end-to-end test.
+- A bug fix starts with a test that reproduces the bug.
+- Never delete, skip or weaken an existing test to make the build pass; fix the code, or stop and ask if the test itself looks wrong.
+- All tests run in CI through `just` and must pass before a feature is closed.
+
+## Git workflow (Gitflow)
+
+The project follows **Gitflow**.
+
+- `main`: production. Contains only released, working versions; every commit on `main` is a release tagged `vX.Y.Z`. Never commit directly to it.
+- `develop`: integration branch. Never commit directly to it either.
+- `feature/<package>-<short-description>` (e.g. `feature/L02-role-permissions`): **every development is a feature**, branched from `develop`. Once it is validated (review approved, unit and integration tests written and passing, CI green), the feature is finished: merged into `develop` and the feature branch is deleted.
+- `release/X.Y.Z`: when a work package (lot, see section 20 of the specification) is complete and working on `develop`, a release branch is created from `develop`. Only stabilization fixes go there. The release is then finished: merged into `main`, tagged `vX.Y.Z`, merged back into `develop`, and deployed.
+- `hotfix/X.Y.Z`: urgent production fix, branched from `main`, merged into both `main` (tagged) and `develop`.
+- Commit messages in English, using Conventional Commits (`feat:`, `fix:`, `test:`, `docs:`, `refactor:`, `chore:`).
+- Before starting a development, check you are on the right feature branch; if none exists, create it from an up-to-date `develop`.
 
 ## Licensing (blocking)
 
-The project is MIT. Only add dependencies under MIT, Apache-2.0, BSD, ISC or 0BSD. Fonts may be OFL-1.1. Never add GPL, LGPL, AGPL, SSPL or commercial dependencies; `cargo-deny` and the npm license check fail the build otherwise. If a needed library has an incompatible license, stop and ask.
+The project is MIT. Only add dependencies under MIT, Apache-2.0, BSD, ISC, 0BSD, Zlib or Unicode-3.0 (the last two decided on 2026-11-09: permissive, and unavoidable in Rust through `foldhash` and the Unicode/ICU4X crates). Fonts may be OFL-1.1. Never add GPL, LGPL, AGPL, SSPL or commercial dependencies; `cargo-deny` and the npm license check fail the build otherwise. If a needed library has an incompatible license, stop and ask.
+
+Accepted exception (decided 2026-11-09): npm packages that are build or test tools and never end up in the shipped bundles may also be under Python-2.0, MPL-2.0, CC-BY-4.0, BlueOak-1.0.0, CC0-1.0 or MIT-0. Today these are, among others, `argparse` (via ng-openapi-gen and Transloco's config tooling), `lightningcss` (via Vite), `axe-core` (accessibility tests), `caniuse-lite`, `lru-cache`, `sax`, `mdn-data` and the `@csstools/*` packages of stylelint. `just web-licenses` enforces it on the bundles themselves (esbuild metafiles of `ng build --stats-json`). Everything shipped stays limited to the list above.
 
 ## Backend rules (summary)
 
@@ -100,5 +136,5 @@ Stack: latest Angular, standalone components, signals, zoneless change detection
 1. Read the matching section of the specification and the mockup source and preview.
 2. Build or reuse shared components in `projects/ui` first (shell, chips, empty states), then the screen.
 3. Wire real data through the generated client; handle loading, empty and error states (the mockups only show the filled state).
-4. Add unit tests and, for key flows, a Playwright test.
+4. Add unit tests and integration tests (mandatory, see "Tests"), and a Playwright test for key flows.
 5. Run lint, tests and accessibility checks through `just` before finishing.

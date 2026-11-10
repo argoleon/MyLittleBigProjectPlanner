@@ -1,0 +1,16 @@
+[package]
+name = "mcp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+infra.workspace = true
+axum = "0.8.9"
+tokio = { version = "1.54.1", features = ["full"] }
+tracing = "0.1.44"

@@ -1,0 +1,27 @@
+{
+  "extends": ["stylelint-config-standard-scss"],
+  "ignoreFiles": ["dist/**", "node_modules/**", "projects/ui/styles/_palettes.scss", "projects/ui/styles/_app-tokens.scss"],
+  "rules": {
+    "color-no-hex": [true, { "message": "Use a --mat-sys-* or --app-* token instead of a hard-coded color (CLAUDE.md, Theme)." }],
+    "color-named": ["never", { "message": "Use a --mat-sys-* or --app-* token instead of a named color." }],
+    "function-disallowed-list": [
+      ["rgb", "rgba", "hsl", "hsla", "hwb", "lab", "lch", "oklab", "oklch", "color"],
+      { "message": "Use a --mat-sys-* or --app-* token instead of a color function." }
+    ],
+    "declaration-property-value-allowed-list": [
+      {
+        "/^(font|font-family|font-size|font-weight|line-height|letter-spacing)$/": ["/var\\(--(mat-sys|app)-/", "inherit", "/^\\d+px$/"],
+        "/^border(-[a-z]+)*-radius$/": ["/var\\(--(mat-sys|app)-/", "0", "50%"],
+        "/^(box-shadow|text-shadow)$/": ["/var\\(--(mat-sys|app)-/", "none"]
+      },
+      { "message": "Fonts, radii and shadows come from --mat-sys-* or --app-* tokens (CLAUDE.md, Theme)." }
+    ],
+    "selector-class-pattern": null,
+    "scss/comment-no-empty": null,
+    "no-descending-specificity": null,
+    "scss/at-mixin-argumentless-call-parentheses": null,
+    "scss/dollar-variable-pattern": null,
+    "scss/at-use-no-unnamespaced": null,
+    "property-no-vendor-prefix": null
+  }
+}
