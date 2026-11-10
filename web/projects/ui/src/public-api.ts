@@ -8,6 +8,11 @@ export { ERROR_CODE } from './lib/api/generated/models/error-code-array';
 export * from './lib/api/api-problem';
 export * from './lib/api/provide-api';
 
+// Authentication: session, route guards, sign-in page frame.
+export * from './lib/auth/auth.service';
+export * from './lib/auth/auth.guards';
+export * from './lib/auth/auth-layout';
+
 // Translations, language, time zone and formatting.
 export * from './lib/i18n/format';
 export * from './lib/i18n/locale.service';
@@ -25,6 +30,7 @@ export * from './lib/shell/shell';
 export * from './lib/shell/language-menu';
 export * from './lib/shell/theme-menu';
 export * from './lib/shell/tenant-switcher';
+export * from './lib/shell/account-menu';
 
 // Shared components.
 export * from './lib/components/status-chip';

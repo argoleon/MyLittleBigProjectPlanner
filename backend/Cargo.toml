@@ -44,3 +44,11 @@ unused_async = "warn"
 dbg_macro = "warn"
 todo = "warn"
 unwrap_used = "warn"
+
+# Argon2id is slow on purpose; unoptimized, a single hash takes seconds and
+# the authentication tests crawl. Optimize the hashing crates in dev builds.
+[profile.dev.package.argon2]
+opt-level = 3
+
+[profile.dev.package.blake2]
+opt-level = 3

@@ -56,6 +56,39 @@
     "errorTitle": "Une erreur est survenue",
     "retry": "Réessayer"
   },
+  "auth": {
+    "languages": "Langue",
+    "signIn": {
+      "title": "Connexion",
+      "organization": "Organisation : {{ name }}",
+      "email": "E-mail",
+      "password": "Mot de passe",
+      "forgotPassword": "Mot de passe oublié ?",
+      "submit": "Se connecter",
+      "passwordChanged": "Votre mot de passe a été changé. Connectez-vous avec le nouveau."
+    },
+    "forgotPassword": {
+      "title": "Mot de passe oublié",
+      "intro": "Saisissez l’e-mail de votre compte : vous recevrez un lien pour choisir un nouveau mot de passe.",
+      "submit": "Envoyer le lien",
+      "sent": "Si un compte correspond à {{ email }}, un e-mail contenant un lien vient de lui être envoyé. Ce lien est valable une heure.",
+      "backToSignIn": "Retour à la connexion"
+    },
+    "resetPassword": {
+      "title": "Nouveau mot de passe",
+      "intro": "Au moins 12 caractères. Une longue phrase est facile à retenir et difficile à deviner.",
+      "password": "Nouveau mot de passe",
+      "confirmation": "Confirmez le nouveau mot de passe",
+      "mismatch": "Les deux mots de passe sont différents.",
+      "submit": "Enregistrer le mot de passe",
+      "missingToken": "Ce lien est incomplet. Demandez-en un nouveau.",
+      "requestNewLink": "Demander un nouveau lien"
+    },
+    "account": {
+      "menu": "Compte : {{ name }}",
+      "signOut": "Se déconnecter"
+    }
+  },
   "errors": {
     "bad_request": "La requête est mal formée.",
     "validation_failed": "Certains champs sont invalides.",
@@ -70,6 +103,16 @@
     "unsupported_media_type": "Ce format de données n’est pas accepté.",
     "precondition_required": "Rechargez l’élément avant de le modifier.",
     "internal": "Le serveur a rencontré une erreur. Réessayez plus tard.",
+    "too_many_requests": "Trop de tentatives. Réessayez dans quelques minutes.",
+    "unauthenticated": "Votre session a pris fin. Reconnectez-vous.",
+    "forbidden": "Vous n’avez pas le droit de faire cela.",
+    "csrf": {
+      "invalid": "Votre session n’a pas pu être vérifiée. Rechargez la page et réessayez."
+    },
+    "auth": {
+      "invalid_credentials": "E-mail ou mot de passe incorrect.",
+      "reset_token_invalid": "Ce lien est invalide, a expiré ou a déjà servi. Demandez-en un nouveau."
+    },
     "idempotency_key": {
       "invalid": "La requête est mal formée.",
       "reused": "Cette demande a déjà été envoyée avec d’autres données.",
@@ -91,7 +134,10 @@
       "out_of_range": "La valeur est hors des limites autorisées.",
       "taken": "Cette valeur est déjà utilisée.",
       "unsupported_locale": "Cette langue n’est pas prise en charge.",
-      "unknown_field": "Ce champ n’existe pas."
+      "unknown_field": "Ce champ n’existe pas.",
+      "too_short": "C’est trop court.",
+      "same_as_email": "Le mot de passe doit être différent de l’e-mail.",
+      "email": "Saisissez une adresse e-mail valide."
     }
   }
 }

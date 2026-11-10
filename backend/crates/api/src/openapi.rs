@@ -13,13 +13,14 @@
 use axum::Router;
 use axum::http::{HeaderValue, header};
 use tower_http::set_header::SetResponseHeaderLayer;
-use utoipa::OpenApi;
 use utoipa::openapi::OpenApi as Contract;
+use utoipa::openapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
+use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::{Config, SwaggerUi};
 
 use crate::problem::{ErrorCode, ProblemBody};
-use crate::reference_items;
 use crate::tenant::AppState;
+use crate::{auth, reference_items};
 
 /// URL of the contract.
 pub const CONTRACT_PATH: &str = "/api/v1/openapi.json";
@@ -48,17 +49,43 @@ const DOCS_CSP: &str = "default-src 'self'; img-src 'self' data:; style-src 'sel
                        create a duplicate.\n\
                        - Lists are paginated with an opaque cursor (`limit`, `cursor`, `nextCursor`).\n\
                        - `?fields=` selects the returned fields.\n\
-                       - Translated labels follow `Accept-Language`, then the tenant's default language.",
+                       - Translated labels follow `Accept-Language`, then the tenant's default language.\n\n\
+                       **Authentication**\n\n\
+                       Endpoints need a session unless stated otherwise: sign in with \
+                       `POST /api/v1/auth/sign-in`, which sets the `mlbpp_session` cookie. Every \
+                       state-changing request (POST, PUT, PATCH, DELETE) must also send the session's \
+                       CSRF token in the `X-CSRF-Token` header (403 `csrf.invalid` otherwise); it is in \
+                       the `mlbpp_csrf` cookie and in `GET /api/v1/auth/session`.",
         license(name = "MIT", identifier = "MIT"),
     ),
     components(schemas(ErrorCode, ProblemBody)),
+    modifiers(&SecuritySchemes),
+    security(("session" = [])),
     tags(
         (name = "system", description = "Technical endpoints"),
+        (name = auth::TAG, description = "Sign-in, sessions and password reset"),
         (name = reference_items::TAG, description = "Reference resource showing every API convention; \
                                                      new endpoints copy it"),
     )
 )]
 struct ApiDoc;
+
+/// The `session` cookie scheme required by default.
+struct SecuritySchemes;
+
+impl Modify for SecuritySchemes {
+    fn modify(&self, contract: &mut Contract) {
+        let components = contract.components.get_or_insert_with(Default::default);
+        components.add_security_scheme(
+            "session",
+            SecurityScheme::ApiKey(ApiKey::Cookie(ApiKeyValue::with_description(
+                auth::SESSION_COOKIE,
+                "Session cookie set by `POST /api/v1/auth/sign-in`. State-changing requests also \
+                 need the `X-CSRF-Token` header.",
+            ))),
+        );
+    }
+}
 
 /// The contract before paths are added.
 pub(crate) fn base() -> Contract {

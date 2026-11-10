@@ -35,7 +35,7 @@ Our images (`api`, `worker`, `mcp`: distroless; `web`: nginx-unprivileged) run a
 
 Requirements: Docker Engine with Compose v2.24 or later, ports 80 and 443 open, a DNS record for the domain.
 
-1. **Variables.** `cp deploy/.env.example deploy/.env`, then set at least `MLBPP_DOMAIN` and `ACME_EMAIL`. Pin `MLBPP_VERSION` to a release (`v0.1.0`) rather than `latest`.
+1. **Variables.** `cp deploy/.env.example deploy/.env`, then set at least `MLBPP_DOMAIN`, `ACME_EMAIL` and `MAIL_FROM` (sender of the emails). In multi-tenant mode, also set `PUBLIC_URL=https://{tenant}.<domain>`: email links point to it. Pin `MLBPP_VERSION` to a release (`v0.1.0`) rather than `latest`.
 2. **Secrets.** `deploy/scripts/generate-secrets.sh` creates every file of `deploy/secrets/` with random values (it never overwrites an existing one). To use your own values, write the files yourself first:
 
    | File | Content |
@@ -48,17 +48,32 @@ Requirements: Docker Engine with Compose v2.24 or later, ports 80 and 443 open, 
    | `seaweedfs_s3_config` | SeaweedFS S3 identities (JSON) |
    | `keycloak_db_password`, `keycloak_admin_password` | Profile `sso` |
    | `grafana_admin_password` | Profile `observability` (user `admin`) |
+   | `smtp_url` | SMTP server of the emails (password resets): `smtp://host:587?tls=required` (STARTTLS) or `smtps://host:465`, with the account in the URL if needed. **The script writes a placeholder: replace it.** Until then, emails stay in the job queue and the worker logs the failures |
 
    Secrets are mounted as files (`/run/secrets/…`) and read through the `*_FILE` variables; none appears in the compose file, in the images, or in `docker inspect`.
 3. **Start.** `docker compose -f deploy/compose.yaml up -d --wait`. The first start takes a few minutes (ClamAV signatures).
-4. **First tenant.** Tenant administration comes with L02. Until then, create it in SQL:
+4. **First tenant.** Tenant administration comes with L02-US01. Until then, create it in SQL:
 
    ```sh
    docker compose -f deploy/compose.yaml exec postgres psql -U postgres -d mlbpp \
      -c "INSERT INTO tenant (id, slug, name) VALUES (uuidv7(), 'default', 'My organization')"
    ```
+5. **First administrator.** `api add-member` adds an internal member to a tenant; it reads the password (12 characters or more) from standard input, so it never appears in the shell history or the process list:
+
+   ```sh
+   docker compose -f deploy/compose.yaml exec -T api /usr/local/bin/api \
+     add-member default admin@example.org "Alice Martin" --role tenant_admin
+   ```
+
+   Type the password, then Enter. An email that already has an account in another tenant is linked to it and keeps its password.
 
 Optional profiles: add `--profile sso` and/or `--profile observability` to every command.
+
+## Sign-in and sessions
+
+Members sign in with their email and password (Argon2id hashes). Sessions live in Valkey: any api instance serves them, and they survive a restart. A session ends after `SESSION_IDLE_MINUTES` without use (8 hours by default) and `SESSION_MAX_AGE_HOURS` after sign-in at the latest (7 days); signing out or resetting the password ends it at once. Its cookie is `HttpOnly`, `Secure` and `SameSite=Lax`, scoped to the tenant's host name.
+
+After 5 failed sign-ins on an email, or 30 from one client address, sign-in is refused for 15 minutes. The client address is the last entry of `X-Forwarded-For`, which Traefik sets: do not expose the api without it.
 
 ## Scaling
 
@@ -139,5 +154,7 @@ just compose-test      # smoke, backup, scaling and profile tests
 just images-test       # image tests and SBOMs
 just compose-down      # stops it (data kept); just compose-reset deletes the data
 ```
+
+Emails are caught by Mailpit instead of being sent: read them on http://localhost:18026.
 
 The browser shows a certificate warning: Traefik's default certificate is self-signed.

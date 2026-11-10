@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# Smoke test of the production stack (L01-US06): every service healthy,
-# routing and security headers through Traefik, the reference endpoint end
-# to end, and data kept on the volumes across a full restart.
+# Smoke test of the production stack (L01-US06, L02-US02): every service
+# healthy, routing and security headers through Traefik, sign-in and the
+# reference endpoint end to end, a password reset email sent by the worker,
+# and data and sessions kept across a full restart.
 #
 # Needs the local stack running: `just compose-up`.
 source "$(dirname "$0")/lib.sh"
 
-SERVICES=(traefik web api worker mcp postgres backup valkey seaweedfs clamav)
+SERVICES=(traefik web api worker mcp postgres backup valkey seaweedfs clamav mailpit)
 
 section "services"
 expect_healthy "${SERVICES[@]}"
@@ -45,20 +46,50 @@ pass "/mcp is routed to the mcp service"
 ! curl_edge https://localhost/health/live | grep -q '"status":"ok"' || fail "a health endpoint is exposed publicly"
 pass "health endpoints are not exposed publicly"
 
-section "reference endpoint, end to end"
+section "sign-in"
 ensure_default_tenant
+smoke_email="smoke-admin@example.test"
+smoke_secret="smoke test passphrase"
+printf '%s\n' "$smoke_secret" | compose exec -T api /usr/local/bin/api add-member default "$smoke_email" "Smoke Admin" --role tenant_admin > /dev/null \
+    || fail "api add-member failed"
+pass "api add-member created the first administrator"
+expect_status 401 "the reference endpoint needs a session" https://localhost/api/v1/reference-items
+signed_in="$(curl_edge --include -X POST https://localhost/api/v1/auth/sign-in \
+    -H 'content-type: application/json' -d "{\"email\": \"$smoke_email\", \"password\": \"$smoke_secret\"}")"
+grep -q '^HTTP/[0-9.]* 200' <<< "$signed_in" || fail "sign-in failed: $signed_in"
+grep -qi '^set-cookie: mlbpp_session=.*HttpOnly' <<< "$signed_in" || fail "no HttpOnly session cookie: $signed_in"
+grep -qi '^set-cookie: mlbpp_session=.*Secure' <<< "$signed_in" || fail "the session cookie is not Secure"
+sid="$(grep -i '^set-cookie: mlbpp_session=' <<< "$signed_in" | sed -E 's/^[^=]*=([^;]*);.*/\1/')"
+xsrf="$(grep -i '^set-cookie: mlbpp_csrf=' <<< "$signed_in" | sed -E 's/^[^=]*=([^;]*);.*/\1/')"
+[ -n "$sid" ] && [ -n "$xsrf" ] || fail "missing cookies: $signed_in"
+pass "signed in: HttpOnly, Secure session cookie and CSRF cookie"
+# As a browser of the tenant: its session cookie, and its CSRF token on changes.
+as_member() { curl_edge -H "cookie: mlbpp_session=$sid" -H "x-csrf-token: $xsrf" "$@"; }
+
+section "reference endpoint, end to end"
 code="SMOKE-$(date +%s)"
-created="$(curl_edge --include -X POST https://localhost/api/v1/reference-items \
+expect_status 403 "a change without the CSRF token is refused" -X POST https://localhost/api/v1/reference-items \
+    -H "cookie: mlbpp_session=$sid" -H 'content-type: application/json' \
+    -d "{\"code\": \"$code\", \"labelTranslations\": {\"fr\": \"Fumée\", \"en\": \"Smoke\"}, \"quantity\": 1}"
+created="$(as_member --include -X POST https://localhost/api/v1/reference-items \
     -H 'content-type: application/json' -H "idempotency-key: smoke-$code" -H 'accept-language: en' \
     -d "{\"code\": \"$code\", \"labelTranslations\": {\"fr\": \"Fumée\", \"en\": \"Smoke\"}, \"quantity\": 1}")"
 grep -q '^HTTP/[0-9.]* 201' <<< "$created" || fail "creation failed: $created"
 location="$(grep -i '^location:' <<< "$created" | tr -d '\r' | cut -d' ' -f2)"
 pass "created $location"
-read_back="$(curl_edge -H 'accept-language: fr' "https://localhost$location")"
+read_back="$(as_member -H 'accept-language: fr' "https://localhost$location")"
 if ! grep -q "\"code\":\"$code\"" <<< "$read_back" || ! grep -q '"label":"Fumée"' <<< "$read_back"; then
     fail "read back: $read_back"
 fi
 pass "read back in French"
+
+section "password reset email, through the worker"
+expect_status 202 "a password reset is accepted" -X POST https://localhost/api/v1/auth/password-reset \
+    -H 'content-type: application/json' -d "{\"email\": \"$smoke_email\"}"
+reset_email() {
+    curl_backend "http://mailpit:8025/api/v1/message/latest" | grep -q 'https://localhost:18443/reset-password?token='
+}
+wait_until "the worker sent the reset link (caught by Mailpit)" 60 reset_email
 
 section "logs and readiness"
 request_id="smoke-$(date +%s)"
@@ -93,6 +124,13 @@ expect_healthy postgres seaweedfs api
 pass "PostgreSQL kept the reference item"
 [ "$(curl_backend "http://seaweedfs:8888/smoke/$code.txt")" = "$stored" ] || fail "the SeaweedFS file is gone"
 pass "SeaweedFS kept the file"
-expect_status 200 "the item is still served through Traefik" "https://localhost$location"
+expect_status 200 "the session and the item survive the restart (Valkey, PostgreSQL)" \
+    -H "cookie: mlbpp_session=$sid" "https://localhost$location"
+
+section "sign-out"
+expect_status 204 "sign-out" -X POST -H "cookie: mlbpp_session=$sid" -H "x-csrf-token: $xsrf" \
+    https://localhost/api/v1/auth/sign-out
+expect_status 401 "the cookie no longer works after sign-out" -H "cookie: mlbpp_session=$sid" \
+    https://localhost/api/v1/auth/session
 
 echo "[$TEST_NAME] all passed"

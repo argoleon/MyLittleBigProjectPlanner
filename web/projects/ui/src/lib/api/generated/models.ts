@@ -3,9 +3,15 @@
 
 export type { ErrorCode } from './models/error-code';
 export type { FieldError } from './models/field-error';
+export type { PasswordResetConfirmation } from './models/password-reset-confirmation';
+export type { PasswordResetRequest } from './models/password-reset-request';
 export type { Ping } from './models/ping';
 export type { Problem } from './models/problem';
 export type { ReferenceItem } from './models/reference-item';
 export type { ReferenceItemInput } from './models/reference-item-input';
 export type { ReferenceItemPage } from './models/reference-item-page';
+export type { Session } from './models/session';
+export type { SessionAccount } from './models/session-account';
+export type { SignInRequest } from './models/sign-in-request';
 export type { Tenant } from './models/tenant';
+export type { TenantRole } from './models/tenant-role';

@@ -30,9 +30,9 @@ default:
 images:
     {{compose}} --profile tools --profile web --profile e2e build
 
-# Start PostgreSQL, the API (:18080) and the internal application (:4200) with live reload
+# Start PostgreSQL, Valkey, Mailpit (:18025), the API (:18080), the worker and the app (:4200)
 dev: web-deps
-    {{compose}} --profile web up --build api web
+    {{compose}} --profile web up --build api worker web
 
 # Stop every development container (data is kept)
 down:
@@ -42,9 +42,11 @@ down:
 db-up:
     {{compose}} up -d --wait postgres
 
-# Create the development tenant "default" (until tenant administration exists, L02)
+# Create the development tenant "default" and its administrator
+# dev@example.test, password "development only" (sign in on http://127.0.0.1:4200)
 seed: migrate
     {{compose}} exec -T postgres psql -v ON_ERROR_STOP=1 -U mlbpp_owner -d mlbpp -c "INSERT INTO tenant (id, slug, name) VALUES (uuidv7(), 'default', 'Development') ON CONFLICT (slug) DO NOTHING"
+    {{be}} bash -c 'echo "development only" | DATABASE_URL="$DEV_DATABASE_URL" cargo run --locked --quiet -p api -- add-member default dev@example.test "Dev Admin" --role tenant_admin'
 
 # Delete the development database and build caches
 reset:
@@ -239,10 +241,7 @@ compose-reset:
 # Run the end-to-end tests against the local production stack
 compose-e2e *args: web-deps
     {{compose}} --profile e2e build e2e
-    docker run --rm --network mlbpp_edge --ipc host --user $DEV_UID:$DEV_GID \
-        -v "$PWD:/workspace" -w /workspace/web \
-        -e E2E_BASE_URL=https://localhost -e "E2E_HOST_RULES=MAP localhost traefik" \
-        mlbpp-dev-e2e npx playwright test {{args}}
+    deploy/tests/e2e.sh {{args}}
 
 # Deployment tests: smoke, backups, scaling, optional profiles, end to end
 compose-test: compose-up

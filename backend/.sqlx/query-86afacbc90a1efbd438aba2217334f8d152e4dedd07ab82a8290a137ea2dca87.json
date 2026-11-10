@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE password_reset\n        SET used_at = now(), version = version + 1\n        WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now()\n        RETURNING account_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "account_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "password_reset",
+            "name": "account_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bytea"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "86afacbc90a1efbd438aba2217334f8d152e4dedd07ab82a8290a137ea2dca87"
+}

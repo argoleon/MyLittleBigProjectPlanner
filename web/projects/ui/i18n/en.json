@@ -56,6 +56,39 @@
     "errorTitle": "Something went wrong",
     "retry": "Try again"
   },
+  "auth": {
+    "languages": "Language",
+    "signIn": {
+      "title": "Sign in",
+      "organization": "Organization: {{ name }}",
+      "email": "Email",
+      "password": "Password",
+      "forgotPassword": "Forgot your password?",
+      "submit": "Sign in",
+      "passwordChanged": "Your password has been changed. Sign in with the new one."
+    },
+    "forgotPassword": {
+      "title": "Forgot your password",
+      "intro": "Enter the email of your account: you will receive a link to choose a new password.",
+      "submit": "Send the link",
+      "sent": "If an account matches {{ email }}, an email with a link is on its way. The link is valid for one hour.",
+      "backToSignIn": "Back to sign-in"
+    },
+    "resetPassword": {
+      "title": "Choose a new password",
+      "intro": "At least 12 characters. A long sentence is easy to remember and hard to guess.",
+      "password": "New password",
+      "confirmation": "Confirm the new password",
+      "mismatch": "The two passwords differ.",
+      "submit": "Save the password",
+      "missingToken": "This link is incomplete. Ask for a new one.",
+      "requestNewLink": "Ask for a new link"
+    },
+    "account": {
+      "menu": "Account: {{ name }}",
+      "signOut": "Sign out"
+    }
+  },
   "errors": {
     "bad_request": "The request is malformed.",
     "validation_failed": "Some fields are invalid.",
@@ -70,6 +103,16 @@
     "unsupported_media_type": "This data format is not accepted.",
     "precondition_required": "Reload the item before changing it.",
     "internal": "The server ran into an error. Try again later.",
+    "too_many_requests": "Too many attempts. Try again in a few minutes.",
+    "unauthenticated": "Your session has ended. Sign in again.",
+    "forbidden": "You are not allowed to do this.",
+    "csrf": {
+      "invalid": "Your session could not be verified. Reload the page and try again."
+    },
+    "auth": {
+      "invalid_credentials": "Incorrect email or password.",
+      "reset_token_invalid": "This link is invalid, has expired or was already used. Ask for a new one."
+    },
     "idempotency_key": {
       "invalid": "The request is malformed.",
       "reused": "This request was already sent with different data.",
@@ -91,7 +134,10 @@
       "out_of_range": "The value is out of the allowed range.",
       "taken": "This value is already used.",
       "unsupported_locale": "This language is not supported.",
-      "unknown_field": "This field does not exist."
+      "unknown_field": "This field does not exist.",
+      "too_short": "This is too short.",
+      "same_as_email": "The password must differ from the email.",
+      "email": "Enter a valid email address."
     }
   }
 }

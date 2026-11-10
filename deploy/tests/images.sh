@@ -26,9 +26,10 @@ wait_healthy() {
 }
 
 section "each image starts alone and reports healthy"
+# The required settings, pointing nowhere: services connect lazily.
 declare -A RUN_ARGS=(
-    [api]="-e DATABASE_URL=postgres://nobody@127.0.0.1:1/none"
-    [worker]=""
+    [api]="-e DATABASE_URL=postgres://nobody@127.0.0.1:1/none -e VALKEY_URL=redis://127.0.0.1:1 -e PUBLIC_URL=https://planner.example.test"
+    [worker]="-e DATABASE_URL=postgres://nobody@127.0.0.1:1/none -e SMTP_URL=smtp://127.0.0.1:1 -e MAIL_FROM=noreply@example.test"
     [mcp]="-e MCP_API_BASE_URL=http://127.0.0.1:1"
     [web]=""
 )

@@ -24,6 +24,12 @@ opentelemetry_sdk = { version = "0.33.1", default-features = false, features = [
 opentelemetry-otlp = { version = "0.33.1", default-features = false, features = ["http-proto", "reqwest-blocking-client", "trace", "metrics"] }
 tracing-opentelemetry = "0.34.0"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
+lettre = { version = "0.11.23", default-features = false, features = ["builder", "smtp-transport", "tokio1", "tokio1-rustls", "ring", "rustls-native-certs"] }
+argon2 = "0.6.0"
+rand = "0.10.3"
+fred = { version = "10.1.0", default-features = false, features = ["i-keys", "i-sets"] }
+base64 = "0.23.1"
+sha2 = "0.11.1"
 
 [dev-dependencies]
 opentelemetry = { version = "0.33.1", default-features = false, features = ["metrics"] }

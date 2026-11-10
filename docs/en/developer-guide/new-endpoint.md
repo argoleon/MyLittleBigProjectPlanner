@@ -21,13 +21,13 @@ Every command runs in the dev containers through `just` (nothing runs natively).
 3. **SQL** in `crates/infra`: functions taking `&mut PgConnection` (the tenant transaction). Never filter on `tenant_id` and never pass it: row-level security scopes reads, and inserts use `app_current_tenant()`. Use `sqlx::query!` / `query_as!` with a private `Row` struct when a column needs a wrapper (`Json<…>`). Conditional writes take the expected versions (`version = ANY($n)`) and report `NotFound` or `VersionMismatch`.
 4. **Refresh the query metadata** with `just sqlx-prepare` and commit `backend/.sqlx`. Builds and CI compile against it without a database.
 5. **Handlers** in `crates/api`, registered in `routes.rs` with `routes!(…)` (one call per path):
-   - take `TenantTx` first: it is the only database access, and the tenant is already set;
+   - take `TenantTx` first: it is the only database access, the tenant is already set, and it guarantees a signed-in internal member of that tenant (401 `unauthenticated` without a session, 403 `csrf.invalid` when a state-changing request lacks the `X-CSRF-Token` header). `tx.member()` is that member. Only endpoints used before signing in take `PublicTenantTx` and declare `security(())` in their `#[utoipa::path]`;
    - use `ApiJson`, `ApiPath` and `ApiQuery` instead of axum's extractors, so input errors are Problem Details;
    - return `Result<_, Problem>`. Add new error codes to `ErrorCode` in `problem.rs`: plain names for generic codes, `resource.reason` for specific ones. A code never changes once published.
    - call `tx.commit().await?` before answering. Dropping the transaction rolls back.
    - document each handler with `#[utoipa::path(…)]`, as the reference does: a unique camelCase `operation_id`, the resource's `tag`, a `summary`, every parameter and header (`If-Match`, `Idempotency-Key`…), and every status it can answer. Error statuses use `body = ProblemBody, content_type = PROBLEM_JSON`. Request and response structs derive `ToSchema` with an `example`; `///` comments on them become descriptions in the contract, so keep implementation notes in `//` comments.
 6. **Contract and client.** Run `just generate-client`: it writes `backend/openapi.json`, then regenerates the Angular client. Commit both. A unit test fails if the contract is out of date, and `just client-check` (CI) fails with the diff if the client is. Check the result in the interactive documentation, `http://127.0.0.1:18080/api/v1/docs/`.
-7. **Integration tests** in `crates/api/tests/`, with `testkit::TestDb` and the helpers of `tests/common`. Cover the happy path, validation errors, `If-Match`, pagination, and **access from another tenant (404)**. Unit and integration tests are mandatory.
+7. **Integration tests** in `crates/api/tests/`, with `testkit::TestDb` and the helpers of `tests/common`: `start` signs in an administrator of each seeded tenant, `api.request(…)` sends that member's session cookie and CSRF token, `api.anonymous(…)` sends neither. Cover the happy path, validation errors, `If-Match`, pagination, **access from another tenant (404)** and **without a session (401)**. Unit and integration tests are mandatory.
 8. `just check` and `just web-check` must pass before opening the pull request.
 
 ## Conventions, as implemented by the reference
@@ -44,6 +44,7 @@ Every command runs in the dev containers through `just` (nothing runs natively).
 | Pagination | `?limit=50&cursor=…` (limit 1 to 200) | `{"items": [...], "nextCursor": "…" or null}`, in creation order |
 | Field selection | `?fields=id,code` | Only these fields; unknown name: 400 `invalid_query` |
 | Languages | `Accept-Language: en` | Labels in that language, else the tenant's default; `Content-Language` header. Every translation with `?fields=…,labelTranslations` |
+| Authentication | `mlbpp_session` cookie (`POST /api/v1/auth/sign-in`); `X-CSRF-Token` on `POST` / `PUT` / `PATCH` / `DELETE` | 401 `unauthenticated` without a valid session of this tenant; 403 `csrf.invalid` without the token |
 | Isolation | Host `<tenant>.example.org` | Another tenant's resource is a 404, never a 403: its existence is not disclosed |
 | JSON names | camelCase | camelCase |
 
@@ -62,6 +63,8 @@ try {
 }
 ```
 
+`provideApi()` also sends the CSRF token (copied from the `mlbpp_csrf` cookie) on state-changing requests, and shows the sign-in page when the API answers 401 `unauthenticated`. Screens of signed-in members sit under the `authGuard` route of `app.routes.ts`; `AuthService` holds the session.
+
 Every failed call rejects with an `ApiProblem`: its `code` comes from the `ErrorCode` catalog of the contract, or is `network` / `unknown` for failures that are not Problem Details. Tests use `ContractBackend` (`web/projects/ui/src/lib/api/testing/`), a mocked backend that answers with the contract's examples and rejects requests the contract does not define.
 
 ## Trying it locally
@@ -70,9 +73,14 @@ The interactive documentation, with every endpoint and error code, is at `http:/
 
 ```sh
 just dev                 # API on http://127.0.0.1:18080
-just seed                # creates the development tenant "default"
-curl -i -X POST http://127.0.0.1:18080/api/v1/reference-items \
-  -H 'content-type: application/json' -H "idempotency-key: $(uuidgen)" \
+just seed                # tenant "default", member dev@example.test / "development only"
+curl -i -c /tmp/mlbpp.cookies -X POST http://127.0.0.1:18080/api/v1/auth/sign-in \
+  -H 'content-type: application/json' -d '{"email": "dev@example.test", "password": "development only"}'
+csrf=$(awk '$6 == "mlbpp_csrf" {print $7}' /tmp/mlbpp.cookies)
+curl -i -b /tmp/mlbpp.cookies -X POST http://127.0.0.1:18080/api/v1/reference-items \
+  -H 'content-type: application/json' -H "x-csrf-token: $csrf" -H "idempotency-key: $(uuidgen)" \
   -d '{"code": "REF-1", "labelTranslations": {"fr": "Référence", "en": "Reference"}, "quantity": 3}'
-curl -i 'http://127.0.0.1:18080/api/v1/reference-items?limit=10' -H 'accept-language: en'
+curl -i -b /tmp/mlbpp.cookies 'http://127.0.0.1:18080/api/v1/reference-items?limit=10' -H 'accept-language: en'
 ```
+
+Emails sent in development (password resets) land in Mailpit: http://127.0.0.1:18025.

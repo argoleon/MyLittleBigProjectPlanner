@@ -4,6 +4,8 @@
 
 #![allow(clippy::unwrap_used)]
 
+mod common;
+
 use std::time::Duration;
 
 use api::{AppState, HttpSettings};
@@ -42,12 +44,10 @@ async fn requests_produce_a_duration_metric_and_a_server_span_continuing_the_cal
     let pool = PgPoolOptions::new()
         .connect_lazy("postgres://localhost/unused")
         .unwrap();
-    let state = AppState::new(
-        pool,
-        Tenancy::Single {
-            default_slug: "default".to_owned(),
-        },
-    );
+    let tenancy = Tenancy::Single {
+        default_slug: "default".to_owned(),
+    };
+    let state = AppState::new(pool, tenancy.clone(), common::offline_auth(&tenancy));
     let settings = HttpSettings {
         request_timeout: Duration::from_secs(10),
         body_limit_bytes: 1024,
