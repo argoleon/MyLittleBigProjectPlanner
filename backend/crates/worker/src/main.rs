@@ -81,19 +81,22 @@ fn serve() -> ExitCode {
 }
 
 async fn run(config: WorkerConfig) -> ExitCode {
-    let mut dependencies = Vec::new();
-    if let Some(database) = &config.database {
-        match infra::db::connect_lazy(database) {
-            Ok(pool) => {
-                infra::telemetry::observe_pool(&pool);
-                dependencies.push(infra::health::Dependency::Postgres(pool));
-            }
-            Err(err) => {
-                eprintln!("worker: invalid DATABASE_URL: {err}");
-                return ExitCode::FAILURE;
-            }
+    let pool = match infra::db::connect_lazy(&config.database) {
+        Ok(pool) => pool,
+        Err(err) => {
+            eprintln!("worker: invalid DATABASE_URL: {err}");
+            return ExitCode::FAILURE;
         }
-    }
+    };
+    infra::telemetry::observe_pool(&pool);
+    let mailer = match infra::email::Mailer::new(&config.mail.smtp_url, &config.mail.from) {
+        Ok(mailer) => mailer,
+        Err(err) => {
+            eprintln!("worker: invalid mail settings: {err}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let mut dependencies = vec![infra::health::Dependency::Postgres(pool.clone())];
     dependencies.extend(config.shared.dependencies());
 
     let listener = match tokio::net::TcpListener::bind(config.health_addr).await {
@@ -106,12 +109,13 @@ async fn run(config: WorkerConfig) -> ExitCode {
 
     let token = CancellationToken::new();
     let health = tokio::spawn(worker::serve_health(listener, token.clone(), dependencies.into()));
-    let mut worker = tokio::spawn(worker::run_loop(
-        token.clone(),
-        config.poll_interval,
-        worker::poll_jobs,
-    ));
-    tracing::info!(health = %config.health_addr, "worker started");
+    let runner = std::sync::Arc::new(worker::jobs::JobRunner::new(pool));
+    let handler = std::sync::Arc::new(worker::jobs::Jobs { mailer });
+    tracing::info!(health = %config.health_addr, worker_id = runner.worker_id(), "worker started");
+    let mut worker = tokio::spawn(worker::run_loop(token.clone(), config.poll_interval, move || {
+        let (runner, handler) = (runner.clone(), handler.clone());
+        async move { runner.next_batch(handler.as_ref()).await }
+    }));
 
     tokio::select! {
         res = &mut worker => {

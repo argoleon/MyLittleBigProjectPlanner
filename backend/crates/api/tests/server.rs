@@ -3,6 +3,8 @@
 // Test helpers sit outside `#[test]` functions; a panic there is a test failure.
 #![allow(clippy::unwrap_used)]
 
+mod common;
+
 use std::time::{Duration, Instant};
 
 use api::{AppState, HttpSettings};
@@ -25,12 +27,10 @@ fn offline_state() -> AppState {
     let pool = PgPoolOptions::new()
         .connect_lazy("postgres://localhost/unused")
         .unwrap();
-    AppState::new(
-        pool,
-        Tenancy::Single {
-            default_slug: "default".to_owned(),
-        },
-    )
+    let tenancy = Tenancy::Single {
+        default_slug: "default".to_owned(),
+    };
+    AppState::new(pool, tenancy.clone(), common::offline_auth(&tenancy))
 }
 
 async fn listener() -> (TcpListener, String) {

@@ -48,7 +48,14 @@ pub enum ErrorCode {
     PayloadTooLarge,
     UnsupportedMediaType,
     PreconditionRequired,
+    TooManyRequests,
     Internal,
+    // Authentication and access.
+    Unauthenticated,
+    Forbidden,
+    CsrfInvalid,
+    AuthInvalidCredentials,
+    AuthResetTokenInvalid,
     // Idempotency-Key header.
     IdempotencyKeyInvalid,
     IdempotencyKeyReused,
@@ -60,7 +67,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 18] = [
+    pub const ALL: [Self; 24] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -73,7 +80,13 @@ impl ErrorCode {
         Self::PayloadTooLarge,
         Self::UnsupportedMediaType,
         Self::PreconditionRequired,
+        Self::TooManyRequests,
         Self::Internal,
+        Self::Unauthenticated,
+        Self::Forbidden,
+        Self::CsrfInvalid,
+        Self::AuthInvalidCredentials,
+        Self::AuthResetTokenInvalid,
         Self::IdempotencyKeyInvalid,
         Self::IdempotencyKeyReused,
         Self::IdempotencyKeyInFlight,
@@ -95,7 +108,13 @@ impl ErrorCode {
             Self::PayloadTooLarge => "payload_too_large",
             Self::UnsupportedMediaType => "unsupported_media_type",
             Self::PreconditionRequired => "precondition_required",
+            Self::TooManyRequests => "too_many_requests",
             Self::Internal => "internal",
+            Self::Unauthenticated => "unauthenticated",
+            Self::Forbidden => "forbidden",
+            Self::CsrfInvalid => "csrf.invalid",
+            Self::AuthInvalidCredentials => "auth.invalid_credentials",
+            Self::AuthResetTokenInvalid => "auth.reset_token_invalid",
             Self::IdempotencyKeyInvalid => "idempotency_key.invalid",
             Self::IdempotencyKeyReused => "idempotency_key.reused",
             Self::IdempotencyKeyInFlight => "idempotency_key.in_flight",
@@ -110,7 +129,11 @@ impl ErrorCode {
             | Self::ValidationFailed
             | Self::InvalidJson
             | Self::InvalidQuery
-            | Self::IdempotencyKeyInvalid => StatusCode::BAD_REQUEST,
+            | Self::IdempotencyKeyInvalid
+            | Self::AuthResetTokenInvalid => StatusCode::BAD_REQUEST,
+            Self::Unauthenticated | Self::AuthInvalidCredentials => StatusCode::UNAUTHORIZED,
+            Self::Forbidden | Self::CsrfInvalid => StatusCode::FORBIDDEN,
+            Self::TooManyRequests => StatusCode::TOO_MANY_REQUESTS,
             Self::NotFound | Self::TenantNotFound => StatusCode::NOT_FOUND,
             Self::MethodNotAllowed => StatusCode::METHOD_NOT_ALLOWED,
             Self::RequestTimeout => StatusCode::REQUEST_TIMEOUT,
@@ -141,7 +164,13 @@ impl ErrorCode {
             Self::PayloadTooLarge => "The request body is too large",
             Self::UnsupportedMediaType => "Unsupported content type; send application/json",
             Self::PreconditionRequired => "This request needs an If-Match header",
+            Self::TooManyRequests => "Too many attempts; retry after the delay in Retry-After",
             Self::Internal => "Internal server error",
+            Self::Unauthenticated => "Sign-in required, or the session has ended",
+            Self::Forbidden => "You are not allowed to do this",
+            Self::CsrfInvalid => "Missing or invalid X-CSRF-Token header",
+            Self::AuthInvalidCredentials => "Incorrect email or password",
+            Self::AuthResetTokenInvalid => "This password reset link is invalid, expired or already used",
             Self::IdempotencyKeyInvalid => "The Idempotency-Key header is invalid",
             Self::IdempotencyKeyReused => "This Idempotency-Key was used for a different request",
             Self::IdempotencyKeyInFlight => "A request with this Idempotency-Key is still in progress",
@@ -159,6 +188,7 @@ impl ErrorCode {
             StatusCode::REQUEST_TIMEOUT => Some(Self::RequestTimeout),
             StatusCode::PAYLOAD_TOO_LARGE => Some(Self::PayloadTooLarge),
             StatusCode::UNSUPPORTED_MEDIA_TYPE => Some(Self::UnsupportedMediaType),
+            StatusCode::TOO_MANY_REQUESTS => Some(Self::TooManyRequests),
             s if s.is_server_error() => Some(Self::Internal),
             _ => None,
         }
@@ -173,6 +203,8 @@ pub struct Problem {
     pub detail: Option<String>,
     /// Field-level errors, for `validation_failed` and similar.
     pub errors: Vec<FieldError>,
+    /// Sent as `Retry-After` (whole seconds), for `too_many_requests`.
+    pub retry_after: Option<std::time::Duration>,
 }
 
 impl Problem {
@@ -181,7 +213,14 @@ impl Problem {
             code,
             detail: None,
             errors: Vec::new(),
+            retry_after: None,
         }
+    }
+
+    /// Adds a `Retry-After` header (at least one second).
+    pub fn with_retry_after(mut self, delay: std::time::Duration) -> Self {
+        self.retry_after = Some(delay);
+        self
     }
 
     pub fn with_detail(mut self, detail: impl Into<String>) -> Self {
@@ -215,6 +254,18 @@ impl From<ErrorCode> for Problem {
 
 impl From<infra::sqlx::Error> for Problem {
     fn from(err: infra::sqlx::Error) -> Self {
+        Self::internal(&err)
+    }
+}
+
+impl From<infra::valkey::ValkeyError> for Problem {
+    fn from(err: infra::valkey::ValkeyError) -> Self {
+        Self::internal(&err)
+    }
+}
+
+impl From<tokio::task::JoinError> for Problem {
+    fn from(err: tokio::task::JoinError) -> Self {
         Self::internal(&err)
     }
 }
@@ -324,6 +375,11 @@ impl IntoResponse for Problem {
         response
             .headers_mut()
             .insert(header::CONTENT_TYPE, HeaderValue::from_static(PROBLEM_JSON));
+        if let Some(delay) = self.retry_after {
+            response
+                .headers_mut()
+                .insert(header::RETRY_AFTER, HeaderValue::from(delay.as_secs().max(1)));
+        }
         response
     }
 }
@@ -363,7 +419,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 18] = [
+        let expected: [(ErrorCode, u16); 24] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -376,7 +432,13 @@ mod tests {
             (ErrorCode::PayloadTooLarge, 413),
             (ErrorCode::UnsupportedMediaType, 415),
             (ErrorCode::PreconditionRequired, 428),
+            (ErrorCode::TooManyRequests, 429),
             (ErrorCode::Internal, 500),
+            (ErrorCode::Unauthenticated, 401),
+            (ErrorCode::Forbidden, 403),
+            (ErrorCode::CsrfInvalid, 403),
+            (ErrorCode::AuthInvalidCredentials, 401),
+            (ErrorCode::AuthResetTokenInvalid, 400),
             (ErrorCode::IdempotencyKeyInvalid, 400),
             (ErrorCode::IdempotencyKeyReused, 422),
             (ErrorCode::IdempotencyKeyInFlight, 409),
@@ -413,6 +475,25 @@ mod tests {
         assert_eq!(
             body["errors"],
             serde_json::json!([{ "field": "code", "code": "format" }])
+        );
+    }
+
+    #[tokio::test]
+    async fn too_many_requests_says_when_to_retry() {
+        let res = Problem::new(ErrorCode::TooManyRequests)
+            .with_retry_after(std::time::Duration::from_millis(90_500))
+            .into_response();
+        assert_eq!(res.status(), StatusCode::TOO_MANY_REQUESTS);
+        assert_eq!(res.headers()[header::RETRY_AFTER], "90");
+        let res = Problem::new(ErrorCode::TooManyRequests)
+            .with_retry_after(std::time::Duration::ZERO)
+            .into_response();
+        assert_eq!(res.headers()[header::RETRY_AFTER], "1", "never 0");
+        assert!(
+            !Problem::new(ErrorCode::NotFound)
+                .into_response()
+                .headers()
+                .contains_key(header::RETRY_AFTER)
         );
     }
 

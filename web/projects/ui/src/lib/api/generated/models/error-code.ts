@@ -19,12 +19,18 @@
  * | `payload_too_large` | 413 | The request body is too large |
  * | `unsupported_media_type` | 415 | Unsupported content type; send application/json |
  * | `precondition_required` | 428 | This request needs an If-Match header |
+ * | `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |
  * | `internal` | 500 | Internal server error |
+ * | `unauthenticated` | 401 | Sign-in required, or the session has ended |
+ * | `forbidden` | 403 | You are not allowed to do this |
+ * | `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |
+ * | `auth.invalid_credentials` | 401 | Incorrect email or password |
+ * | `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |
  * | `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |
  * | `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |
  * | `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |
  * | `tenant.not_found` | 404 | Tenant not found |
  * | `reference_item.code_taken` | 409 | Another reference item already has this code |
  */
-export type ErrorCode = 'bad_request' | 'validation_failed' | 'invalid_json' | 'invalid_query' | 'not_found' | 'method_not_allowed' | 'request_timeout' | 'conflict' | 'precondition_failed' | 'payload_too_large' | 'unsupported_media_type' | 'precondition_required' | 'internal' | 'idempotency_key.invalid' | 'idempotency_key.reused' | 'idempotency_key.in_flight' | 'tenant.not_found' | 'reference_item.code_taken';
+export type ErrorCode = 'bad_request' | 'validation_failed' | 'invalid_json' | 'invalid_query' | 'not_found' | 'method_not_allowed' | 'request_timeout' | 'conflict' | 'precondition_failed' | 'payload_too_large' | 'unsupported_media_type' | 'precondition_required' | 'too_many_requests' | 'internal' | 'unauthenticated' | 'forbidden' | 'csrf.invalid' | 'auth.invalid_credentials' | 'auth.reset_token_invalid' | 'idempotency_key.invalid' | 'idempotency_key.reused' | 'idempotency_key.in_flight' | 'tenant.not_found' | 'reference_item.code_taken';
 

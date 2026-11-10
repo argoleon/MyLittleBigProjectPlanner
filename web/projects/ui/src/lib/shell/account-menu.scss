@@ -1,0 +1,15 @@
+.who {
+  display: flex;
+  flex-direction: column;
+  padding: var(--app-space-2) var(--app-space-4) var(--app-space-3);
+}
+
+.name {
+  font: var(--mat-sys-title-small);
+  color: var(--mat-sys-on-surface);
+}
+
+.email {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}

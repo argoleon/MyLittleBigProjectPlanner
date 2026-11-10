@@ -260,6 +260,8 @@ fn conflict_problem(conflict: WriteConflict) -> Problem {
         (status = 409, description = "`reference_item.code_taken`, or `idempotency_key.in_flight`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 415, description = "Body is not JSON", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 422, description = "`Idempotency-Key` already used for another request", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 401, description = "`unauthenticated`: no valid session", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 403, description = "`csrf.invalid`: missing or wrong `X-CSRF-Token`", body = ProblemBody, content_type = PROBLEM_JSON),
     )
 )]
 pub async fn create(
@@ -337,6 +339,7 @@ pub async fn create(
         (status = 304, description = "Not modified since the `If-None-Match` ETag"),
         (status = 400, description = "Unknown field in `fields`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 404, description = "No such item in this tenant", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 401, description = "`unauthenticated`: no valid session", body = ProblemBody, content_type = PROBLEM_JSON),
     )
 )]
 pub async fn read(
@@ -383,6 +386,7 @@ pub async fn read(
             ("Content-Language" = String, description = "Language of `label`"),
         )),
         (status = 400, description = "Invalid `limit`, `cursor` or `fields`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 401, description = "`unauthenticated`: no valid session", body = ProblemBody, content_type = PROBLEM_JSON),
     )
 )]
 pub async fn list(
@@ -444,6 +448,8 @@ pub async fn list(
         (status = 409, description = "`reference_item.code_taken`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 412, description = "The item changed since this ETag", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 428, description = "`If-Match` is missing", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 401, description = "`unauthenticated`: no valid session", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 403, description = "`csrf.invalid`: missing or wrong `X-CSRF-Token`", body = ProblemBody, content_type = PROBLEM_JSON),
     )
 )]
 pub async fn update(
@@ -488,6 +494,8 @@ pub async fn update(
         (status = 404, description = "No such item in this tenant", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 412, description = "The item changed since this ETag", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 428, description = "`If-Match` is missing", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 401, description = "`unauthenticated`: no valid session", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 403, description = "`csrf.invalid`: missing or wrong `X-CSRF-Token`", body = ProblemBody, content_type = PROBLEM_JSON),
     )
 )]
 pub async fn delete(

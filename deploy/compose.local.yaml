@@ -3,7 +3,9 @@
 #
 # - images built from the sources (mlbpp-local/*:local);
 # - https://localhost:18443 (http://localhost:18081 redirects to it), with
-#   Traefik's self-signed certificate instead of Let's Encrypt.
+#   Traefik's self-signed certificate instead of Let's Encrypt;
+# - emails caught by Mailpit (http://localhost:18026) instead of an SMTP
+#   server.
 #
 # The justfile sets MLBPP_DOMAIN=localhost, MLBPP_REGISTRY=mlbpp-local,
 # MLBPP_VERSION=local and MLBPP_PUBLIC_PORT=:18443 for it.
@@ -49,6 +51,24 @@ services:
       <<: *build
       dockerfile: deploy/docker/backend.Dockerfile
       target: worker
+    environment:
+      SMTP_URL_FILE: ""
+      SMTP_URL: smtp://mailpit:1025
+    depends_on:
+      mailpit:
+        condition: service_healthy
+
+  mailpit:
+    image: axllent/mailpit:v1.28
+    # Edge too: the end-to-end tests read the emails from their container.
+    networks: [backend, edge]
+    ports:
+      - "127.0.0.1:${LOCAL_MAILPIT_PORT:-18026}:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   mcp:
     build:

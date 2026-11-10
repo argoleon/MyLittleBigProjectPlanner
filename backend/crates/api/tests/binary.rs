@@ -89,6 +89,17 @@ fn exits_with_an_error_on_a_malformed_variable() {
     );
 }
 
+/// The authentication settings `api serve` requires: the test Valkey (lazy:
+/// the server starts without it) and a public URL.
+fn with_auth_settings(command: &mut Command) -> &mut Command {
+    command
+        .env(
+            "VALKEY_URL",
+            std::env::var("TEST_VALKEY_URL").unwrap_or_else(|_| "redis://127.0.0.1:56379".to_owned()),
+        )
+        .env("PUBLIC_URL", "https://planner.example.test")
+}
+
 /// `api healthcheck` against a server bound to `port`: the exit status.
 fn healthcheck(port: u16) -> std::process::ExitStatus {
     Command::new(BIN)
@@ -110,8 +121,7 @@ async fn healthcheck_command_follows_the_running_server() {
         .port();
     assert!(!healthcheck(port).success(), "nothing listens yet");
 
-    let mut child = Command::new(BIN)
-        .env_clear()
+    let mut child = with_auth_settings(Command::new(BIN).env_clear())
         .env("API_BIND_ADDR", format!("127.0.0.1:{port}"))
         .env("DATABASE_URL", "postgres://localhost/unused")
         .stdout(Stdio::null())
@@ -146,8 +156,7 @@ async fn spawn_api(database_url: &str) -> (std::process::Child, u16) {
         .local_addr()
         .unwrap()
         .port();
-    let mut child = Command::new(BIN)
-        .env_clear()
+    let mut child = with_auth_settings(Command::new(BIN).env_clear())
         .env("API_BIND_ADDR", format!("127.0.0.1:{port}"))
         .env("DATABASE_URL", database_url)
         .stdout(Stdio::null())
@@ -206,8 +215,7 @@ async fn serves_ping_and_stops_cleanly_on_sigterm() {
         .local_addr()
         .unwrap()
         .port();
-    let mut child = Command::new(BIN)
-        .env_clear()
+    let mut child = with_auth_settings(Command::new(BIN).env_clear())
         .env("API_BIND_ADDR", format!("127.0.0.1:{port}"))
         .env("SHUTDOWN_GRACE_SECS", "5")
         // Connections open lazily: ping and shutdown need no database.
@@ -249,4 +257,94 @@ async fn serves_ping_and_stops_cleanly_on_sigterm() {
         tokio::time::sleep(Duration::from_millis(50)).await;
     };
     assert!(status.success(), "exit status: {status}");
+}
+
+/// Runs `api add-member` with `args`, the password on standard input.
+fn add_member(database_url: &str, args: &[&str], password: &str) -> std::process::Output {
+    use std::io::Write;
+    let mut child = Command::new(BIN)
+        .env_clear()
+        .env("DATABASE_URL", database_url)
+        .arg("add-member")
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    writeln!(child.stdin.take().unwrap(), "{password}").unwrap();
+    child.wait_with_output().unwrap()
+}
+
+#[tokio::test]
+async fn add_member_creates_an_internal_member_who_can_sign_in() {
+    let db = testkit::TestDb::new().await;
+    let output = add_member(
+        &db.app_url(),
+        &[
+            "alpha",
+            "Admin@Alpha.example",
+            "Alice Admin",
+            "--role",
+            "tenant_admin",
+        ],
+        "a long enough passphrase",
+    );
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(String::from_utf8_lossy(&output.stdout).contains("added"));
+
+    let mut tx = infra::db::begin_tenant_tx(&db.app_pool, db.tenant_a.id)
+        .await
+        .unwrap();
+    let found = infra::accounts::find_by_email(&mut tx, "admin@alpha.example")
+        .await
+        .unwrap()
+        .expect("the member exists, its email normalized");
+    assert_eq!(found.member.display_name, "Alice Admin");
+    assert_eq!(found.member.tenant_role, infra::accounts::TenantRole::TenantAdmin);
+    assert_eq!(found.member.account_type, infra::accounts::AccountType::Internal);
+    assert!(infra::credentials::verify_password(
+        "a long enough passphrase",
+        found.password_hash.as_deref().unwrap()
+    ));
+    tx.rollback().await.unwrap();
+
+    // The same email in another tenant links the account, password kept.
+    let output = add_member(
+        &db.app_url(),
+        &["beta", "admin@alpha.example", "Alice"],
+        "another passphrase!",
+    );
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(String::from_utf8_lossy(&output.stdout).contains("password is unchanged"));
+}
+
+#[tokio::test]
+async fn add_member_rejects_weak_passwords_and_unknown_tenants() {
+    let db = testkit::TestDb::new().await;
+    let short = add_member(&db.app_url(), &["alpha", "a@alpha.example", "A"], "short");
+    assert!(!short.status.success());
+    assert!(String::from_utf8_lossy(&short.stderr).contains("password: too_short"));
+
+    let unknown = add_member(
+        &db.app_url(),
+        &["gamma", "a@alpha.example", "A"],
+        "a long enough passphrase",
+    );
+    assert!(!unknown.status.success());
+    assert!(String::from_utf8_lossy(&unknown.stderr).contains("no tenant with the slug gamma"));
+
+    let count: i64 = infra::sqlx::query_scalar("SELECT count(*) FROM account")
+        .fetch_one(&db.owner_pool)
+        .await
+        .unwrap();
+    assert_eq!(count, 0, "nothing was created");
 }

@@ -1,8 +1,8 @@
 use std::future::Future;
 use std::process::ExitCode;
 
-use api::cli::{self, Command};
-use infra::config::{ApiConfig, Env, MigrateConfig, TelemetryConfig};
+use api::cli::{self, Command, MemberArgs};
+use infra::config::{ApiConfig, DatabaseConfig, Env, MigrateConfig, TelemetryConfig};
 use infra::telemetry::Telemetry;
 
 // Not `#[tokio::main]`: telemetry starts before the runtime and stops after
@@ -13,6 +13,7 @@ fn main() -> ExitCode {
         Ok(Command::Migrate) => run_with_logs(migrate()),
         Ok(Command::OpenApi) => openapi(),
         Ok(Command::Healthcheck { ready }) => runtime_block_on(healthcheck(ready)),
+        Ok(Command::AddMember(args)) => runtime_block_on(add_member(args)),
         Ok(Command::Help) => {
             println!("{}", cli::USAGE);
             ExitCode::SUCCESS
@@ -78,6 +79,46 @@ fn openapi() -> ExitCode {
         }
         Err(err) => {
             eprintln!("api: cannot serialize the OpenAPI contract: {err}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+async fn add_member(args: MemberArgs) -> ExitCode {
+    let database = match DatabaseConfig::from_env(&Env::from_process()) {
+        Ok(database) => database,
+        Err(err) => {
+            eprintln!("api: configuration error: {err}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let mut password = String::new();
+    if let Err(err) = std::io::stdin().read_line(&mut password) {
+        eprintln!("api: cannot read the password from standard input: {err}");
+        return ExitCode::FAILURE;
+    }
+    let password = password.trim_end_matches(['\r', '\n']);
+    let pool = match infra::db::connect_lazy(&database) {
+        Ok(pool) => pool,
+        Err(err) => {
+            eprintln!("api: invalid DATABASE_URL: {err}");
+            return ExitCode::FAILURE;
+        }
+    };
+    match cli::add_member(&pool, &args, password).await {
+        Ok(added) if added.new_account => {
+            println!("added {} to {} ({})", args.email, args.tenant, added.account_id);
+            ExitCode::SUCCESS
+        }
+        Ok(added) => {
+            println!(
+                "linked the existing account {} to {}; its password is unchanged",
+                added.account_id, args.tenant
+            );
+            ExitCode::SUCCESS
+        }
+        Err(err) => {
+            eprintln!("api: cannot add the member: {err}");
             ExitCode::FAILURE
         }
     }
@@ -150,8 +191,16 @@ async fn run(config: ApiConfig) -> ExitCode {
     };
     tracing::info!(addr = %config.bind_addr, "api listening");
 
-    let state =
-        api::AppState::new(pool, config.tenancy.clone()).with_dependencies(config.shared.dependencies());
+    let valkey = match infra::valkey::connect_lazy(&config.valkey) {
+        Ok(valkey) => valkey,
+        Err(err) => {
+            eprintln!("api: invalid VALKEY_URL: {err}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let auth = api::Auth::new(valkey, "mlbpp:", config.public_url.clone(), config.sessions);
+    let state = api::AppState::new(pool, config.tenancy.clone(), auth)
+        .with_dependencies(config.shared.dependencies());
     let app = api::app(state, &api::HttpSettings::from(&config));
     match api::serve(
         listener,
