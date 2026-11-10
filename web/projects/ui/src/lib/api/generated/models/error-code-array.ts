@@ -30,5 +30,8 @@ export const ERROR_CODE: ErrorCode[] = [
   'idempotency_key.reused',
   'idempotency_key.in_flight',
   'tenant.not_found',
+  'tenant.slug_taken',
+  'tenant.confirmation_mismatch',
+  'tenant.delete_current',
   'reference_item.code_taken'
 ];

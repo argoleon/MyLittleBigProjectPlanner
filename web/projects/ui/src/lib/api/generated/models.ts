@@ -3,9 +3,13 @@
 
 export type { ErrorCode } from './models/error-code';
 export type { FieldError } from './models/field-error';
+export type { NewTenant } from './models/new-tenant';
+export type { OverloadMode } from './models/overload-mode';
 export type { PasswordResetConfirmation } from './models/password-reset-confirmation';
 export type { PasswordResetRequest } from './models/password-reset-request';
 export type { Ping } from './models/ping';
+export type { PlatformTenant } from './models/platform-tenant';
+export type { PlatformTenantPage } from './models/platform-tenant-page';
 export type { Problem } from './models/problem';
 export type { ReferenceItem } from './models/reference-item';
 export type { ReferenceItemInput } from './models/reference-item-input';
@@ -15,3 +19,5 @@ export type { SessionAccount } from './models/session-account';
 export type { SignInRequest } from './models/sign-in-request';
 export type { Tenant } from './models/tenant';
 export type { TenantRole } from './models/tenant-role';
+export type { TenantSettings } from './models/tenant-settings';
+export type { TenantStatus } from './models/tenant-status';

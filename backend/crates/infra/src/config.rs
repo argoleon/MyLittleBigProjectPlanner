@@ -300,6 +300,8 @@ pub struct ApiConfig {
     pub valkey: Secret,
     pub public_url: PublicUrl,
     pub sessions: SessionSettings,
+    /// First tenant and super admin, created with the migrations.
+    pub bootstrap: Option<BootstrapConfig>,
 }
 
 /// Public address of the front end, used to build the links of emails:
@@ -397,11 +399,12 @@ impl ApiConfig {
             database: DatabaseConfig::from_env(env)?,
             migration_url: env.get("DATABASE_MIGRATION_URL")?.map(Secret),
             public_url: PublicUrl::from_env(env, &tenancy)?,
-            tenancy,
             shared: SharedServices::from_env(env)?,
             telemetry: TelemetryConfig::from_env(env)?,
             valkey: env.required("VALKEY_URL")?,
             sessions: SessionSettings::from_env(env)?,
+            bootstrap: BootstrapConfig::from_env(env, &tenancy)?,
+            tenancy,
         })
     }
 }
@@ -411,13 +414,97 @@ impl ApiConfig {
 pub struct MigrateConfig {
     /// Owner-role URL (`mlbpp_owner`).
     pub migration_url: Secret,
+    /// First tenant and super admin, created after the migrations.
+    pub bootstrap: Option<BootstrapConfig>,
 }
 
 impl MigrateConfig {
     pub fn from_env(env: &Env) -> Result<Self, ConfigError> {
+        let migration_url = env.required("DATABASE_MIGRATION_URL")?;
+        let bootstrap = match env.get("BOOTSTRAP_ADMIN_EMAIL")? {
+            Some(_) => BootstrapConfig::from_env(env, &tenancy_from_env(env)?)?,
+            None => None,
+        };
         Ok(Self {
-            migration_url: env.required("DATABASE_MIGRATION_URL")?,
+            migration_url,
+            bootstrap,
         })
+    }
+}
+
+/// The first tenant and its platform super admin, created once, on the first
+/// start (`api migrate`, or `api serve` with `DATABASE_MIGRATION_URL`), when
+/// no super admin exists yet. Set by `BOOTSTRAP_ADMIN_EMAIL`; nothing is
+/// bootstrapped without it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BootstrapConfig {
+    /// `BOOTSTRAP_TENANT_SLUG`: in single-tenant mode, `TENANT_DEFAULT_SLUG`
+    /// (the only accepted value); required in multi-tenant mode.
+    pub tenant_slug: String,
+    /// `BOOTSTRAP_TENANT_NAME` (default `Default`).
+    pub tenant_name: String,
+    /// `BOOTSTRAP_ADMIN_EMAIL`, normalized.
+    pub admin_email: String,
+    /// `BOOTSTRAP_ADMIN_NAME` (default `Administrator`).
+    pub admin_name: String,
+    /// `BOOTSTRAP_ADMIN_PASSWORD` (secret: prefer `_FILE`), 12 characters or more.
+    pub admin_password: Secret,
+}
+
+impl BootstrapConfig {
+    pub fn from_env(env: &Env, tenancy: &Tenancy) -> Result<Option<Self>, ConfigError> {
+        let Some(raw_email) = env.get("BOOTSTRAP_ADMIN_EMAIL")? else {
+            return Ok(None);
+        };
+        let admin_email = domain::account::normalize_email(&raw_email)
+            .ok_or_else(|| invalid("BOOTSTRAP_ADMIN_EMAIL", "must be an email address"))?;
+        let tenant_slug = match (tenancy, env.get("BOOTSTRAP_TENANT_SLUG")?) {
+            (Tenancy::Single { default_slug }, None) => default_slug.clone(),
+            (Tenancy::Single { default_slug }, Some(slug)) if slug != *default_slug => {
+                return Err(invalid(
+                    "BOOTSTRAP_TENANT_SLUG",
+                    "must be TENANT_DEFAULT_SLUG in single-tenant mode (or unset)",
+                ));
+            }
+            (_, Some(slug)) => slug,
+            (Tenancy::Multi { .. }, None) => {
+                return Err(ConfigError::Missing {
+                    name: "BOOTSTRAP_TENANT_SLUG".to_owned(),
+                });
+            }
+        };
+        if !domain::tenancy::is_valid_slug(&tenant_slug) {
+            return Err(invalid(
+                "BOOTSTRAP_TENANT_SLUG",
+                "must be 1-63 characters among a-z, 0-9 and -, not starting or ending with -",
+            ));
+        }
+        let admin_password: Secret = env.required("BOOTSTRAP_ADMIN_PASSWORD")?;
+        if let Err(errors) =
+            domain::account::validate_password("password", admin_password.expose(), &admin_email)
+        {
+            let reason = match errors.first().map(|e| e.code) {
+                Some("too_short") => "must be at least 12 characters",
+                Some("too_long") => "must be at most 128 characters",
+                _ => "must differ from BOOTSTRAP_ADMIN_EMAIL",
+            };
+            return Err(invalid("BOOTSTRAP_ADMIN_PASSWORD", reason));
+        }
+        let tenant_name: String = env.optional("BOOTSTRAP_TENANT_NAME", "Default".to_owned())?;
+        let admin_name: String = env.optional("BOOTSTRAP_ADMIN_NAME", "Administrator".to_owned())?;
+        if tenant_name.trim().is_empty() || tenant_name.chars().count() > 200 {
+            return Err(invalid("BOOTSTRAP_TENANT_NAME", "must be 1 to 200 characters"));
+        }
+        if domain::account::validate_display_name("name", &admin_name).is_err() {
+            return Err(invalid("BOOTSTRAP_ADMIN_NAME", "must be 1 to 200 characters"));
+        }
+        Ok(Some(Self {
+            tenant_slug,
+            tenant_name: tenant_name.trim().to_owned(),
+            admin_email,
+            admin_name: admin_name.trim().to_owned(),
+            admin_password,
+        }))
     }
 }
 
@@ -818,6 +905,109 @@ mod tests {
             ("MAIL_FROM", "Planner <noreply@example.org>"),
         ]);
         all
+    }
+
+    #[test]
+    fn bootstrap_is_off_without_an_admin_email() {
+        let single = Tenancy::Single {
+            default_slug: "default".to_owned(),
+        };
+        assert_eq!(BootstrapConfig::from_env(&Env::default(), &single).unwrap(), None);
+    }
+
+    #[test]
+    fn bootstrap_takes_the_default_tenant_in_single_mode() {
+        let single = Tenancy::Single {
+            default_slug: "default".to_owned(),
+        };
+        let env = Env::from_pairs([
+            ("BOOTSTRAP_ADMIN_EMAIL", " Root@Example.org "),
+            ("BOOTSTRAP_ADMIN_PASSWORD", "a long enough passphrase"),
+        ]);
+        let cfg = BootstrapConfig::from_env(&env, &single).unwrap().unwrap();
+        assert_eq!(cfg.tenant_slug, "default");
+        assert_eq!(cfg.tenant_name, "Default");
+        assert_eq!(cfg.admin_email, "root@example.org");
+        assert_eq!(cfg.admin_name, "Administrator");
+        assert_eq!(cfg.admin_password.expose(), "a long enough passphrase");
+
+        let other = Env::from_pairs([
+            ("BOOTSTRAP_ADMIN_EMAIL", "root@example.org"),
+            ("BOOTSTRAP_ADMIN_PASSWORD", "a long enough passphrase"),
+            ("BOOTSTRAP_TENANT_SLUG", "acme"),
+        ]);
+        assert!(matches!(
+            BootstrapConfig::from_env(&other, &single),
+            Err(ConfigError::Invalid { name, .. }) if name == "BOOTSTRAP_TENANT_SLUG"
+        ));
+    }
+
+    #[test]
+    fn bootstrap_needs_a_tenant_slug_in_multi_mode_and_a_strong_password() {
+        let multi = Tenancy::Multi {
+            base_domain: "example.org".to_owned(),
+        };
+        let base = [
+            ("BOOTSTRAP_ADMIN_EMAIL", "root@example.org"),
+            ("BOOTSTRAP_ADMIN_PASSWORD", "a long enough passphrase"),
+        ];
+        assert!(matches!(
+            BootstrapConfig::from_env(&Env::from_pairs(base), &multi),
+            Err(ConfigError::Missing { name }) if name == "BOOTSTRAP_TENANT_SLUG"
+        ));
+        let mut with_slug = base.to_vec();
+        with_slug.push(("BOOTSTRAP_TENANT_SLUG", "acme"));
+        with_slug.push(("BOOTSTRAP_TENANT_NAME", "Acme Industrie"));
+        let cfg = BootstrapConfig::from_env(&Env::from_pairs(with_slug), &multi)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            (cfg.tenant_slug.as_str(), cfg.tenant_name.as_str()),
+            ("acme", "Acme Industrie")
+        );
+
+        for (name, value) in [
+            ("BOOTSTRAP_ADMIN_PASSWORD", "short"),
+            ("BOOTSTRAP_ADMIN_PASSWORD", "root@example.org"),
+            ("BOOTSTRAP_ADMIN_EMAIL", "not an email"),
+            ("BOOTSTRAP_TENANT_SLUG", "Not A Slug"),
+        ] {
+            // The valid settings, with `name` replaced by `value`.
+            let mut env: Vec<(&str, &str)> = vec![
+                ("BOOTSTRAP_ADMIN_EMAIL", "root@example.org"),
+                ("BOOTSTRAP_ADMIN_PASSWORD", "a long enough passphrase"),
+                ("BOOTSTRAP_TENANT_SLUG", "acme"),
+            ];
+            env.retain(|(n, _)| *n != name);
+            env.push((name, value));
+            let result = BootstrapConfig::from_env(&Env::from_pairs(env), &multi);
+            assert!(
+                matches!(&result, Err(ConfigError::Invalid { name: n, .. }) if n == name),
+                "{name}={value}: {result:?}"
+            );
+        }
+        let no_password = Env::from_pairs([
+            ("BOOTSTRAP_ADMIN_EMAIL", "root@example.org"),
+            ("BOOTSTRAP_TENANT_SLUG", "acme"),
+        ]);
+        assert!(matches!(
+            BootstrapConfig::from_env(&no_password, &multi),
+            Err(ConfigError::Missing { name }) if name == "BOOTSTRAP_ADMIN_PASSWORD"
+        ));
+    }
+
+    #[test]
+    fn migrate_reads_the_bootstrap_with_the_tenancy() {
+        let env = Env::from_pairs([
+            ("DATABASE_MIGRATION_URL", OWNER_URL),
+            ("BOOTSTRAP_ADMIN_EMAIL", "root@example.org"),
+            ("BOOTSTRAP_ADMIN_PASSWORD", "a long enough passphrase"),
+            ("TENANT_DEFAULT_SLUG", "planner"),
+        ]);
+        let cfg = MigrateConfig::from_env(&env).unwrap();
+        assert_eq!(cfg.bootstrap.unwrap().tenant_slug, "planner");
+        let plain = Env::from_pairs([("DATABASE_MIGRATION_URL", OWNER_URL)]);
+        assert_eq!(MigrateConfig::from_env(&plain).unwrap().bootstrap, None);
     }
 
     #[test]

@@ -179,14 +179,24 @@ services:
       - traefik.http.services.mlbpp-mcp.loadbalancer.server.port=8090
       - traefik.http.services.mlbpp-mcp.loadbalancer.healthcheck.path=/health/ready
 
-  # Applies pending database migrations, then exits; api and worker wait for it.
+  # Applies pending database migrations, then exits; api and worker wait for
+  # it. On the first start, it also creates the first tenant and its platform
+  # super admin when BOOTSTRAP_ADMIN_EMAIL is set (deploy/README.md).
   migrate:
     image: ${MLBPP_REGISTRY:-ghcr.io/argoleon}/mlbpp-api:${MLBPP_VERSION:-latest}
     command: ["migrate"]
     environment:
       <<: *rust-logs
       DATABASE_MIGRATION_URL_FILE: /run/secrets/database_migration_url
-    secrets: [database_migration_url]
+      TENANCY_MODE: ${TENANCY_MODE:-single}
+      TENANT_DEFAULT_SLUG: ${TENANT_DEFAULT_SLUG:-default}
+      TENANT_BASE_DOMAIN: ${TENANT_BASE_DOMAIN:-}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_NAME: ${BOOTSTRAP_ADMIN_NAME:-}
+      BOOTSTRAP_ADMIN_PASSWORD_FILE: /run/secrets/bootstrap_admin_password
+      BOOTSTRAP_TENANT_SLUG: ${BOOTSTRAP_TENANT_SLUG:-}
+      BOOTSTRAP_TENANT_NAME: ${BOOTSTRAP_TENANT_NAME:-}
+    secrets: [database_migration_url, bootstrap_admin_password]
     networks: [backend]
     depends_on:
       postgres:
@@ -536,6 +546,9 @@ secrets:
   # SMTP server of the emails: replace the placeholder (deploy/README.md).
   smtp_url:
     file: ./secrets/smtp_url
+  # Password of the first platform super admin (BOOTSTRAP_ADMIN_EMAIL).
+  bootstrap_admin_password:
+    file: ./secrets/bootstrap_admin_password
   pgbackrest_cipher_pass:
     file: ./secrets/pgbackrest_cipher_pass
   valkey_password:

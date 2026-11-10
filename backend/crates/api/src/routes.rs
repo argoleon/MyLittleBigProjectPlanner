@@ -19,6 +19,7 @@ use utoipa_axum::routes;
 
 use crate::auth;
 use crate::openapi;
+use crate::platform;
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
 use crate::reference_items;
 use crate::tenant::{AppState, PublicTenantTx};
@@ -65,6 +66,8 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(auth::current_session))
         .routes(routes!(auth::request_password_reset))
         .routes(routes!(auth::confirm_password_reset))
+        .routes(routes!(platform::list, platform::create))
+        .routes(routes!(platform::read, platform::update, platform::delete))
         .routes(routes!(reference_items::list, reference_items::create))
         .routes(routes!(
             reference_items::read,

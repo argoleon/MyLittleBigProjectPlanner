@@ -14,6 +14,7 @@ pub mod idempotency;
 pub mod middleware;
 pub mod openapi;
 pub mod pagination;
+pub mod platform;
 pub mod problem;
 pub mod reference_items;
 mod routes;

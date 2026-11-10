@@ -9,7 +9,6 @@
 source "$(dirname "$0")/lib.sh"
 
 section "member for the end-to-end flow"
-ensure_default_tenant
 member="e2e-$(date +%s)-$RANDOM@example.test"
 passphrase="e2e passphrase $RANDOM$RANDOM"
 printf '%s\n' "$passphrase" | compose exec -T api /usr/local/bin/api add-member default "$member" "E2E Member" > /dev/null \

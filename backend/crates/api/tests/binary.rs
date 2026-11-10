@@ -348,3 +348,69 @@ async fn add_member_rejects_weak_passwords_and_unknown_tenants() {
         .unwrap();
     assert_eq!(count, 0, "nothing was created");
 }
+
+/// `api migrate` with the bootstrap variables of a single-tenant platform.
+fn migrate_with_bootstrap(owner_url: &str, password: &str) -> std::process::Output {
+    Command::new(BIN)
+        .env_clear()
+        .env("DATABASE_MIGRATION_URL", owner_url)
+        .env("TENANT_DEFAULT_SLUG", "planner")
+        .env("BOOTSTRAP_ADMIN_EMAIL", "root@planner.test")
+        .env("BOOTSTRAP_ADMIN_PASSWORD", password)
+        .arg("migrate")
+        .output()
+        .unwrap()
+}
+
+async fn owner_count(db: &testkit::TestDb, sql: &'static str) -> i64 {
+    infra::sqlx::query_scalar(sql)
+        .fetch_one(&db.owner_pool)
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn first_migrate_bootstraps_the_default_tenant_and_super_admin_once() {
+    let db = testkit::TestDb::new().await;
+    let output = migrate_with_bootstrap(&db.owner_url(), "a long enough passphrase");
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        owner_count(&db, "SELECT count(*) FROM tenant WHERE slug = 'planner'").await,
+        1
+    );
+    assert_eq!(
+        owner_count(
+            &db,
+            "SELECT count(*) FROM platform_admin p JOIN account a ON a.id = p.account_id \
+             WHERE a.email = 'root@planner.test'"
+        )
+        .await,
+        1
+    );
+
+    // A second start changes nothing.
+    let output = migrate_with_bootstrap(&db.owner_url(), "another long passphrase");
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        owner_count(&db, "SELECT count(*) FROM tenant").await,
+        3,
+        "alpha, beta, planner"
+    );
+    assert_eq!(owner_count(&db, "SELECT count(*) FROM platform_admin").await, 1);
+}
+
+#[test]
+fn migrate_refuses_a_weak_bootstrap_password() {
+    let output = migrate_with_bootstrap("postgres://nobody@127.0.0.1:1/none", "short");
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("BOOTSTRAP_ADMIN_PASSWORD"), "{stderr}");
+}

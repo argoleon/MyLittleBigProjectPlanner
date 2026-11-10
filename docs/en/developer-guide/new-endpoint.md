@@ -73,7 +73,7 @@ The interactive documentation, with every endpoint and error code, is at `http:/
 
 ```sh
 just dev                 # API on http://127.0.0.1:18080
-just seed                # tenant "default", member dev@example.test / "development only"
+just seed                # tenant "default", super admin dev@example.test / "development only"
 curl -i -c /tmp/mlbpp.cookies -X POST http://127.0.0.1:18080/api/v1/auth/sign-in \
   -H 'content-type: application/json' -d '{"email": "dev@example.test", "password": "development only"}'
 csrf=$(awk '$6 == "mlbpp_csrf" {print $7}' /tmp/mlbpp.cookies)

@@ -2,7 +2,10 @@ use std::future::Future;
 use std::process::ExitCode;
 
 use api::cli::{self, Command, MemberArgs};
-use infra::config::{ApiConfig, DatabaseConfig, Env, MigrateConfig, TelemetryConfig};
+use infra::bootstrap::BootstrapOutcome;
+use infra::config::{
+    ApiConfig, BootstrapConfig, DatabaseConfig, Env, MigrateConfig, Secret, TelemetryConfig,
+};
 use infra::telemetry::Telemetry;
 
 // Not `#[tokio::main]`: telemetry starts before the runtime and stops after
@@ -132,14 +135,45 @@ async fn migrate() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    match infra::db::migrate(&config.migration_url).await {
-        Ok(()) => {
-            tracing::info!("migrations applied");
-            ExitCode::SUCCESS
+    if let Err(err) = infra::db::migrate(&config.migration_url).await {
+        eprintln!("api: migration failed: {err}");
+        return ExitCode::FAILURE;
+    }
+    tracing::info!("migrations applied");
+    if bootstrap(&config.migration_url, config.bootstrap.as_ref()).await {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    }
+}
+
+/// Creates the first tenant and super admin when configured and not done
+/// yet. False when it failed (reported on standard error).
+async fn bootstrap(migration_url: &Secret, config: Option<&BootstrapConfig>) -> bool {
+    let Some(config) = config else {
+        return true;
+    };
+    match infra::bootstrap::run(migration_url, config).await {
+        Ok(BootstrapOutcome::AlreadyDone) => {
+            tracing::info!("bootstrap skipped: a platform super admin exists");
+            true
+        }
+        Ok(BootstrapOutcome::Done {
+            tenant_created,
+            account_created,
+            ..
+        }) => {
+            tracing::info!(
+                tenant = %config.tenant_slug,
+                tenant_created,
+                account_created,
+                "bootstrapped the first tenant and its platform super admin"
+            );
+            true
         }
         Err(err) => {
-            eprintln!("api: migration failed: {err}");
-            ExitCode::FAILURE
+            eprintln!("api: bootstrap failed: {err}");
+            false
         }
     }
 }
@@ -171,6 +205,9 @@ async fn run(config: ApiConfig) -> ExitCode {
             return ExitCode::FAILURE;
         }
         tracing::info!("migrations applied");
+        if !bootstrap(migration_url, config.bootstrap.as_ref()).await {
+            return ExitCode::FAILURE;
+        }
     }
 
     let pool = match infra::db::connect_lazy(&config.database) {

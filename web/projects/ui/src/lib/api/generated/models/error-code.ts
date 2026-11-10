@@ -30,7 +30,10 @@
  * | `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |
  * | `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |
  * | `tenant.not_found` | 404 | Tenant not found |
+ * | `tenant.slug_taken` | 409 | Another tenant already has this slug |
+ * | `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |
+ * | `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |
  * | `reference_item.code_taken` | 409 | Another reference item already has this code |
  */
-export type ErrorCode = 'bad_request' | 'validation_failed' | 'invalid_json' | 'invalid_query' | 'not_found' | 'method_not_allowed' | 'request_timeout' | 'conflict' | 'precondition_failed' | 'payload_too_large' | 'unsupported_media_type' | 'precondition_required' | 'too_many_requests' | 'internal' | 'unauthenticated' | 'forbidden' | 'csrf.invalid' | 'auth.invalid_credentials' | 'auth.reset_token_invalid' | 'idempotency_key.invalid' | 'idempotency_key.reused' | 'idempotency_key.in_flight' | 'tenant.not_found' | 'reference_item.code_taken';
+export type ErrorCode = 'bad_request' | 'validation_failed' | 'invalid_json' | 'invalid_query' | 'not_found' | 'method_not_allowed' | 'request_timeout' | 'conflict' | 'precondition_failed' | 'payload_too_large' | 'unsupported_media_type' | 'precondition_required' | 'too_many_requests' | 'internal' | 'unauthenticated' | 'forbidden' | 'csrf.invalid' | 'auth.invalid_credentials' | 'auth.reset_token_invalid' | 'idempotency_key.invalid' | 'idempotency_key.reused' | 'idempotency_key.in_flight' | 'tenant.not_found' | 'tenant.slug_taken' | 'tenant.confirmation_mismatch' | 'tenant.delete_current' | 'reference_item.code_taken';
 

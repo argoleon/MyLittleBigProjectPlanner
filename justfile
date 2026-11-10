@@ -42,11 +42,10 @@ down:
 db-up:
     {{compose}} up -d --wait postgres
 
-# Create the development tenant "default" and its administrator
+# Bootstrap the development tenant "default" and its platform super admin
 # dev@example.test, password "development only" (sign in on http://127.0.0.1:4200)
 seed: migrate
-    {{compose}} exec -T postgres psql -v ON_ERROR_STOP=1 -U mlbpp_owner -d mlbpp -c "INSERT INTO tenant (id, slug, name) VALUES (uuidv7(), 'default', 'Development') ON CONFLICT (slug) DO NOTHING"
-    {{be}} bash -c 'echo "development only" | DATABASE_URL="$DEV_DATABASE_URL" cargo run --locked --quiet -p api -- add-member default dev@example.test "Dev Admin" --role tenant_admin'
+    {{be}} bash -c 'DATABASE_MIGRATION_URL="$DEV_DATABASE_OWNER_URL" BOOTSTRAP_TENANT_NAME=Development BOOTSTRAP_ADMIN_EMAIL=dev@example.test BOOTSTRAP_ADMIN_NAME="Dev Admin" BOOTSTRAP_ADMIN_PASSWORD="development only" cargo run --locked --quiet -p api -- migrate'
 
 # Delete the development database and build caches
 reset:
@@ -193,7 +192,7 @@ web-check: web-lint web-i18n client-check web-licenses web-test e2e
 # Run locally with compose.local.yaml: images built from the sources,
 # https://localhost:18443 with a self-signed certificate. See deploy/README.md.
 
-stack := "MLBPP_DOMAIN=localhost MLBPP_REGISTRY=mlbpp-local MLBPP_VERSION=local MLBPP_PUBLIC_PORT=:18443 docker compose -f deploy/compose.yaml -f deploy/compose.local.yaml"
+stack := "MLBPP_DOMAIN=localhost MLBPP_REGISTRY=mlbpp-local MLBPP_VERSION=local MLBPP_PUBLIC_PORT=:18443 BOOTSTRAP_ADMIN_EMAIL=root@example.test docker compose -f deploy/compose.yaml -f deploy/compose.local.yaml"
 
 # Lint the scripts (shellcheck) and the CI workflows (actionlint), validate the compose files
 deploy-lint: compose-secrets

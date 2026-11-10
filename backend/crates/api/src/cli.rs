@@ -27,7 +27,9 @@ Usage: api [COMMAND]
 
 Commands:
   serve     Serve the REST API (default)
-  migrate   Apply pending database migrations with DATABASE_MIGRATION_URL, then exit
+  migrate   Apply pending database migrations with DATABASE_MIGRATION_URL, then
+            create the first tenant and platform super admin if BOOTSTRAP_ADMIN_EMAIL
+            is set and none exists yet; exit
   openapi   Print the OpenAPI contract (JSON) on standard output, then exit
   healthcheck [--ready]
             Exit 0 if the server listening on API_BIND_ADDR is alive (or, with

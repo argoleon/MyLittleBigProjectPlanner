@@ -49,6 +49,7 @@ write seaweedfs_s3_config "$(printf '{"identities":[{"name":"mlbpp","credentials
 write keycloak_db_password "$(random)"
 write keycloak_admin_password "$(random)"
 write grafana_admin_password "$(random)"
+write bootstrap_admin_password "$(random)"
 # Not random: the operator's SMTP server. Until it is replaced, emails (password
 # resets) stay queued and the worker logs why.
 write smtp_url "smtp://smtp.example.invalid:587?tls=required"
@@ -60,5 +61,10 @@ else
     echo "Keep a copy of pgbackrest_cipher_pass outside this machine: backups cannot be restored without it."
     case " ${created[*]} " in
         *" smtp_url "*) echo "Write the URL of your SMTP server to $dir/smtp_url (see deploy/README.md)." ;;
+    esac
+    case " ${created[*]} " in
+        *" bootstrap_admin_password "*)
+            echo "The first platform super admin (BOOTSTRAP_ADMIN_EMAIL) signs in with the password in $dir/bootstrap_admin_password."
+            ;;
     esac
 fi

@@ -119,7 +119,10 @@
       "in_flight": "Cette demande est déjà en cours de traitement."
     },
     "tenant": {
-      "not_found": "Cette organisation est introuvable."
+      "not_found": "Cette organisation est introuvable.",
+      "slug_taken": "Une autre organisation utilise déjà cet identifiant.",
+      "confirmation_mismatch": "Saisissez l’identifiant de l’organisation pour confirmer sa suppression.",
+      "delete_current": "Vous ne pouvez pas supprimer l’organisation sur laquelle vous êtes connecté."
     },
     "reference_item": {
       "code_taken": "Ce code est déjà utilisé."
@@ -137,7 +140,9 @@
       "unknown_field": "Ce champ n’existe pas.",
       "too_short": "C’est trop court.",
       "same_as_email": "Le mot de passe doit être différent de l’e-mail.",
-      "email": "Saisissez une adresse e-mail valide."
+      "email": "Saisissez une adresse e-mail valide.",
+      "unknown_time_zone": "Ce fuseau horaire est inconnu.",
+      "not_default_slug": "En mode mono-organisation, seul l’identifiant configuré est accepté."
     }
   }
 }

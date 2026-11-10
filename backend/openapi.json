@@ -290,6 +290,525 @@
         ]
       }
     },
+    "/api/v1/platform/tenants": {
+      "get": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "List every tenant",
+        "description": "Platform super admin only. In creation order; follow `nextCursor` until it is `null`.",
+        "operationId": "listTenants",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, from 1 to 200 (default 50).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "`nextCursor` of the previous page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of tenants",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformTenantPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid `limit` or `cursor`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`: no valid session",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: not a platform super admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "Create a tenant",
+        "description": "Platform super admin only. The tenant is reachable at once, at its `url`. Replaying the same request with the same `Idempotency-Key` within 24 hours returns the first response (`Idempotent-Replayed: true`).",
+        "operationId": "createTenant",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique key of this creation, 1 to 255 visible ASCII characters",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewTenant"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the tenant"
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "URL of the tenant"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformTenant"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid fields, JSON or `Idempotency-Key`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`: no valid session",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`tenant.slug_taken`, or `idempotency_key.in_flight`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Body is not JSON",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`Idempotency-Key` already used for another request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/platform/tenants/{id}": {
+      "get": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "Read a tenant",
+        "description": "Platform super admin only.",
+        "operationId": "getTenant",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the tenant",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "description": "ETag already held: 304 if still current",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The tenant",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the tenant"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformTenant"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified since the `If-None-Match` ETag"
+          },
+          "401": {
+            "description": "`unauthenticated`: no valid session",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: not a platform super admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "Change the settings and quotas of a tenant",
+        "description": "Platform super admin only. The slug cannot change.",
+        "operationId": "updateTenant",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the tenant",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the version being replaced, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The updated tenant",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "New version of the tenant"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformTenant"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid fields or JSON",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`: no valid session",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such tenant, or it is being deleted",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The tenant changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "Delete a tenant and all its data",
+        "description": "Platform super admin only, confirmed by typing the tenant's slug in `confirm`. The tenant stops resolving at once; a background job then removes all its data, and the accounts that belonged to it only. The tenant of the request itself cannot be deleted.",
+        "operationId": "deleteTenant",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the tenant",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "confirm",
+            "in": "query",
+            "description": "The tenant's slug, typed by the super admin to confirm.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "acme"
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the version being deleted, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Deletion started: the tenant, now `deleting`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformTenant"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`tenant.confirmation_mismatch`: `confirm` is not the slug",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`: no valid session",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such tenant, or already being deleted",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`tenant.delete_current`: the tenant of the request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The tenant changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/reference-items": {
       "get": {
         "tags": [
@@ -919,7 +1438,7 @@
     "schemas": {
       "ErrorCode": {
         "type": "string",
-        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n",
+        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n",
         "enum": [
           "bad_request",
           "validation_failed",
@@ -944,6 +1463,9 @@
           "idempotency_key.reused",
           "idempotency_key.in_flight",
           "tenant.not_found",
+          "tenant.slug_taken",
+          "tenant.confirmation_mismatch",
+          "tenant.delete_current",
           "reference_item.code_taken"
         ]
       },
@@ -966,6 +1488,104 @@
             "example": "code"
           }
         }
+      },
+      "NewTenant": {
+        "type": "object",
+        "description": "Body of `POST`: the tenant's host name label and its settings.",
+        "required": [
+          "slug",
+          "name",
+          "defaultLocale",
+          "timeZone"
+        ],
+        "properties": {
+          "apiRateLimitPerMinute": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "`null` or absent: unlimited.",
+            "maximum": 1000000,
+            "minimum": 1
+          },
+          "defaultCapacityMinutes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "7 values, minutes per weekday from Monday, 0 to 1440 each. Default: 7 h × 5 days.",
+            "example": [
+              420,
+              420,
+              420,
+              420,
+              420,
+              0,
+              0
+            ],
+            "maxItems": 7,
+            "minItems": 7
+          },
+          "defaultLocale": {
+            "type": "string",
+            "description": "`fr` or `en`.",
+            "example": "fr"
+          },
+          "name": {
+            "type": "string",
+            "description": "1 to 200 characters.",
+            "example": "Acme Industrie"
+          },
+          "overloadMode": {
+            "$ref": "#/components/schemas/OverloadMode",
+            "description": "Default `blocking`."
+          },
+          "overloadTolerancePercent": {
+            "type": "integer",
+            "format": "int64",
+            "description": "0 to 100. Default 0.",
+            "default": 0,
+            "maximum": 100,
+            "minimum": 0
+          },
+          "slug": {
+            "type": "string",
+            "description": "Host name label: `acme` serves `acme.<domain>`. 1 to 63 characters\namong `a-z`, `0-9` and `-`; cannot change later. In single-tenant\nmode, only the configured default slug is accepted.",
+            "example": "acme",
+            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
+          },
+          "storageQuotaBytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "`null` or absent: unlimited.",
+            "minimum": 1
+          },
+          "timeZone": {
+            "type": "string",
+            "description": "IANA time zone.",
+            "example": "Europe/Paris"
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "defaultLocale": "fr",
+          "name": "Acme Industrie",
+          "slug": "acme",
+          "timeZone": "Europe/Paris"
+        }
+      },
+      "OverloadMode": {
+        "type": "string",
+        "description": "What happens when an assignment exceeds capacity plus tolerance.",
+        "enum": [
+          "blocking",
+          "warning"
+        ]
       },
       "PasswordResetConfirmation": {
         "type": "object",
@@ -1012,6 +1632,133 @@
             "type": "string",
             "description": "Version of the API binary.",
             "example": "0.1.0"
+          }
+        }
+      },
+      "PlatformTenant": {
+        "type": "object",
+        "description": "A tenant as the platform super admin sees it.",
+        "required": [
+          "id",
+          "slug",
+          "url",
+          "name",
+          "defaultLocale",
+          "timeZone",
+          "defaultCapacityMinutes",
+          "overloadTolerancePercent",
+          "overloadMode",
+          "storageQuotaBytes",
+          "apiRateLimitPerMinute",
+          "status",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "apiRateLimitPerMinute": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "`null`: unlimited."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "defaultCapacityMinutes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Minutes per weekday, Monday first.",
+            "example": [
+              420,
+              420,
+              420,
+              420,
+              420,
+              0,
+              0
+            ]
+          },
+          "defaultLocale": {
+            "type": "string",
+            "example": "fr"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Acme Industrie"
+          },
+          "overloadMode": {
+            "$ref": "#/components/schemas/OverloadMode"
+          },
+          "overloadTolerancePercent": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "slug": {
+            "type": "string",
+            "example": "acme"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TenantStatus"
+          },
+          "storageQuotaBytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "`null`: unlimited."
+          },
+          "timeZone": {
+            "type": "string",
+            "example": "Europe/Paris"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "url": {
+            "type": "string",
+            "description": "Address of the tenant's application.",
+            "example": "https://acme.planner.example.org"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Incremented on every change; the `ETag` is this value in quotes."
+          }
+        }
+      },
+      "PlatformTenantPage": {
+        "type": "object",
+        "description": "A page of tenants, in creation order.",
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlatformTenant"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cursor of the next page, `null` on the last page."
           }
         }
       },
@@ -1321,6 +2068,109 @@
           "configuration_admin",
           "tenant_admin"
         ]
+      },
+      "TenantSettings": {
+        "type": "object",
+        "description": "Settings of a tenant (`PUT`).",
+        "required": [
+          "name",
+          "defaultLocale",
+          "timeZone"
+        ],
+        "properties": {
+          "apiRateLimitPerMinute": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "API requests per minute; `null` or absent: unlimited.",
+            "maximum": 1000000,
+            "minimum": 1
+          },
+          "defaultCapacityMinutes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "Default weekly capacity of new resources: 7 values, minutes per\nweekday from Monday, 0 to 1440 each. Default: 7 h × 5 days.",
+            "example": [
+              420,
+              420,
+              420,
+              420,
+              420,
+              0,
+              0
+            ],
+            "maxItems": 7,
+            "minItems": 7
+          },
+          "defaultLocale": {
+            "type": "string",
+            "description": "`fr` or `en`: fallback of translated labels, language of new members.",
+            "example": "fr"
+          },
+          "name": {
+            "type": "string",
+            "description": "1 to 200 characters.",
+            "example": "Acme Industrie"
+          },
+          "overloadMode": {
+            "$ref": "#/components/schemas/OverloadMode",
+            "description": "Default `blocking`."
+          },
+          "overloadTolerancePercent": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Load accepted above capacity, in percent, 0 to 100. Default 0.",
+            "default": 0,
+            "maximum": 100,
+            "minimum": 0
+          },
+          "storageQuotaBytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Storage quota in bytes; `null` or absent: unlimited.",
+            "minimum": 1
+          },
+          "timeZone": {
+            "type": "string",
+            "description": "IANA time zone.",
+            "example": "Europe/Paris"
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "apiRateLimitPerMinute": null,
+          "defaultCapacityMinutes": [
+            420,
+            420,
+            420,
+            420,
+            420,
+            0,
+            0
+          ],
+          "defaultLocale": "fr",
+          "name": "Acme Industrie",
+          "overloadMode": "blocking",
+          "overloadTolerancePercent": 0,
+          "storageQuotaBytes": null,
+          "timeZone": "Europe/Paris"
+        }
+      },
+      "TenantStatus": {
+        "type": "string",
+        "description": "Lifecycle of a tenant.",
+        "enum": [
+          "active",
+          "deleting"
+        ]
       }
     },
     "securitySchemes": {
@@ -1345,6 +2195,10 @@
     {
       "name": "auth",
       "description": "Sign-in, sessions and password reset"
+    },
+    {
+      "name": "platform",
+      "description": "Platform administration, for the platform super admin"
     },
     {
       "name": "reference-items",

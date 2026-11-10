@@ -20,7 +20,7 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
 
 use crate::problem::{ErrorCode, ProblemBody};
 use crate::tenant::AppState;
-use crate::{auth, reference_items};
+use crate::{auth, platform, reference_items};
 
 /// URL of the contract.
 pub const CONTRACT_PATH: &str = "/api/v1/openapi.json";
@@ -64,6 +64,7 @@ const DOCS_CSP: &str = "default-src 'self'; img-src 'self' data:; style-src 'sel
     tags(
         (name = "system", description = "Technical endpoints"),
         (name = auth::TAG, description = "Sign-in, sessions and password reset"),
+        (name = platform::TAG, description = "Platform administration, for the platform super admin"),
         (name = reference_items::TAG, description = "Reference resource showing every API convention; \
                                                      new endpoints copy it"),
     )

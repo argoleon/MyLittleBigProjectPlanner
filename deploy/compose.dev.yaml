@@ -39,8 +39,6 @@ x-backend: &backend
     TEST_DATABASE_ADMIN_URL: postgres://postgres:postgres@postgres:5432/postgres # gitleaks:allow
     # Owner-role URL of the development database (migrate, sqlx prepare).
     DEV_DATABASE_OWNER_URL: postgres://mlbpp_owner:mlbpp_owner_dev@postgres:5432/mlbpp # gitleaks:allow
-    # Runtime-role URL of the development database (just seed).
-    DEV_DATABASE_URL: postgres://mlbpp_app:mlbpp_app_dev@postgres:5432/mlbpp # gitleaks:allow
     # Valkey and SMTP catcher of the integration tests (keys and recipients
     # are unique per test).
     TEST_VALKEY_URL: redis://valkey:6379
