@@ -119,7 +119,10 @@
       "in_flight": "This request is already being processed."
     },
     "tenant": {
-      "not_found": "This organization cannot be found."
+      "not_found": "This organization cannot be found.",
+      "slug_taken": "Another organization already uses this identifier.",
+      "confirmation_mismatch": "Type the identifier of the organization to confirm its deletion.",
+      "delete_current": "You cannot delete the organization you are signed in to."
     },
     "reference_item": {
       "code_taken": "This code is already used."
@@ -137,7 +140,9 @@
       "unknown_field": "This field does not exist.",
       "too_short": "This is too short.",
       "same_as_email": "The password must differ from the email.",
-      "email": "Enter a valid email address."
+      "email": "Enter a valid email address.",
+      "unknown_time_zone": "This time zone is unknown.",
+      "not_default_slug": "In single-organization mode, only the configured identifier is allowed."
     }
   }
 }

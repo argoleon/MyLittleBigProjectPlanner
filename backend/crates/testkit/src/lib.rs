@@ -301,6 +301,18 @@ impl TestDb {
     }
 }
 
+impl TestDb {
+    /// Makes `account_id` a platform super admin (the bootstrap's job in
+    /// production).
+    pub async fn make_platform_admin(&self, account_id: Uuid) {
+        sqlx::query("INSERT INTO platform_admin (account_id) VALUES ($1) ON CONFLICT DO NOTHING")
+            .bind(account_id)
+            .execute(&self.owner_pool)
+            .await
+            .expect("make platform admin");
+    }
+}
+
 // --- Valkey -----------------------------------------------------------------
 
 /// Valkey of the integration tests, with a key prefix unique to the test so

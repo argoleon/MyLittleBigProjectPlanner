@@ -2,6 +2,7 @@
 //! S3 storage, email and Valkey.
 
 pub mod accounts;
+pub mod bootstrap;
 pub mod config;
 pub mod credentials;
 pub mod db;
@@ -11,6 +12,7 @@ pub mod id;
 pub mod idempotency;
 pub mod jobs;
 pub mod pagination;
+pub mod platform;
 pub mod rate_limit;
 pub mod reference_items;
 pub mod sessions;

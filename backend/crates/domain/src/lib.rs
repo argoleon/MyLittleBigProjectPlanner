@@ -9,6 +9,7 @@ pub mod idempotency;
 pub mod jobs;
 pub mod reference_item;
 pub mod tenancy;
+pub mod tenant;
 pub mod validation;
 
 /// Name of the product, shared by every service.

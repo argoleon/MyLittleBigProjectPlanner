@@ -16,7 +16,7 @@ pub static MIGRATOR: Migrator = sqlx::migrate!("../../migrations");
 
 /// Tables allowed to have no `tenant_id` column (they still need RLS,
 /// except the SQLx bookkeeping table).
-const TENANT_ID_EXEMPT: &[&str] = &["tenant", "account"];
+const TENANT_ID_EXEMPT: &[&str] = &["tenant", "account", "platform_admin"];
 
 /// Pool for the runtime role. Connections open lazily, so the service starts
 /// even if the database is momentarily unavailable; readiness reports it.
@@ -67,16 +67,33 @@ pub struct ResolvedTenant {
     pub id: Uuid,
     /// Fallback language of translatable labels (`fr` or `en`).
     pub default_locale: String,
+    pub quotas: TenantQuotas,
 }
 
-/// The tenant for `slug`, or `None` if no such tenant exists. Works outside a
-/// tenant context (owner-defined function), without exposing other tenants.
+/// Quotas of a tenant, for the services that enforce them; `None` means
+/// unlimited.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct TenantQuotas {
+    /// Total size of the tenant's attachments (L05).
+    pub storage_bytes: Option<i64>,
+    /// API requests per minute (API tokens, L16).
+    pub api_requests_per_minute: Option<i32>,
+}
+
+/// The active tenant for `slug`, or `None` if no such tenant exists or it is
+/// being deleted. Works outside a tenant context (owner-defined function),
+/// without exposing other tenants.
 pub async fn resolve_tenant(
     conn: &mut PgConnection,
     slug: &str,
 ) -> Result<Option<ResolvedTenant>, sqlx::Error> {
     let row = sqlx::query!(
-        r#"SELECT id AS "id!", default_locale AS "default_locale!" FROM app_resolve_tenant($1)"#,
+        r#"
+        SELECT id AS "id!", default_locale AS "default_locale!",
+               storage_quota_bytes AS "storage_quota_bytes?",
+               api_rate_limit_per_minute AS "api_rate_limit_per_minute?"
+        FROM app_resolve_tenant($1)
+        "#,
         slug
     )
     .fetch_optional(conn)
@@ -84,6 +101,10 @@ pub async fn resolve_tenant(
     Ok(row.map(|r| ResolvedTenant {
         id: r.id,
         default_locale: r.default_locale,
+        quotas: TenantQuotas {
+            storage_bytes: r.storage_quota_bytes,
+            api_requests_per_minute: r.api_rate_limit_per_minute,
+        },
     }))
 }
 

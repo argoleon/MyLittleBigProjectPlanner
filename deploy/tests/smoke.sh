@@ -47,7 +47,9 @@ pass "/mcp is routed to the mcp service"
 pass "health endpoints are not exposed publicly"
 
 section "sign-in"
-ensure_default_tenant
+[ "$(psql_admin -c "SELECT count(*) FROM tenant WHERE slug = 'default'")" = "1" ] \
+    || fail "the migrate service did not bootstrap the default tenant"
+pass "the migrate service bootstrapped the default tenant"
 smoke_email="smoke-admin@example.test"
 smoke_secret="smoke test passphrase"
 printf '%s\n' "$smoke_secret" | compose exec -T api /usr/local/bin/api add-member default "$smoke_email" "Smoke Admin" --role tenant_admin > /dev/null \
@@ -65,6 +67,19 @@ xsrf="$(grep -i '^set-cookie: mlbpp_csrf=' <<< "$signed_in" | sed -E 's/^[^=]*=(
 pass "signed in: HttpOnly, Secure session cookie and CSRF cookie"
 # As a browser of the tenant: its session cookie, and its CSRF token on changes.
 as_member() { curl_edge -H "cookie: mlbpp_session=$sid" -H "x-csrf-token: $xsrf" "$@"; }
+
+section "platform super admin"
+expect_status 403 "a tenant admin cannot manage tenants" -H "cookie: mlbpp_session=$sid" \
+    https://localhost/api/v1/platform/tenants
+root_secret="$(cat deploy/secrets/bootstrap_admin_password)"
+root_in="$(curl_edge --include -X POST https://localhost/api/v1/auth/sign-in \
+    -H 'content-type: application/json' -d "{\"email\": \"$BOOTSTRAP_ADMIN_EMAIL\", \"password\": \"$root_secret\"}")"
+grep -q '^HTTP/[0-9.]* 200' <<< "$root_in" || fail "the bootstrapped super admin cannot sign in: $root_in"
+root_sid="$(grep -i '^set-cookie: mlbpp_session=' <<< "$root_in" | sed -E 's/^[^=]*=([^;]*);.*/\1/')"
+tenants="$(curl_edge -H "cookie: mlbpp_session=$root_sid" https://localhost/api/v1/platform/tenants)"
+grep -q '"slug":"default"' <<< "$tenants" || fail "the super admin does not see the tenants: $tenants"
+grep -q '"url":"https://localhost:18443"' <<< "$tenants" || fail "unexpected tenant address: $tenants"
+pass "the bootstrapped super admin signs in and lists the tenants"
 
 section "reference endpoint, end to end"
 code="SMOKE-$(date +%s)"

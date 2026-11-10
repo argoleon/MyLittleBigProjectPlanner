@@ -286,3 +286,68 @@ async fn unknown_kinds_and_unreadable_payloads_fail_without_retry() {
         assert_eq!((status.as_str(), attempts), ("failed", 1), "{error:?}");
     }
 }
+
+#[tokio::test]
+async fn the_purge_job_removes_a_deleted_tenant_and_its_rows() {
+    let db = TestDb::new().await;
+    let admin = db
+        .add_member(&db.tenant_a, infra::accounts::TenantRole::TenantAdmin)
+        .await;
+    db.make_platform_admin(admin.account_id).await;
+    let member = db
+        .add_member(&db.tenant_b, infra::accounts::TenantRole::Member)
+        .await;
+    enqueue(&db, db.tenant_b.id, "test.job", serde_json::json!({})).await;
+
+    let job_id = infra::id::new_id();
+    let mut conn = db.app_pool.acquire().await.unwrap();
+    infra::platform::delete(&mut conn, admin.account_id, db.tenant_b.id, None, job_id)
+        .await
+        .unwrap()
+        .unwrap();
+    drop(conn);
+
+    // The purge runs whatever the order of the claimed jobs.
+    let runner = JobRunner::new(db.app_pool.clone());
+    while runner.next_batch(&jobs()).await == Batch::Processed {}
+
+    let count = |sql: &str| {
+        let sql = sql.to_owned();
+        let pool = db.owner_pool.clone();
+        async move {
+            sqlx::query_scalar::<_, i64>(sqlx::AssertSqlSafe(sql))
+                .fetch_one(&pool)
+                .await
+                .unwrap()
+        }
+    };
+    assert_eq!(
+        count(&format!(
+            "SELECT count(*) FROM tenant WHERE id = '{}'",
+            db.tenant_b.id
+        ))
+        .await,
+        0
+    );
+    assert_eq!(
+        count(&format!(
+            "SELECT count(*) FROM account WHERE id = '{}'",
+            member.account_id
+        ))
+        .await,
+        0
+    );
+    assert_eq!(
+        count("SELECT count(*) FROM job").await,
+        0,
+        "no job left, none failed"
+    );
+    assert_eq!(
+        count(&format!(
+            "SELECT count(*) FROM tenant WHERE id = '{}'",
+            db.tenant_a.id
+        ))
+        .await,
+        1
+    );
+}

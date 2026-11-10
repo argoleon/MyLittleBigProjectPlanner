@@ -11,6 +11,9 @@ export MLBPP_DOMAIN=localhost
 export MLBPP_REGISTRY=mlbpp-local
 export MLBPP_VERSION=local
 export MLBPP_PUBLIC_PORT=:18443
+# First platform super admin, bootstrapped by the migrate service; its
+# password is in deploy/secrets/bootstrap_admin_password.
+export BOOTSTRAP_ADMIN_EMAIL=root@example.test
 
 CURL_IMAGE=curlimages/curl:8.17.0
 TEST_NAME="$(basename "$0" .sh)"
@@ -87,10 +90,4 @@ wait_until() {
 # SQL as the PostgreSQL superuser, in the application database.
 psql_admin() {
     compose exec -T postgres psql -U postgres -d mlbpp -v ON_ERROR_STOP=1 -At "$@"
-}
-
-# The first tenant: tenant administration arrives with L02, so the tests
-# (and the operator, see deploy/README.md) create it in SQL.
-ensure_default_tenant() {
-    psql_admin -c "INSERT INTO tenant (id, slug, name) VALUES (uuidv7(), 'default', 'Default') ON CONFLICT (slug) DO NOTHING" > /dev/null
 }

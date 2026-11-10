@@ -17,6 +17,7 @@ use chrono::Utc;
 use domain::jobs::{AfterFailure, after_failure};
 use infra::email::{EMAIL_JOB, EmailJob, MailError, Mailer, render};
 use infra::jobs::ClaimedJob;
+use infra::platform::PURGE_TENANT_JOB;
 use infra::sqlx::postgres::{PgConnection, PgPool};
 
 use crate::Batch;
@@ -46,7 +47,7 @@ pub struct Jobs {
 }
 
 impl JobHandler for Jobs {
-    fn handle<'a>(&'a self, job: &'a ClaimedJob, _conn: &'a mut PgConnection) -> JobFuture<'a> {
+    fn handle<'a>(&'a self, job: &'a ClaimedJob, conn: &'a mut PgConnection) -> JobFuture<'a> {
         Box::pin(async move {
             match job.kind.as_str() {
                 EMAIL_JOB => {
@@ -60,6 +61,13 @@ impl JobHandler for Jobs {
                             JobError::Permanent(e.to_string())
                         }
                     })
+                }
+                PURGE_TENANT_JOB => {
+                    let removed = infra::platform::purge(conn, job.tenant_id)
+                        .await
+                        .map_err(|e| JobError::Retry(e.to_string()))?;
+                    tracing::info!(removed, "tenant purged");
+                    Ok(())
                 }
                 other => Err(JobError::Permanent(format!("unknown job kind {other}"))),
             }
@@ -151,6 +159,8 @@ impl JobRunner {
         };
         match recorded {
             Ok(true) => {}
+            // The purge removed the tenant, its jobs included.
+            Ok(false) if result.is_ok() && job.kind == PURGE_TENANT_JOB => {}
             Ok(false) => tracing::warn!("lease lost: another worker may run the job again"),
             Err(err) => tracing::warn!(error = %err, "cannot record the job's outcome"),
         }

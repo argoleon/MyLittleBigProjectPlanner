@@ -62,12 +62,15 @@ pub enum ErrorCode {
     IdempotencyKeyInFlight,
     // Resources.
     TenantNotFound,
+    TenantSlugTaken,
+    TenantConfirmationMismatch,
+    TenantDeleteCurrent,
     ReferenceItemCodeTaken,
 }
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 24] = [
+    pub const ALL: [Self; 27] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -91,6 +94,9 @@ impl ErrorCode {
         Self::IdempotencyKeyReused,
         Self::IdempotencyKeyInFlight,
         Self::TenantNotFound,
+        Self::TenantSlugTaken,
+        Self::TenantConfirmationMismatch,
+        Self::TenantDeleteCurrent,
         Self::ReferenceItemCodeTaken,
     ];
 
@@ -119,6 +125,9 @@ impl ErrorCode {
             Self::IdempotencyKeyReused => "idempotency_key.reused",
             Self::IdempotencyKeyInFlight => "idempotency_key.in_flight",
             Self::TenantNotFound => "tenant.not_found",
+            Self::TenantSlugTaken => "tenant.slug_taken",
+            Self::TenantConfirmationMismatch => "tenant.confirmation_mismatch",
+            Self::TenantDeleteCurrent => "tenant.delete_current",
             Self::ReferenceItemCodeTaken => "reference_item.code_taken",
         }
     }
@@ -130,16 +139,19 @@ impl ErrorCode {
             | Self::InvalidJson
             | Self::InvalidQuery
             | Self::IdempotencyKeyInvalid
-            | Self::AuthResetTokenInvalid => StatusCode::BAD_REQUEST,
+            | Self::AuthResetTokenInvalid
+            | Self::TenantConfirmationMismatch => StatusCode::BAD_REQUEST,
             Self::Unauthenticated | Self::AuthInvalidCredentials => StatusCode::UNAUTHORIZED,
             Self::Forbidden | Self::CsrfInvalid => StatusCode::FORBIDDEN,
             Self::TooManyRequests => StatusCode::TOO_MANY_REQUESTS,
             Self::NotFound | Self::TenantNotFound => StatusCode::NOT_FOUND,
             Self::MethodNotAllowed => StatusCode::METHOD_NOT_ALLOWED,
             Self::RequestTimeout => StatusCode::REQUEST_TIMEOUT,
-            Self::Conflict | Self::IdempotencyKeyInFlight | Self::ReferenceItemCodeTaken => {
-                StatusCode::CONFLICT
-            }
+            Self::Conflict
+            | Self::IdempotencyKeyInFlight
+            | Self::ReferenceItemCodeTaken
+            | Self::TenantSlugTaken
+            | Self::TenantDeleteCurrent => StatusCode::CONFLICT,
             Self::PreconditionFailed => StatusCode::PRECONDITION_FAILED,
             Self::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -175,6 +187,9 @@ impl ErrorCode {
             Self::IdempotencyKeyReused => "This Idempotency-Key was used for a different request",
             Self::IdempotencyKeyInFlight => "A request with this Idempotency-Key is still in progress",
             Self::TenantNotFound => "Tenant not found",
+            Self::TenantSlugTaken => "Another tenant already has this slug",
+            Self::TenantConfirmationMismatch => "Type the tenant's slug in `confirm` to delete it",
+            Self::TenantDeleteCurrent => "The tenant you are signed in to cannot be deleted",
             Self::ReferenceItemCodeTaken => "Another reference item already has this code",
         }
     }
@@ -419,7 +434,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 24] = [
+        let expected: [(ErrorCode, u16); 27] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -443,6 +458,9 @@ mod tests {
             (ErrorCode::IdempotencyKeyReused, 422),
             (ErrorCode::IdempotencyKeyInFlight, 409),
             (ErrorCode::TenantNotFound, 404),
+            (ErrorCode::TenantSlugTaken, 409),
+            (ErrorCode::TenantConfirmationMismatch, 400),
+            (ErrorCode::TenantDeleteCurrent, 409),
             (ErrorCode::ReferenceItemCodeTaken, 409),
         ];
         for (code, status) in expected {

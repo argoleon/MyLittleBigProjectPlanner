@@ -80,6 +80,11 @@ impl Auth {
         }
     }
 
+    /// Public address of the front end (links of emails, tenant addresses).
+    pub(crate) fn public_url(&self) -> &PublicUrl {
+        &self.public_url
+    }
+
     /// The session of the request's cookie, for `tenant_id`: 401 without a
     /// valid one, 403 when a state-changing request lacks its CSRF token.
     pub(crate) async fn session_of(
