@@ -46,6 +46,8 @@ test('sign in, sign out, reset the password from the email, sign in again', asyn
 
   // Ask for a reset link.
   await page.getByRole('link', { name: 'Forgot your password?' }).click();
+  // The page is loaded lazily: wait for it, or the sign-in form still answers.
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Forgot your password');
   await page.getByLabel('Email').fill(email!);
   await page.getByRole('button', { name: 'Send the link' }).click();
   await expect(page.getByRole('status')).toContainText(`If an account matches ${email}`);
