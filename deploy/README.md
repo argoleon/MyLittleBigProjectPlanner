@@ -48,6 +48,7 @@ Requirements: Docker Engine with Compose v2.24 or later, ports 80 and 443 open, 
    | `seaweedfs_s3_config` | SeaweedFS S3 identities (JSON) |
    | `keycloak_db_password`, `keycloak_admin_password` | Profile `sso` |
    | `grafana_admin_password` | Profile `observability` (user `admin`) |
+   | `mfa_encryption_key` | AES-256 key encrypting the two-step verification secrets: 32 random bytes in base64 (`head -c 32 /dev/urandom \| base64`). **Keep a copy with the backups**: without it, members with two-step verification cannot sign in |
    | `bootstrap_admin_password` | Password of the first platform super admin (`BOOTSTRAP_ADMIN_EMAIL`), 12 characters or more. Change it once signed in |
    | `smtp_url` | SMTP server of the emails (password resets): `smtp://host:587?tls=required` (STARTTLS) or `smtps://host:465`, with the account in the URL if needed. **The script writes a placeholder: replace it.** Until then, emails stay in the job queue and the worker logs the failures |
 
@@ -71,6 +72,8 @@ Optional profiles: add `--profile sso` and/or `--profile observability` to every
 ## Sign-in and sessions
 
 Members sign in with their email and password (Argon2id hashes). Sessions live in Valkey: any api instance serves them, and they survive a restart. A session ends after `SESSION_IDLE_MINUTES` without use (8 hours by default) and `SESSION_MAX_AGE_HOURS` after sign-in at the latest (7 days); signing out or resetting the password ends it at once. Its cookie is `HttpOnly`, `Secure` and `SameSite=Lax`, scoped to the tenant's host name.
+
+Members can turn on two-step verification with an authenticator app (TOTP), with 8 single-use backup codes. A tenant admin can require it for every member signing in with a password (`PUT /api/v1/tenant/auth-policy`); members without it then enroll at their next sign-in. The TOTP secrets are encrypted with `mfa_encryption_key`. After 5 wrong codes, the account's verification is blocked for 15 minutes.
 
 After 5 failed sign-ins on an email, or 30 from one client address, sign-in is refused for 15 minutes. The client address is the last entry of `X-Forwarded-For`, which Traefik sets: do not expose the api without it.
 

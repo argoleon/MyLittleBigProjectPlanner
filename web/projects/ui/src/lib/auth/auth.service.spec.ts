@@ -5,8 +5,8 @@ import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree, provideRo
 import { ApiProblem } from '../api/api-problem';
 import { provideApi } from '../api/provide-api';
 import { ContractBackend, contractExample } from '../api/testing/contract-backend';
-import { authGuard, signedOutGuard } from './auth.guards';
-import { AuthService, isSafeReturnUrl } from './auth.service';
+import { authGuard, signedOutGuard, stageGuard } from './auth.guards';
+import { AuthService, isSafeReturnUrl, pathForStage } from './auth.service';
 
 const UNAUTHENTICATED = { code: 'unauthenticated', title: 'Sign-in required, or the session has ended' };
 
@@ -99,6 +99,32 @@ describe('AuthService', () => {
     expect(navigate).toHaveBeenCalledTimes(2);
   });
 
+  it('is signed in only once the session is complete', async () => {
+    const { auth, backend } = setUp();
+    const signedIn = auth.signIn('a@b.io', 'correct horse battery');
+    backend.respond(200, { stage: 'mfa_challenge' });
+    expect((await signedIn).stage).toBe('mfa_challenge');
+    expect(auth.signedIn()).toBe(false);
+
+    const verified = auth.verifySignIn('482913');
+    const request = backend.respond(200);
+    expect(request.request.url).toBe('/api/v1/auth/sign-in/verify');
+    expect(request.request.body).toEqual({ code: '482913' });
+    expect((await verified).stage).toBe('complete');
+    expect(auth.signedIn()).toBe(true);
+  });
+
+  it('takes the session completed by an enrollment', async () => {
+    const { auth, backend } = setUp();
+    void auth.signIn('a@b.io', 'correct horse battery');
+    backend.respond(200, { stage: 'mfa_enrollment' });
+    await settle();
+    const confirmed = auth.confirmMfa('123456');
+    expect(backend.respond(200).request.body).toEqual({ code: '123456' });
+    expect((await confirmed).backupCodes.length).toBeGreaterThan(0);
+    expect(auth.session()?.stage).toBe('complete');
+  });
+
   it('requests and confirms password resets', async () => {
     const { auth, backend } = setUp();
     const requested = auth.requestPasswordReset('lucas.bernard@acme.example');
@@ -129,6 +155,14 @@ describe('AuthService', () => {
   });
 });
 
+describe('pathForStage', () => {
+  it('knows the page of each stage', () => {
+    expect(pathForStage('mfa_challenge')).toBe('/sign-in/verify');
+    expect(pathForStage('mfa_enrollment')).toBe('/sign-in/enroll');
+    expect(pathForStage('complete')).toBeNull();
+  });
+});
+
 describe('isSafeReturnUrl', () => {
   it('follows only return URLs of this application', () => {
     expect(isSafeReturnUrl('/gantt?view=week')).toBe(true);
@@ -153,6 +187,25 @@ describe('route guards', () => {
     expect(router.serializeUrl((await result) as UrlTree)).toBe('/sign-in?returnUrl=%2Fworkload');
     expect(router.serializeUrl((await run(authGuard, '/')) as UrlTree)).toBe('/sign-in');
     expect(await run(signedOutGuard, '/sign-in')).toBe(true);
+  });
+
+  it('send a session waiting for its second factor to that step', async () => {
+    const { backend, router } = setUp();
+    const result = run(authGuard, '/gantt');
+    backend.respond(200, { stage: 'mfa_challenge' });
+    expect(router.serializeUrl((await result) as UrlTree)).toBe('/sign-in/verify?returnUrl=%2Fgantt');
+    expect(await run(signedOutGuard, '/sign-in')).toBe(true);
+    expect(await run(stageGuard('mfa_challenge'), '/sign-in/verify')).toBe(true);
+    expect(router.serializeUrl((await run(stageGuard('mfa_enrollment'), '/sign-in/enroll')) as UrlTree)).toBe(
+      '/sign-in',
+    );
+  });
+
+  it('send a session that must enroll to the enrollment page', async () => {
+    const { backend, router } = setUp();
+    const result = run(authGuard, '/');
+    backend.respond(200, { stage: 'mfa_enrollment' });
+    expect(router.serializeUrl((await result) as UrlTree)).toBe('/sign-in/enroll');
   });
 
   it('let members in, and send them home from the sign-in page', async () => {

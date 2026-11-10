@@ -86,7 +86,46 @@
     },
     "account": {
       "menu": "Account: {{ name }}",
-      "signOut": "Sign out"
+      "signOut": "Sign out",
+      "security": "Two-step verification"
+    },
+    "verify": {
+      "step": "Step 2 of 2",
+      "title": "Two-step verification",
+      "intro": "Enter the 6-digit code shown by your authenticator app.",
+      "backupIntro": "Enter one of the backup codes you kept when enabling two-step verification. Each one works once.",
+      "backupCode": "Backup code",
+      "submit": "Verify",
+      "useBackup": "Use a backup code",
+      "useApp": "Use the authenticator app"
+    },
+    "enroll": {
+      "title": "Enable two-step verification",
+      "intro": "Your organization requires two-step verification: set it up to continue."
+    },
+    "mfa": {
+      "title": "Two-step verification",
+      "intro": "Protect your account: after your password, you will enter a code from an authenticator app (Microsoft Authenticator, Google Authenticator, FreeOTP…).",
+      "scan": "Scan this QR code with your authenticator app.",
+      "qrAlt": "QR code to scan with your authenticator app; the key below gives the same information.",
+      "key": "Or enter this key in the app:",
+      "code": "6-digit code",
+      "codeHint": "Shown by the app, renewed every 30 seconds",
+      "enable": "Enable",
+      "enabled": "Two-step verification is enabled.",
+      "backupCodesIntro": "Keep these backup codes somewhere safe: if you lose your phone, each one replaces a code from the app once. They will not be shown again.",
+      "backupCodes": "Backup codes",
+      "copy": "Copy",
+      "copied": "Copied",
+      "download": "Download",
+      "done": "I kept my codes",
+      "fileTitle": "My Little Big Project Planner backup codes",
+      "active": "Two-step verification is enabled. Backup codes left: {{ count }}.",
+      "requiredByPolicy": "Your organization requires it: it cannot be disabled.",
+      "disableIntro": "To disable it, enter a code from the app or a backup code.",
+      "codeOrBackup": "Code or backup code",
+      "disable": "Disable",
+      "close": "Close"
     }
   },
   "errors": {
@@ -111,7 +150,13 @@
     },
     "auth": {
       "invalid_credentials": "Incorrect email or password.",
-      "reset_token_invalid": "This link is invalid, has expired or was already used. Ask for a new one."
+      "reset_token_invalid": "This link is invalid, has expired or was already used. Ask for a new one.",
+      "invalid_code": "Incorrect or already used code."
+    },
+    "mfa": {
+      "already_enabled": "Two-step verification is already enabled.",
+      "not_started": "Start the setup again.",
+      "required_by_policy": "Your organization requires two-step verification."
     },
     "idempotency_key": {
       "invalid": "The request is malformed.",

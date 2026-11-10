@@ -7,7 +7,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
 
 /**
  * Icon button of the top app bar opening the signed-in member's menu: who
- * is signed in, and signing out.
+ * is signed in, two-step verification, and signing out.
  */
 @Component({
   selector: 'ui-account-menu',
@@ -28,6 +28,10 @@ import { TranslocoPipe } from '@jsverse/transloco';
         <span class="email">{{ email() }}</span>
       </div>
       <mat-divider />
+      <button mat-menu-item type="button" (click)="security.emit()">
+        <mat-icon aria-hidden="true">security</mat-icon>
+        <span>{{ 'auth.account.security' | transloco }}</span>
+      </button>
       <button mat-menu-item type="button" (click)="signOut.emit()">
         <mat-icon aria-hidden="true">logout</mat-icon>
         <span>{{ 'auth.account.signOut' | transloco }}</span>
@@ -39,4 +43,6 @@ export class AccountMenu {
   readonly displayName = input.required<string>();
   readonly email = input.required<string>();
   readonly signOut = output<void>();
+  /** Two-step verification was picked. */
+  readonly security = output<void>();
 }

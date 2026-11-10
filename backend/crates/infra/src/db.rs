@@ -16,7 +16,13 @@ pub static MIGRATOR: Migrator = sqlx::migrate!("../../migrations");
 
 /// Tables allowed to have no `tenant_id` column (they still need RLS,
 /// except the SQLx bookkeeping table).
-const TENANT_ID_EXEMPT: &[&str] = &["tenant", "account", "platform_admin"];
+const TENANT_ID_EXEMPT: &[&str] = &[
+    "tenant",
+    "account",
+    "platform_admin",
+    "account_mfa",
+    "account_backup_code",
+];
 
 /// Pool for the runtime role. Connections open lazily, so the service starts
 /// even if the database is momentarily unavailable; readiness reports it.

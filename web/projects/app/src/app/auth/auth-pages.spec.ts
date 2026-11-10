@@ -25,6 +25,7 @@ const SESSION = {
     locale: null,
     tenantRole: 'member',
   },
+  stage: 'complete',
   csrfToken: 'csrf-token',
   expiresAt: '2026-11-17T09:00:00Z',
 };

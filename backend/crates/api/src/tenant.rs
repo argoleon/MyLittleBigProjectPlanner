@@ -28,7 +28,7 @@ use axum::http::request::Parts;
 use domain::tenancy::{Tenancy, tenant_slug_from_host};
 use infra::accounts::{AccountType, Member};
 use infra::health::Dependency;
-use infra::sessions::Session;
+use infra::sessions::{Session, SessionStage};
 use infra::sqlx::postgres::{PgConnection, PgPool};
 use infra::sqlx::{Postgres, Transaction};
 use infra::uuid::Uuid;
@@ -138,7 +138,8 @@ impl FromRequestParts<AppState> for PublicTenantTx {
 }
 
 /// A database transaction bound to the request's tenant, on behalf of a
-/// signed-in, active internal member of that tenant.
+/// signed-in, active internal member of that tenant whose session is
+/// complete (two-step verification done, when required).
 #[derive(Debug)]
 pub struct TenantTx {
     inner: PublicTenantTx,
@@ -174,8 +175,37 @@ impl TenantTx {
         &self.session_token
     }
 
+    /// Where the session stands: always `Complete` for a [`TenantTx`]
+    /// itself, any stage for a [`StagedTenantTx`].
+    pub fn stage(&self) -> SessionStage {
+        self.session.stage
+    }
+
     pub async fn commit(self) -> Result<(), Problem> {
         self.inner.commit().await
+    }
+
+    /// The tenant, the session of the request's cookie at any stage, and its
+    /// active internal member.
+    async fn load(parts: &mut Parts, state: &AppState) -> Result<Self, Problem> {
+        // The tenant first: an unknown host is a 404 whoever asks.
+        let mut inner = PublicTenantTx::from_request_parts(parts, state).await?;
+        let (session_token, session) = state.auth.session_of(parts, inner.tenant_id).await?;
+        let member = infra::accounts::find(&mut inner, session.account_id)
+            .await?
+            .filter(|member| member.active)
+            // Suspended or removed since sign-in.
+            .ok_or(Problem::new(ErrorCode::Unauthenticated))?;
+        if member.account_type != AccountType::Internal {
+            // External members use the request portal only.
+            return Err(Problem::new(ErrorCode::Forbidden));
+        }
+        Ok(Self {
+            inner,
+            session_token,
+            session,
+            member,
+        })
     }
 }
 
@@ -196,23 +226,39 @@ impl FromRequestParts<AppState> for TenantTx {
     type Rejection = Problem;
 
     async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, Problem> {
-        // The tenant first: an unknown host is a 404 whoever asks.
-        let mut inner = PublicTenantTx::from_request_parts(parts, state).await?;
-        let (session_token, session) = state.auth.session_of(parts, inner.tenant_id).await?;
-        let member = infra::accounts::find(&mut inner, session.account_id)
-            .await?
-            .filter(|member| member.active)
-            // Suspended or removed since sign-in.
-            .ok_or(Problem::new(ErrorCode::Unauthenticated))?;
-        if member.account_type != AccountType::Internal {
-            // External members use the request portal only.
-            return Err(Problem::new(ErrorCode::Forbidden));
+        let tx = Self::load(parts, state).await?;
+        if tx.session.stage == SessionStage::Complete {
+            Ok(tx)
+        } else {
+            // Password checked, second factor still expected: not signed in yet.
+            Err(Problem::new(ErrorCode::Unauthenticated))
         }
-        Ok(Self {
-            inner,
-            session_token,
-            session,
-            member,
-        })
+    }
+}
+
+/// A [`TenantTx`] whose session may still wait for two-step verification:
+/// only for the endpoints of that step (session, sign-out, code check,
+/// enrollment). Each checks [`TenantTx::stage`].
+#[derive(Debug)]
+pub struct StagedTenantTx(pub TenantTx);
+
+impl FromRequestParts<AppState> for StagedTenantTx {
+    type Rejection = Problem;
+
+    async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, Problem> {
+        TenantTx::load(parts, state).await.map(Self)
+    }
+}
+
+impl Deref for StagedTenantTx {
+    type Target = TenantTx;
+    fn deref(&self) -> &TenantTx {
+        &self.0
+    }
+}
+
+impl DerefMut for StagedTenantTx {
+    fn deref_mut(&mut self) -> &mut TenantTx {
+        &mut self.0
     }
 }

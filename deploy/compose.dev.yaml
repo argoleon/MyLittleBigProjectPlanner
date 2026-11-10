@@ -121,6 +121,8 @@ services:
       PUBLIC_URL: http://127.0.0.1:4200
       # The development front end is served over plain http.
       SESSION_COOKIE_SECURE: "false"
+      # Encrypts the TOTP secrets; development only (32 bytes in base64).
+      MFA_ENCRYPTION_KEY: ZGV2ZWxvcG1lbnQga2V5IG9ubHksIDMyIGJ5dGVzISE= # gitleaks:allow
       # Readable logs in the terminal; production writes JSON lines.
       LOG_FORMAT: text
     command:

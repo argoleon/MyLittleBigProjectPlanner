@@ -5,7 +5,16 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { Api, AuthLayout, AuthService, errorTranslationKey, getCurrentTenant, isApiProblem, isSafeReturnUrl } from 'ui';
+import {
+  Api,
+  AuthLayout,
+  AuthService,
+  errorTranslationKey,
+  getCurrentTenant,
+  isApiProblem,
+  isSafeReturnUrl,
+  pathForStage,
+} from 'ui';
 
 /** Sign-in with email and password (mockup 07, step 1). */
 @Component({
@@ -91,9 +100,16 @@ export class SignInPage {
     this.errorKey.set(null);
     const { email, password } = this.form.getRawValue();
     try {
-      await this.auth.signIn(email, password);
+      const session = await this.auth.signIn(email, password);
       const target = this.returnUrl();
-      await this.router.navigateByUrl(isSafeReturnUrl(target) ? target : '/');
+      const safeTarget = isSafeReturnUrl(target) ? target : undefined;
+      // Two-step verification next, when required; it comes back to the target.
+      const next = pathForStage(session.stage);
+      if (next) {
+        await this.router.navigate([next], { queryParams: safeTarget ? { returnUrl: safeTarget } : {} });
+      } else {
+        await this.router.navigateByUrl(safeTarget ?? '/');
+      }
     } catch (error) {
       this.errorKey.set(isApiProblem(error) ? error.translationKey : errorTranslationKey('unknown'));
       this.form.controls.password.reset();

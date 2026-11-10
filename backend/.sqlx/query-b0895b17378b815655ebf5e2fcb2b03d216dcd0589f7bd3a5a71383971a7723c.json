@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM account_backup_code WHERE account_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b0895b17378b815655ebf5e2fcb2b03d216dcd0589f7bd3a5a71383971a7723c"
+}

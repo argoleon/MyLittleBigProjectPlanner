@@ -56,6 +56,10 @@ pub enum ErrorCode {
     CsrfInvalid,
     AuthInvalidCredentials,
     AuthResetTokenInvalid,
+    AuthInvalidCode,
+    MfaAlreadyEnabled,
+    MfaNotStarted,
+    MfaRequiredByPolicy,
     // Idempotency-Key header.
     IdempotencyKeyInvalid,
     IdempotencyKeyReused,
@@ -70,7 +74,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 27] = [
+    pub const ALL: [Self; 31] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -90,6 +94,10 @@ impl ErrorCode {
         Self::CsrfInvalid,
         Self::AuthInvalidCredentials,
         Self::AuthResetTokenInvalid,
+        Self::AuthInvalidCode,
+        Self::MfaAlreadyEnabled,
+        Self::MfaNotStarted,
+        Self::MfaRequiredByPolicy,
         Self::IdempotencyKeyInvalid,
         Self::IdempotencyKeyReused,
         Self::IdempotencyKeyInFlight,
@@ -121,6 +129,10 @@ impl ErrorCode {
             Self::CsrfInvalid => "csrf.invalid",
             Self::AuthInvalidCredentials => "auth.invalid_credentials",
             Self::AuthResetTokenInvalid => "auth.reset_token_invalid",
+            Self::AuthInvalidCode => "auth.invalid_code",
+            Self::MfaAlreadyEnabled => "mfa.already_enabled",
+            Self::MfaNotStarted => "mfa.not_started",
+            Self::MfaRequiredByPolicy => "mfa.required_by_policy",
             Self::IdempotencyKeyInvalid => "idempotency_key.invalid",
             Self::IdempotencyKeyReused => "idempotency_key.reused",
             Self::IdempotencyKeyInFlight => "idempotency_key.in_flight",
@@ -141,7 +153,9 @@ impl ErrorCode {
             | Self::IdempotencyKeyInvalid
             | Self::AuthResetTokenInvalid
             | Self::TenantConfirmationMismatch => StatusCode::BAD_REQUEST,
-            Self::Unauthenticated | Self::AuthInvalidCredentials => StatusCode::UNAUTHORIZED,
+            Self::Unauthenticated | Self::AuthInvalidCredentials | Self::AuthInvalidCode => {
+                StatusCode::UNAUTHORIZED
+            }
             Self::Forbidden | Self::CsrfInvalid => StatusCode::FORBIDDEN,
             Self::TooManyRequests => StatusCode::TOO_MANY_REQUESTS,
             Self::NotFound | Self::TenantNotFound => StatusCode::NOT_FOUND,
@@ -151,7 +165,10 @@ impl ErrorCode {
             | Self::IdempotencyKeyInFlight
             | Self::ReferenceItemCodeTaken
             | Self::TenantSlugTaken
-            | Self::TenantDeleteCurrent => StatusCode::CONFLICT,
+            | Self::TenantDeleteCurrent
+            | Self::MfaAlreadyEnabled
+            | Self::MfaNotStarted
+            | Self::MfaRequiredByPolicy => StatusCode::CONFLICT,
             Self::PreconditionFailed => StatusCode::PRECONDITION_FAILED,
             Self::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -183,6 +200,10 @@ impl ErrorCode {
             Self::CsrfInvalid => "Missing or invalid X-CSRF-Token header",
             Self::AuthInvalidCredentials => "Incorrect email or password",
             Self::AuthResetTokenInvalid => "This password reset link is invalid, expired or already used",
+            Self::AuthInvalidCode => "Incorrect or already used verification code",
+            Self::MfaAlreadyEnabled => "Two-step verification is already enabled",
+            Self::MfaNotStarted => "Start two-step verification setup first",
+            Self::MfaRequiredByPolicy => "The organization requires two-step verification",
             Self::IdempotencyKeyInvalid => "The Idempotency-Key header is invalid",
             Self::IdempotencyKeyReused => "This Idempotency-Key was used for a different request",
             Self::IdempotencyKeyInFlight => "A request with this Idempotency-Key is still in progress",
@@ -434,7 +455,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 27] = [
+        let expected: [(ErrorCode, u16); 31] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -454,6 +475,10 @@ mod tests {
             (ErrorCode::CsrfInvalid, 403),
             (ErrorCode::AuthInvalidCredentials, 401),
             (ErrorCode::AuthResetTokenInvalid, 400),
+            (ErrorCode::AuthInvalidCode, 401),
+            (ErrorCode::MfaAlreadyEnabled, 409),
+            (ErrorCode::MfaNotStarted, 409),
+            (ErrorCode::MfaRequiredByPolicy, 409),
             (ErrorCode::IdempotencyKeyInvalid, 400),
             (ErrorCode::IdempotencyKeyReused, 422),
             (ErrorCode::IdempotencyKeyInFlight, 409),

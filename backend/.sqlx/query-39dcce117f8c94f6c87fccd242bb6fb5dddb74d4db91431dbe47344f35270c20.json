@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM account_mfa WHERE account_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "39dcce117f8c94f6c87fccd242bb6fb5dddb74d4db91431dbe47344f35270c20"
+}
