@@ -31,8 +31,10 @@ use domain::validation::FieldError;
 use infra::accounts::{self, AccountType, Member, TenantRole};
 use infra::config::{PublicUrl, SessionSettings};
 use infra::credentials;
+use infra::crypto::SecretCipher;
 use infra::email::{EMAIL_JOB, EmailJob, EmailMessage};
-use infra::mfa::MfaCipher;
+use infra::http_client::{HttpClient, HttpError};
+use infra::oidc::LoginStore;
 use infra::rate_limit::RateLimiter;
 use infra::sessions::{Session, SessionLifetime, SessionStage, SessionStore};
 use infra::uuid::Uuid;
@@ -64,31 +66,42 @@ pub struct Auth {
     pub(crate) limits: RateLimiter,
     public_url: PublicUrl,
     cookie_secure: bool,
-    /// Encrypts the TOTP secrets of two-step verification.
-    pub(crate) mfa: MfaCipher,
+    /// Encrypts the secrets stored in the database (TOTP, OIDC clients).
+    pub(crate) cipher: SecretCipher,
+    /// Calls the OIDC providers.
+    pub(crate) http: HttpClient,
+    /// OIDC sign-ins waiting for the provider's answer.
+    pub(crate) logins: LoginStore,
+    /// Plain-HTTP issuers are accepted (development and tests).
+    pub(crate) oidc_allow_http: bool,
 }
 
 impl Auth {
     /// `key_prefix` starts every Valkey key (`mlbpp:` in production; tests
-    /// use a unique one).
+    /// use a unique one). `oidc_allow_http`: accept plain-HTTP OIDC issuers
+    /// (development and tests only).
     pub fn new(
         valkey: Valkey,
         key_prefix: &str,
         public_url: PublicUrl,
         settings: SessionSettings,
-        mfa: MfaCipher,
-    ) -> Self {
+        cipher: SecretCipher,
+        oidc_allow_http: bool,
+    ) -> Result<Self, HttpError> {
         let lifetime = SessionLifetime {
             idle: settings.idle,
             max_age: settings.max_age,
         };
-        Self {
+        Ok(Self {
             sessions: SessionStore::new(valkey.clone(), key_prefix, lifetime),
-            limits: RateLimiter::new(valkey, key_prefix),
+            limits: RateLimiter::new(valkey.clone(), key_prefix),
+            logins: LoginStore::new(valkey, key_prefix),
+            http: HttpClient::new(oidc_allow_http)?,
             public_url,
             cookie_secure: settings.cookie_secure,
-            mfa,
-        }
+            cipher,
+            oidc_allow_http,
+        })
     }
 
     /// Public address of the front end (links of emails, tenant addresses).
@@ -182,6 +195,12 @@ pub fn cookie<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
         .find(|(key, _)| *key == name)
         .map(|(_, value)| value)
         .filter(|value| !value.is_empty())
+}
+
+/// Whether `url` is a path of the application, safe to send the browser to
+/// after sign-in (never another site: `//evil.example`, `/\\evil.example`).
+pub fn isolated_return_url(url: &str) -> bool {
+    url.starts_with('/') && !url.starts_with("//") && !url.starts_with("/\\") && !url.contains(['\r', '\n'])
 }
 
 /// Address of the client, for rate limits: the last `X-Forwarded-For` entry
@@ -433,8 +452,12 @@ async fn totp_step(
         return Ok(None);
     }
     let secret = auth
-        .mfa
-        .decrypt(account_id, &stored.secret_ciphertext, &stored.secret_nonce)
+        .cipher
+        .decrypt(
+            account_id.as_bytes(),
+            &stored.secret_ciphertext,
+            &stored.secret_nonce,
+        )
         .map_err(|e| Problem::internal(&e))?;
     let now = u64::try_from(Utc::now().timestamp()).unwrap_or(0);
     let last_used = stored.last_used_step.and_then(|s| u64::try_from(s).ok());
@@ -484,6 +507,7 @@ pub(crate) async fn complete_session(auth: &Auth, tx: &StagedTenantTx) -> Result
         )),
         (status = 400, description = "Missing email or password", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 401, description = "`auth.invalid_credentials`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 403, description = "`auth.sso_required`: the organization signs this member in through its identity provider", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 404, description = "`tenant.not_found`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 429, description = "`too_many_requests`, with `Retry-After`", body = ProblemBody, content_type = PROBLEM_JSON),
     )
@@ -533,10 +557,19 @@ pub async fn sign_in(
     if let Some(previous) = cookie(&headers, SESSION_COOKIE) {
         auth.sessions.delete(previous).await?;
     }
+    // Checked after the password: only the member learns that SSO is required.
+    let policy = infra::auth_policy::get(&mut tx).await?;
+    let who = domain::auth_policy::PasswordSignIn {
+        internal: member.account_type == AccountType::Internal,
+        local_account: member.local_account,
+        tenant_has_sso: infra::oidc_providers::has_enabled(&mut tx).await?,
+    };
+    if !domain::auth_policy::password_allowed(policy.rules(), who) {
+        return Err(Problem::new(ErrorCode::AuthSsoRequired));
+    }
     // Two-step verification: required by the account, or by the tenant's policy.
-    let policy = infra::mfa::auth_policy(&mut tx).await?;
     let mfa_enabled = infra::mfa::is_enabled(&mut tx, member.account_id).await?;
-    let stage = stage_after_password(mfa_enabled, policy.local_accounts_require_mfa);
+    let stage = stage_after_password(mfa_enabled, policy.settings.local_accounts_require_mfa);
     let opened = auth
         .sessions
         .create_staged(member.account_id, tx.tenant_id(), stage)

@@ -306,9 +306,9 @@ mod tests {
     async fn readiness_checks_each_dependency() {
         let open = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let open_addr = open.local_addr().unwrap().to_string();
-        let closed = TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let closed_addr = closed.local_addr().unwrap().to_string();
-        drop(closed);
+        // Nothing listens on port 1. (A freed ephemeral port could be taken
+        // again by a test running in parallel, or by the server below.)
+        let closed_addr = "127.0.0.1:1".to_owned();
         let live = server(b"HTTP/1.1 200 OK\r\n\r\n").await.to_string();
 
         let report = readiness(&[

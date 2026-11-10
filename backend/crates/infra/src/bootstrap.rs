@@ -99,6 +99,8 @@ async fn run_on(
             password_hash: Some(&hash),
             account_type: AccountType::Internal,
             tenant_role: TenantRole::TenantAdmin,
+            // Keeps a way in if the SSO breaks.
+            local_account: true,
         },
     )
     .await?;

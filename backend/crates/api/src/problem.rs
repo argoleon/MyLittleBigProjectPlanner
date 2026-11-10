@@ -60,6 +60,12 @@ pub enum ErrorCode {
     MfaAlreadyEnabled,
     MfaNotStarted,
     MfaRequiredByPolicy,
+    AuthSsoRequired,
+    AuthOidcFailed,
+    AuthOidcNoMember,
+    AuthOidcEmailUnverified,
+    OidcProviderDuplicate,
+    OidcProviderUnreachable,
     // Idempotency-Key header.
     IdempotencyKeyInvalid,
     IdempotencyKeyReused,
@@ -74,7 +80,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 31] = [
+    pub const ALL: [Self; 37] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -98,6 +104,12 @@ impl ErrorCode {
         Self::MfaAlreadyEnabled,
         Self::MfaNotStarted,
         Self::MfaRequiredByPolicy,
+        Self::AuthSsoRequired,
+        Self::AuthOidcFailed,
+        Self::AuthOidcNoMember,
+        Self::AuthOidcEmailUnverified,
+        Self::OidcProviderDuplicate,
+        Self::OidcProviderUnreachable,
         Self::IdempotencyKeyInvalid,
         Self::IdempotencyKeyReused,
         Self::IdempotencyKeyInFlight,
@@ -133,6 +145,12 @@ impl ErrorCode {
             Self::MfaAlreadyEnabled => "mfa.already_enabled",
             Self::MfaNotStarted => "mfa.not_started",
             Self::MfaRequiredByPolicy => "mfa.required_by_policy",
+            Self::AuthSsoRequired => "auth.sso_required",
+            Self::AuthOidcFailed => "auth.oidc_failed",
+            Self::AuthOidcNoMember => "auth.oidc_no_member",
+            Self::AuthOidcEmailUnverified => "auth.oidc_email_unverified",
+            Self::OidcProviderDuplicate => "oidc_provider.duplicate",
+            Self::OidcProviderUnreachable => "oidc_provider.unreachable",
             Self::IdempotencyKeyInvalid => "idempotency_key.invalid",
             Self::IdempotencyKeyReused => "idempotency_key.reused",
             Self::IdempotencyKeyInFlight => "idempotency_key.in_flight",
@@ -152,11 +170,17 @@ impl ErrorCode {
             | Self::InvalidQuery
             | Self::IdempotencyKeyInvalid
             | Self::AuthResetTokenInvalid
-            | Self::TenantConfirmationMismatch => StatusCode::BAD_REQUEST,
+            | Self::TenantConfirmationMismatch
+            | Self::AuthOidcFailed => StatusCode::BAD_REQUEST,
             Self::Unauthenticated | Self::AuthInvalidCredentials | Self::AuthInvalidCode => {
                 StatusCode::UNAUTHORIZED
             }
-            Self::Forbidden | Self::CsrfInvalid => StatusCode::FORBIDDEN,
+            Self::Forbidden
+            | Self::CsrfInvalid
+            | Self::AuthSsoRequired
+            | Self::AuthOidcNoMember
+            | Self::AuthOidcEmailUnverified => StatusCode::FORBIDDEN,
+            Self::OidcProviderUnreachable => StatusCode::BAD_GATEWAY,
             Self::TooManyRequests => StatusCode::TOO_MANY_REQUESTS,
             Self::NotFound | Self::TenantNotFound => StatusCode::NOT_FOUND,
             Self::MethodNotAllowed => StatusCode::METHOD_NOT_ALLOWED,
@@ -168,7 +192,8 @@ impl ErrorCode {
             | Self::TenantDeleteCurrent
             | Self::MfaAlreadyEnabled
             | Self::MfaNotStarted
-            | Self::MfaRequiredByPolicy => StatusCode::CONFLICT,
+            | Self::MfaRequiredByPolicy
+            | Self::OidcProviderDuplicate => StatusCode::CONFLICT,
             Self::PreconditionFailed => StatusCode::PRECONDITION_FAILED,
             Self::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -204,6 +229,12 @@ impl ErrorCode {
             Self::MfaAlreadyEnabled => "Two-step verification is already enabled",
             Self::MfaNotStarted => "Start two-step verification setup first",
             Self::MfaRequiredByPolicy => "The organization requires two-step verification",
+            Self::AuthSsoRequired => "This organization signs its members in through its identity provider",
+            Self::AuthOidcFailed => "Sign-in through the identity provider failed; try again",
+            Self::AuthOidcNoMember => "No member of this organization has this account's email",
+            Self::AuthOidcEmailUnverified => "The identity provider does not vouch for this account's email",
+            Self::OidcProviderDuplicate => "This identity provider is already configured",
+            Self::OidcProviderUnreachable => "The identity provider cannot be reached or answered badly",
             Self::IdempotencyKeyInvalid => "The Idempotency-Key header is invalid",
             Self::IdempotencyKeyReused => "This Idempotency-Key was used for a different request",
             Self::IdempotencyKeyInFlight => "A request with this Idempotency-Key is still in progress",
@@ -455,7 +486,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 31] = [
+        let expected: [(ErrorCode, u16); 37] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -479,6 +510,12 @@ mod tests {
             (ErrorCode::MfaAlreadyEnabled, 409),
             (ErrorCode::MfaNotStarted, 409),
             (ErrorCode::MfaRequiredByPolicy, 409),
+            (ErrorCode::AuthSsoRequired, 403),
+            (ErrorCode::AuthOidcFailed, 400),
+            (ErrorCode::AuthOidcNoMember, 403),
+            (ErrorCode::AuthOidcEmailUnverified, 403),
+            (ErrorCode::OidcProviderDuplicate, 409),
+            (ErrorCode::OidcProviderUnreachable, 502),
             (ErrorCode::IdempotencyKeyInvalid, 400),
             (ErrorCode::IdempotencyKeyReused, 422),
             (ErrorCode::IdempotencyKeyInFlight, 409),

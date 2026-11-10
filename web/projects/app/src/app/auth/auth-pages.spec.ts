@@ -75,6 +75,9 @@ async function open(url: string) {
       for (const tenant of http.match('/api/v1/tenant')) {
         tenant.flush(null, { status: 404, statusText: 'Not Found' });
       }
+      for (const providers of http.match('/api/v1/auth/providers')) {
+        providers.flush([]);
+      }
     }
     await harness.fixture.whenStable();
     return request;
@@ -86,9 +89,10 @@ async function open(url: string) {
 afterEach(() => TestBed.inject(HttpTestingController).verify());
 
 describe('SignInPage', () => {
-  async function openSignIn(url = '/sign-in') {
+  async function openSignIn(url = '/sign-in', providers: object[] = []) {
     const page = await open(url);
     page.http.expectOne('/api/v1/tenant').flush(null, { status: 404, statusText: 'Not Found' });
+    page.http.expectOne('/api/v1/auth/providers').flush(providers);
     await page.harness.fixture.whenStable();
     return page;
   }
@@ -124,6 +128,36 @@ describe('SignInPage', () => {
     await submit();
     await reply('/api/v1/auth/sign-in', SESSION);
     expect(TestBed.inject(Router).url).toBe('/');
+  });
+
+  it('offers the tenant\'s identity providers, keeping the way back', async () => {
+    const { element, text } = await openSignIn('/sign-in?returnUrl=%2Fgantt', [
+      { id: 'p1', displayName: 'Entra ID' },
+    ]);
+    const button = element.querySelector('a.provider') as HTMLAnchorElement;
+    expect(button.textContent?.trim()).toContain('Continue with Entra ID');
+    expect(button.getAttribute('href')).toBe('/api/v1/auth/oidc/p1/start?returnUrl=%2Fgantt');
+    expect(text('.divider')).toBe('or with a local account');
+    expect(await axeViolations(element)).toEqual([]);
+  });
+
+  it('explains why a sign-in through the provider failed', async () => {
+    const { text } = await openSignIn('/sign-in?error=auth.oidc_no_member');
+    expect(text('[role="alert"]')).toBe('No member of this organization has the email of this account.');
+  });
+
+  it('ignores an error code it does not know', async () => {
+    const { text } = await openSignIn('/sign-in?error=%3Cscript%3E');
+    expect(text('[role="alert"]')).toBe('An unexpected error occurred.');
+  });
+
+  it('points to the provider when the organization requires it', async () => {
+    const { fill, submit, reply, text } = await openSignIn('/sign-in', [{ id: 'p1', displayName: 'Entra ID' }]);
+    fill('email', 'lucas.bernard@acme.example');
+    fill('password', 'correct horse battery');
+    await submit();
+    await reply('/api/v1/auth/sign-in', problem(403, 'auth.sso_required'), 403);
+    expect(text('[role="alert"]')).toBe('Your organization signs you in through its identity provider: use the button above.');
   });
 
   it('confirms a password change and links to the reset request', async () => {

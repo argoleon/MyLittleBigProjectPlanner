@@ -21,6 +21,9 @@ pub struct Member {
     pub tenant_role: TenantRole,
     /// A suspended member cannot sign in.
     pub active: bool,
+    /// Outside the organization's directory: signs in with a password even
+    /// when the tenant requires SSO.
+    pub local_account: bool,
 }
 
 /// A member with its password hash, for sign-in.
@@ -39,6 +42,7 @@ struct Row {
     account_type: String,
     tenant_role: String,
     status: String,
+    local_account: bool,
 }
 
 impl Row {
@@ -53,6 +57,7 @@ impl Row {
                 account_type: AccountType::parse(&self.account_type).unwrap_or(AccountType::External),
                 tenant_role: TenantRole::parse(&self.tenant_role).unwrap_or(TenantRole::Member),
                 active: self.status == "active",
+                local_account: self.local_account,
             },
             password_hash: self.password_hash,
         }
@@ -68,7 +73,7 @@ pub async fn find_by_email(
         Row,
         r#"
         SELECT a.id, a.email, a.display_name, a.locale, a.password_hash,
-               m.account_type, m.tenant_role, m.status
+               m.account_type, m.tenant_role, m.status, m.local_account
         FROM account a
         JOIN membership m ON m.account_id = a.id
         WHERE a.email = $1
@@ -86,7 +91,7 @@ pub async fn find(conn: &mut PgConnection, account_id: Uuid) -> Result<Option<Me
         Row,
         r#"
         SELECT a.id, a.email, a.display_name, a.locale, a.password_hash,
-               m.account_type, m.tenant_role, m.status
+               m.account_type, m.tenant_role, m.status, m.local_account
         FROM account a
         JOIN membership m ON m.account_id = a.id
         WHERE a.id = $1
@@ -127,6 +132,8 @@ pub struct NewMember<'a> {
     pub password_hash: Option<&'a str>,
     pub account_type: AccountType,
     pub tenant_role: TenantRole,
+    /// See [`Member::local_account`].
+    pub local_account: bool,
 }
 
 /// What [`add_member`] did.
@@ -166,18 +173,20 @@ pub async fn add_member(conn: &mut PgConnection, new: &NewMember<'_>) -> Result<
     };
     sqlx::query!(
         r#"
-        INSERT INTO membership (id, tenant_id, account_id, account_type, tenant_role)
-        VALUES ($1, app_current_tenant(), $2, $3, $4)
+        INSERT INTO membership (id, tenant_id, account_id, account_type, tenant_role, local_account)
+        VALUES ($1, app_current_tenant(), $2, $3, $4, $5)
         ON CONFLICT (tenant_id, account_id) DO UPDATE
             SET account_type = EXCLUDED.account_type,
                 tenant_role = EXCLUDED.tenant_role,
+                local_account = EXCLUDED.local_account,
                 status = 'active',
                 version = membership.version + 1
         "#,
         new_id(),
         account_id,
         new.account_type.as_str(),
-        new.tenant_role.as_str()
+        new.tenant_role.as_str(),
+        new.local_account
     )
     .execute(conn)
     .await?;

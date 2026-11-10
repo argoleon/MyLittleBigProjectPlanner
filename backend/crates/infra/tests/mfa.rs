@@ -6,14 +6,15 @@
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use infra::accounts::TenantRole;
+use infra::auth_policy::{self, PolicySettings};
 use infra::config::Secret;
 use infra::db::begin_tenant_tx;
-use infra::mfa::{self, MfaCipher};
+use infra::mfa::{self, SecretCipher};
 use infra::sqlx;
 use testkit::TestDb;
 
-fn cipher() -> MfaCipher {
-    MfaCipher::new(&Secret::new(STANDARD.encode([42_u8; 32]))).unwrap()
+fn cipher() -> SecretCipher {
+    SecretCipher::new(&Secret::new(STANDARD.encode([42_u8; 32]))).unwrap()
 }
 
 #[tokio::test]
@@ -25,7 +26,7 @@ async fn enrollment_is_enabled_by_its_first_code_with_backup_codes() {
     assert!(!mfa::is_enabled(&mut tx, account).await.unwrap());
 
     let secret = mfa::generate_secret();
-    let (ciphertext, nonce) = cipher().encrypt(account, &secret).unwrap();
+    let (ciphertext, nonce) = cipher().encrypt(account.as_bytes(), &secret).unwrap();
     assert!(
         mfa::start_enrollment(&mut tx, account, &ciphertext, &nonce)
             .await
@@ -35,12 +36,18 @@ async fn enrollment_is_enabled_by_its_first_code_with_backup_codes() {
     assert!(!stored.enabled, "pending until confirmed");
     assert_eq!(
         cipher()
-            .decrypt(account, &stored.secret_ciphertext, &stored.secret_nonce)
+            .decrypt(
+                account.as_bytes(),
+                &stored.secret_ciphertext,
+                &stored.secret_nonce
+            )
             .unwrap(),
         secret
     );
     // Restarting replaces the pending secret.
-    let (other, other_nonce) = cipher().encrypt(account, &mfa::generate_secret()).unwrap();
+    let (other, other_nonce) = cipher()
+        .encrypt(account.as_bytes(), &mfa::generate_secret())
+        .unwrap();
     assert!(
         mfa::start_enrollment(&mut tx, account, &other, &other_nonce)
             .await
@@ -79,7 +86,9 @@ async fn a_backup_code_works_once_and_a_time_step_once() {
     let db = TestDb::new().await;
     let account = db.add_member(&db.tenant_a, TenantRole::Member).await.account_id;
     let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
-    let (ciphertext, nonce) = cipher().encrypt(account, &mfa::generate_secret()).unwrap();
+    let (ciphertext, nonce) = cipher()
+        .encrypt(account.as_bytes(), &mfa::generate_secret())
+        .unwrap();
     mfa::start_enrollment(&mut tx, account, &ciphertext, &nonce)
         .await
         .unwrap();
@@ -123,7 +132,9 @@ async fn other_tenants_see_nothing_of_an_account_they_do_not_share() {
     let db = TestDb::new().await;
     let account = db.add_member(&db.tenant_a, TenantRole::Member).await.account_id;
     let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
-    let (ciphertext, nonce) = cipher().encrypt(account, &mfa::generate_secret()).unwrap();
+    let (ciphertext, nonce) = cipher()
+        .encrypt(account.as_bytes(), &mfa::generate_secret())
+        .unwrap();
     mfa::start_enrollment(&mut tx, account, &ciphertext, &nonce)
         .await
         .unwrap();
@@ -135,7 +146,9 @@ async fn other_tenants_see_nothing_of_an_account_they_do_not_share() {
     let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_b.id).await.unwrap();
     assert!(mfa::find(&mut tx, account).await.unwrap().is_none());
     assert_eq!(mfa::backup_codes_left(&mut tx, account).await.unwrap(), 0);
-    let (ciphertext, nonce) = cipher().encrypt(account, &mfa::generate_secret()).unwrap();
+    let (ciphertext, nonce) = cipher()
+        .encrypt(account.as_bytes(), &mfa::generate_secret())
+        .unwrap();
     assert!(
         mfa::start_enrollment(&mut tx, account, &ciphertext, &nonce)
             .await
@@ -148,17 +161,32 @@ async fn other_tenants_see_nothing_of_an_account_they_do_not_share() {
 async fn every_tenant_has_a_policy_that_its_admin_can_change() {
     let db = TestDb::new().await;
     let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
-    let policy = mfa::auth_policy(&mut tx).await.unwrap();
-    assert!(!policy.local_accounts_require_mfa, "off by default");
+    let policy = auth_policy::get(&mut tx).await.unwrap();
+    assert_eq!(
+        policy.settings,
+        PolicySettings {
+            local_accounts_require_mfa: false,
+            internal_accounts_require_sso: false,
+            portal_password_enabled: true,
+            portal_magic_link_enabled: true,
+        },
+        "the defaults"
+    );
 
-    let changed = mfa::set_auth_policy(&mut tx, true, Some(&[policy.version]))
+    let wanted = PolicySettings {
+        local_accounts_require_mfa: true,
+        internal_accounts_require_sso: true,
+        portal_password_enabled: true,
+        portal_magic_link_enabled: false,
+    };
+    let changed = auth_policy::set(&mut tx, &wanted, Some(&[policy.version]))
         .await
         .unwrap()
         .unwrap();
-    assert!(changed.local_accounts_require_mfa);
+    assert_eq!(changed.settings, wanted);
     assert_eq!(changed.version, policy.version + 1);
     assert_eq!(
-        mfa::set_auth_policy(&mut tx, false, Some(&[policy.version]))
+        auth_policy::set(&mut tx, &PolicySettings::default(), Some(&[policy.version]))
             .await
             .unwrap(),
         None,
@@ -169,9 +197,10 @@ async fn every_tenant_has_a_policy_that_its_admin_can_change() {
     // Each tenant has its own.
     let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_b.id).await.unwrap();
     assert!(
-        !mfa::auth_policy(&mut tx)
+        !auth_policy::get(&mut tx)
             .await
             .unwrap()
+            .settings
             .local_accounts_require_mfa
     );
     tx.rollback().await.unwrap();
@@ -196,9 +225,10 @@ async fn every_tenant_has_a_policy_that_its_admin_can_change() {
     drop(conn);
     let mut tx = begin_tenant_tx(&db.app_pool, acme.id).await.unwrap();
     assert!(
-        !mfa::auth_policy(&mut tx)
+        !auth_policy::get(&mut tx)
             .await
             .unwrap()
+            .settings
             .local_accounts_require_mfa
     );
 }

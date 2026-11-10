@@ -50,8 +50,9 @@ write keycloak_db_password "$(random)"
 write keycloak_admin_password "$(random)"
 write grafana_admin_password "$(random)"
 write bootstrap_admin_password "$(random)"
-# 32 random bytes in base64: the AES-256 key of the TOTP secrets.
-write mfa_encryption_key "$(head -c 32 /dev/urandom | base64)"
+# 32 random bytes in base64: the AES-256 key of the secrets stored in the
+# database (TOTP, OIDC client secrets).
+write data_encryption_key "$(head -c 32 /dev/urandom | base64)"
 # Not random: the operator's SMTP server. Until it is replaced, emails (password
 # resets) stay queued and the worker logs why.
 write smtp_url "smtp://smtp.example.invalid:587?tls=required"

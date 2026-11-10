@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO membership (id, tenant_id, account_id, account_type, tenant_role, local_account)\n        VALUES ($1, app_current_tenant(), $2, $3, $4, $5)\n        ON CONFLICT (tenant_id, account_id) DO UPDATE\n            SET account_type = EXCLUDED.account_type,\n                tenant_role = EXCLUDED.tenant_role,\n                local_account = EXCLUDED.local_account,\n                status = 'active',\n                version = membership.version + 1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2b3eb8dbe263bfaf8330c74e5571d780c63a02288717cc40a17654b26f33660a"
+}

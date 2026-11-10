@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT a.id, a.email, a.display_name, a.locale, a.password_hash,\n               m.account_type, m.tenant_role, m.status\n        FROM account a\n        JOIN membership m ON m.account_id = a.id\n        WHERE a.id = $1\n        ",
+  "query": "\n        SELECT a.id, a.email, a.display_name, a.locale, a.password_hash,\n               m.account_type, m.tenant_role, m.status, m.local_account\n        FROM account a\n        JOIN membership m ON m.account_id = a.id\n        WHERE a.email = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -90,11 +90,22 @@
             "name": "status"
           }
         }
+      },
+      {
+        "ordinal": 8,
+        "name": "local_account",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "membership",
+            "name": "local_account"
+          }
+        }
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Text"
       ]
     },
     "nullable": [
@@ -105,8 +116,9 @@
       true,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "c133efba777622208013d150af8742a52f7b04cd0215a8e797a6449881a35957"
+  "hash": "bdc12d03d792e6439f6e8c3cc85ac26f4eb73a8c17feedee5de182968c7f2366"
 }

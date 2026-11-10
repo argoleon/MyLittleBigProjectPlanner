@@ -386,7 +386,13 @@ async fn the_tenant_policy_forces_members_without_mfa_to_enroll() {
     let (browser, _) = sign_in(&api, &db.tenant_a, &member).await;
 
     // Only a tenant admin sets the policy.
-    let policy = json!({"localAccountsRequireMfa": true});
+    // The whole policy: MFA required, the other settings at their defaults.
+    let policy = json!({
+        "localAccountsRequireMfa": true,
+        "internalAccountsRequireSso": false,
+        "portalPasswordEnabled": true,
+        "portalMagicLinkEnabled": true
+    });
     let (status, body) = send(
         call(
             &api,
@@ -407,7 +413,15 @@ async fn the_tenant_policy_forces_members_without_mfa_to_enroll() {
         .unwrap();
     let etag = res.headers()["etag"].to_str().unwrap().to_owned();
     let (_, current) = json(res).await;
-    assert_eq!(current, json!({"localAccountsRequireMfa": false}));
+    assert_eq!(
+        current,
+        json!({
+            "localAccountsRequireMfa": false,
+            "internalAccountsRequireSso": false,
+            "portalPasswordEnabled": true,
+            "portalMagicLinkEnabled": true
+        })
+    );
     let (status, _) = send(
         api.request(Method::PUT, &db.tenant_a, "/api/v1/tenant/auth-policy")
             .json(&policy),

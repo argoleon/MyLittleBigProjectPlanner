@@ -230,6 +230,132 @@
         }
       }
     },
+    "/api/v1/auth/oidc/callback": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Come back from the identity provider",
+        "description": "A browser navigation, the redirect URI registered at the provider. The state must be one this API issued for this tenant, unused and less than 10 minutes old; the ID token is checked (signature, issuer, audience, expiry, nonce). Its verified email must be an active internal member's: a session opens (cookies) and the browser goes to the page it came from. Otherwise, to the sign-in page with `?error=auth.oidc_failed`, `auth.oidc_no_member` or `auth.oidc_email_unverified`.",
+        "operationId": "finishOidcSignIn",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "description": "Set by the provider when the user cancelled or it failed.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "303": {
+            "description": "Into the application, or back to the sign-in page",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Where the browser goes"
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "`mlbpp_session` and `mlbpp_csrf`, when signed in"
+              }
+            }
+          },
+          "404": {
+            "description": "`tenant.not_found`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {}
+        ]
+      }
+    },
+    "/api/v1/auth/oidc/{id}/start": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Leave for the identity provider",
+        "description": "A browser navigation: redirects to the provider, with state, nonce and PKCE. On error, redirects to the sign-in page with `?error=<code>`.",
+        "operationId": "startOidcSignIn",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the provider",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "returnUrl",
+            "in": "query",
+            "description": "Page of the application to show once signed in (a path).",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "303": {
+            "description": "To the provider, or back to the sign-in page",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Where the browser goes"
+              }
+            }
+          },
+          "404": {
+            "description": "`tenant.not_found`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {}
+        ]
+      }
+    },
     "/api/v1/auth/password-reset": {
       "post": {
         "tags": [
@@ -336,6 +462,44 @@
         ]
       }
     },
+    "/api/v1/auth/providers": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Identity providers of the sign-in page",
+        "description": "The enabled OIDC providers of the tenant, for the sign-in buttons. A button leads the browser to `/api/v1/auth/oidc/{id}/start`.",
+        "operationId": "listSignInProviders",
+        "responses": {
+          "200": {
+            "description": "The providers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SignInProvider"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`tenant.not_found`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {}
+        ]
+      }
+    },
     "/api/v1/auth/session": {
       "get": {
         "tags": [
@@ -417,6 +581,16 @@
           },
           "401": {
             "description": "`auth.invalid_credentials`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`auth.sso_required`: the organization signs this member in through its identity provider",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1736,7 +1910,7 @@
     "/api/v1/tenant/auth-policy": {
       "get": {
         "tags": [
-          "account"
+          "authentication-settings"
         ],
         "summary": "Authentication policy of the tenant",
         "description": "Tenant admins only.",
@@ -1784,10 +1958,10 @@
       },
       "put": {
         "tags": [
-          "account"
+          "authentication-settings"
         ],
         "summary": "Change the authentication policy of the tenant",
-        "description": "Tenant admins only.",
+        "description": "Tenant admins only. Every field is required.",
         "operationId": "updateAuthPolicy",
         "parameters": [
           {
@@ -1881,6 +2055,509 @@
           }
         }
       }
+    },
+    "/api/v1/tenant/oidc-providers": {
+      "get": {
+        "tags": [
+          "authentication-settings"
+        ],
+        "summary": "OIDC providers of the tenant",
+        "description": "Tenant admins only. In creation order; a tenant has few.",
+        "operationId": "listOidcProviders",
+        "responses": {
+          "200": {
+            "description": "The providers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OidcProvider"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: not a tenant admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "authentication-settings"
+        ],
+        "summary": "Add an OIDC provider",
+        "description": "Tenant admins only. Register `redirectUri` (in the answer) at the provider.",
+        "operationId": "createOidcProvider",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OidcProviderInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the provider"
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "URL of the provider"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OidcProvider"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid fields or JSON",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`oidc_provider.duplicate`: same issuer and client",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenant/oidc-providers/{id}": {
+      "get": {
+        "tags": [
+          "authentication-settings"
+        ],
+        "summary": "An OIDC provider of the tenant",
+        "description": "Tenant admins only.",
+        "operationId": "getOidcProvider",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the provider",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "description": "ETag already held: 304 if still current",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The provider",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the provider"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OidcProvider"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified since the `If-None-Match` ETag"
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: not a tenant admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such provider in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "authentication-settings"
+        ],
+        "summary": "Change an OIDC provider",
+        "description": "Tenant admins only. Without `clientSecret`, the stored secret is kept.",
+        "operationId": "updateOidcProvider",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the provider",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the version being replaced, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OidcProviderInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The updated provider",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "New version of the provider"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OidcProvider"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid fields or JSON",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such provider in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`oidc_provider.duplicate`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The provider changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "authentication-settings"
+        ],
+        "summary": "Remove an OIDC provider",
+        "description": "Tenant admins only.",
+        "operationId": "deleteOidcProvider",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the provider",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the version being deleted, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed"
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such provider in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The provider changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenant/oidc-providers/{id}/test": {
+      "post": {
+        "tags": [
+          "authentication-settings"
+        ],
+        "summary": "Check that an OIDC provider answers",
+        "description": "Tenant admins only. Reads the provider's metadata from its issuer.",
+        "operationId": "testOidcProvider",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the provider",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The provider answers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OidcProviderCheck"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such provider in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "`oidc_provider.unreachable`, with the reason in `detail`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1889,22 +2566,40 @@
         "type": "object",
         "description": "Authentication policy of the tenant.",
         "required": [
-          "localAccountsRequireMfa"
+          "localAccountsRequireMfa",
+          "internalAccountsRequireSso",
+          "portalPasswordEnabled",
+          "portalMagicLinkEnabled"
         ],
         "properties": {
+          "internalAccountsRequireSso": {
+            "type": "boolean",
+            "description": "Internal members sign in through an enabled OIDC provider of the\ntenant, except the members marked as local accounts. Without an\nenabled provider, nobody is held to it."
+          },
           "localAccountsRequireMfa": {
             "type": "boolean",
             "description": "Members signing in with a password must use two-step verification;\nthose without it enroll at their next sign-in."
+          },
+          "portalMagicLinkEnabled": {
+            "type": "boolean",
+            "description": "Request portal: sign-in with a link sent by email."
+          },
+          "portalPasswordEnabled": {
+            "type": "boolean",
+            "description": "Request portal: sign-in with a password."
           }
         },
         "additionalProperties": false,
         "example": {
-          "localAccountsRequireMfa": true
+          "internalAccountsRequireSso": true,
+          "localAccountsRequireMfa": true,
+          "portalMagicLinkEnabled": true,
+          "portalPasswordEnabled": true
         }
       },
       "ErrorCode": {
         "type": "string",
-        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n",
+        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n",
         "enum": [
           "bad_request",
           "validation_failed",
@@ -1929,6 +2624,12 @@
           "mfa.already_enabled",
           "mfa.not_started",
           "mfa.required_by_policy",
+          "auth.sso_required",
+          "auth.oidc_failed",
+          "auth.oidc_no_member",
+          "auth.oidc_email_unverified",
+          "oidc_provider.duplicate",
+          "oidc_provider.unreachable",
           "idempotency_key.invalid",
           "idempotency_key.reused",
           "idempotency_key.in_flight",
@@ -2133,6 +2834,128 @@
           "name": "Acme Industrie",
           "slug": "acme",
           "timeZone": "Europe/Paris"
+        }
+      },
+      "OidcProvider": {
+        "type": "object",
+        "description": "A provider as configured; the client secret is never sent back.",
+        "required": [
+          "id",
+          "displayName",
+          "issuer",
+          "clientId",
+          "emailClaim",
+          "enabled",
+          "redirectUri",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "clientId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "emailClaim": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "issuer": {
+            "type": "string"
+          },
+          "redirectUri": {
+            "type": "string",
+            "description": "The redirect URI to register at the provider.",
+            "example": "https://acme.planner.example.org/api/v1/auth/oidc/callback"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "OidcProviderCheck": {
+        "type": "object",
+        "description": "What the provider announces, when it answers.",
+        "required": [
+          "issuer",
+          "authorizationEndpoint",
+          "tokenEndpoint"
+        ],
+        "properties": {
+          "authorizationEndpoint": {
+            "type": "string"
+          },
+          "issuer": {
+            "type": "string"
+          },
+          "tokenEndpoint": {
+            "type": "string"
+          }
+        }
+      },
+      "OidcProviderInput": {
+        "type": "object",
+        "description": "A provider as the tenant admin writes it.",
+        "required": [
+          "displayName",
+          "issuer",
+          "clientId"
+        ],
+        "properties": {
+          "clientId": {
+            "type": "string"
+          },
+          "clientSecret": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Required on creation; on update, absent keeps the stored secret.\nNever returned."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Shown on the sign-in button: \"Continue with …\". 1 to 100 characters."
+          },
+          "emailClaim": {
+            "type": "string",
+            "description": "Claim of the ID token holding the member's email. With `email`\n(default), the provider must also send `email_verified: true`; another\nclaim (`upn`…) is trusted as the directory's.",
+            "default": "email"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Default true.",
+            "default": true
+          },
+          "issuer": {
+            "type": "string",
+            "description": "Issuer URL (HTTPS); `/.well-known/openid-configuration` is read from it."
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "clientId": "6731de76-14a6-49ae-97bc-6eba6914391e",
+          "clientSecret": "<secret>",
+          "displayName": "Entra ID",
+          "emailClaim": "email",
+          "enabled": true,
+          "issuer": "https://login.microsoftonline.com/<tenant>/v2.0"
         }
       },
       "OverloadMode": {
@@ -2580,6 +3403,24 @@
           "mfa_enrollment"
         ]
       },
+      "SignInProvider": {
+        "type": "object",
+        "description": "A provider of the sign-in page.",
+        "required": [
+          "id",
+          "displayName"
+        ],
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "example": "Entra ID"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
       "SignInRequest": {
         "type": "object",
         "required": [
@@ -2768,7 +3609,11 @@
     },
     {
       "name": "account",
-      "description": "Two-step verification of the signed-in member, and the tenant's authentication policy"
+      "description": "Two-step verification of the signed-in member"
+    },
+    {
+      "name": "authentication-settings",
+      "description": "Authentication policy and OIDC providers of the tenant, for its admins"
     },
     {
       "name": "platform",

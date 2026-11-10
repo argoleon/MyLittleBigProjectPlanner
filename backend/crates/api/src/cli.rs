@@ -34,10 +34,12 @@ Commands:
   healthcheck [--ready]
             Exit 0 if the server listening on API_BIND_ADDR is alive (or, with
             --ready, can serve: database and shared services reachable)
-  add-member TENANT EMAIL DISPLAY_NAME [--role member|configuration_admin|tenant_admin]
+  add-member TENANT EMAIL DISPLAY_NAME [--role member|configuration_admin|tenant_admin] [--local]
             Add an internal member to the tenant TENANT (its slug), with the
             password read from standard input (first line), then exit. An
-            existing account is linked and keeps its password. Uses DATABASE_URL.
+            existing account is linked and keeps its password. --local: signs in
+            with a password even when the tenant requires SSO (a contractor
+            outside the directory). Uses DATABASE_URL.
   help      Print this message
 
 Configuration is read from environment variables; see deploy/.env.example.";
@@ -59,18 +61,25 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Command, String> 
             Ok(Command::Healthcheck { ready: true })
         }
         [first, tenant, email, name, rest @ ..] if first == "add-member" => {
-            let role = match rest {
-                [] => TenantRole::Member,
-                [flag, role] if flag == "--role" => {
-                    TenantRole::parse(role).ok_or_else(|| format!("unknown role: {role}"))?
+            let mut role = TenantRole::Member;
+            let mut local_account = false;
+            let mut flags = rest.iter();
+            while let Some(flag) = flags.next() {
+                match flag.as_str() {
+                    "--role" => {
+                        let value = flags.next().ok_or("--role needs a value")?;
+                        role = TenantRole::parse(value).ok_or_else(|| format!("unknown role: {value}"))?;
+                    }
+                    "--local" => local_account = true,
+                    _ => return Err(format!("unexpected arguments: {}", rest.join(" "))),
                 }
-                _ => return Err(format!("unexpected arguments: {}", rest.join(" "))),
-            };
+            }
             Ok(Command::AddMember(MemberArgs {
                 tenant: tenant.clone(),
                 email: email.clone(),
                 display_name: name.clone(),
                 role,
+                local_account,
             }))
         }
         _ => Err(format!("unexpected arguments: {}", args[1..].join(" "))),
@@ -85,6 +94,8 @@ pub struct MemberArgs {
     pub email: String,
     pub display_name: String,
     pub role: TenantRole,
+    /// Signs in with a password even when the tenant requires SSO.
+    pub local_account: bool,
 }
 
 /// Adds the member of `args` with `password`. Errors are messages for the
@@ -113,6 +124,7 @@ pub async fn add_member(pool: &PgPool, args: &MemberArgs, password: &str) -> Res
             password_hash: Some(&hash),
             account_type: AccountType::Internal,
             tenant_role: args.role,
+            local_account: args.local_account,
         },
     )
     .await
@@ -162,6 +174,7 @@ mod tests {
                 email: "lucas@acme.io".to_owned(),
                 display_name: "Lucas Bernard".to_owned(),
                 role: TenantRole::Member,
+                local_account: false,
             }))
         );
         let admin = parse(args(&[
@@ -185,6 +198,24 @@ mod tests {
         );
         assert!(parse(args(&["add-member", "acme", "a@acme.io"])).is_err());
         assert!(parse(args(&["add-member", "acme", "a@acme.io", "A", "--admin"])).is_err());
+        let local = parse(args(&[
+            "add-member",
+            "acme",
+            "a@acme.io",
+            "A",
+            "--local",
+            "--role",
+            "tenant_admin",
+        ]));
+        assert!(matches!(
+            local,
+            Ok(Command::AddMember(MemberArgs {
+                role: TenantRole::TenantAdmin,
+                local_account: true,
+                ..
+            }))
+        ));
+        assert!(parse(args(&["add-member", "acme", "a@acme.io", "A", "--role"])).is_err());
     }
 
     #[test]

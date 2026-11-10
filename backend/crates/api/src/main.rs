@@ -235,14 +235,27 @@ async fn run(config: ApiConfig) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let mfa = match infra::mfa::MfaCipher::new(&config.mfa_key) {
-        Ok(mfa) => mfa,
+    let cipher = match infra::crypto::SecretCipher::new(&config.data_key) {
+        Ok(cipher) => cipher,
         Err(err) => {
             eprintln!("api: {err}");
             return ExitCode::FAILURE;
         }
     };
-    let auth = api::Auth::new(valkey, "mlbpp:", config.public_url.clone(), config.sessions, mfa);
+    let auth = match api::Auth::new(
+        valkey,
+        "mlbpp:",
+        config.public_url.clone(),
+        config.sessions,
+        cipher,
+        config.oidc_allow_http,
+    ) {
+        Ok(auth) => auth,
+        Err(err) => {
+            eprintln!("api: {err}");
+            return ExitCode::FAILURE;
+        }
+    };
     let state = api::AppState::new(pool, config.tenancy.clone(), auth)
         .with_dependencies(config.shared.dependencies());
     let app = api::app(state, &api::HttpSettings::from(&config));

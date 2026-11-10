@@ -65,7 +65,9 @@
       "password": "Password",
       "forgotPassword": "Forgot your password?",
       "submit": "Sign in",
-      "passwordChanged": "Your password has been changed. Sign in with the new one."
+      "passwordChanged": "Your password has been changed. Sign in with the new one.",
+      "continueWith": "Continue with {{ name }}",
+      "orLocal": "or with a local account"
     },
     "forgotPassword": {
       "title": "Forgot your password",
@@ -128,6 +130,59 @@
       "close": "Close"
     }
   },
+  "admin": {
+    "tabs": {
+      "label": "Administration sections",
+      "authentication": "Authentication"
+    },
+    "auth": {
+      "policyTitle": "Authentication policy",
+      "providersTitle": "Identity providers (OIDC)",
+      "providersIntro": "Entra ID, Google, Okta, Keycloak… Members sign in with the provider account whose verified email is theirs. SAML and LDAP directories go through Keycloak.",
+      "noProvider": "No identity provider yet: members sign in with their password.",
+      "policy": {
+        "internalAccountsRequireSso": {
+          "label": "Internal accounts sign in through the identity provider",
+          "hint": "Except the members marked as local accounts (contractors outside the directory)."
+        },
+        "localAccountsRequireMfa": {
+          "label": "Local accounts need two-step verification",
+          "hint": "Members signing in with a password enable it at their next sign-in."
+        },
+        "portalPasswordEnabled": {
+          "label": "Portal: sign-in with a password",
+          "hint": "For the external accounts of the request portal."
+        },
+        "portalMagicLinkEnabled": {
+          "label": "Portal: sign-in with a link sent by email",
+          "hint": "For the external accounts of the request portal."
+        }
+      },
+      "ssoWithoutProvider": "No identity provider is enabled: the rule applies once one is.",
+      "policySaved": "The policy is saved.",
+      "save": "Save",
+      "cancel": "Cancel",
+      "providerAdd": "Add a provider",
+      "providerEdit": "Edit the provider",
+      "displayName": "Name on the button",
+      "displayNameHint": "\"Continue with …\" on the sign-in page",
+      "issuer": "Issuer URL",
+      "issuerHint": "e.g. https://login.microsoftonline.com/<tenant>/v2.0",
+      "clientId": "Client ID",
+      "clientSecret": "Client secret",
+      "clientSecretKeep": "Leave empty to keep the stored secret",
+      "emailClaim": "Email claim",
+      "emailClaimHint": "email (verified by the provider), or a directory claim such as upn",
+      "enabled": "Enabled on the sign-in page",
+      "redirectUri": "Redirect URI to register at the provider:",
+      "enabledState": "Enabled",
+      "disabledState": "Disabled",
+      "test": "Test the connection",
+      "testOk": "The provider answers.",
+      "editOf": "Edit {{ name }}",
+      "deleteOf": "Delete {{ name }}"
+    }
+  },
   "errors": {
     "bad_request": "The request is malformed.",
     "validation_failed": "Some fields are invalid.",
@@ -151,12 +206,20 @@
     "auth": {
       "invalid_credentials": "Incorrect email or password.",
       "reset_token_invalid": "This link is invalid, has expired or was already used. Ask for a new one.",
-      "invalid_code": "Incorrect or already used code."
+      "invalid_code": "Incorrect or already used code.",
+      "sso_required": "Your organization signs you in through its identity provider: use the button above.",
+      "oidc_failed": "Sign-in through the identity provider failed. Try again.",
+      "oidc_no_member": "No member of this organization has the email of this account.",
+      "oidc_email_unverified": "The identity provider does not confirm the email of this account."
     },
     "mfa": {
       "already_enabled": "Two-step verification is already enabled.",
       "not_started": "Start the setup again.",
       "required_by_policy": "Your organization requires two-step verification."
+    },
+    "oidc_provider": {
+      "duplicate": "This identity provider is already configured.",
+      "unreachable": "The identity provider cannot be reached or answered badly."
     },
     "idempotency_key": {
       "invalid": "The request is malformed.",

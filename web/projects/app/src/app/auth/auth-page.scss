@@ -59,3 +59,29 @@
     color: var(--app-on-success-container);
   }
 }
+
+.providers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-2);
+}
+
+.provider {
+  width: 100%;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-3);
+  margin: var(--app-space-4) 0;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    border-top: 1px solid var(--mat-sys-outline-variant);
+  }
+}

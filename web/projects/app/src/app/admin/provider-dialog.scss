@@ -1,0 +1,20 @@
+@use './admin-shared';
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-2);
+}
+
+.redirect {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-1);
+  margin: var(--app-space-2) 0 0;
+  font: var(--mat-sys-body-small);
+  word-break: break-all;
+}
+
+.redirect-label {
+  color: var(--mat-sys-on-surface-variant);
+}
