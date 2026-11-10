@@ -86,7 +86,46 @@
     },
     "account": {
       "menu": "Compte : {{ name }}",
-      "signOut": "Se déconnecter"
+      "signOut": "Se déconnecter",
+      "security": "Vérification en deux étapes"
+    },
+    "verify": {
+      "step": "Étape 2 sur 2",
+      "title": "Vérification en deux étapes",
+      "intro": "Saisissez le code à 6 chiffres affiché par votre application d’authentification.",
+      "backupIntro": "Saisissez l’un des codes de secours conservés lors de l’activation. Chacun ne sert qu’une fois.",
+      "backupCode": "Code de secours",
+      "submit": "Valider",
+      "useBackup": "Utiliser un code de secours",
+      "useApp": "Utiliser l’application d’authentification"
+    },
+    "enroll": {
+      "title": "Activez la vérification en deux étapes",
+      "intro": "Votre organisation exige la vérification en deux étapes : activez-la pour continuer."
+    },
+    "mfa": {
+      "title": "Vérification en deux étapes",
+      "intro": "Protégez votre compte : après votre mot de passe, vous saisirez un code fourni par une application d’authentification (Microsoft Authenticator, Google Authenticator, FreeOTP…).",
+      "scan": "Scannez ce QR code avec votre application d’authentification.",
+      "qrAlt": "QR code à scanner avec votre application d’authentification ; la clé ci-dessous contient la même information.",
+      "key": "Ou saisissez cette clé dans l’application :",
+      "code": "Code à 6 chiffres",
+      "codeHint": "Affiché par l’application, renouvelé toutes les 30 secondes",
+      "enable": "Activer",
+      "enabled": "La vérification en deux étapes est activée.",
+      "backupCodesIntro": "Conservez ces codes de secours en lieu sûr : si vous perdez votre téléphone, chacun remplace une fois un code de l’application. Ils ne seront plus affichés.",
+      "backupCodes": "Codes de secours",
+      "copy": "Copier",
+      "copied": "Copiés",
+      "download": "Télécharger",
+      "done": "J’ai conservé mes codes",
+      "fileTitle": "Codes de secours My Little Big Project Planner",
+      "active": "La vérification en deux étapes est activée. Codes de secours restants : {{ count }}.",
+      "requiredByPolicy": "Votre organisation l’exige : elle ne peut pas être désactivée.",
+      "disableIntro": "Pour la désactiver, saisissez un code de l’application ou un code de secours.",
+      "codeOrBackup": "Code ou code de secours",
+      "disable": "Désactiver",
+      "close": "Fermer"
     }
   },
   "errors": {
@@ -111,7 +150,13 @@
     },
     "auth": {
       "invalid_credentials": "E-mail ou mot de passe incorrect.",
-      "reset_token_invalid": "Ce lien est invalide, a expiré ou a déjà servi. Demandez-en un nouveau."
+      "reset_token_invalid": "Ce lien est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
+      "invalid_code": "Code incorrect ou déjà utilisé."
+    },
+    "mfa": {
+      "already_enabled": "La vérification en deux étapes est déjà activée.",
+      "not_started": "Recommencez l’activation.",
+      "required_by_policy": "Votre organisation exige la vérification en deux étapes."
     },
     "idempotency_key": {
       "invalid": "La requête est mal formée.",

@@ -4,16 +4,38 @@ import { Router } from '@angular/router';
 import { isApiProblem } from '../api/api-problem';
 import { Api } from '../api/generated/api';
 import {
+  confirmMfa,
   confirmPasswordReset,
   getSession,
   requestPasswordReset,
   signIn,
   signOut,
+  verifySignIn,
 } from '../api/generated/functions';
+import type { MfaEnabled } from '../api/generated/models/mfa-enabled';
 import type { Session } from '../api/generated/models/session';
+import type { SessionStage } from '../api/generated/models/session-stage';
 
 /** Route of the sign-in page in every application. */
 export const SIGN_IN_PATH = '/sign-in';
+
+/** Route of the two-step verification code, after the password. */
+export const VERIFY_PATH = '/sign-in/verify';
+
+/** Route of the enrollment the tenant requires, after the password. */
+export const ENROLL_PATH = '/sign-in/enroll';
+
+/** Where a session at `stage` goes next: `null` once signed in. */
+export function pathForStage(stage: SessionStage): string | null {
+  switch (stage) {
+    case 'mfa_challenge':
+      return VERIFY_PATH;
+    case 'mfa_enrollment':
+      return ENROLL_PATH;
+    default:
+      return null;
+  }
+}
 
 /**
  * Whether `url` may be followed after sign-in: a path of this application
@@ -39,9 +61,13 @@ export class AuthService {
   private readonly state = signal<Session | null | undefined>(undefined);
   private loading: Promise<Session | null> | null = null;
 
-  /** The current session, `null` when signed out, `undefined` until known. */
+  /**
+   * The current session, `null` when signed out, `undefined` until known.
+   * A session may still wait for two-step verification: see `stage`.
+   */
   readonly session = this.state.asReadonly();
-  readonly signedIn = computed(() => !!this.state());
+  /** Fully signed in: the application is reachable. */
+  readonly signedIn = computed(() => this.state()?.stage === 'complete');
 
   /**
    * The current session, asked to the API the first time. Resolves to
@@ -71,11 +97,31 @@ export class AuthService {
     return this.loading;
   }
 
-  /** Signs in; rejects with an `ApiProblem` (wrong credentials, 429…). */
+  /**
+   * Checks the password; rejects with an `ApiProblem` (wrong credentials,
+   * 429…). The session's `stage` tells whether a second factor follows.
+   */
   async signIn(email: string, password: string): Promise<Session> {
     const session = await this.api.invoke(signIn, { body: { email, password } });
     this.state.set(session);
     return session;
+  }
+
+  /** Completes sign-in with a TOTP or backup code. */
+  async verifySignIn(code: string): Promise<Session> {
+    const session = await this.api.invoke(verifySignIn, { body: { code } });
+    this.state.set(session);
+    return session;
+  }
+
+  /**
+   * Enables two-step verification with a first code. A session waiting for
+   * this enrollment becomes complete.
+   */
+  async confirmMfa(code: string): Promise<MfaEnabled> {
+    const enabled = await this.api.invoke(confirmMfa, { body: { code } });
+    this.state.set(enabled.session);
+    return enabled;
   }
 
   /** Signs out, then shows the sign-in page, even if the API failed. */

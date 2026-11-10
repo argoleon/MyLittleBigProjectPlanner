@@ -302,6 +302,9 @@ pub struct ApiConfig {
     pub sessions: SessionSettings,
     /// First tenant and super admin, created with the migrations.
     pub bootstrap: Option<BootstrapConfig>,
+    /// `MFA_ENCRYPTION_KEY` (secret: prefer `_FILE`): 32 random bytes in
+    /// base64, encrypting the TOTP secrets at rest.
+    pub mfa_key: Secret,
 }
 
 /// Public address of the front end, used to build the links of emails:
@@ -405,6 +408,7 @@ impl ApiConfig {
             sessions: SessionSettings::from_env(env)?,
             bootstrap: BootstrapConfig::from_env(env, &tenancy)?,
             tenancy,
+            mfa_key: env.required("MFA_ENCRYPTION_KEY")?,
         })
     }
 }
@@ -659,6 +663,10 @@ mod tests {
         all.extend([
             ("VALKEY_URL", VALKEY_URL),
             ("PUBLIC_URL", "https://planner.example.org/"),
+            (
+                "MFA_ENCRYPTION_KEY",
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+            ),
         ]);
         all
     }

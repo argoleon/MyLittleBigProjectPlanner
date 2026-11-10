@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE tenant_auth_policy\n        SET local_accounts_require_mfa = $1, version = version + 1\n        WHERE $2::bigint[] IS NULL OR version = ANY($2)\n        RETURNING local_accounts_require_mfa, version\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "local_accounts_require_mfa",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "tenant_auth_policy",
+            "name": "local_accounts_require_mfa"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "version",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "tenant_auth_policy",
+            "name": "version"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "00c9cb088f1848cafb4dd9d5907919d4ec2feed5769bf1146119412fad004756"
+}

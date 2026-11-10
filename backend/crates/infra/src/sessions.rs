@@ -9,6 +9,7 @@
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
+pub use domain::mfa::SessionStage;
 use fred::prelude::{KeysInterface, SetsInterface};
 use fred::types::Expiration;
 use serde::{Deserialize, Serialize};
@@ -27,6 +28,34 @@ pub struct Session {
     pub created_at: DateTime<Utc>,
     /// Absolute end of the session, whatever its use.
     pub expires_at: DateTime<Utc>,
+    /// Only a `Complete` session reaches the application; the others wait
+    /// for two-step verification. Sessions stored before stages existed
+    /// were complete.
+    #[serde(default = "complete", with = "stage_serde")]
+    pub stage: SessionStage,
+}
+
+fn complete() -> SessionStage {
+    SessionStage::Complete
+}
+
+/// `SessionStage` as its name (`domain` has no serde).
+mod stage_serde {
+    use domain::mfa::SessionStage;
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S: Serializer>(stage: &SessionStage, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(stage.as_str())
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<SessionStage, D::Error> {
+        match String::deserialize(deserializer)?.as_str() {
+            "complete" => Ok(SessionStage::Complete),
+            "mfa_challenge" => Ok(SessionStage::MfaChallenge),
+            "mfa_enrollment" => Ok(SessionStage::MfaEnrollment),
+            other => Err(serde::de::Error::custom(format!("unknown session stage {other}"))),
+        }
+    }
 }
 
 /// A session just created, with the token to give the browser.
@@ -66,6 +95,19 @@ impl SessionStore {
         self.lifetime
     }
 
+    /// Lifetime of a session at `stage`.
+    pub fn lifetime_of(&self, stage: SessionStage) -> SessionLifetime {
+        let pending = match stage {
+            SessionStage::Complete => return self.lifetime,
+            SessionStage::MfaChallenge => domain::mfa::CHALLENGE_LIFETIME,
+            SessionStage::MfaEnrollment => domain::mfa::ENROLLMENT_LIFETIME,
+        };
+        SessionLifetime {
+            idle: pending,
+            max_age: pending,
+        }
+    }
+
     fn session_key(&self, hash: &str) -> String {
         format!("{}session:{hash}", self.prefix)
     }
@@ -74,17 +116,31 @@ impl SessionStore {
         format!("{}account-sessions:{account_id}", self.prefix)
     }
 
-    /// Opens a session for `account_id` in `tenant_id`.
+    /// Opens a complete session for `account_id` in `tenant_id`.
     pub async fn create(&self, account_id: Uuid, tenant_id: Uuid) -> Result<NewSession, ValkeyError> {
+        self.create_staged(account_id, tenant_id, SessionStage::Complete)
+            .await
+    }
+
+    /// Opens a session at `stage`. A session waiting for two-step
+    /// verification lasts `domain::mfa` lifetimes, not the configured ones.
+    pub async fn create_staged(
+        &self,
+        account_id: Uuid,
+        tenant_id: Uuid,
+        stage: SessionStage,
+    ) -> Result<NewSession, ValkeyError> {
+        let lifetime = self.lifetime_of(stage);
         let token = random_token();
         let now = Utc::now();
-        let max_age = chrono::Duration::from_std(self.lifetime.max_age).unwrap_or(chrono::Duration::days(7));
+        let max_age = chrono::Duration::from_std(lifetime.max_age).unwrap_or(chrono::Duration::days(7));
         let session = Session {
             account_id,
             tenant_id,
             csrf_token: random_token(),
             created_at: now,
             expires_at: now + max_age,
+            stage,
         };
         let hash = token_hash_hex(&token);
         let json = serde_json::to_string(&session)
@@ -94,7 +150,7 @@ impl SessionStore {
             .set(
                 self.session_key(&hash),
                 json,
-                Some(Expiration::EX(secs(self.lifetime.idle))),
+                Some(Expiration::EX(secs(lifetime.idle))),
                 None,
                 false,
             )
@@ -123,7 +179,7 @@ impl SessionStore {
             self.forget(&hash, session.account_id).await?;
             return Ok(None);
         }
-        let ttl = remaining.min(self.lifetime.idle);
+        let ttl = remaining.min(self.lifetime_of(session.stage).idle);
         let _: () = self.valkey.expire(&key, secs(ttl).max(1), None).await?;
         Ok(Some(session))
     }

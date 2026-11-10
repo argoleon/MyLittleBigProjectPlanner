@@ -30,6 +30,7 @@ const SESSION = {
     locale: null,
     tenantRole: 'member',
   },
+  stage: 'complete',
   csrfToken: 'csrf-token',
   expiresAt: '2026-11-17T09:00:00Z',
 };
@@ -185,6 +186,33 @@ describe('App', () => {
 
     expect(router.url).toBe('/workload');
     expect(query(fixture, 'main h1')?.textContent).toBe('Workload');
+  });
+
+  it('asks for the second factor after the password, then goes where the member was going', async () => {
+    const { fixture } = await boot(TENANT, { url: '/workload', session: null });
+    const router = TestBed.inject(Router);
+    const input = (name: string) => query(fixture, `input[formcontrolname="${name}"]`) as HTMLInputElement;
+    input('email').value = 'lucas.bernard@acme.example';
+    input('email').dispatchEvent(new Event('input'));
+    input('password').value = 'correct horse battery';
+    input('password').dispatchEvent(new Event('input'));
+    (query(fixture, 'button[type="submit"]') as HTMLButtonElement).click();
+    await answer('/api/v1/auth/sign-in', { ...SESSION, stage: 'mfa_challenge' });
+    await fixture.whenStable();
+    expect(router.url).toBe('/sign-in/verify?returnUrl=%2Fworkload');
+    expect(query(fixture, 'main h1')?.textContent).toBe('Two-step verification');
+
+    // The application stays closed meanwhile.
+    await router.navigateByUrl('/gantt');
+    expect(router.url).toBe('/sign-in/verify?returnUrl=%2Fgantt');
+
+    input('code').value = '482913';
+    input('code').dispatchEvent(new Event('input'));
+    (query(fixture, 'button[type="submit"]') as HTMLButtonElement).click();
+    await answer('/api/v1/auth/sign-in/verify', SESSION);
+    await answer('/api/v1/tenant', TENANT);
+    await fixture.whenStable();
+    expect(router.url).toBe('/gantt');
   });
 
   it('shows the signed-in member, and signs out', async () => {

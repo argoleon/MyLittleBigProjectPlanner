@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, signedOutGuard } from 'ui';
+import { authGuard, signedOutGuard, stageGuard } from 'ui';
 
 import { MainLayout } from './layout/main-layout';
 import { NAVIGATION } from './navigation';
@@ -15,6 +15,18 @@ export const routes: Routes = [
     title: 'auth.signIn.title',
     canActivate: [signedOutGuard],
     loadComponent: () => import('./auth/sign-in-page').then((m) => m.SignInPage),
+  },
+  {
+    path: 'sign-in/verify',
+    title: 'auth.verify.title',
+    canActivate: [stageGuard('mfa_challenge')],
+    loadComponent: () => import('./auth/verify-page').then((m) => m.VerifyPage),
+  },
+  {
+    path: 'sign-in/enroll',
+    title: 'auth.enroll.title',
+    canActivate: [stageGuard('mfa_enrollment')],
+    loadComponent: () => import('./auth/enroll-page').then((m) => m.EnrollPage),
   },
   {
     path: 'forgot-password',

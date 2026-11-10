@@ -1,5 +1,11 @@
 // Shared by the sign-in, forgot-password and reset-password pages.
 
+.eyebrow {
+  margin: 0 0 var(--app-space-1);
+  font: var(--mat-sys-label-medium);
+  color: var(--mat-sys-primary);
+}
+
 .title {
   margin: 0 0 var(--app-space-1);
   font: var(--mat-sys-headline-small);
@@ -31,6 +37,10 @@
 .submit {
   width: 100%;
   margin-top: var(--app-space-4);
+}
+
+.switch {
+  align-self: center;
 }
 
 .message {

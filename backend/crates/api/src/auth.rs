@@ -26,13 +26,15 @@ use domain::account::{
     MAX_FAILED_SIGN_INS_PER_EMAIL, MAX_PASSWORD_RESETS_PER_EMAIL, MAX_SIGN_INS_PER_IP,
     PASSWORD_RESET_LIFETIME, SIGN_IN_WINDOW, normalize_email, validate_password,
 };
+use domain::mfa::{Code, MAX_FAILED_CODES, parse_code, stage_after_password, time_step};
 use domain::validation::FieldError;
 use infra::accounts::{self, AccountType, Member, TenantRole};
 use infra::config::{PublicUrl, SessionSettings};
 use infra::credentials;
 use infra::email::{EMAIL_JOB, EmailJob, EmailMessage};
+use infra::mfa::MfaCipher;
 use infra::rate_limit::RateLimiter;
-use infra::sessions::{Session, SessionLifetime, SessionStore};
+use infra::sessions::{Session, SessionLifetime, SessionStage, SessionStore};
 use infra::uuid::Uuid;
 use infra::valkey::Valkey;
 use serde::{Deserialize, Serialize};
@@ -40,7 +42,7 @@ use utoipa::ToSchema;
 
 use crate::extract::{ApiJson, header_str};
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
-use crate::tenant::{AppState, PublicTenantTx, TenantTx};
+use crate::tenant::{AppState, PublicTenantTx, StagedTenantTx};
 
 /// OpenAPI tag of the authentication endpoints.
 pub const TAG: &str = "auth";
@@ -58,16 +60,24 @@ pub const CSRF_HEADER: &str = "x-csrf-token";
 /// Sessions, rate limits and the settings of authentication.
 #[derive(Debug, Clone)]
 pub struct Auth {
-    sessions: SessionStore,
-    limits: RateLimiter,
+    pub(crate) sessions: SessionStore,
+    pub(crate) limits: RateLimiter,
     public_url: PublicUrl,
     cookie_secure: bool,
+    /// Encrypts the TOTP secrets of two-step verification.
+    pub(crate) mfa: MfaCipher,
 }
 
 impl Auth {
     /// `key_prefix` starts every Valkey key (`mlbpp:` in production; tests
     /// use a unique one).
-    pub fn new(valkey: Valkey, key_prefix: &str, public_url: PublicUrl, settings: SessionSettings) -> Self {
+    pub fn new(
+        valkey: Valkey,
+        key_prefix: &str,
+        public_url: PublicUrl,
+        settings: SessionSettings,
+        mfa: MfaCipher,
+    ) -> Self {
         let lifetime = SessionLifetime {
             idle: settings.idle,
             max_age: settings.max_age,
@@ -77,6 +87,7 @@ impl Auth {
             limits: RateLimiter::new(valkey, key_prefix),
             public_url,
             cookie_secure: settings.cookie_secure,
+            mfa,
         }
     }
 
@@ -114,13 +125,14 @@ impl Auth {
     }
 
     /// `Set-Cookie` headers opening a session.
-    fn session_cookies(
+    pub(crate) fn session_cookies(
         &self,
         token: &str,
         session: &Session,
     ) -> Result<[(axum::http::HeaderName, HeaderValue); 2], Problem> {
         // The session was just opened: it lasts the whole maximum age.
-        let attributes = self.cookie_attributes(self.sessions.lifetime().max_age.as_secs());
+        let lifetime = self.sessions.lifetime_of(session.stage);
+        let attributes = self.cookie_attributes(lifetime.max_age.as_secs());
         Ok([
             (
                 SET_COOKIE,
@@ -149,7 +161,7 @@ impl Auth {
     }
 
     /// 429 with the time left in the window of `key`.
-    async fn too_many(&self, key: &str) -> Problem {
+    pub(crate) async fn too_many(&self, key: &str) -> Problem {
         let retry = self.limits.retry_after(key).await.unwrap_or(SIGN_IN_WINDOW);
         Problem::new(ErrorCode::TooManyRequests).with_retry_after(retry)
     }
@@ -267,12 +279,38 @@ pub struct AccountView {
     tenant_role: TenantRoleView,
 }
 
+/// How far sign-in has gone.
+#[derive(Debug, Clone, Copy, Serialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+#[schema(as = SessionStage)]
+pub enum SessionStageView {
+    /// Signed in.
+    Complete,
+    /// The password was right; send a code with `POST /auth/sign-in/verify`.
+    MfaChallenge,
+    /// The password was right; the tenant requires two-step verification:
+    /// enable it with `POST /account/mfa/setup` then `/confirm`.
+    MfaEnrollment,
+}
+
+impl From<SessionStage> for SessionStageView {
+    fn from(stage: SessionStage) -> Self {
+        match stage {
+            SessionStage::Complete => Self::Complete,
+            SessionStage::MfaChallenge => Self::MfaChallenge,
+            SessionStage::MfaEnrollment => Self::MfaEnrollment,
+        }
+    }
+}
+
 /// The current session.
 #[derive(Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[schema(as = Session)]
 pub struct SessionView {
     account: AccountView,
+    /// Only a `complete` session reaches the application.
+    stage: SessionStageView,
     /// To send in `X-CSRF-Token` on every state-changing request.
     csrf_token: String,
     /// The session ends at this time at the latest, or earlier when unused.
@@ -280,7 +318,7 @@ pub struct SessionView {
 }
 
 impl SessionView {
-    fn new(member: &Member, session: &Session) -> Self {
+    pub(crate) fn new(member: &Member, session: &Session) -> Self {
         Self {
             account: AccountView {
                 id: member.account_id,
@@ -289,6 +327,7 @@ impl SessionView {
                 locale: member.locale.clone(),
                 tenant_role: member.tenant_role.into(),
             },
+            stage: session.stage.into(),
             csrf_token: session.csrf_token.clone(),
             expires_at: session.expires_at,
         }
@@ -321,6 +360,106 @@ async fn check_password(password: String, hash: Option<String>) -> Result<bool, 
     .await?)
 }
 
+// --- Second factor ---------------------------------------------------------------
+
+/// A code typed by the member.
+#[derive(Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(as = MfaCode)]
+pub struct CodeBody {
+    /// 6 digits from the authenticator app, or a backup code (`abcde-fghjk`).
+    #[schema(example = "482913")]
+    pub(crate) code: String,
+}
+
+/// Which codes [`check_code`] accepts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Accept {
+    /// TOTP or backup code, against the enabled secret.
+    Enabled,
+    /// TOTP only, against the secret being enrolled.
+    Enrolling,
+}
+
+/// The time step of an accepted code (TOTP), or `None` for a backup code.
+pub(crate) type AcceptedStep = Option<i64>;
+
+/// Checks the second-factor `raw` code of `account_id`: 5 failures in 15
+/// minutes block it (429), each failure is 401 `auth.invalid_code`, a code
+/// or backup code works once.
+pub(crate) async fn check_code(
+    auth: &Auth,
+    conn: &mut infra::sqlx::PgConnection,
+    account_id: Uuid,
+    raw: &str,
+    accept: Accept,
+) -> Result<AcceptedStep, Problem> {
+    let key = format!("mfa:account:{account_id}");
+    if auth.limits.count(&key).await? >= MAX_FAILED_CODES {
+        return Err(auth.too_many(&key).await);
+    }
+    let accepted = match (parse_code(raw), accept) {
+        (Some(Code::Totp(code)), _) => totp_step(auth, conn, account_id, &code, accept).await?,
+        (Some(Code::Backup(code)), Accept::Enabled) => infra::mfa::use_backup_code(conn, account_id, &code)
+            .await?
+            .then_some(None),
+        _ => None,
+    };
+    match accepted {
+        Some(step) => {
+            auth.limits.clear(&key).await?;
+            Ok(step)
+        }
+        None => {
+            auth.limits.hit(&key, SIGN_IN_WINDOW).await?;
+            Err(Problem::new(ErrorCode::AuthInvalidCode))
+        }
+    }
+}
+
+/// `Some(Some(step))` when `code` is the TOTP code of a step in the window,
+/// not used before.
+async fn totp_step(
+    auth: &Auth,
+    conn: &mut infra::sqlx::PgConnection,
+    account_id: Uuid,
+    code: &str,
+    accept: Accept,
+) -> Result<Option<AcceptedStep>, Problem> {
+    let Some(stored) = infra::mfa::find(conn, account_id).await? else {
+        return Ok(None);
+    };
+    if stored.enabled != (accept == Accept::Enabled) {
+        return Ok(None);
+    }
+    let secret = auth
+        .mfa
+        .decrypt(account_id, &stored.secret_ciphertext, &stored.secret_nonce)
+        .map_err(|e| Problem::internal(&e))?;
+    let now = u64::try_from(Utc::now().timestamp()).unwrap_or(0);
+    let last_used = stored.last_used_step.and_then(|s| u64::try_from(s).ok());
+    let candidates = domain::mfa::candidate_steps(time_step(now), last_used);
+    let Some(step) =
+        infra::mfa::matching_step(&secret, code, &candidates).map_err(|e| Problem::internal(&e))?
+    else {
+        return Ok(None);
+    };
+    let step = i64::try_from(step).unwrap_or(i64::MAX);
+    // An enabled secret records the step now; an enrolling one when enabled.
+    if accept == Accept::Enabled && !infra::mfa::record_step(conn, account_id, step).await? {
+        return Ok(None);
+    }
+    Ok(Some(Some(step)))
+}
+
+/// Replaces the request's session with a complete one: a new token, so the
+/// one that waited for the second factor is worthless.
+pub(crate) async fn complete_session(auth: &Auth, tx: &StagedTenantTx) -> Result<(String, Session), Problem> {
+    auth.sessions.delete(tx.session_token()).await?;
+    let opened = auth.sessions.create(tx.account_id(), tx.tenant_id()).await?;
+    Ok((opened.token, opened.session))
+}
+
 // --- Endpoints ------------------------------------------------------------------
 
 /// Signs in with email and password.
@@ -333,7 +472,10 @@ async fn check_password(password: String, hash: Option<String>) -> Result<bool, 
     description = "Opens a session in the tenant of the request's host: sets the `mlbpp_session` \
                    (HttpOnly) and `mlbpp_csrf` cookies. After 5 failures on one email, or many from \
                    one address, sign-in is refused for 15 minutes (429). The error never tells \
-                   whether the email has an account.",
+                   whether the email has an account.\n\n\
+                   When two-step verification is on, or required by the tenant, the session's \
+                   `stage` is `mfa_challenge` or `mfa_enrollment`: it reaches nothing but the next \
+                   step, for 5 or 15 minutes.",
     security(()),
     request_body = SignInRequest,
     responses(
@@ -391,9 +533,16 @@ pub async fn sign_in(
     if let Some(previous) = cookie(&headers, SESSION_COOKIE) {
         auth.sessions.delete(previous).await?;
     }
-    let opened = auth.sessions.create(member.account_id, tx.tenant_id()).await?;
+    // Two-step verification: required by the account, or by the tenant's policy.
+    let policy = infra::mfa::auth_policy(&mut tx).await?;
+    let mfa_enabled = infra::mfa::is_enabled(&mut tx, member.account_id).await?;
+    let stage = stage_after_password(mfa_enabled, policy.local_accounts_require_mfa);
+    let opened = auth
+        .sessions
+        .create_staged(member.account_id, tx.tenant_id(), stage)
+        .await?;
     tx.commit().await?;
-    tracing::info!(account = %member.account_id, "signed in");
+    tracing::info!(account = %member.account_id, stage = stage.as_str(), "password accepted");
     Ok((
         AppendHeaders(auth.session_cookies(&opened.token, &opened.session)?),
         ApiJson(SessionView::new(&member, &opened.session)),
@@ -415,7 +564,7 @@ pub async fn sign_in(
         (status = 403, description = "`csrf.invalid`", body = ProblemBody, content_type = PROBLEM_JSON),
     )
 )]
-pub async fn sign_out(State(state): State<AppState>, tx: TenantTx) -> Result<Response, Problem> {
+pub async fn sign_out(State(state): State<AppState>, tx: StagedTenantTx) -> Result<Response, Problem> {
     state.auth.sessions.delete(tx.session_token()).await?;
     tracing::info!(account = %tx.account_id(), "signed out");
     Ok((
@@ -432,13 +581,14 @@ pub async fn sign_out(State(state): State<AppState>, tx: TenantTx) -> Result<Res
     tag = TAG,
     operation_id = "getSession",
     summary = "The current session",
-    description = "The signed-in member and the CSRF token, or 401.",
+    description = "The signed-in member, the CSRF token and the session's `stage` (a session \
+                   waiting for two-step verification included), or 401.",
     responses(
         (status = 200, description = "Signed in", body = SessionView),
         (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
     )
 )]
-pub async fn current_session(tx: TenantTx) -> ApiJson<SessionView> {
+pub async fn current_session(tx: StagedTenantTx) -> ApiJson<SessionView> {
     ApiJson(SessionView::new(tx.member(), tx.session()))
 }
 
@@ -570,6 +720,49 @@ pub async fn confirm_password_reset(
     state.auth.limits.clear(&failures_key).await?;
     tracing::info!(account = %account_id, sessions_ended = ended, "password reset");
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// Completes sign-in with the second factor.
+#[utoipa::path(
+    post,
+    path = "/auth/sign-in/verify",
+    tag = TAG,
+    operation_id = "verifySignIn",
+    summary = "Complete sign-in with a two-step verification code",
+    description = "For a session at the `mfa_challenge` stage: a code from the authenticator app, \
+                   or a backup code, which then cannot be used again. Opens a complete session \
+                   (new cookies). After 5 wrong codes, the account is blocked 15 minutes (429).",
+    request_body = CodeBody,
+    responses(
+        (status = 200, description = "Signed in", body = SessionView, headers(
+            ("Set-Cookie" = String, description = "`mlbpp_session` and `mlbpp_csrf`"),
+        )),
+        (status = 401, description = "`auth.invalid_code`, or `unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 403, description = "`csrf.invalid`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 409, description = "`conflict`: the session is not waiting for a code", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 429, description = "`too_many_requests`, with `Retry-After`", body = ProblemBody, content_type = PROBLEM_JSON),
+    )
+)]
+pub async fn verify_sign_in(
+    State(state): State<AppState>,
+    mut tx: StagedTenantTx,
+    ApiJson(body): ApiJson<CodeBody>,
+) -> Result<Response, Problem> {
+    if tx.stage() != SessionStage::MfaChallenge {
+        return Err(Problem::new(ErrorCode::Conflict));
+    }
+    let account = tx.account_id();
+    let auth = &state.auth;
+    check_code(auth, &mut tx, account, &body.code, Accept::Enabled).await?;
+    let (token, session) = complete_session(auth, &tx).await?;
+    let member = tx.member().clone();
+    tx.0.commit().await?;
+    tracing::info!(account = %account, "signed in with two-step verification");
+    Ok((
+        AppendHeaders(auth.session_cookies(&token, &session)?),
+        ApiJson(SessionView::new(&member, &session)),
+    )
+        .into_response())
 }
 
 #[cfg(test)]

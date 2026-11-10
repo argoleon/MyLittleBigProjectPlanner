@@ -8,7 +8,7 @@ use std::time::Duration;
 use fred::prelude::KeysInterface;
 use infra::id::new_id;
 use infra::rate_limit::RateLimiter;
-use infra::sessions::{SessionLifetime, SessionStore};
+use infra::sessions::{SessionLifetime, SessionStage, SessionStore};
 
 const LONG: SessionLifetime = SessionLifetime {
     idle: Duration::from_secs(600),
@@ -144,5 +144,57 @@ async fn a_rate_limit_window_does_not_slide_with_new_hits() {
         limiter.count("ip").await.unwrap(),
         0,
         "the window started at the first hit"
+    );
+}
+
+#[tokio::test]
+async fn a_session_waiting_for_its_second_factor_is_short_lived() {
+    let (store, valkey, prefix) = store(LONG).await;
+    let pending = store
+        .create_staged(new_id(), new_id(), SessionStage::MfaChallenge)
+        .await
+        .unwrap();
+    assert_eq!(pending.session.stage, SessionStage::MfaChallenge);
+    let found = store.get(&pending.token).await.unwrap().unwrap();
+    assert_eq!(found.stage, SessionStage::MfaChallenge);
+    let lifetime = (found.expires_at - found.created_at).num_seconds();
+    assert_eq!(lifetime, 300, "5 minutes, not the configured hour");
+    let key = format!(
+        "{prefix}session:{}",
+        infra::credentials::token_hash_hex(&pending.token)
+    );
+    let ttl: i64 = valkey.ttl(&key).await.unwrap();
+    assert!((1..=300).contains(&ttl), "{ttl}");
+
+    let enrolling = store
+        .create_staged(new_id(), new_id(), SessionStage::MfaEnrollment)
+        .await
+        .unwrap();
+    assert_eq!(
+        (enrolling.session.expires_at - enrolling.session.created_at).num_seconds(),
+        900
+    );
+    let complete = store.create(new_id(), new_id()).await.unwrap();
+    assert_eq!(complete.session.stage, SessionStage::Complete);
+}
+
+#[tokio::test]
+async fn sessions_stored_before_stages_existed_are_complete() {
+    let (store, valkey, prefix) = store(LONG).await;
+    let created = store.create(new_id(), new_id()).await.unwrap();
+    let key = format!(
+        "{prefix}session:{}",
+        infra::credentials::token_hash_hex(&created.token)
+    );
+    let mut json: serde_json::Value =
+        serde_json::from_str(&valkey.get::<String, _>(&key).await.unwrap()).unwrap();
+    json.as_object_mut().unwrap().remove("stage");
+    let _: () = valkey
+        .set(&key, json.to_string(), None, None, false)
+        .await
+        .unwrap();
+    assert_eq!(
+        store.get(&created.token).await.unwrap().unwrap().stage,
+        SessionStage::Complete
     );
 }

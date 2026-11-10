@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE account_backup_code SET used_at = now(), version = version + 1\n        WHERE account_id = $1 AND code_hash = $2 AND used_at IS NULL\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "91a62422baa040b6b412d518b6e644a73179aa45038aba6837b169be30672e80"
+}

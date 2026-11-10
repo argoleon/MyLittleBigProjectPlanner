@@ -7,6 +7,7 @@ pub mod account;
 pub mod i18n;
 pub mod idempotency;
 pub mod jobs;
+pub mod mfa;
 pub mod reference_item;
 pub mod tenancy;
 pub mod tenant;

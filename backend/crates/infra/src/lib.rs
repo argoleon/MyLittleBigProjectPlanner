@@ -11,6 +11,7 @@ pub mod health;
 pub mod id;
 pub mod idempotency;
 pub mod jobs;
+pub mod mfa;
 pub mod pagination;
 pub mod platform;
 pub mod rate_limit;

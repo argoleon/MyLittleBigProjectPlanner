@@ -10,6 +10,226 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/api/v1/account/mfa": {
+      "get": {
+        "tags": [
+          "account"
+        ],
+        "summary": "My two-step verification",
+        "operationId": "getMfa",
+        "responses": {
+          "200": {
+            "description": "Its state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MfaStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/mfa/confirm": {
+      "post": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Enable two-step verification with a first code",
+        "description": "A code from the app proves it holds the secret. Answers 8 backup codes, shown this once. A session waiting for this enrollment becomes complete (new cookies).",
+        "operationId": "confirmMfa",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MfaCode"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Enabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MfaEnabled"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`auth.invalid_code`, or `unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`mfa.not_started`, or `mfa.already_enabled`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`too_many_requests`, with `Retry-After`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/mfa/disable": {
+      "post": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Disable two-step verification",
+        "description": "Confirmed by a code from the app or a backup code. Refused when the organization requires two-step verification.",
+        "operationId": "disableMfa",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MfaCode"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Disabled: secret and backup codes deleted"
+          },
+          "401": {
+            "description": "`auth.invalid_code`, or `unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`mfa.required_by_policy`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`too_many_requests`, with `Retry-After`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/mfa/setup": {
+      "post": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Start enabling two-step verification",
+        "description": "Draws a new secret, shown as a QR code and as text. It is only enabled once `POST /account/mfa/confirm` receives a code from the app. Starting again replaces the secret.",
+        "operationId": "setUpMfa",
+        "responses": {
+          "200": {
+            "description": "The secret to add to the authenticator app",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MfaSetup"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`mfa.already_enabled`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/password-reset": {
       "post": {
         "tags": [
@@ -122,7 +342,7 @@
           "auth"
         ],
         "summary": "The current session",
-        "description": "The signed-in member and the CSRF token, or 401.",
+        "description": "The signed-in member, the CSRF token and the session's `stage` (a session waiting for two-step verification included), or 401.",
         "operationId": "getSession",
         "responses": {
           "200": {
@@ -154,7 +374,7 @@
           "auth"
         ],
         "summary": "Sign in with email and password",
-        "description": "Opens a session in the tenant of the request's host: sets the `mlbpp_session` (HttpOnly) and `mlbpp_csrf` cookies. After 5 failures on one email, or many from one address, sign-in is refused for 15 minutes (429). The error never tells whether the email has an account.",
+        "description": "Opens a session in the tenant of the request's host: sets the `mlbpp_session` (HttpOnly) and `mlbpp_csrf` cookies. After 5 failures on one email, or many from one address, sign-in is refused for 15 minutes (429). The error never tells whether the email has an account.\n\nWhen two-step verification is on, or required by the tenant, the session's `stage` is `mfa_challenge` or `mfa_enrollment`: it reaches nothing but the next step, for 5 or 15 minutes.",
         "operationId": "signIn",
         "requestBody": {
           "content": {
@@ -229,6 +449,86 @@
         "security": [
           {}
         ]
+      }
+    },
+    "/api/v1/auth/sign-in/verify": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Complete sign-in with a two-step verification code",
+        "description": "For a session at the `mfa_challenge` stage: a code from the authenticator app, or a backup code, which then cannot be used again. Opens a complete session (new cookies). After 5 wrong codes, the account is blocked 15 minutes (429).",
+        "operationId": "verifySignIn",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MfaCode"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Signed in",
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "`mlbpp_session` and `mlbpp_csrf`"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`auth.invalid_code`, or `unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`conflict`: the session is not waiting for a code",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`too_many_requests`, with `Retry-After`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/auth/sign-out": {
@@ -1432,13 +1732,179 @@
           {}
         ]
       }
+    },
+    "/api/v1/tenant/auth-policy": {
+      "get": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Authentication policy of the tenant",
+        "description": "Tenant admins only.",
+        "operationId": "getAuthPolicy",
+        "responses": {
+          "200": {
+            "description": "The policy",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the policy"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthPolicy"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: not a tenant admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Change the authentication policy of the tenant",
+        "description": "Tenant admins only.",
+        "operationId": "updateAuthPolicy",
+        "parameters": [
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the version being replaced, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthPolicy"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The new policy",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "New version of the policy"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthPolicy"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The policy changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AuthPolicy": {
+        "type": "object",
+        "description": "Authentication policy of the tenant.",
+        "required": [
+          "localAccountsRequireMfa"
+        ],
+        "properties": {
+          "localAccountsRequireMfa": {
+            "type": "boolean",
+            "description": "Members signing in with a password must use two-step verification;\nthose without it enroll at their next sign-in."
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "localAccountsRequireMfa": true
+        }
+      },
       "ErrorCode": {
         "type": "string",
-        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n",
+        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n",
         "enum": [
           "bad_request",
           "validation_failed",
@@ -1459,6 +1925,10 @@
           "csrf.invalid",
           "auth.invalid_credentials",
           "auth.reset_token_invalid",
+          "auth.invalid_code",
+          "mfa.already_enabled",
+          "mfa.not_started",
+          "mfa.required_by_policy",
           "idempotency_key.invalid",
           "idempotency_key.reused",
           "idempotency_key.in_flight",
@@ -1486,6 +1956,92 @@
             "type": "string",
             "description": "Path of the field as sent, e.g. `code` or `labelTranslations.fr`.",
             "example": "code"
+          }
+        }
+      },
+      "MfaCode": {
+        "type": "object",
+        "description": "A code typed by the member.",
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "6 digits from the authenticator app, or a backup code (`abcde-fghjk`).",
+            "example": "482913"
+          }
+        }
+      },
+      "MfaEnabled": {
+        "type": "object",
+        "description": "Two-step verification just enabled.",
+        "required": [
+          "backupCodes",
+          "session"
+        ],
+        "properties": {
+          "backupCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Shown once: each one replaces a code from the app once.",
+            "example": [
+              "abcde-fghjk",
+              "mnpqr-stuvw"
+            ]
+          },
+          "session": {
+            "$ref": "#/components/schemas/Session",
+            "description": "The session, complete now if it was waiting for this enrollment."
+          }
+        }
+      },
+      "MfaSetup": {
+        "type": "object",
+        "description": "What an authenticator app needs.",
+        "required": [
+          "otpauthUri",
+          "secret",
+          "qrCodeSvg"
+        ],
+        "properties": {
+          "otpauthUri": {
+            "type": "string",
+            "description": "`otpauth://totp/…`, as encoded in the QR code."
+          },
+          "qrCodeSvg": {
+            "type": "string",
+            "description": "The QR code, an SVG image drawn by the server."
+          },
+          "secret": {
+            "type": "string",
+            "description": "The secret in base32, to type when the QR code cannot be scanned (its\ntext alternative).",
+            "example": "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP"
+          }
+        }
+      },
+      "MfaStatus": {
+        "type": "object",
+        "description": "Two-step verification of the signed-in member.",
+        "required": [
+          "enabled",
+          "backupCodesLeft",
+          "requiredByPolicy"
+        ],
+        "properties": {
+          "backupCodesLeft": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unused backup codes."
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "requiredByPolicy": {
+            "type": "boolean",
+            "description": "The tenant requires it: it cannot be disabled."
           }
         }
       },
@@ -1957,6 +2513,7 @@
         "description": "The current session.",
         "required": [
           "account",
+          "stage",
           "csrfToken",
           "expiresAt"
         ],
@@ -1972,6 +2529,10 @@
             "type": "string",
             "format": "date-time",
             "description": "The session ends at this time at the latest, or earlier when unused."
+          },
+          "stage": {
+            "$ref": "#/components/schemas/SessionStage",
+            "description": "Only a `complete` session reaches the application."
           }
         }
       },
@@ -2009,6 +2570,15 @@
             "$ref": "#/components/schemas/TenantRole"
           }
         }
+      },
+      "SessionStage": {
+        "type": "string",
+        "description": "How far sign-in has gone.",
+        "enum": [
+          "complete",
+          "mfa_challenge",
+          "mfa_enrollment"
+        ]
       },
       "SignInRequest": {
         "type": "object",
@@ -2195,6 +2765,10 @@
     {
       "name": "auth",
       "description": "Sign-in, sessions and password reset"
+    },
+    {
+      "name": "account",
+      "description": "Two-step verification of the signed-in member, and the tenant's authentication policy"
     },
     {
       "name": "platform",

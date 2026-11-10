@@ -26,6 +26,10 @@
  * | `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |
  * | `auth.invalid_credentials` | 401 | Incorrect email or password |
  * | `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |
+ * | `auth.invalid_code` | 401 | Incorrect or already used verification code |
+ * | `mfa.already_enabled` | 409 | Two-step verification is already enabled |
+ * | `mfa.not_started` | 409 | Start two-step verification setup first |
+ * | `mfa.required_by_policy` | 409 | The organization requires two-step verification |
  * | `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |
  * | `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |
  * | `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |
@@ -35,5 +39,5 @@
  * | `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |
  * | `reference_item.code_taken` | 409 | Another reference item already has this code |
  */
-export type ErrorCode = 'bad_request' | 'validation_failed' | 'invalid_json' | 'invalid_query' | 'not_found' | 'method_not_allowed' | 'request_timeout' | 'conflict' | 'precondition_failed' | 'payload_too_large' | 'unsupported_media_type' | 'precondition_required' | 'too_many_requests' | 'internal' | 'unauthenticated' | 'forbidden' | 'csrf.invalid' | 'auth.invalid_credentials' | 'auth.reset_token_invalid' | 'idempotency_key.invalid' | 'idempotency_key.reused' | 'idempotency_key.in_flight' | 'tenant.not_found' | 'tenant.slug_taken' | 'tenant.confirmation_mismatch' | 'tenant.delete_current' | 'reference_item.code_taken';
+export type ErrorCode = 'bad_request' | 'validation_failed' | 'invalid_json' | 'invalid_query' | 'not_found' | 'method_not_allowed' | 'request_timeout' | 'conflict' | 'precondition_failed' | 'payload_too_large' | 'unsupported_media_type' | 'precondition_required' | 'too_many_requests' | 'internal' | 'unauthenticated' | 'forbidden' | 'csrf.invalid' | 'auth.invalid_credentials' | 'auth.reset_token_invalid' | 'auth.invalid_code' | 'mfa.already_enabled' | 'mfa.not_started' | 'mfa.required_by_policy' | 'idempotency_key.invalid' | 'idempotency_key.reused' | 'idempotency_key.in_flight' | 'tenant.not_found' | 'tenant.slug_taken' | 'tenant.confirmation_mismatch' | 'tenant.delete_current' | 'reference_item.code_taken';
 
