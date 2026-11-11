@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT a.id, a.email, a.display_name, a.locale, a.password_hash,\n               m.account_type, m.tenant_role, m.status, m.local_account\n        FROM account a\n        JOIN membership m ON m.account_id = a.id\n        WHERE a.id = $1\n        ",
+  "query": "\n        SELECT a.id, a.email, a.display_name, a.locale, a.time_zone, a.password_hash,\n               m.account_type, m.tenant_role, m.status, m.local_account\n        FROM account a\n        JOIN membership m ON m.account_id = a.id\n        WHERE a.id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -49,6 +49,17 @@
       },
       {
         "ordinal": 4,
+        "name": "time_zone",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "account",
+            "name": "time_zone"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
         "name": "password_hash",
         "type_info": "Text",
         "origin": {
@@ -59,7 +70,7 @@
         }
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "account_type",
         "type_info": "Text",
         "origin": {
@@ -70,7 +81,7 @@
         }
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "tenant_role",
         "type_info": "Text",
         "origin": {
@@ -81,7 +92,7 @@
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "status",
         "type_info": "Text",
         "origin": {
@@ -92,7 +103,7 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "local_account",
         "type_info": "Bool",
         "origin": {
@@ -114,11 +125,12 @@
       false,
       true,
       true,
+      true,
       false,
       false,
       false,
       false
     ]
   },
-  "hash": "0118c942fdfd49925a9408060911cd1bef1b6f1bf29b8620db450555d1a2b393"
+  "hash": "9383a170872ea0779becb1b2a8fcdae4cecf854e2473882d9f60ac5c5b73debd"
 }

@@ -189,3 +189,65 @@ async fn a_new_password_replaces_the_old_one() {
     ));
     assert!(!infra::credentials::verify_password(&member.password, &stored));
 }
+
+#[tokio::test]
+async fn preferences_are_saved_and_the_database_refuses_an_unknown_time_zone() {
+    let db = TestDb::new().await;
+    let member = db.add_member(&db.tenant_a, TenantRole::Member).await;
+    let preferences = accounts::Preferences {
+        locale: Some("en".to_owned()),
+        time_zone: Some("Asia/Tokyo".to_owned()),
+    };
+
+    let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+    assert!(accounts::time_zone_exists(&mut tx, "Asia/Tokyo").await.unwrap());
+    assert!(
+        !accounts::time_zone_exists(&mut tx, "Asia/Atlantis")
+            .await
+            .unwrap()
+    );
+    assert!(
+        accounts::set_preferences(&mut tx, member.account_id, &preferences)
+            .await
+            .unwrap()
+    );
+    let found = accounts::find(&mut tx, member.account_id).await.unwrap().unwrap();
+    assert_eq!(
+        (found.locale, found.time_zone),
+        (preferences.locale.clone(), preferences.time_zone.clone())
+    );
+    assert!(
+        accounts::password_hash(&mut tx, member.account_id)
+            .await
+            .unwrap()
+            .is_some()
+    );
+    tx.commit().await.unwrap();
+
+    // Whatever writes it, the time zone must exist.
+    let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+    let unknown = accounts::Preferences {
+        locale: None,
+        time_zone: Some("Asia/Atlantis".to_owned()),
+    };
+    let err = accounts::set_preferences(&mut tx, member.account_id, &unknown)
+        .await
+        .unwrap_err();
+    assert_eq!(err.as_database_error().unwrap().code().as_deref(), Some("23514"));
+    tx.rollback().await.unwrap();
+
+    // Another tenant's transaction cannot reach this account.
+    let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_b.id).await.unwrap();
+    assert!(
+        !accounts::set_preferences(&mut tx, member.account_id, &accounts::Preferences::default())
+            .await
+            .unwrap()
+    );
+    assert!(
+        accounts::password_hash(&mut tx, member.account_id)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    tx.rollback().await.unwrap();
+}

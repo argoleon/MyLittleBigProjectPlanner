@@ -4,6 +4,7 @@
 //! Every route goes through the shared request layer in [`middleware`], so
 //! no feature can forget request IDs, timeouts or body limits.
 
+pub mod account;
 pub mod auth;
 pub mod cli;
 pub mod correlation;

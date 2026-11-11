@@ -86,11 +86,13 @@ pub enum ErrorCode {
     PermissionDenied,
     RoleLabelTaken,
     RoleInUse,
+    AccountNoPassword,
+    SessionCurrent,
 }
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 47] = [
+    pub const ALL: [Self; 49] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -138,6 +140,8 @@ impl ErrorCode {
         Self::PermissionDenied,
         Self::RoleLabelTaken,
         Self::RoleInUse,
+        Self::AccountNoPassword,
+        Self::SessionCurrent,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -189,6 +193,8 @@ impl ErrorCode {
             Self::PermissionDenied => "permission.denied",
             Self::RoleLabelTaken => "role.label_taken",
             Self::RoleInUse => "role.in_use",
+            Self::AccountNoPassword => "account.no_password",
+            Self::SessionCurrent => "session.current",
         }
     }
 
@@ -233,7 +239,9 @@ impl ErrorCode {
             | Self::MemberLastAdmin
             | Self::GroupNameTaken
             | Self::RoleLabelTaken
-            | Self::RoleInUse => StatusCode::CONFLICT,
+            | Self::RoleInUse
+            | Self::AccountNoPassword
+            | Self::SessionCurrent => StatusCode::CONFLICT,
             Self::PreconditionFailed => StatusCode::PRECONDITION_FAILED,
             Self::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -293,6 +301,8 @@ impl ErrorCode {
             Self::PermissionDenied => "You do not have the permission this needs",
             Self::RoleLabelTaken => "Another role already has this label",
             Self::RoleInUse => "Grants use this role: remove them first",
+            Self::AccountNoPassword => "This account signs in through its organization: it has no password",
+            Self::SessionCurrent => "This is the session of the request: sign out instead",
         }
     }
 
@@ -536,7 +546,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 47] = [
+        let expected: [(ErrorCode, u16); 49] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -584,6 +594,8 @@ mod tests {
             (ErrorCode::PermissionDenied, 403),
             (ErrorCode::RoleLabelTaken, 409),
             (ErrorCode::RoleInUse, 409),
+            (ErrorCode::AccountNoPassword, 409),
+            (ErrorCode::SessionCurrent, 409),
         ];
         for (code, status) in expected {
             assert_eq!(code.status().as_u16(), status, "{}", code.as_str());

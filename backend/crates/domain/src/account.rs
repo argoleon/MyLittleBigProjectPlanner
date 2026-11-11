@@ -62,6 +62,33 @@ pub fn validate_password(field: &str, password: &str, email: &str) -> Result<(),
     violations.into_result()
 }
 
+/// What an account sets for itself (L02-US08); `None` means the tenant's
+/// default.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Preferences {
+    /// Language of the interface and the emails: `fr` or `en`.
+    pub locale: Option<String>,
+    /// IANA time zone in which instants are shown.
+    pub time_zone: Option<String>,
+}
+
+/// Checks `preferences`; field names are those of the JSON API. Whether the
+/// time zone exists is the database's to tell (`pg_timezone_names`).
+pub fn validate_preferences(preferences: &Preferences) -> Result<(), Vec<FieldError>> {
+    let mut violations = Violations::new();
+    if let Some(locale) = &preferences.locale
+        && !crate::i18n::is_supported(locale)
+    {
+        violations.add("locale", "unsupported_locale");
+    }
+    if let Some(time_zone) = &preferences.time_zone
+        && !crate::tenant::is_plausible_time_zone(time_zone)
+    {
+        violations.add("timeZone", "unknown_time_zone");
+    }
+    violations.into_result()
+}
+
 /// Checks a display name: 1 to 200 characters once trimmed.
 pub fn validate_display_name(field: &str, name: &str) -> Result<(), Vec<FieldError>> {
     let mut violations = Violations::new();
@@ -138,6 +165,45 @@ impl TenantRole {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn preferences_take_a_supported_language_and_an_iana_time_zone() {
+        let codes = |locale: Option<&str>, time_zone: Option<&str>| -> Vec<(String, &'static str)> {
+            let preferences = Preferences {
+                locale: locale.map(str::to_owned),
+                time_zone: time_zone.map(str::to_owned),
+            };
+            validate_preferences(&preferences)
+                .err()
+                .unwrap_or_default()
+                .into_iter()
+                .map(|e| (e.field, e.code))
+                .collect()
+        };
+        assert!(codes(None, None).is_empty(), "the tenant's defaults");
+        assert!(codes(Some("en"), Some("Europe/Paris")).is_empty());
+        assert!(codes(Some("fr"), Some("America/Argentina/Buenos_Aires")).is_empty());
+        assert!(codes(Some("en"), Some("UTC")).is_empty());
+        assert_eq!(
+            codes(Some("de"), None),
+            [("locale".to_owned(), "unsupported_locale")]
+        );
+        assert_eq!(
+            codes(None, Some("Europe//Paris")),
+            [("timeZone".to_owned(), "unknown_time_zone")]
+        );
+        assert_eq!(
+            codes(None, Some("")),
+            [("timeZone".to_owned(), "unknown_time_zone")]
+        );
+        assert_eq!(
+            codes(Some(""), Some("Paris time")),
+            [
+                ("locale".to_owned(), "unsupported_locale"),
+                ("timeZone".to_owned(), "unknown_time_zone")
+            ]
+        );
+    }
 
     #[test]
     fn emails_are_trimmed_and_lower_cased() {

@@ -198,3 +198,116 @@ async fn sessions_stored_before_stages_existed_are_complete() {
         SessionStage::Complete
     );
 }
+
+#[tokio::test]
+async fn a_request_records_the_device_and_the_activity_at_most_once_a_minute() {
+    let (store, _, _) = store(LONG).await;
+    let created = store.create(new_id(), new_id()).await.unwrap();
+    assert_eq!(created.session.user_agent, None);
+    let signed_in = created.session.last_seen_at.unwrap();
+
+    let touched = store
+        .touch(&created.token, Some("  Firefox/133.0 "))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        touched.user_agent.as_deref(),
+        Some("Firefox/133.0"),
+        "a new device is written at once"
+    );
+    let stored = store.get(&created.token).await.unwrap().unwrap();
+    assert_eq!(stored.user_agent.as_deref(), Some("Firefox/133.0"));
+    assert!(stored.last_seen_at.unwrap() >= signed_in);
+
+    // Within the minute, the same device: nothing written.
+    let again = store
+        .touch(&created.token, Some("Firefox/133.0"))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(again.last_seen_at, stored.last_seen_at);
+    // Without a header, the device stays.
+    let anonymous = store.touch(&created.token, None).await.unwrap().unwrap();
+    assert_eq!(anonymous.user_agent.as_deref(), Some("Firefox/133.0"));
+    assert!(
+        store
+            .touch("not-a-token", Some("Firefox/133.0"))
+            .await
+            .unwrap()
+            .is_none()
+    );
+}
+
+#[tokio::test]
+async fn sessions_are_listed_and_revoked_by_their_public_id() {
+    let (store, valkey, prefix) = store(LONG).await;
+    let (account, someone_else, tenant) = (new_id(), new_id(), new_id());
+    let first = store.create(account, tenant).await.unwrap();
+    let second = store.create(account, new_id()).await.unwrap();
+    let foreign = store.create(someone_else, tenant).await.unwrap();
+
+    let listed = store.list(account).await.unwrap();
+    let mut ids: Vec<&str> = listed.iter().map(|l| l.id.as_str()).collect();
+    ids.sort_unstable();
+    let mut expected = [
+        SessionStore::id_of(&first.token),
+        SessionStore::id_of(&second.token),
+    ];
+    expected.sort_unstable();
+    assert_eq!(ids, expected);
+    for listed in &listed {
+        assert_eq!(listed.id.len(), 32);
+        assert_ne!(listed.id, first.token, "the id is not the token");
+        let raw: i64 = valkey
+            .exists(format!("{prefix}session:{}", listed.id))
+            .await
+            .unwrap();
+        assert_eq!(raw, 0, "nor the storage key");
+    }
+
+    // Another account's id ends nothing.
+    assert!(
+        !store
+            .delete_by_id(account, &SessionStore::id_of(&foreign.token))
+            .await
+            .unwrap()
+    );
+    assert!(store.get(&foreign.token).await.unwrap().is_some());
+
+    assert!(
+        store
+            .delete_by_id(account, &SessionStore::id_of(&second.token))
+            .await
+            .unwrap()
+    );
+    assert!(store.get(&second.token).await.unwrap().is_none());
+    assert!(store.get(&first.token).await.unwrap().is_some());
+    assert_eq!(store.list(account).await.unwrap().len(), 1);
+    assert!(
+        !store
+            .delete_by_id(account, &SessionStore::id_of(&second.token))
+            .await
+            .unwrap()
+    );
+}
+
+#[tokio::test]
+async fn other_sessions_end_and_the_kept_one_stays() {
+    let (store, _, _) = store(LONG).await;
+    let (account, someone_else) = (new_id(), new_id());
+    let kept = store.create(account, new_id()).await.unwrap();
+    let others = [
+        store.create(account, new_id()).await.unwrap(),
+        store.create(account, new_id()).await.unwrap(),
+    ];
+    let foreign = store.create(someone_else, new_id()).await.unwrap();
+
+    assert_eq!(store.delete_others(account, &kept.token).await.unwrap(), 2);
+    assert!(store.get(&kept.token).await.unwrap().is_some());
+    for other in &others {
+        assert!(store.get(&other.token).await.unwrap().is_none());
+    }
+    assert!(store.get(&foreign.token).await.unwrap().is_some());
+    assert_eq!(store.list(account).await.unwrap().len(), 1);
+}

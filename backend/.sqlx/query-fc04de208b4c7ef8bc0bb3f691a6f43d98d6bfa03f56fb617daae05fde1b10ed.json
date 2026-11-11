@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE account\n        SET locale = $2, time_zone = $3, updated_at = now(), version = version + 1\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fc04de208b4c7ef8bc0bb3f691a6f43d98d6bfa03f56fb617daae05fde1b10ed"
+}
