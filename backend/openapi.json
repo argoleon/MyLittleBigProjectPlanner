@@ -740,6 +740,208 @@
         }
       }
     },
+    "/api/v1/auth/switch": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Arrive in another tenant",
+        "description": "A browser navigation, to the link of `POST /me/switch`. The token must be unused, less than 60 seconds old and issued for this tenant, to an active internal member of it. The tenant's policy applies: when it requires its identity provider, the browser goes to the sign-in page with `?error=auth.sso_required`; otherwise a session opens (cookies) and the browser goes to the application, which asks for a verification code when the account has two-step verification and the session left did not check it. Any other failure: the sign-in page with `?error=auth.switch_failed`.",
+        "operationId": "finishTenantSwitch",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "description": "Issued by `POST /me/switch`.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "303": {
+            "description": "Into the application, or to the sign-in page",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Where the browser goes"
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "`mlbpp_session` and `mlbpp_csrf`, when a session opens"
+              }
+            }
+          },
+          "404": {
+            "description": "`tenant.not_found`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {}
+        ]
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "tags": [
+          "me"
+        ],
+        "summary": "The signed-in account",
+        "description": "The account and its role in the current tenant.",
+        "operationId": "getMe",
+        "responses": {
+          "200": {
+            "description": "The account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: an external account (request portal only)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/memberships": {
+      "get": {
+        "tags": [
+          "me"
+        ],
+        "summary": "The tenants of the signed-in account",
+        "description": "Active memberships of active tenants, by tenant name, with the account's role in each: the tenant switcher. In single-tenant mode, the current tenant only.",
+        "operationId": "listMyMemberships",
+        "responses": {
+          "200": {
+            "description": "The memberships",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Membership"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: an external account",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/switch": {
+      "post": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Start switching to another tenant",
+        "description": "Issues a one-time link to the target tenant, valid for 60 seconds. The browser navigates to it: the target applies its own policy and opens a new session there (its SSO, two-step verification). The current session stays open.",
+        "operationId": "switchTenant",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SwitchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Where the browser goes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantSwitch"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: an external account here or in the target, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: not a tenant of the account",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/ping": {
       "get": {
         "tags": [
@@ -2562,6 +2764,14 @@
   },
   "components": {
     "schemas": {
+      "AccountType": {
+        "type": "string",
+        "description": "Kind of account in a tenant.",
+        "enum": [
+          "internal",
+          "external"
+        ]
+      },
       "AuthPolicy": {
         "type": "object",
         "description": "Authentication policy of the tenant.",
@@ -2599,7 +2809,7 @@
       },
       "ErrorCode": {
         "type": "string",
-        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n",
+        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n",
         "enum": [
           "bad_request",
           "validation_failed",
@@ -2628,6 +2838,7 @@
           "auth.oidc_failed",
           "auth.oidc_no_member",
           "auth.oidc_email_unverified",
+          "auth.switch_failed",
           "oidc_provider.duplicate",
           "oidc_provider.unreachable",
           "idempotency_key.invalid",
@@ -2657,6 +2868,92 @@
             "type": "string",
             "description": "Path of the field as sent, e.g. `code` or `labelTranslations.fr`.",
             "example": "code"
+          }
+        }
+      },
+      "Me": {
+        "type": "object",
+        "description": "The signed-in account, as the current tenant sees it.",
+        "required": [
+          "id",
+          "email",
+          "displayName",
+          "tenantId",
+          "tenantRole",
+          "accountType"
+        ],
+        "properties": {
+          "accountType": {
+            "$ref": "#/components/schemas/AccountType"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Lucas Bernard"
+          },
+          "email": {
+            "type": "string",
+            "example": "lucas.bernard@acme.example"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "locale": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Preferred language; the tenant's default when absent.",
+            "example": "fr"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantRole": {
+            "$ref": "#/components/schemas/TenantRole"
+          }
+        }
+      },
+      "Membership": {
+        "type": "object",
+        "description": "A tenant the signed-in account belongs to.",
+        "required": [
+          "tenantId",
+          "slug",
+          "name",
+          "url",
+          "accountType",
+          "tenantRole",
+          "current"
+        ],
+        "properties": {
+          "accountType": {
+            "$ref": "#/components/schemas/AccountType"
+          },
+          "current": {
+            "type": "boolean",
+            "description": "The tenant of the current session."
+          },
+          "name": {
+            "type": "string",
+            "example": "Acme"
+          },
+          "slug": {
+            "type": "string",
+            "example": "acme"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantRole": {
+            "$ref": "#/components/schemas/TenantRole"
+          },
+          "url": {
+            "type": "string",
+            "description": "Address of the tenant's application.",
+            "example": "https://acme.planner.example"
           }
         }
       },
@@ -3438,6 +3735,21 @@
           }
         }
       },
+      "SwitchRequest": {
+        "type": "object",
+        "description": "`POST /me/switch` body.",
+        "required": [
+          "tenantId"
+        ],
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The tenant to switch to: one of `/me/memberships`."
+          }
+        },
+        "additionalProperties": false
+      },
       "Tenant": {
         "type": "object",
         "required": [
@@ -3582,6 +3894,19 @@
           "active",
           "deleting"
         ]
+      },
+      "TenantSwitch": {
+        "type": "object",
+        "description": "Where the browser goes to finish the switch.",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "To navigate to (not to fetch): it sets the target tenant's cookies.\nWorks once, within 60 seconds."
+          }
+        }
       }
     },
     "securitySchemes": {
@@ -3606,6 +3931,10 @@
     {
       "name": "auth",
       "description": "Sign-in, sessions and password reset"
+    },
+    {
+      "name": "me",
+      "description": "The signed-in account and its tenants"
     },
     {
       "name": "account",

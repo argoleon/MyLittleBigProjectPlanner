@@ -18,6 +18,7 @@ use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
 use crate::auth;
+use crate::me;
 use crate::mfa;
 use crate::openapi;
 use crate::platform;
@@ -69,6 +70,10 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(auth::request_password_reset))
         .routes(routes!(auth::confirm_password_reset))
         .routes(routes!(auth::verify_sign_in))
+        .routes(routes!(me::arrive))
+        .routes(routes!(me::me))
+        .routes(routes!(me::memberships))
+        .routes(routes!(me::switch))
         .routes(routes!(mfa::status))
         .routes(routes!(mfa::setup))
         .routes(routes!(mfa::confirm))

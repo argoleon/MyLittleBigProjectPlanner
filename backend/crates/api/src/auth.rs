@@ -37,6 +37,7 @@ use infra::http_client::{HttpClient, HttpError};
 use infra::oidc::LoginStore;
 use infra::rate_limit::RateLimiter;
 use infra::sessions::{Session, SessionLifetime, SessionStage, SessionStore};
+use infra::tenant_switch::SwitchStore;
 use infra::uuid::Uuid;
 use infra::valkey::Valkey;
 use serde::{Deserialize, Serialize};
@@ -74,6 +75,8 @@ pub struct Auth {
     pub(crate) logins: LoginStore,
     /// Plain-HTTP issuers are accepted (development and tests).
     pub(crate) oidc_allow_http: bool,
+    /// Switches to another tenant, waiting for the browser there.
+    pub(crate) switches: SwitchStore,
 }
 
 impl Auth {
@@ -95,7 +98,8 @@ impl Auth {
         Ok(Self {
             sessions: SessionStore::new(valkey.clone(), key_prefix, lifetime),
             limits: RateLimiter::new(valkey.clone(), key_prefix),
-            logins: LoginStore::new(valkey, key_prefix),
+            logins: LoginStore::new(valkey.clone(), key_prefix),
+            switches: SwitchStore::new(valkey, key_prefix),
             http: HttpClient::new(oidc_allow_http)?,
             public_url,
             cookie_secure: settings.cookie_secure,
@@ -479,7 +483,15 @@ async fn totp_step(
 /// one that waited for the second factor is worthless.
 pub(crate) async fn complete_session(auth: &Auth, tx: &StagedTenantTx) -> Result<(String, Session), Problem> {
     auth.sessions.delete(tx.session_token()).await?;
-    let opened = auth.sessions.create(tx.account_id(), tx.tenant_id()).await?;
+    // The code proved the second factor.
+    let proof = infra::sessions::Proof {
+        second_factor: true,
+        sso: tx.session().sso,
+    };
+    let opened = auth
+        .sessions
+        .create_proven(tx.account_id(), tx.tenant_id(), SessionStage::Complete, proof)
+        .await?;
     Ok((opened.token, opened.session))
 }
 

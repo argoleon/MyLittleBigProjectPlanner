@@ -67,6 +67,18 @@ pub async fn set_tenant(conn: &mut PgConnection, tenant_id: Uuid) -> Result<(), 
     Ok(())
 }
 
+/// Records the signed-in account in the current transaction
+/// (`app.account_id`): `app_my_memberships()` answers for it only.
+pub async fn set_account(conn: &mut PgConnection, account_id: Uuid) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        "SELECT set_config('app.account_id', $1, true) AS account",
+        account_id.to_string()
+    )
+    .fetch_one(conn)
+    .await?;
+    Ok(())
+}
+
 /// A tenant found by its slug.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedTenant {

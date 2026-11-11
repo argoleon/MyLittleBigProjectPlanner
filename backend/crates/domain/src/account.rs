@@ -84,6 +84,12 @@ pub enum AccountType {
 }
 
 impl AccountType {
+    /// Whether this kind of member reaches the internal application. An
+    /// external member uses the request portal only, whatever its role.
+    pub const fn reaches_internal_app(self) -> bool {
+        matches!(self, Self::Internal)
+    }
+
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Internal => "internal",
@@ -189,6 +195,12 @@ mod tests {
             validate_display_name("displayName", &"x".repeat(201)).unwrap_err()[0].code,
             "too_long"
         );
+    }
+
+    #[test]
+    fn only_internal_members_reach_the_internal_application() {
+        assert!(AccountType::Internal.reaches_internal_app());
+        assert!(!AccountType::External.reaches_internal_app());
     }
 
     #[test]

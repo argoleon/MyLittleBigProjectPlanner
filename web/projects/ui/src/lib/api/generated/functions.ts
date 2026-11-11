@@ -27,6 +27,14 @@ export type { VerifySignIn$Params as VerifySignIn$Params } from './fn/auth/verif
 export { verifySignIn as verifySignIn } from './fn/auth/verify-sign-in';
 export type { SignOut$Params as SignOut$Params } from './fn/auth/sign-out';
 export { signOut as signOut } from './fn/auth/sign-out';
+export type { FinishTenantSwitch$Params as FinishTenantSwitch$Params } from './fn/auth/finish-tenant-switch';
+export { finishTenantSwitch as finishTenantSwitch } from './fn/auth/finish-tenant-switch';
+export type { GetMe$Params as GetMe$Params } from './fn/me/get-me';
+export { getMe as getMe } from './fn/me/get-me';
+export type { ListMyMemberships$Params as ListMyMemberships$Params } from './fn/me/list-my-memberships';
+export { listMyMemberships as listMyMemberships } from './fn/me/list-my-memberships';
+export type { SwitchTenant$Params as SwitchTenant$Params } from './fn/me/switch-tenant';
+export { switchTenant as switchTenant } from './fn/me/switch-tenant';
 export type { Ping$Params as Ping$Params } from './fn/system/ping';
 export { ping as ping } from './fn/system/ping';
 export type { GetCurrentTenant$Params as GetCurrentTenant$Params } from './fn/system/get-current-tenant';

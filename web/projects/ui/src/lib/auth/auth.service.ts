@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { DOCUMENT, Injectable, InjectionToken, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { isApiProblem } from '../api/api-problem';
@@ -10,6 +10,7 @@ import {
   requestPasswordReset,
   signIn,
   signOut,
+  switchTenant,
   verifySignIn,
 } from '../api/generated/functions';
 import type { MfaEnabled } from '../api/generated/models/mfa-enabled';
@@ -46,6 +47,19 @@ export function isSafeReturnUrl(url: unknown): url is string {
 }
 
 /**
+ * Leaves the application for `url` (another tenant's address): a full page
+ * load, so that nothing of the current tenant stays in memory. Replaced in
+ * tests.
+ */
+export const LEAVE_APPLICATION = new InjectionToken<(url: string) => void>('LEAVE_APPLICATION', {
+  providedIn: 'root',
+  factory: () => {
+    const document = inject(DOCUMENT);
+    return (url: string) => document.location.assign(url);
+  },
+});
+
+/**
  * The signed-in member and the authentication calls (specification §14).
  *
  * The session itself is an `HttpOnly` cookie the browser sends; this service
@@ -56,6 +70,7 @@ export function isSafeReturnUrl(url: unknown): url is string {
 export class AuthService {
   private readonly api = inject(Api);
   private readonly router = inject(Router);
+  private readonly leave = inject(LEAVE_APPLICATION);
 
   /** `undefined` until known, `null` when signed out. */
   private readonly state = signal<Session | null | undefined>(undefined);
@@ -134,6 +149,20 @@ export class AuthService {
       this.state.set(null);
       await this.router.navigateByUrl(SIGN_IN_PATH);
     }
+  }
+
+  /**
+   * Switches to another tenant of the account: the API issues a one-time
+   * link to it, then the client state is cleared and the page leaves for
+   * that tenant, which opens its own session under its own policy. Rejects
+   * with an `ApiProblem`, keeping the current session, if the API refuses.
+   */
+  async switchTenant(tenantId: string): Promise<void> {
+    const { url } = await this.api.invoke(switchTenant, { body: { tenantId } });
+    // Nothing of this tenant must survive the switch.
+    this.loading = null;
+    this.state.set(null);
+    this.leave(url);
   }
 
   /** Asks for a reset link; the API accepts any email (no enumeration). */

@@ -12,6 +12,17 @@ export const TENANT = {
   timeZone: 'Europe/Paris',
 };
 
+/** The signed-in member's tenant, in `GET /api/v1/me/memberships`. */
+export const MEMBERSHIP = {
+  tenantId: TENANT.id,
+  slug: TENANT.slug,
+  name: TENANT.name,
+  url: 'https://acme.planner.example',
+  accountType: 'internal',
+  tenantRole: 'member',
+  current: true,
+};
+
 /** The member signed in by default. */
 export const SESSION = {
   account: {
@@ -45,6 +56,7 @@ export const test = base.extend<{ language: 'fr' | 'en'; theme: 'system' | 'ligh
   signedIn: [true, { option: true }],
   page: async ({ page, language, theme, signedIn }, use) => {
     await page.route('**/api/v1/tenant', (route) => route.fulfill({ json: TENANT }));
+    await page.route('**/api/v1/me/memberships', (route) => route.fulfill({ json: [MEMBERSHIP] }));
     await page.route('**/api/v1/auth/session', (route) =>
       signedIn ? route.fulfill({ json: SESSION }) : route.fulfill(problem(401, 'unauthenticated')),
     );

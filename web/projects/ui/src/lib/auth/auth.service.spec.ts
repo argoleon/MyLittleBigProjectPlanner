@@ -6,16 +6,23 @@ import { ApiProblem } from '../api/api-problem';
 import { provideApi } from '../api/provide-api';
 import { ContractBackend, contractExample } from '../api/testing/contract-backend';
 import { authGuard, signedOutGuard, stageGuard } from './auth.guards';
-import { AuthService, isSafeReturnUrl, pathForStage } from './auth.service';
+import { AuthService, LEAVE_APPLICATION, isSafeReturnUrl, pathForStage } from './auth.service';
 
 const UNAUTHENTICATED = { code: 'unauthenticated', title: 'Sign-in required, or the session has ended' };
 
 function setUp() {
+  const leave = vi.fn<(url: string) => void>();
   TestBed.configureTestingModule({
-    providers: [provideApi(), provideHttpClientTesting(), provideRouter([])],
+    providers: [
+      provideApi(),
+      provideHttpClientTesting(),
+      provideRouter([]),
+      { provide: LEAVE_APPLICATION, useValue: leave },
+    ],
   });
   const http = TestBed.inject(HttpTestingController);
   return {
+    leave,
     auth: TestBed.inject(AuthService),
     router: TestBed.inject(Router),
     http,
@@ -135,6 +142,39 @@ describe('AuthService', () => {
     expect(backend.respond(204).request.body).toEqual({ token: 'token-1', password: 'a brand new passphrase' });
     await confirmed;
     expect(auth.session()).toBeNull();
+  });
+
+  it('clears the session, then leaves for the other tenant, on a switch', async () => {
+    const { auth, backend, leave } = setUp();
+    void auth.load();
+    backend.respond(200);
+    await settle();
+    expect(auth.signedIn()).toBe(true);
+
+    const switched = auth.switchTenant('0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7a90');
+    const url = 'https://globex.planner.example/api/v1/auth/switch?token=one-time';
+    const request = backend.respond(200, { url });
+    expect(request.request.method).toBe('POST');
+    expect(request.request.url).toBe('/api/v1/me/switch');
+    expect(request.request.body).toEqual({ tenantId: '0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7a90' });
+    await switched;
+    // Nothing of the tenant left behind remains in memory.
+    expect(auth.session()).toBeNull();
+    expect(auth.signedIn()).toBe(false);
+    expect(leave).toHaveBeenCalledExactlyOnceWith(url);
+  });
+
+  it('keeps the session when the API refuses a switch', async () => {
+    const { auth, backend, leave } = setUp();
+    void auth.load();
+    backend.respond(200);
+    await settle();
+
+    const switched = auth.switchTenant('0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7a90').catch((e: unknown) => e);
+    backend.respond(403, { code: 'forbidden', title: 'You are not allowed to do this' });
+    expect(((await switched) as ApiProblem).translationKey).toBe('errors.forbidden');
+    expect(auth.signedIn()).toBe(true);
+    expect(leave).not.toHaveBeenCalled();
   });
 
   it('shows the sign-in page when the session ends, then comes back', async () => {

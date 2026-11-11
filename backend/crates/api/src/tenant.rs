@@ -26,7 +26,7 @@ use axum::extract::FromRequestParts;
 use axum::http::header::HOST;
 use axum::http::request::Parts;
 use domain::tenancy::{Tenancy, tenant_slug_from_host};
-use infra::accounts::{AccountType, Member};
+use infra::accounts::Member;
 use infra::health::Dependency;
 use infra::sessions::{Session, SessionStage};
 use infra::sqlx::postgres::{PgConnection, PgPool};
@@ -196,10 +196,12 @@ impl TenantTx {
             .filter(|member| member.active)
             // Suspended or removed since sign-in.
             .ok_or(Problem::new(ErrorCode::Unauthenticated))?;
-        if member.account_type != AccountType::Internal {
-            // External members use the request portal only.
+        if !member.account_type.reaches_internal_app() {
+            // External members use the request portal only, whatever their role.
             return Err(Problem::new(ErrorCode::Forbidden));
         }
+        // `app_my_memberships()` answers for this account only.
+        infra::db::set_account(&mut inner, member.account_id).await?;
         Ok(Self {
             inner,
             session_token,

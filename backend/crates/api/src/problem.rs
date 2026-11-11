@@ -64,6 +64,7 @@ pub enum ErrorCode {
     AuthOidcFailed,
     AuthOidcNoMember,
     AuthOidcEmailUnverified,
+    AuthSwitchFailed,
     OidcProviderDuplicate,
     OidcProviderUnreachable,
     // Idempotency-Key header.
@@ -80,7 +81,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 37] = [
+    pub const ALL: [Self; 38] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -108,6 +109,7 @@ impl ErrorCode {
         Self::AuthOidcFailed,
         Self::AuthOidcNoMember,
         Self::AuthOidcEmailUnverified,
+        Self::AuthSwitchFailed,
         Self::OidcProviderDuplicate,
         Self::OidcProviderUnreachable,
         Self::IdempotencyKeyInvalid,
@@ -149,6 +151,7 @@ impl ErrorCode {
             Self::AuthOidcFailed => "auth.oidc_failed",
             Self::AuthOidcNoMember => "auth.oidc_no_member",
             Self::AuthOidcEmailUnverified => "auth.oidc_email_unverified",
+            Self::AuthSwitchFailed => "auth.switch_failed",
             Self::OidcProviderDuplicate => "oidc_provider.duplicate",
             Self::OidcProviderUnreachable => "oidc_provider.unreachable",
             Self::IdempotencyKeyInvalid => "idempotency_key.invalid",
@@ -171,7 +174,8 @@ impl ErrorCode {
             | Self::IdempotencyKeyInvalid
             | Self::AuthResetTokenInvalid
             | Self::TenantConfirmationMismatch
-            | Self::AuthOidcFailed => StatusCode::BAD_REQUEST,
+            | Self::AuthOidcFailed
+            | Self::AuthSwitchFailed => StatusCode::BAD_REQUEST,
             Self::Unauthenticated | Self::AuthInvalidCredentials | Self::AuthInvalidCode => {
                 StatusCode::UNAUTHORIZED
             }
@@ -233,6 +237,7 @@ impl ErrorCode {
             Self::AuthOidcFailed => "Sign-in through the identity provider failed; try again",
             Self::AuthOidcNoMember => "No member of this organization has this account's email",
             Self::AuthOidcEmailUnverified => "The identity provider does not vouch for this account's email",
+            Self::AuthSwitchFailed => "This switch link is invalid, expired or already used; sign in again",
             Self::OidcProviderDuplicate => "This identity provider is already configured",
             Self::OidcProviderUnreachable => "The identity provider cannot be reached or answered badly",
             Self::IdempotencyKeyInvalid => "The Idempotency-Key header is invalid",
@@ -486,7 +491,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 37] = [
+        let expected: [(ErrorCode, u16); 38] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -514,6 +519,7 @@ mod tests {
             (ErrorCode::AuthOidcFailed, 400),
             (ErrorCode::AuthOidcNoMember, 403),
             (ErrorCode::AuthOidcEmailUnverified, 403),
+            (ErrorCode::AuthSwitchFailed, 400),
             (ErrorCode::OidcProviderDuplicate, 409),
             (ErrorCode::OidcProviderUnreachable, 502),
             (ErrorCode::IdempotencyKeyInvalid, 400),
