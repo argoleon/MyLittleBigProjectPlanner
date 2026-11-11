@@ -110,7 +110,15 @@ async fn run(config: WorkerConfig) -> ExitCode {
     let token = CancellationToken::new();
     let health = tokio::spawn(worker::serve_health(listener, token.clone(), dependencies.into()));
     let runner = std::sync::Arc::new(worker::jobs::JobRunner::new(pool));
-    let handler = std::sync::Arc::new(worker::jobs::Jobs { mailer });
+    let valkey = match infra::valkey::connect_lazy(&config.valkey) {
+        Ok(valkey) => valkey,
+        Err(err) => {
+            eprintln!("worker: invalid VALKEY_URL: {err}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let exports = infra::exports::ExportStore::new(valkey, "mlbpp:");
+    let handler = std::sync::Arc::new(worker::jobs::Jobs { mailer, exports });
     tracing::info!(health = %config.health_addr, worker_id = runner.worker_id(), "worker started");
     let mut worker = tokio::spawn(worker::run_loop(token.clone(), config.poll_interval, move || {
         let (runner, handler) = (runner.clone(), handler.clone());

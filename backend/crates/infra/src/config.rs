@@ -530,6 +530,8 @@ pub struct WorkerConfig {
     pub mail: MailConfig,
     pub shared: SharedServices,
     pub telemetry: TelemetryConfig,
+    /// `VALKEY_URL`: exports of personal data.
+    pub valkey: Secret,
 }
 
 /// Default address of the worker's health endpoint.
@@ -545,6 +547,7 @@ impl WorkerConfig {
             mail: MailConfig::from_env(env)?,
             shared: SharedServices::from_env(env)?,
             telemetry: TelemetryConfig::from_env(env)?,
+            valkey: env.required("VALKEY_URL")?,
         })
     }
 }
@@ -916,6 +919,7 @@ mod tests {
             ("DATABASE_URL", DB_URL),
             ("SMTP_URL", "smtp://mailpit:1025"),
             ("MAIL_FROM", "Planner <noreply@example.org>"),
+            ("VALKEY_URL", VALKEY_URL),
         ]);
         all
     }

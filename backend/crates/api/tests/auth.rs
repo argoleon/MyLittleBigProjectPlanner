@@ -468,7 +468,13 @@ async fn run_jobs(db: &TestDb) {
     )
     .unwrap();
     let runner = worker::jobs::JobRunner::new(db.app_pool.clone());
-    let jobs = worker::jobs::Jobs { mailer };
+    let jobs = worker::jobs::Jobs {
+        mailer,
+        exports: {
+            let (valkey, prefix) = testkit::valkey().await;
+            infra::exports::ExportStore::new(valkey, prefix)
+        },
+    };
     while runner.next_batch(&jobs).await == worker::Batch::Processed {}
 }
 

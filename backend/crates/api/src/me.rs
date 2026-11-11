@@ -83,6 +83,9 @@ pub struct MeView {
     /// Preferred IANA time zone; the tenant's when absent.
     #[schema(example = "Europe/Paris")]
     time_zone: Option<String>,
+    /// The account has a password: it confirms its erasure with it. Without
+    /// one (SSO only), a recent sign-in through the organization does.
+    has_password: bool,
     tenant_id: Uuid,
     tenant_role: TenantRoleView,
     account_type: AccountTypeView,
@@ -139,18 +142,23 @@ pub struct SwitchView {
         (status = 403, description = "`forbidden`: an external account (request portal only)", body = ProblemBody, content_type = PROBLEM_JSON),
     )
 )]
-pub async fn me(tx: TenantTx) -> ApiJson<MeView> {
+pub async fn me(mut tx: TenantTx) -> Result<ApiJson<MeView>, Problem> {
+    let account = tx.account_id();
+    let has_password = infra::accounts::password_hash(&mut tx, account).await?.is_some();
     let member = tx.member();
-    ApiJson(MeView {
+    let view = MeView {
         id: member.account_id,
         email: member.email.clone(),
         display_name: member.display_name.clone(),
         locale: member.locale.clone(),
         time_zone: member.time_zone.clone(),
+        has_password,
         tenant_id: tx.tenant_id(),
         tenant_role: member.tenant_role.into(),
         account_type: member.account_type.into(),
-    })
+    };
+    tx.commit().await?;
+    Ok(ApiJson(view))
 }
 
 /// The account's memberships the switcher offers: every one in multi-tenant

@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO erased_member (id, tenant_id, account_id, pseudonym_number, scope, comments_purged, erased_by)\n        VALUES ($1, app_current_tenant(), $2, nextval('pseudonym_number_seq'), 'tenant', $3, $4)\n        ON CONFLICT (tenant_id, account_id) DO UPDATE\n            SET comments_purged = erased_member.comments_purged OR EXCLUDED.comments_purged,\n                erased_by = EXCLUDED.erased_by, erased_at = now(), version = erased_member.version + 1\n        RETURNING pseudonym_number\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pseudonym_number",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "erased_member",
+            "name": "pseudonym_number"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Bool",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "20db665d0bf960cbca43101fe31c0c6f4b290f57c54d5804fb58ac4e4d8e5c12"
+}

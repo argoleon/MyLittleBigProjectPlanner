@@ -9,6 +9,8 @@ pub mod credentials;
 pub mod crypto;
 pub mod db;
 pub mod email;
+pub mod erasure;
+pub mod exports;
 pub mod groups;
 pub mod health;
 pub mod http_client;

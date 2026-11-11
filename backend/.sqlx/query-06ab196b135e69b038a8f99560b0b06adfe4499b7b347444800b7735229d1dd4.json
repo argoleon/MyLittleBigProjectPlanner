@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE invitation SET invited_by = NULL WHERE invited_by = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "06ab196b135e69b038a8f99560b0b06adfe4499b7b347444800b7735229d1dd4"
+}
