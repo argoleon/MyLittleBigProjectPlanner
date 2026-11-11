@@ -11,6 +11,7 @@ pub mod jobs;
 pub mod members;
 pub mod mfa;
 pub mod oidc;
+pub mod permissions;
 pub mod reference_item;
 pub mod tenancy;
 pub mod tenant;

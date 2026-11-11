@@ -216,12 +216,23 @@ export class MembersTab {
       });
   }
 
+  /**
+   * `id` of the actions button of `row`. Dialogs of its menu give the focus
+   * back to it by this id: the menu does so only once closed, after the
+   * dialog has opened, so the element focused when the dialog opens is the
+   * menu item about to go.
+   */
+  protected actionsId(kind: MemberRow['kind'], id: string): string {
+    return `${kind}-actions-${id}`;
+  }
+
   protected edit(member: Member): void {
     this.dialog
       .open<MemberDialog, Member, Member>(MemberDialog, {
         data: member,
         width: 'min(520px, 100vw)',
         autoFocus: 'first-tabbable',
+        restoreFocus: `#${this.actionsId('member', member.accountId)}`,
       })
       .afterClosed()
       .subscribe((saved) => {
@@ -238,7 +249,7 @@ export class MembersTab {
       confirmKey: 'admin.members.removeConfirm',
       params: { name: member.displayName },
     };
-    this.confirm(data, async () => {
+    this.confirm(data, this.actionsId('member', member.accountId), async () => {
       await this.api.invoke(removeMember, { accountId: member.accountId, 'If-Match': `"${member.version}"` });
       this.notice.set({ ok: true, key: 'admin.members.removed', params: { name: member.displayName } });
       this.reload();
@@ -262,16 +273,20 @@ export class MembersTab {
       confirmKey: 'admin.members.revokeConfirm',
       params: { email: invitation.email },
     };
-    this.confirm(data, async () => {
+    this.confirm(data, this.actionsId('invitation', invitation.id), async () => {
       await this.api.invoke(revokeInvitation, { id: invitation.id, 'If-Match': `"${invitation.version}"` });
       this.notice.set({ ok: true, key: 'admin.members.revoked', params: { email: invitation.email } });
       this.invitations.reload();
     });
   }
 
-  private confirm(data: ConfirmDialogData, action: () => Promise<void>): void {
+  private confirm(data: ConfirmDialogData, actionsId: string, action: () => Promise<void>): void {
     this.dialog
-      .open<ConfirmDialog, ConfirmDialogData, boolean>(ConfirmDialog, { data, width: 'min(480px, 100vw)' })
+      .open<ConfirmDialog, ConfirmDialogData, boolean>(ConfirmDialog, {
+        data,
+        width: 'min(480px, 100vw)',
+        restoreFocus: `#${actionsId}`,
+      })
       .afterClosed()
       .subscribe(async (confirmed) => {
         if (!confirmed) return;

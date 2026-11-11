@@ -1,0 +1,72 @@
+<section class="editor" aria-labelledby="role-editor-title">
+  <div class="header">
+    <h2 id="role-editor-title" class="heading">{{ heading().key | transloco: heading().params }}</h2>
+    <span class="kind">{{ 'admin.roles.nodeRole' | transloco }}</span>
+  </div>
+  <p class="intro">{{ 'admin.roles.intro' | transloco }}</p>
+  <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+    @if (errorKey(); as key) {
+      <p class="message error" role="alert">{{ key | transloco }}</p>
+    }
+    <div class="labels">
+      @for (language of languages; track language) {
+        <mat-form-field appearance="outline">
+          <mat-label>{{ labelKeys[language] | transloco }}</mat-label>
+          <input matInput [formControlName]="language" [attr.lang]="language" maxlength="100" />
+          <mat-hint>{{ 'admin.roles.labelsHint' | transloco }}</mat-hint>
+          @if (form.controls[language].getError('api'); as key) {
+            <mat-error>{{ key | transloco }}</mat-error>
+          } @else {
+            <mat-error>{{ 'errors.field.required' | transloco }}</mat-error>
+          }
+        </mat-form-field>
+      }
+    </div>
+    <fieldset
+      class="permissions"
+      formGroupName="permissions"
+      [attr.aria-describedby]="permissionsError() ? 'role-permissions-error' : null"
+    >
+      <legend class="legend">{{ 'admin.roles.permissions' | transloco }}</legend>
+      @for (permission of catalog; track permission) {
+        <!-- Label at the start, switch at the end (mockup 09). -->
+        <mat-slide-toggle
+          class="permission mat-slide-toggle-full-width"
+          labelPosition="before"
+          [formControlName]="permission"
+        >
+          {{ 'permission.' + permission | transloco }}
+        </mat-slide-toggle>
+      }
+    </fieldset>
+    @if (permissionsError()) {
+      <p id="role-permissions-error" class="field-error" role="alert">
+        {{ 'admin.roles.permissionsRequired' | transloco }}
+      </p>
+    }
+    @if (role(); as role) {
+      @if (role.grantCount > 0) {
+        <p class="in-use">{{ 'admin.roles.inUse' | transloco: { count: role.grantCount } }}</p>
+      }
+    }
+    <div class="actions">
+      @if (dirty()) {
+        <span class="unsaved">{{ 'admin.roles.unsaved' | transloco }}</span>
+      }
+      @if (role(); as role) {
+        <button matButton type="button" class="delete" [disabled]="role.grantCount > 0 || saving()" (click)="remove(role)">
+          {{ 'admin.roles.delete' | transloco }}
+        </button>
+        <button matButton="outlined" type="button" class="duplicate" [disabled]="saving()" (click)="duplicate.emit(role)">
+          {{ 'admin.roles.duplicate' | transloco }}
+        </button>
+      }
+      <button matButton type="button" class="discard" [disabled]="!dirty() || saving()" (click)="discard()">
+        {{ 'admin.roles.discard' | transloco }}
+      </button>
+      <button matButton="filled" type="submit" class="save" [disabled]="saving()">
+        {{ 'admin.roles.save' | transloco }}
+      </button>
+    </div>
+  </form>
+</section>

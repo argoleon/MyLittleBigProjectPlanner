@@ -154,7 +154,8 @@
       "label": "Rubriques de l’administration",
       "authentication": "Authentification",
       "members": "Membres",
-      "groups": "Groupes"
+      "groups": "Groupes",
+      "roles": "Rôles"
     },
     "auth": {
       "policyTitle": "Politique d’authentification",
@@ -289,6 +290,39 @@
       "addMember": "Ajouter un membre",
       "noMember": "Aucun membre dans ce groupe pour l’instant.",
       "removeMemberOf": "Retirer {{ name }} du groupe"
+    },
+    "roles": {
+      "intro": "Les rôles de nœud sont des ensembles de permissions, attribués sur un portefeuille, un programme ou un projet et hérités par ses descendants.",
+      "add": "Nouveau rôle",
+      "listLabel": "Rôles de l’organisation",
+      "permissionCount": "{{ count }} / {{ total }} permissions",
+      "grantCount": "Attributions : {{ count }}",
+      "empty": "Aucun rôle pour l’instant",
+      "emptyHint": "Créez un rôle, puis attribuez-le sur les nœuds de la hiérarchie.",
+      "select": "Choisissez un rôle dans la liste.",
+      "nodeRole": "Rôle de nœud",
+      "title": "Rôle « {{ label }} »",
+      "newTitle": "Nouveau rôle",
+      "copyTitle": "Copie de « {{ label }} »",
+      "labelFr": "Nom en français",
+      "labelEn": "Nom en anglais",
+      "labelsHint": "Au moins l’un des deux.",
+      "permissions": "Permissions",
+      "permissionsRequired": "Choisissez au moins une permission.",
+      "save": "Enregistrer",
+      "discard": "Annuler les modifications",
+      "duplicate": "Dupliquer",
+      "delete": "Supprimer",
+      "unsaved": "Modifications non enregistrées",
+      "inUse": "Attributions qui utilisent ce rôle : {{ count }}. Retirez-les avant de le supprimer.",
+      "deleteTitle": "Supprimer {{ label }} ?",
+      "deleteMessage": "Le rôle disparaît ; aucune attribution ne l’utilise.",
+      "deleteConfirm": "Supprimer",
+      "deleted": "Rôle {{ label }} supprimé.",
+      "saved": "Rôle {{ label }} enregistré.",
+      "discardTitle": "Abandonner les modifications ?",
+      "discardMessage": "Les modifications de ce rôle ne sont pas enregistrées.",
+      "discardConfirm": "Abandonner"
     }
   },
   "errors": {
@@ -373,6 +407,13 @@
     },
     "group": {
       "name_taken": "Un autre groupe porte déjà ce nom."
+    },
+    "permission": {
+      "denied": "Vous n’avez pas la permission nécessaire."
+    },
+    "role": {
+      "label_taken": "Un autre rôle porte déjà ce nom.",
+      "in_use": "Des attributions utilisent ce rôle : retirez-les d’abord."
     }
   },
   "dialog": {
@@ -392,5 +433,17 @@
       "invited": "Invitation envoyée",
       "expired": "Invitation expirée"
     }
+  },
+  "permission": {
+    "view": "Voir",
+    "create_ticket": "Créer un ticket",
+    "edit": "Modifier",
+    "comment": "Commenter",
+    "log_time": "Saisir du temps",
+    "assign_resources": "Affecter des ressources",
+    "force_overload": "Forcer la surcharge",
+    "manage_sprints": "Gérer les sprints",
+    "manage_members": "Gérer les membres",
+    "administer_node": "Administrer le nœud"
   }
 }

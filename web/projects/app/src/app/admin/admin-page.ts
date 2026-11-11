@@ -11,12 +11,13 @@ export interface AdminTab {
 }
 
 /**
- * Tabs of the administration (mockup 09). Roles, project configurations
- * and quotas come with their work packages.
+ * Tabs of the administration (mockup 09). Project configurations and
+ * quotas come with their work packages.
  */
 export const ADMIN_TABS: readonly AdminTab[] = [
   { path: 'members', labelKey: 'admin.tabs.members' },
   { path: 'groups', labelKey: 'admin.tabs.groups' },
+  { path: 'roles', labelKey: 'admin.tabs.roles' },
   { path: 'authentication', labelKey: 'admin.tabs.authentication' },
 ];
 

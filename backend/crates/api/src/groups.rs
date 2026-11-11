@@ -2,6 +2,7 @@
 //! granted to groups as well as to members (L02-US07). Tenant admins only.
 //! Changes of a group's members are logged with the `audit` target.
 
+use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use domain::members::{GroupInput, validate_group};
@@ -16,8 +17,9 @@ use crate::extract::{ApiJson, ApiPath, ApiQuery};
 use crate::idempotency::{self, Start};
 use crate::members::{TAG, require_member_admin};
 use crate::pagination::{PageParams, encode_cursor};
+use crate::permissions;
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
-use crate::tenant::TenantTx;
+use crate::tenant::{AppState, TenantTx};
 
 const PATH: &str = "/api/v1/tenant/groups";
 
@@ -376,6 +378,7 @@ pub async fn delete(
     )
 )]
 pub async fn add_member(
+    State(state): State<AppState>,
     mut tx: TenantTx,
     ApiPath((id, account_id)): ApiPath<(Uuid, Uuid)>,
 ) -> Result<StatusCode, Problem> {
@@ -388,7 +391,10 @@ pub async fn add_member(
         MemberChange::NoGroup => return Err(Problem::new(ErrorCode::NotFound).with_detail("no such group")),
         MemberChange::NoMember => return Err(Problem::new(ErrorCode::NotFound).with_detail("no such member")),
     }
+    let tenant = tx.tenant_id();
     tx.commit().await?;
+    // Groups carry grants (L03).
+    permissions::invalidate(&state, tenant).await;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -412,6 +418,7 @@ pub async fn add_member(
     )
 )]
 pub async fn remove_member(
+    State(state): State<AppState>,
     mut tx: TenantTx,
     ApiPath((id, account_id)): ApiPath<(Uuid, Uuid)>,
 ) -> Result<StatusCode, Problem> {
@@ -425,6 +432,9 @@ pub async fn remove_member(
         }
         MemberChange::NoGroup => return Err(Problem::new(ErrorCode::NotFound).with_detail("no such group")),
     }
+    let tenant = tx.tenant_id();
     tx.commit().await?;
+    // Groups carry grants (L03).
+    permissions::invalidate(&state, tenant).await;
     Ok(StatusCode::NO_CONTENT)
 }

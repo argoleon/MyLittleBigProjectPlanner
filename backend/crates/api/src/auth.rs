@@ -35,6 +35,7 @@ use infra::crypto::SecretCipher;
 use infra::email::{EMAIL_JOB, EmailJob, EmailMessage};
 use infra::http_client::{HttpClient, HttpError};
 use infra::oidc::LoginStore;
+use infra::permissions::PermissionCache;
 use infra::rate_limit::RateLimiter;
 use infra::sessions::{Session, SessionLifetime, SessionStage, SessionStore};
 use infra::tenant_switch::SwitchStore;
@@ -77,6 +78,8 @@ pub struct Auth {
     pub(crate) oidc_allow_http: bool,
     /// Switches to another tenant, waiting for the browser there.
     pub(crate) switches: SwitchStore,
+    /// Effective permissions of members (`crate::permissions`).
+    pub(crate) permissions: PermissionCache,
 }
 
 impl Auth {
@@ -99,7 +102,8 @@ impl Auth {
             sessions: SessionStore::new(valkey.clone(), key_prefix, lifetime),
             limits: RateLimiter::new(valkey.clone(), key_prefix),
             logins: LoginStore::new(valkey.clone(), key_prefix),
-            switches: SwitchStore::new(valkey, key_prefix),
+            switches: SwitchStore::new(valkey.clone(), key_prefix),
+            permissions: PermissionCache::new(valkey, key_prefix),
             http: HttpClient::new(oidc_allow_http)?,
             public_url,
             cookie_secure: settings.cookie_secure,

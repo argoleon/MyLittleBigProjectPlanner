@@ -27,6 +27,7 @@ use crate::openapi;
 use crate::platform;
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
 use crate::reference_items;
+use crate::roles;
 use crate::sso;
 use crate::tenant::{AppState, PublicTenantTx};
 
@@ -87,6 +88,8 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(groups::list, groups::create))
         .routes(routes!(groups::read, groups::update, groups::delete))
         .routes(routes!(groups::add_member, groups::remove_member))
+        .routes(routes!(roles::list, roles::create))
+        .routes(routes!(roles::read, roles::update, roles::delete))
         .routes(routes!(mfa::status))
         .routes(routes!(mfa::setup))
         .routes(routes!(mfa::confirm))

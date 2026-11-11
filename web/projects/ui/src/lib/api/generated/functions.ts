@@ -109,3 +109,13 @@ export type { UpdateMember$Params as UpdateMember$Params } from './fn/members/up
 export { updateMember as updateMember } from './fn/members/update-member';
 export type { RemoveMember$Params as RemoveMember$Params } from './fn/members/remove-member';
 export { removeMember as removeMember } from './fn/members/remove-member';
+export type { ListRoles$Params as ListRoles$Params } from './fn/members/list-roles';
+export { listRoles as listRoles } from './fn/members/list-roles';
+export type { CreateRole$Params as CreateRole$Params } from './fn/members/create-role';
+export { createRole as createRole } from './fn/members/create-role';
+export type { GetRole$Params as GetRole$Params } from './fn/members/get-role';
+export { getRole as getRole } from './fn/members/get-role';
+export type { UpdateRole$Params as UpdateRole$Params } from './fn/members/update-role';
+export { updateRole as updateRole } from './fn/members/update-role';
+export type { DeleteRole$Params as DeleteRole$Params } from './fn/members/delete-role';
+export { deleteRole as deleteRole } from './fn/members/delete-role';

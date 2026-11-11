@@ -154,7 +154,8 @@
       "label": "Administration sections",
       "authentication": "Authentication",
       "members": "Members",
-      "groups": "Groups"
+      "groups": "Groups",
+      "roles": "Roles"
     },
     "auth": {
       "policyTitle": "Authentication policy",
@@ -289,6 +290,39 @@
       "addMember": "Add a member",
       "noMember": "No member in this group yet.",
       "removeMemberOf": "Remove {{ name }} from the group"
+    },
+    "roles": {
+      "intro": "Node roles are sets of permissions, granted on a portfolio, a program or a project and inherited by its descendants.",
+      "add": "New role",
+      "listLabel": "Roles of the organization",
+      "permissionCount": "{{ count }} / {{ total }} permissions",
+      "grantCount": "Grants: {{ count }}",
+      "empty": "No role yet",
+      "emptyHint": "Create a role, then grant it on the nodes of the hierarchy.",
+      "select": "Choose a role in the list.",
+      "nodeRole": "Node role",
+      "title": "Role “{{ label }}”",
+      "newTitle": "New role",
+      "copyTitle": "Copy of “{{ label }}”",
+      "labelFr": "Name in French",
+      "labelEn": "Name in English",
+      "labelsHint": "At least one of the two.",
+      "permissions": "Permissions",
+      "permissionsRequired": "Choose at least one permission.",
+      "save": "Save",
+      "discard": "Discard changes",
+      "duplicate": "Duplicate",
+      "delete": "Delete",
+      "unsaved": "Unsaved changes",
+      "inUse": "Grants using this role: {{ count }}. Remove them before deleting it.",
+      "deleteTitle": "Delete {{ label }}?",
+      "deleteMessage": "The role goes; no grant uses it.",
+      "deleteConfirm": "Delete",
+      "deleted": "Role {{ label }} deleted.",
+      "saved": "Role {{ label }} saved.",
+      "discardTitle": "Discard the changes?",
+      "discardMessage": "The changes to this role are not saved.",
+      "discardConfirm": "Discard"
     }
   },
   "errors": {
@@ -373,6 +407,13 @@
     },
     "group": {
       "name_taken": "Another group already has this name."
+    },
+    "permission": {
+      "denied": "You do not have the permission this needs."
+    },
+    "role": {
+      "label_taken": "Another role already has this name.",
+      "in_use": "Grants use this role: remove them first."
     }
   },
   "dialog": {
@@ -392,5 +433,17 @@
       "invited": "Invitation sent",
       "expired": "Invitation expired"
     }
+  },
+  "permission": {
+    "view": "View",
+    "create_ticket": "Create a ticket",
+    "edit": "Edit",
+    "comment": "Comment",
+    "log_time": "Log time",
+    "assign_resources": "Assign resources",
+    "force_overload": "Force an overload",
+    "manage_sprints": "Manage sprints",
+    "manage_members": "Manage members",
+    "administer_node": "Administer the node"
   }
 }

@@ -359,7 +359,9 @@ pub async fn update(
         local_account = body.local_account,
         "member access changed"
     );
+    let tenant = tx.tenant_id();
     tx.commit().await?;
+    crate::permissions::invalidate(&state, tenant).await;
     let version = member.version;
     Ok(with_etag(ApiJson(member).into_response(), version))
 }
@@ -437,6 +439,8 @@ pub async fn remove(
         sessions_ended = ended,
         "member removed"
     );
+    let tenant = tx.tenant_id();
     tx.commit().await?;
+    crate::permissions::invalidate(&state, tenant).await;
     Ok(StatusCode::NO_CONTENT)
 }

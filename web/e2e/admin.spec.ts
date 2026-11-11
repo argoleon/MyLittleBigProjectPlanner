@@ -71,6 +71,30 @@ async function mockMembers(page: Page) {
   );
 }
 
+const MANAGER = {
+  id: '0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7b02',
+  label: 'Project manager',
+  labelTranslations: { fr: 'Chef de projet', en: 'Project manager' },
+  permissions: ['view', 'create_ticket', 'edit', 'comment', 'log_time', 'assign_resources', 'force_overload', 'manage_sprints'],
+  grantCount: 0,
+  version: 2,
+};
+
+const READER = {
+  id: '0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7b01',
+  label: 'Reader',
+  labelTranslations: { fr: 'Lecteur', en: 'Reader' },
+  permissions: ['view'],
+  grantCount: 4,
+  version: 1,
+};
+
+async function mockRoles(page: Page) {
+  await page.route('**/api/v1/tenant/roles?*', (route) =>
+    route.fulfill({ json: { items: [MANAGER, READER], nextCursor: null } }),
+  );
+}
+
 test('the administration opens on its members tab', async ({ page }) => {
   await mockMembers(page);
   await page.goto('/admin');
@@ -108,6 +132,45 @@ test('the authentication tab shows the policy and the providers', async ({ page 
   await expect(page.locator('.provider-name')).toHaveText('Entra ID');
 });
 
+test('a role is changed with the keyboard alone, then saved', async ({ page }) => {
+  await mockRoles(page);
+  const saved: object[] = [];
+  await page.route(`**/api/v1/tenant/roles/${MANAGER.id}`, async (route) => {
+    saved.push({ ifMatch: route.request().headers()['if-match'], body: route.request().postDataJSON() });
+    await route.fulfill({ json: { ...MANAGER, permissions: [...MANAGER.permissions, 'manage_members'], version: 3 } });
+  });
+  await page.goto('/admin/roles');
+  await expect(page.getByRole('tab', { name: 'Roles' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('heading', { level: 2 })).toHaveText('Role “Project manager”');
+  await expect(page.getByRole('option', { name: /Project manager/ })).toHaveAttribute('aria-selected', 'true');
+
+  const manageMembers = page.getByRole('switch', { name: 'Manage members' });
+  await expect(manageMembers).not.toBeChecked();
+  await manageMembers.focus();
+  await page.keyboard.press('Space');
+  await expect(manageMembers).toBeChecked();
+  await expect(page.getByText('Unsaved changes')).toBeVisible();
+  await page.getByRole('button', { name: 'Save' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('status')).toHaveText('Role Project manager saved.');
+  await expect(page.getByText('Unsaved changes')).toHaveCount(0);
+  expect(saved).toEqual([
+    {
+      ifMatch: '"2"',
+      body: {
+        labelTranslations: { fr: 'Chef de projet', en: 'Project manager' },
+        permissions: [...MANAGER.permissions, 'manage_members'],
+      },
+    },
+  ]);
+
+  // A role used by grants cannot be deleted.
+  await page.getByRole('option', { name: /Reader/ }).click();
+  await expect(page.getByRole('heading', { level: 2 })).toHaveText('Role “Reader”');
+  await expect(page.getByRole('button', { name: 'Delete' })).toBeDisabled();
+  await expect(page.getByText('Grants using this role: 4.')).toBeVisible();
+});
+
 for (const theme of ['light', 'dark'] as const) {
   for (const language of ['fr', 'en'] as const) {
     test.describe(`accessibility of the authentication settings, ${theme} mode, ${language}`, () => {
@@ -143,6 +206,21 @@ for (const theme of ['light', 'dark'] as const) {
         await expect(page.getByRole('row')).toHaveCount(2);
         await animationsDone(page);
         expect(await accessibilityViolations(page), 'groups').toEqual([]);
+      });
+
+      test('the roles tab has no axe-core violation', async ({ page }) => {
+        await mockRoles(page);
+        await page.goto('/admin/roles');
+        await expect(page.getByRole('switch')).toHaveCount(10);
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'roles').toEqual([]);
+
+        // With unsaved changes and the confirmation to discard them.
+        await page.getByRole('switch').last().click();
+        await page.getByRole('option').last().click();
+        await expect(page.getByRole('dialog')).toBeVisible();
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'discard dialog').toEqual([]);
       });
 
       test('the invitation page has no axe-core violation', async ({ page }) => {
