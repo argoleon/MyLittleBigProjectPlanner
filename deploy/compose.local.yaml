@@ -2,13 +2,15 @@
 # `just compose-up` and the deployment tests (`just compose-test`):
 #
 # - images built from the sources (mlbpp-local/*:local);
-# - https://localhost:18443 (http://localhost:18081 redirects to it), with
-#   Traefik's self-signed certificate instead of Let's Encrypt;
+# - https://localhost:18443, or https://127.0.0.1:18443 (http://…:18081
+#   redirects to it), with Traefik's self-signed certificate instead of
+#   Let's Encrypt;
 # - emails caught by Mailpit (http://localhost:18026) instead of an SMTP
 #   server.
 #
 # The justfile sets MLBPP_DOMAIN=localhost, MLBPP_REGISTRY=mlbpp-local,
-# MLBPP_VERSION=local and MLBPP_PUBLIC_PORT=:18443 for it.
+# MLBPP_VERSION=local, MLBPP_PUBLIC_PORT=:18443 and MLBPP_HOST_RULE (localhost
+# and 127.0.0.1) for it.
 
 x-build: &build
   context: ..

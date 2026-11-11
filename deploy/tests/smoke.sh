@@ -29,6 +29,10 @@ curl_edge https://localhost/workload | grep -q '<app-root>' || fail "deep links 
 pass "deep links fall back on the application"
 curl_edge https://localhost/portal/ | grep -q '<portal-root>' || fail "/portal/ does not serve the portal"
 pass "/portal/ serves the request portal"
+curl_edge -H 'host: 127.0.0.1' https://localhost/ | grep -q '<app-root>' || fail "127.0.0.1 does not serve the application"
+tenant="$(curl_edge -H 'host: 127.0.0.1' https://localhost/api/v1/tenant)"
+grep -q '"slug":"default"' <<< "$tenant" || fail "127.0.0.1 does not reach the API: $tenant"
+pass "the local stack also answers on 127.0.0.1"
 expect_status 200 "translations are served" https://localhost/i18n/fr.json
 
 body="$(curl_edge https://localhost/api/v1/ping)"
