@@ -8,6 +8,11 @@
     "openNavigation": "Open navigation",
     "mainNavigation": "Main navigation",
     "tenant": "Organization",
+    "role": {
+      "member": "Member",
+      "configuration_admin": "Configuration admin",
+      "tenant_admin": "Organization admin"
+    },
     "language": "Language: {{ language }}",
     "theme": {
       "label": "Theme: {{ mode }}",
@@ -210,7 +215,8 @@
       "sso_required": "Your organization signs you in through its identity provider: use the button above.",
       "oidc_failed": "Sign-in through the identity provider failed. Try again.",
       "oidc_no_member": "No member of this organization has the email of this account.",
-      "oidc_email_unverified": "The identity provider does not confirm the email of this account."
+      "oidc_email_unverified": "The identity provider does not confirm the email of this account.",
+      "switch_failed": "This switch link is invalid, has expired or was already used. Sign in again."
     },
     "mfa": {
       "already_enabled": "Two-step verification is already enabled.",

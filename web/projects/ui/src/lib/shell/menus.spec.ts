@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { MatMenuHarness } from '@angular/material/menu/testing';
 
 import { LocaleService } from '../i18n/locale.service';
+import { axeViolations } from '../testing/axe';
 import { provideI18nTesting } from '../testing/i18n-testing';
 import { LanguageMenu } from './language-menu';
 import { TenantSwitcher } from './tenant-switcher';
@@ -107,5 +108,29 @@ describe('TenantSwitcher', () => {
     const select = await TestbedHarnessEnvironment.loader(fixture).getHarness(MatSelectHarness);
     await select.clickOptions({ text: 'Acme' });
     expect(picked).toEqual(['t1']);
+    // The current tenant stays selected until the page is left.
+    expect(await select.getValueText()).toBe('Globex');
+
+    // Picking the current one again switches nothing.
+    await select.clickOptions({ text: 'Globex' });
+    expect(picked).toEqual(['t1']);
+  });
+
+  it('shows a second line under each tenant, such as the role there', async () => {
+    TestBed.configureTestingModule({ providers: [provideI18nTesting()] });
+    const fixture = TestBed.createComponent(TenantSwitcher);
+    fixture.componentRef.setInput('tenants', [
+      { id: 't1', name: 'Acme', detailKey: 'shell.role.member' },
+      { id: 't2', name: 'Globex', detailKey: 'shell.role.tenant_admin' },
+    ]);
+    await fixture.whenStable();
+    const { MatSelectHarness } = await import('@angular/material/select/testing');
+    const select = await TestbedHarnessEnvironment.loader(fixture).getHarness(MatSelectHarness);
+    // The field shows the name alone.
+    expect(await select.getValueText()).toBe('Acme');
+    await select.open();
+    const details = Array.from(document.querySelectorAll('mat-option .detail')).map((e) => e.textContent);
+    expect(details).toEqual(['Member', 'Organization admin']);
+    expect(await axeViolations(document.querySelector('.cdk-overlay-container') as HTMLElement)).toEqual([]);
   });
 });

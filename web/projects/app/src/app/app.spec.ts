@@ -3,10 +3,13 @@
  * with the application's routes and providers (translations loaded
  * synchronously, API mocked at the HTTP level).
  */
+import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
+import { Provider } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatSelectHarness } from '@angular/material/select/testing';
 import { Router, provideRouter, withComponentInputBinding } from '@angular/router';
-import { provideApi, provideMaterialDefaults } from 'ui';
+import { AuthService, LEAVE_APPLICATION, provideApi, provideMaterialDefaults } from 'ui';
 import { axeViolations, provideI18nTesting } from 'ui/testing';
 
 import { App } from './app';
@@ -19,6 +22,30 @@ const TENANT = {
   name: 'Acme Industrie',
   defaultLocale: 'fr',
   timeZone: 'Europe/Paris',
+};
+
+const MEMBERSHIPS_URL = '/api/v1/me/memberships';
+
+/** The member's tenant in `GET /api/v1/me/memberships`. */
+const ACME = {
+  tenantId: TENANT.id,
+  slug: 'acme',
+  name: 'Acme Industrie',
+  url: 'https://acme.planner.example',
+  accountType: 'internal',
+  tenantRole: 'member',
+  current: true,
+};
+
+/** Another tenant of the member. */
+const GLOBEX = {
+  tenantId: '0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7a90',
+  slug: 'globex',
+  name: 'Globex',
+  url: 'https://globex.planner.example',
+  accountType: 'internal',
+  tenantRole: 'tenant_admin',
+  current: false,
 };
 
 /** The session `GET /api/v1/auth/session` returns when signed in. */
@@ -65,12 +92,18 @@ async function answer(url: string, body: object | null, status = 200): Promise<T
 
 /**
  * Boots the application on `url`, signed in (`session`) or not (`null`),
- * answering the tenant request with `tenant` (`null`: the API answers 404),
- * then waits for it to settle.
+ * then waits for it to settle. Signed in, the drawer lists `memberships`
+ * (by default `tenant`'s, none without tenant); signed out, the sign-in page
+ * shows `tenant` (`null`: the API answers 404).
  */
 async function boot(
   tenant: object | null = null,
-  { url = '/', session = SESSION as object | null } = {},
+  {
+    url = '/',
+    session = SESSION as object | null,
+    memberships = undefined as object[] | undefined,
+    providers = [] as Provider[],
+  } = {},
 ): Promise<{ fixture: ComponentFixture<App>; request: TestRequest }> {
   localStorage.clear();
   TestBed.configureTestingModule({
@@ -80,6 +113,7 @@ async function boot(
       provideHttpClientTesting(),
       provideI18nTesting(),
       provideMaterialDefaults(),
+      ...providers,
     ],
   });
   const fixture = TestBed.createComponent(App);
@@ -92,8 +126,11 @@ async function boot(
   }
   await navigated;
   TestBed.tick();
-  const request = await answer('/api/v1/tenant', tenant, tenant ? 200 : 404);
-  if (!session) {
+  let request: TestRequest;
+  if (session) {
+    request = await answer(MEMBERSHIPS_URL, memberships ?? (tenant ? [ACME] : []));
+  } else {
+    request = await answer('/api/v1/tenant', tenant, tenant ? 200 : 404);
     // The sign-in page also lists the tenant's identity providers.
     await answer('/api/v1/auth/providers', []);
   }
@@ -136,6 +173,57 @@ describe('App', () => {
     const { fixture, request } = await boot(TENANT);
     expect(request.request.withCredentials).toBe(true);
     expect(query(fixture, 'ui-tenant-switcher .mat-mdc-select-value')?.textContent?.trim()).toBe('Acme Industrie');
+    const select = await TestbedHarnessEnvironment.loader(fixture).getHarness(MatSelectHarness);
+    await select.open();
+    expect(await Promise.all((await select.getOptions()).map((o) => o.getText()))).toEqual(['Acme IndustrieMember']);
+  });
+
+  it('lists every tenant of the member, with the role in each, and the current one selected', async () => {
+    const { fixture } = await boot(TENANT, { memberships: [ACME, GLOBEX] });
+    expect(query(fixture, 'ui-tenant-switcher .mat-mdc-select-value')?.textContent?.trim()).toBe('Acme Industrie');
+    const select = await TestbedHarnessEnvironment.loader(fixture).getHarness(MatSelectHarness);
+    await select.open();
+    const options = await select.getOptions();
+    expect(await Promise.all(options.map((o) => o.getText()))).toEqual([
+      'Acme IndustrieMember',
+      'GlobexOrganization admin',
+    ]);
+    expect(await options[0].isSelected()).toBe(true);
+    expect(await axeViolations(fixture.nativeElement)).toEqual([]);
+    expect(await axeViolations(document.querySelector('.cdk-overlay-container') as HTMLElement)).toEqual([]);
+  });
+
+  it('switches to another tenant, leaving nothing of this one behind', async () => {
+    const leave = vi.fn<(url: string) => void>();
+    const { fixture } = await boot(TENANT, {
+      memberships: [ACME, GLOBEX],
+      providers: [{ provide: LEAVE_APPLICATION, useValue: leave }],
+    });
+    const select = await TestbedHarnessEnvironment.loader(fixture).getHarness(MatSelectHarness);
+    await select.clickOptions({ text: /^Globex/ });
+    const request = await answer('/api/v1/me/switch', { url: 'https://globex.planner.example/api/v1/auth/switch?token=t' });
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ tenantId: GLOBEX.tenantId });
+    await fixture.whenStable();
+    expect(leave).toHaveBeenCalledExactlyOnceWith('https://globex.planner.example/api/v1/auth/switch?token=t');
+    expect(TestBed.inject(AuthService).session()).toBeNull();
+  });
+
+  it('stays on the current tenant with a message when the switch is refused', async () => {
+    const leave = vi.fn<(url: string) => void>();
+    const { fixture } = await boot(TENANT, {
+      memberships: [ACME, GLOBEX],
+      providers: [{ provide: LEAVE_APPLICATION, useValue: leave }],
+    });
+    const select = await TestbedHarnessEnvironment.loader(fixture).getHarness(MatSelectHarness);
+    await select.clickOptions({ text: /^Globex/ });
+    await answer('/api/v1/me/switch', { code: 'forbidden', title: 'You are not allowed to do this', status: 403 }, 403);
+    await new Promise((resolve) => setTimeout(resolve));
+    await fixture.whenStable();
+    expect(leave).not.toHaveBeenCalled();
+    expect(document.querySelector('.mat-mdc-snack-bar-label')?.textContent?.trim()).toBe('You are not allowed to do this.');
+    expect(await select.getValueText()).toBe('Acme Industrie');
+    expect(TestBed.inject(AuthService).signedIn()).toBe(true);
   });
 
   it('navigates between two placeholder screens', async () => {
@@ -185,7 +273,7 @@ describe('App', () => {
     (query(fixture, 'button[type="submit"]') as HTMLButtonElement).click();
     const signIn = await answer('/api/v1/auth/sign-in', SESSION);
     expect(signIn.request.body).toEqual({ email: 'lucas.bernard@acme.example', password: 'correct horse battery' });
-    await answer('/api/v1/tenant', TENANT);
+    await answer(MEMBERSHIPS_URL, [ACME]);
     await fixture.whenStable();
 
     expect(router.url).toBe('/workload');
@@ -214,7 +302,7 @@ describe('App', () => {
     input('code').dispatchEvent(new Event('input'));
     (query(fixture, 'button[type="submit"]') as HTMLButtonElement).click();
     await answer('/api/v1/auth/sign-in/verify', SESSION);
-    await answer('/api/v1/tenant', TENANT);
+    await answer(MEMBERSHIPS_URL, [ACME]);
     await fixture.whenStable();
     expect(router.url).toBe('/gantt');
   });

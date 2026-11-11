@@ -6,3 +6,13 @@
 .field {
   width: 100%;
 }
+
+.name {
+  display: block;
+}
+
+.detail {
+  display: block;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
