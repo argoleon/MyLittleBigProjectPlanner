@@ -17,6 +17,7 @@ use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
+use crate::account;
 use crate::auth;
 use crate::groups;
 use crate::invitations;
@@ -78,6 +79,10 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(me::me))
         .routes(routes!(me::memberships))
         .routes(routes!(me::switch))
+        .routes(routes!(account::update_preferences))
+        .routes(routes!(account::change_password))
+        .routes(routes!(account::sessions))
+        .routes(routes!(account::revoke_session))
         .routes(routes!(members::list))
         .routes(routes!(members::read, members::update, members::remove))
         .routes(routes!(invitations::list, invitations::create))

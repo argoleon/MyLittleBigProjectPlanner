@@ -40,15 +40,17 @@ describe('AuthLayout', () => {
 });
 
 describe('AccountMenu', () => {
-  it('names the member and signs out', async () => {
+  it('names the member, opens their account and signs out', async () => {
     TestBed.configureTestingModule({ providers: [provideI18nTesting()] });
     const fixture = TestBed.createComponent(AccountMenu);
     fixture.componentRef.setInput('displayName', 'Lucas Bernard');
     fixture.componentRef.setInput('email', 'lucas@acme.example');
     let signedOut = 0;
     let security = 0;
+    let account = 0;
     fixture.componentInstance.signOut.subscribe(() => signedOut++);
     fixture.componentInstance.security.subscribe(() => security++);
+    fixture.componentInstance.account.subscribe(() => account++);
     await fixture.whenStable();
 
     const menu = await TestbedHarnessEnvironment.loader(fixture).getHarness(MatMenuHarness);
@@ -57,6 +59,9 @@ describe('AccountMenu', () => {
     const panel = document.querySelector('.mat-mdc-menu-panel') as HTMLElement;
     expect(panel.textContent).toContain('Lucas Bernard');
     expect(panel.textContent).toContain('lucas@acme.example');
+    await menu.clickItem({ text: /My account/ });
+    expect(account).toBe(1);
+    await menu.open();
     await menu.clickItem({ text: /Two-step verification/ });
     expect(security).toBe(1);
     await menu.open();

@@ -53,5 +53,7 @@ export const ERROR_CODE: ErrorCode[] = [
   'group.name_taken',
   'permission.denied',
   'role.label_taken',
-  'role.in_use'
+  'role.in_use',
+  'account.no_password',
+  'session.current'
 ];

@@ -80,6 +80,9 @@ pub struct MeView {
     /// Preferred language; the tenant's default when absent.
     #[schema(example = "fr")]
     locale: Option<String>,
+    /// Preferred IANA time zone; the tenant's when absent.
+    #[schema(example = "Europe/Paris")]
+    time_zone: Option<String>,
     tenant_id: Uuid,
     tenant_role: TenantRoleView,
     account_type: AccountTypeView,
@@ -143,6 +146,7 @@ pub async fn me(tx: TenantTx) -> ApiJson<MeView> {
         email: member.email.clone(),
         display_name: member.display_name.clone(),
         locale: member.locale.clone(),
+        time_zone: member.time_zone.clone(),
         tenant_id: tx.tenant_id(),
         tenant_role: member.tenant_role.into(),
         account_type: member.account_type.into(),

@@ -27,7 +27,7 @@ import { LANGUAGES, LANGUAGE_NAMES, LocaleService } from '../i18n/locale.service
           role="menuitemradio"
           [attr.aria-checked]="locale.language() === language"
           [attr.lang]="language"
-          (click)="locale.use(language)"
+          (click)="locale.pick(language)"
         >
           <mat-icon aria-hidden="true">{{ locale.language() === language ? 'check' : '' }}</mat-icon>
           <span>{{ names[language] }}</span>

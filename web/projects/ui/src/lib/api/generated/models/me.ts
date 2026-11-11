@@ -19,4 +19,9 @@ export interface Me {
   locale?: (string | null);
   tenantId: string;
   tenantRole: TenantRole;
+
+  /**
+   * Preferred IANA time zone; the tenant's when absent.
+   */
+  timeZone?: (string | null);
 }

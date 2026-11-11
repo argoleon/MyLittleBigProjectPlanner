@@ -5,6 +5,11 @@
 //! usable cookie. A session belongs to one account in one tenant. It ends
 //! after `idle` without use, or `max_age` after sign-in at the latest; any
 //! instance of the API can serve it.
+//!
+//! The member sees their sessions (L02-US08) with the device and the last
+//! activity, recorded by [`SessionStore::touch`] at most once a minute, and
+//! revokes them by a public id: a hash of the storage key, so that the list
+//! gives nothing that opens or finds a session in Valkey.
 
 use std::time::Duration;
 
@@ -39,6 +44,13 @@ pub struct Session {
     pub second_factor: bool,
     #[serde(default)]
     pub sso: bool,
+    /// `User-Agent` of the latest request, for the list of sessions.
+    #[serde(default)]
+    pub user_agent: Option<String>,
+    /// Latest request, to the minute ([`ACTIVITY_STEP`]); `None` for
+    /// sessions stored before it was recorded.
+    #[serde(default)]
+    pub last_seen_at: Option<DateTime<Utc>>,
 }
 
 impl Session {
@@ -71,6 +83,18 @@ mod stage_serde {
             other => Err(serde::de::Error::custom(format!("unknown session stage {other}"))),
         }
     }
+}
+
+/// How often the last activity of a session is written: a request within
+/// this time of the previous record only extends the session.
+pub const ACTIVITY_STEP: Duration = Duration::from_secs(60);
+
+/// A session of the account, as its list shows it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ListedSession {
+    /// Public id: revokes it through [`SessionStore::delete_by_id`].
+    pub id: String,
+    pub session: Session,
 }
 
 /// A session just created, with the token to give the browser.
@@ -170,6 +194,8 @@ impl SessionStore {
             stage,
             second_factor: proof.second_factor,
             sso: proof.sso,
+            user_agent: None,
+            last_seen_at: Some(now),
         };
         let hash = token_hash_hex(&token);
         let json = serde_json::to_string(&session)
@@ -211,6 +237,96 @@ impl SessionStore {
         let ttl = remaining.min(self.lifetime_of(session.stage).idle);
         let _: () = self.valkey.expire(&key, secs(ttl).max(1), None).await?;
         Ok(Some(session))
+    }
+
+    /// The session of `token`, like [`Self::get`], recording the request:
+    /// its `User-Agent` and, at most every [`ACTIVITY_STEP`], the time.
+    pub async fn touch(&self, token: &str, user_agent: Option<&str>) -> Result<Option<Session>, ValkeyError> {
+        let hash = token_hash_hex(token);
+        let key = self.session_key(&hash);
+        let Some(mut session) = self.get(token).await? else {
+            return Ok(None);
+        };
+        let now = Utc::now();
+        let user_agent = user_agent.and_then(domain::devices::kept_user_agent);
+        let step = chrono::Duration::from_std(ACTIVITY_STEP).unwrap_or(chrono::Duration::minutes(1));
+        let stale = session.last_seen_at.is_none_or(|seen| now - seen >= step);
+        let moved = user_agent.is_some() && user_agent != session.user_agent;
+        if !stale && !moved {
+            return Ok(Some(session));
+        }
+        session.last_seen_at = Some(now);
+        if user_agent.is_some() {
+            session.user_agent = user_agent;
+        }
+        let remaining = (session.expires_at - now).to_std().unwrap_or_default();
+        let ttl = remaining.min(self.lifetime_of(session.stage).idle);
+        let json = serde_json::to_string(&session)
+            .map_err(|e| ValkeyError::new(fred::error::ErrorKind::Parse, e.to_string()))?;
+        // `XX`: a session revoked in the meantime stays revoked.
+        let _: Option<String> = self
+            .valkey
+            .set(
+                &key,
+                json,
+                Some(Expiration::EX(secs(ttl).max(1))),
+                Some(fred::types::SetOptions::XX),
+                false,
+            )
+            .await?;
+        Ok(Some(session))
+    }
+
+    /// Public id of the session of `token`, as [`Self::list`] gives it.
+    pub fn id_of(token: &str) -> String {
+        public_id(&token_hash_hex(token))
+    }
+
+    /// The open sessions of `account_id`, in every tenant, in no particular
+    /// order. Forgets the expired ones the index still names.
+    pub async fn list(&self, account_id: Uuid) -> Result<Vec<ListedSession>, ValkeyError> {
+        let account_key = self.account_key(account_id);
+        let hashes: Vec<String> = self.valkey.smembers(&account_key).await?;
+        let mut sessions = Vec::with_capacity(hashes.len());
+        for hash in hashes {
+            let json: Option<String> = self.valkey.get(self.session_key(&hash)).await?;
+            match json.and_then(|json| serde_json::from_str::<Session>(&json).ok()) {
+                Some(session) if session.expires_at > Utc::now() => sessions.push(ListedSession {
+                    id: public_id(&hash),
+                    session,
+                }),
+                _ => {
+                    let _: () = self.valkey.srem(&account_key, &hash).await?;
+                }
+            }
+        }
+        Ok(sessions)
+    }
+
+    /// Ends the session of `account_id` whose public id is `id`; `false`
+    /// when there is none (another account's id included).
+    pub async fn delete_by_id(&self, account_id: Uuid, id: &str) -> Result<bool, ValkeyError> {
+        let hashes: Vec<String> = self.valkey.smembers(self.account_key(account_id)).await?;
+        let Some(hash) = hashes.into_iter().find(|hash| public_id(hash) == id) else {
+            return Ok(false);
+        };
+        let removed: i64 = self.valkey.del(self.session_key(&hash)).await?;
+        let _: () = self.valkey.srem(self.account_key(account_id), &hash).await?;
+        Ok(removed > 0)
+    }
+
+    /// Ends every session of `account_id`, in every tenant, but the one of
+    /// `kept_token` (password change). Returns how many were open.
+    pub async fn delete_others(&self, account_id: Uuid, kept_token: &str) -> Result<usize, ValkeyError> {
+        let kept = token_hash_hex(kept_token);
+        let hashes: Vec<String> = self.valkey.smembers(self.account_key(account_id)).await?;
+        let mut deleted = 0;
+        for hash in hashes.iter().filter(|hash| **hash != kept) {
+            let removed: i64 = self.valkey.del(self.session_key(hash)).await?;
+            deleted += usize::try_from(removed).unwrap_or(0);
+            let _: () = self.valkey.srem(self.account_key(account_id), hash).await?;
+        }
+        Ok(deleted)
     }
 
     /// Ends the session of `token` (sign-out).
@@ -270,6 +386,14 @@ impl SessionStore {
         let _: () = self.valkey.srem(self.account_key(account_id), hash).await?;
         Ok(())
     }
+}
+
+/// Public id of the session stored under `hash`: 32 hexadecimal digits of
+/// its SHA-256.
+fn public_id(hash: &str) -> String {
+    let mut id = token_hash_hex(hash);
+    id.truncate(32);
+    id
 }
 
 fn secs(duration: Duration) -> i64 {

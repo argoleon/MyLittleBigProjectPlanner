@@ -90,6 +90,30 @@ async function answer(url: string, body: object | null, status = 200): Promise<T
   return request;
 }
 
+/** `GET /api/v1/me`: the signed-in account, without preferences of its own. */
+const ME = {
+  id: SESSION.account.id,
+  email: SESSION.account.email,
+  displayName: SESSION.account.displayName,
+  locale: null,
+  timeZone: null,
+  tenantId: TENANT.id,
+  tenantRole: 'member',
+  accountType: 'internal',
+};
+
+/**
+ * Answers what the frame of signed-in members asks once shown: the
+ * account's tenants (`memberships`), the account and the tenant, whose
+ * preferences apply (`tenant` null: the API answers 404).
+ */
+async function answerFrame(memberships: object[], tenant: object | null = TENANT): Promise<TestRequest> {
+  const request = await answer(MEMBERSHIPS_URL, memberships);
+  await answer('/api/v1/me', ME);
+  await answer('/api/v1/tenant', tenant, tenant ? 200 : 404);
+  return request;
+}
+
 /**
  * Boots the application on `url`, signed in (`session`) or not (`null`),
  * then waits for it to settle. Signed in, the drawer lists `memberships`
@@ -128,7 +152,7 @@ async function boot(
   TestBed.tick();
   let request: TestRequest;
   if (session) {
-    request = await answer(MEMBERSHIPS_URL, memberships ?? (tenant ? [ACME] : []));
+    request = await answerFrame(memberships ?? (tenant ? [ACME] : []), tenant);
   } else {
     request = await answer('/api/v1/tenant', tenant, tenant ? 200 : 404);
     // The sign-in page also lists the tenant's identity providers.
@@ -273,7 +297,7 @@ describe('App', () => {
     (query(fixture, 'button[type="submit"]') as HTMLButtonElement).click();
     const signIn = await answer('/api/v1/auth/sign-in', SESSION);
     expect(signIn.request.body).toEqual({ email: 'lucas.bernard@acme.example', password: 'correct horse battery' });
-    await answer(MEMBERSHIPS_URL, [ACME]);
+    await answerFrame([ACME]);
     await fixture.whenStable();
 
     expect(router.url).toBe('/workload');
@@ -302,9 +326,40 @@ describe('App', () => {
     input('code').dispatchEvent(new Event('input'));
     (query(fixture, 'button[type="submit"]') as HTMLButtonElement).click();
     await answer('/api/v1/auth/sign-in/verify', SESSION);
-    await answer(MEMBERSHIPS_URL, [ACME]);
+    await answerFrame([ACME]);
     await fixture.whenStable();
     expect(router.url).toBe('/gantt');
+  });
+
+  it('opens My account from the account menu, and keeps the language picked for the account', async () => {
+    const { fixture } = await boot(TENANT);
+    (query(fixture, 'ui-account-menu button') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    const myAccount = Array.from(document.querySelectorAll<HTMLButtonElement>('.mat-mdc-menu-panel button')).find((b) =>
+      b.textContent?.includes('My account'),
+    );
+    myAccount!.click();
+    // The page is loaded on demand.
+    for (let i = 0; i < 100 && TestBed.inject(Router).url !== '/account'; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    await answer('/api/v1/account/mfa', { enabled: false, backupCodesLeft: 0, requiredByPolicy: false });
+    await answer('/api/v1/me/sessions', []);
+    await answer(MEMBERSHIPS_URL, [ACME]);
+    await fixture.whenStable();
+    expect(TestBed.inject(Router).url).toBe('/account');
+    expect(query(fixture, 'main h1')?.textContent).toBe('My account');
+
+    (query(fixture, 'ui-language-menu button') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    Array.from(document.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]'))
+      .find((b) => b.textContent?.includes('Français'))!
+      .click();
+    const saved = await answer('/api/v1/me/preferences', { locale: 'fr', timeZone: null });
+    expect(saved.request.method).toBe('PUT');
+    expect(saved.request.body).toEqual({ locale: 'fr', timeZone: null });
+    await fixture.whenStable();
+    expect(query(fixture, 'main h1')?.textContent).toBe('Mon compte');
   });
 
   it('shows the signed-in member, and signs out', async () => {

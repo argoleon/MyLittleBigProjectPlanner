@@ -17,7 +17,7 @@
 use std::net::SocketAddr;
 
 use axum::extract::{ConnectInfo, FromRequestParts, State};
-use axum::http::header::SET_COOKIE;
+use axum::http::header::{SET_COOKIE, USER_AGENT};
 use axum::http::request::Parts;
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::{AppendHeaders, IntoResponse, Response};
@@ -125,9 +125,10 @@ impl Auth {
         tenant_id: Uuid,
     ) -> Result<(String, Session), Problem> {
         let token = cookie(&parts.headers, SESSION_COOKIE).ok_or(Problem::new(ErrorCode::Unauthenticated))?;
+        let user_agent = header_str(&parts.headers, USER_AGENT.as_str());
         let session = self
             .sessions
-            .get(token)
+            .touch(token, user_agent)
             .await?
             .filter(|session| session.tenant_id == tenant_id)
             .ok_or(Problem::new(ErrorCode::Unauthenticated))?;

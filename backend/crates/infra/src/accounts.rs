@@ -3,7 +3,7 @@
 //! tenant's members only.
 
 use chrono::{DateTime, Utc};
-pub use domain::account::{AccountType, TenantRole};
+pub use domain::account::{AccountType, Preferences, TenantRole};
 use sqlx::postgres::PgConnection;
 use uuid::Uuid;
 
@@ -17,6 +17,8 @@ pub struct Member {
     pub display_name: String,
     /// Preferred language; the tenant's default when `None`.
     pub locale: Option<String>,
+    /// Preferred time zone; the tenant's when `None`.
+    pub time_zone: Option<String>,
     pub account_type: AccountType,
     pub tenant_role: TenantRole,
     /// A suspended member cannot sign in.
@@ -38,6 +40,7 @@ struct Row {
     email: String,
     display_name: String,
     locale: Option<String>,
+    time_zone: Option<String>,
     password_hash: Option<String>,
     account_type: String,
     tenant_role: String,
@@ -53,6 +56,7 @@ impl Row {
                 email: self.email,
                 display_name: self.display_name,
                 locale: self.locale,
+                time_zone: self.time_zone,
                 // The database checks these values.
                 account_type: AccountType::parse(&self.account_type).unwrap_or(AccountType::External),
                 tenant_role: TenantRole::parse(&self.tenant_role).unwrap_or(TenantRole::Member),
@@ -72,7 +76,7 @@ pub async fn find_by_email(
     let row = sqlx::query_as!(
         Row,
         r#"
-        SELECT a.id, a.email, a.display_name, a.locale, a.password_hash,
+        SELECT a.id, a.email, a.display_name, a.locale, a.time_zone, a.password_hash,
                m.account_type, m.tenant_role, m.status, m.local_account
         FROM account a
         JOIN membership m ON m.account_id = a.id
@@ -90,7 +94,7 @@ pub async fn find(conn: &mut PgConnection, account_id: Uuid) -> Result<Option<Me
     let row = sqlx::query_as!(
         Row,
         r#"
-        SELECT a.id, a.email, a.display_name, a.locale, a.password_hash,
+        SELECT a.id, a.email, a.display_name, a.locale, a.time_zone, a.password_hash,
                m.account_type, m.tenant_role, m.status, m.local_account
         FROM account a
         JOIN membership m ON m.account_id = a.id
@@ -121,6 +125,47 @@ pub async fn set_password(
     .execute(conn)
     .await?;
     Ok(done.rows_affected() == 1)
+}
+
+/// Sets the preferences of the account of a member of the current tenant
+/// (L02-US08). The database refuses an unknown time zone.
+pub async fn set_preferences(
+    conn: &mut PgConnection,
+    account_id: Uuid,
+    preferences: &Preferences,
+) -> Result<bool, sqlx::Error> {
+    let done = sqlx::query!(
+        r#"
+        UPDATE account
+        SET locale = $2, time_zone = $3, updated_at = now(), version = version + 1
+        WHERE id = $1
+        "#,
+        account_id,
+        preferences.locale,
+        preferences.time_zone
+    )
+    .execute(conn)
+    .await?;
+    Ok(done.rows_affected() == 1)
+}
+
+/// The password hash of the account of a member of the current tenant:
+/// `None` without a local password (SSO only).
+pub async fn password_hash(conn: &mut PgConnection, account_id: Uuid) -> Result<Option<String>, sqlx::Error> {
+    let hash = sqlx::query_scalar!(r#"SELECT password_hash FROM account WHERE id = $1"#, account_id)
+        .fetch_optional(conn)
+        .await?;
+    Ok(hash.flatten())
+}
+
+/// Whether PostgreSQL knows the time zone `name` (IANA names).
+pub async fn time_zone_exists(conn: &mut PgConnection, name: &str) -> Result<bool, sqlx::Error> {
+    sqlx::query_scalar!(
+        r#"SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_timezone_names WHERE name = $1) AS "exists!""#,
+        name
+    )
+    .fetch_one(conn)
+    .await
 }
 
 /// A member to add to the current tenant.
