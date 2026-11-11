@@ -296,6 +296,29 @@ describe('MembersTab', () => {
     expect(text(root().querySelector('[role="status"]'))).toBe('Access of Lucas Bernard changed.');
   });
 
+  it('gives the focus back to the actions button when a dialog of its menu closes', async () => {
+    // The menu gives the focus back to its button only once closed, after
+    // the dialog has opened: the dialog must not rely on the focused element.
+    const { root, click } = await open();
+    const open$ = vi.spyOn(TestBed.inject(MatDialog), 'open');
+    const cases: [string, number][] = [
+      ['Actions for Lucas Bernard', 0],
+      ['Actions for Lucas Bernard', 1],
+      [`Actions for ${INVITATION.email}`, 1],
+    ];
+    for (const [label, item] of cases) {
+      const trigger = root().querySelector(`button[aria-label="${label}"]`);
+      await click(trigger);
+      // The last menu opened: a closed one may still be leaving.
+      const menu = Array.from(root().querySelectorAll('.mat-mdc-menu-panel')).at(-1)!;
+      await click(menu.querySelectorAll('button')[item]);
+      const restoreFocus = open$.mock.lastCall?.[1]?.restoreFocus;
+      expect(typeof restoreFocus).toBe('string');
+      expect(root().querySelector(restoreFocus as string)).toBe(trigger);
+      TestBed.inject(MatDialog).closeAll();
+    }
+  });
+
   it('removes a member after confirmation, and reports the last admin', async () => {
     const { root, reply, click, text } = await open();
     await click(root().querySelector('button[aria-label="Actions for Lucas Bernard"]'));

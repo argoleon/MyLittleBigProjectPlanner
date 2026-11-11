@@ -108,6 +108,7 @@
             matIconButton
             type="button"
             [matMenuTriggerFor]="menu"
+            [id]="actionsId(row.kind, row.id)"
             [attr.aria-label]="'admin.members.actionsOf' | transloco: { name: row.kind === 'member' ? row.member.displayName : row.invitation.email }"
           >
             <mat-icon aria-hidden="true">more_vert</mat-icon>
