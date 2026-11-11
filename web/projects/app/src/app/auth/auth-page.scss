@@ -85,3 +85,9 @@
     border-top: 1px solid var(--mat-sys-outline-variant);
   }
 }
+
+.hint {
+  margin: 0 0 var(--app-space-2);
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}

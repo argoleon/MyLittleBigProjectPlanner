@@ -58,7 +58,7 @@ Requirements: Docker Engine with Compose v2.24 or later, ports 80 and 443 open, 
 
    The super admin manages tenants through the API (`/api/v1/platform/tenants`, documented at `/api/v1/docs/`): create a tenant with its language, time zone, default capacity, overload tolerance and quotas, change them, or delete a tenant. A deletion is confirmed by typing the tenant's slug; the tenant stops resolving at once, then the worker removes all its data, and the accounts that belonged to it only, in the background.
 
-   `api add-member` adds an internal member to a tenant, until member administration comes (L02-US06). It reads the password (12 characters or more) from standard input, so it never appears in the shell history or the process list:
+   Tenant admins then invite their members in Administration › Members (see "Members, invitations and groups" below). `api add-member` adds an internal member from the command line, for the first admin of a new tenant or scripts. It reads the password (12 characters or more) from standard input, so it never appears in the shell history or the process list:
 
    ```sh
    docker compose -f deploy/compose.yaml exec -T api /usr/local/bin/api \
@@ -78,6 +78,13 @@ Members can turn on two-step verification with an authenticator app (TOTP), with
 Tenant admins can add OIDC identity providers (Entra ID, Google, Okta, Keycloak…) in Administration › Authentication: issuer URL, client id and secret (stored encrypted with `data_encryption_key`). Register the redirect URI shown there at the provider: `https://<tenant host>/api/v1/auth/oidc/callback`. Members are matched by their email, which the provider must vouch for (`email_verified`), or by a directory claim chosen by the admin (`upn`…); nobody is created on the fly. The policy can then require SSO for internal members; members marked as local accounts (contractors outside the directory, and the bootstrapped administrator, so that a broken SSO locks nobody out) keep their password. Issuers must be HTTPS (`OIDC_ALLOW_HTTP=true` is for development only).
 
 An account can belong to several tenants; a session holds one. In multi-tenant mode, the organization selector of the navigation drawer lists the member's tenants with their role in each. Picking one opens a session in that tenant through a one-time link valid for 60 seconds, under that tenant's own policy. If the tenant requires SSO, the member goes through its provider. A member with two-step verification is asked for a code unless the session they came from checked one. External members (request portal) are not offered the internal application of a tenant. In single-tenant mode, the selector shows the only tenant.
+
+**Members, invitations and groups.** Tenant admins manage members in Administration › Members; configuration admins do not.
+- **Invite:** an admin invites an email as an internal member (the application) or an external one (the request portal only), with a tenant role. The worker emails a link valid for 7 days, which can be sent again or revoked.
+- **Accept:** opening the link creates the account with the name and password chosen there, or adds the tenant to an existing account, whose password stays. An internal member is then signed in under the tenant's policy.
+- **Change or remove:** a role change applies to the member's next request. Removing a member, or making them external, ends their sessions in that tenant at once. Their account and their other tenants stay. The last active tenant admin cannot be demoted or removed.
+- **Groups:** admins gather members in groups, to grant them roles together.
+- **Audit:** these changes are logged with the `audit` log target.
 
 **SAML and LDAP / Active Directory** go through Keycloak (profile `sso`): configure the SAML identity provider or the LDAP user federation in Keycloak, then add Keycloak to the tenant as an OIDC provider (issuer `https://<domain>/auth/realms/<realm>`).
 

@@ -133,12 +133,28 @@
       "codeOrBackup": "Code or backup code",
       "disable": "Disable",
       "close": "Close"
+    },
+    "acceptInvitation": {
+      "title": "Join an organization",
+      "missingToken": "This invitation link is incomplete. Open the link of the email again.",
+      "intro": "{{ inviter }} invites you to join {{ tenant }}.",
+      "introNoInviter": "You are invited to join {{ tenant }}.",
+      "email": "Email",
+      "displayName": "Your name",
+      "password": "Choose a password",
+      "existingAccount": "You already have an account with this email: accepting adds {{ tenant }} to your organizations. Your password stays the same.",
+      "submit": "Join",
+      "external": "Your account is ready. You will reach {{ tenant }} through its request portal.",
+      "sso": "You joined {{ tenant }}. It signs you in through its identity provider.",
+      "signIn": "Go to the sign-in page"
     }
   },
   "admin": {
     "tabs": {
       "label": "Administration sections",
-      "authentication": "Authentication"
+      "authentication": "Authentication",
+      "members": "Members",
+      "groups": "Groups"
     },
     "auth": {
       "policyTitle": "Authentication policy",
@@ -186,6 +202,93 @@
       "testOk": "The provider answers.",
       "editOf": "Edit {{ name }}",
       "deleteOf": "Delete {{ name }}"
+    },
+    "members": {
+      "search": "Search a member",
+      "searchPlaceholder": "Name or email",
+      "filters": "Filter the members",
+      "internal": "Internal",
+      "external": "External",
+      "pending": "Pending invitations",
+      "invite": "Invite",
+      "caption": "Members and pending invitations of the organization",
+      "columns": {
+        "member": "Member",
+        "type": "Type",
+        "role": "Organization role",
+        "groups": "Groups",
+        "mfa": "MFA",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "invitedOn": "Invitation sent on {{ date }}",
+      "externalRole": "External · portal only",
+      "localAccount": "Local account",
+      "mfaOn": "Two-step verification on",
+      "mfaOff": "Two-step verification off",
+      "empty": "No member matches",
+      "emptyHint": "Change the search or the filters, or invite someone.",
+      "loadMore": "Show more members",
+      "actionsOf": "Actions for {{ name }}",
+      "edit": "Change access",
+      "remove": "Remove from the organization",
+      "resend": "Send the invitation again",
+      "revoke": "Revoke the invitation",
+      "removeTitle": "Remove {{ name }}?",
+      "removeMessage": "{{ name }} loses access to this organization at once and leaves its groups. Their account and their other organizations stay.",
+      "removeConfirm": "Remove",
+      "revokeTitle": "Revoke the invitation?",
+      "revokeMessage": "The link sent to {{ email }} will stop working.",
+      "revokeConfirm": "Revoke",
+      "invited": "Invitation sent to {{ email }}.",
+      "resent": "Invitation sent again to {{ email }}.",
+      "revoked": "Invitation to {{ email }} revoked.",
+      "removed": "{{ name }} was removed from the organization.",
+      "saved": "Access of {{ name }} changed."
+    },
+    "invite": {
+      "title": "Invite a member",
+      "email": "Email",
+      "accountType": "Account type",
+      "internalHint": "Uses the application of the organization.",
+      "externalHint": "A customer or supplier: uses the request portal only.",
+      "role": "Organization role",
+      "externalRole": "External accounts are plain members.",
+      "submit": "Send the invitation"
+    },
+    "member": {
+      "title": "Access of {{ name }}",
+      "localAccount": "Local account",
+      "localAccountHint": "Signs in with a password even when the organization requires its identity provider (people outside its directory).",
+      "save": "Save"
+    },
+    "groups": {
+      "intro": "Groups let you grant roles to several members at once.",
+      "add": "New group",
+      "caption": "Groups of the organization",
+      "columns": {
+        "name": "Group",
+        "members": "Members"
+      },
+      "empty": "No group yet",
+      "emptyHint": "Create a group, then add members to it.",
+      "manageMembers": "Members",
+      "editOf": "Edit {{ name }}",
+      "deleteOf": "Delete {{ name }}",
+      "deleteTitle": "Delete {{ name }}?",
+      "deleteMessage": "The group goes; its members stay in the organization.",
+      "deleteConfirm": "Delete",
+      "deleted": "Group {{ name }} deleted.",
+      "saved": "Group {{ name }} saved.",
+      "createTitle": "New group",
+      "editTitle": "Edit the group",
+      "name": "Name",
+      "description": "Description",
+      "save": "Save",
+      "membersOf": "Members of {{ name }}",
+      "addMember": "Add a member",
+      "noMember": "No member in this group yet.",
+      "removeMemberOf": "Remove {{ name }} from the group"
     }
   },
   "errors": {
@@ -256,7 +359,38 @@
       "same_as_email": "The password must differ from the email.",
       "email": "Enter a valid email address.",
       "unknown_time_zone": "This time zone is unknown.",
-      "not_default_slug": "In single-organization mode, only the configured identifier is allowed."
+      "not_default_slug": "In single-organization mode, only the configured identifier is allowed.",
+      "external_member_only": "An external account cannot administer the organization."
+    },
+    "invitation": {
+      "invalid": "This invitation link is invalid, has expired or was already used. Ask for a new one.",
+      "pending": "This email already has a pending invitation: send it again instead.",
+      "already_member": "This email already belongs to a member of the organization.",
+      "closed": "This invitation was already accepted or revoked."
+    },
+    "member": {
+      "last_admin": "The organization needs at least one active organization admin."
+    },
+    "group": {
+      "name_taken": "Another group already has this name."
+    }
+  },
+  "dialog": {
+    "cancel": "Cancel",
+    "close": "Close"
+  },
+  "member": {
+    "accountType": {
+      "label": "Account type:",
+      "internal": "Internal",
+      "external": "External"
+    },
+    "status": {
+      "label": "Status:",
+      "active": "Active",
+      "suspended": "Suspended",
+      "invited": "Invitation sent",
+      "expired": "Invitation expired"
     }
   }
 }

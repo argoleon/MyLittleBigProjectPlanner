@@ -104,7 +104,9 @@ describe('AuthenticationSettings', () => {
   it('shows the policy and the providers of the tenant', async () => {
     const { root, text } = await open();
     expect(text('.eyebrow')).toBe('Administration · Acme Industrie');
-    expect(text('a[mat-tab-link]')).toBe('Authentication');
+    const tabs = Array.from(root().querySelectorAll('a[mat-tab-link]')).map((a) => a.textContent?.trim());
+    expect(tabs).toEqual(['Members', 'Groups', 'Authentication']);
+    expect(text('a[mat-tab-link][aria-selected="true"]')).toBe('Authentication');
     const toggles = Array.from(root().querySelectorAll('mat-slide-toggle'));
     expect(toggles.map((t) => t.textContent?.trim())).toEqual([
       'Internal accounts sign in through the identity provider',

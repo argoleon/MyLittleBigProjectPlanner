@@ -144,6 +144,37 @@ describe('AuthService', () => {
     expect(auth.session()).toBeNull();
   });
 
+  it('shows an invitation, then takes the session its acceptance opens', async () => {
+    const { auth, backend } = setUp();
+    const shown = auth.invitation('token-1');
+    const preview = backend.respond(200);
+    expect(preview.request.url).toBe('/api/v1/auth/invitation');
+    expect(preview.request.body).toEqual({ token: 'token-1' });
+    expect((await shown).newAccount).toBeDefined();
+
+    const accepted = auth.acceptInvitation('token-1', { displayName: 'Camille Martin', password: 'a long passphrase' });
+    const request = backend.respond(200, {
+      accountType: 'internal',
+      ssoRequired: false,
+      session: contractExample('Session'),
+    });
+    expect(request.request.body).toEqual({ token: 'token-1', displayName: 'Camille Martin', password: 'a long passphrase' });
+    await accepted;
+    expect(auth.signedIn()).toBe(true);
+  });
+
+  it('stays signed out when an accepted invitation opens no session', async () => {
+    const { auth, backend } = setUp();
+    void auth.load();
+    backend.respond(401, UNAUTHENTICATED);
+    await settle();
+    const accepted = auth.acceptInvitation('token-1');
+    const request = backend.respond(200, { accountType: 'external', ssoRequired: false, session: null });
+    expect(request.request.body).toEqual({ token: 'token-1' });
+    expect((await accepted).accountType).toBe('external');
+    expect(auth.session()).toBeNull();
+  });
+
   it('clears the session, then leaves for the other tenant, on a switch', async () => {
     const { auth, backend, leave } = setUp();
     void auth.load();

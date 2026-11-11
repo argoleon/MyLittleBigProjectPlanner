@@ -133,12 +133,28 @@
       "codeOrBackup": "Code ou code de secours",
       "disable": "Désactiver",
       "close": "Fermer"
+    },
+    "acceptInvitation": {
+      "title": "Rejoindre une organisation",
+      "missingToken": "Ce lien d’invitation est incomplet. Ouvrez à nouveau le lien de l’e-mail.",
+      "intro": "{{ inviter }} vous invite à rejoindre {{ tenant }}.",
+      "introNoInviter": "Vous êtes invité à rejoindre {{ tenant }}.",
+      "email": "E-mail",
+      "displayName": "Votre nom",
+      "password": "Choisissez un mot de passe",
+      "existingAccount": "Vous avez déjà un compte avec cet e-mail : accepter ajoute {{ tenant }} à vos organisations. Votre mot de passe ne change pas.",
+      "submit": "Rejoindre",
+      "external": "Votre compte est prêt. Vous accéderez à {{ tenant }} par son portail de demandes.",
+      "sso": "Vous avez rejoint {{ tenant }}. Elle vous connecte par son fournisseur d’identité.",
+      "signIn": "Aller à la page de connexion"
     }
   },
   "admin": {
     "tabs": {
       "label": "Rubriques de l’administration",
-      "authentication": "Authentification"
+      "authentication": "Authentification",
+      "members": "Membres",
+      "groups": "Groupes"
     },
     "auth": {
       "policyTitle": "Politique d’authentification",
@@ -186,6 +202,93 @@
       "testOk": "Le fournisseur répond.",
       "editOf": "Modifier {{ name }}",
       "deleteOf": "Supprimer {{ name }}"
+    },
+    "members": {
+      "search": "Rechercher un membre",
+      "searchPlaceholder": "Nom ou e-mail",
+      "filters": "Filtrer les membres",
+      "internal": "Internes",
+      "external": "Externes",
+      "pending": "Invitations en attente",
+      "invite": "Inviter",
+      "caption": "Membres et invitations en attente de l’organisation",
+      "columns": {
+        "member": "Membre",
+        "type": "Type",
+        "role": "Rôle d’organisation",
+        "groups": "Groupes",
+        "mfa": "MFA",
+        "status": "Statut",
+        "actions": "Actions"
+      },
+      "invitedOn": "Invitation envoyée le {{ date }}",
+      "externalRole": "Externe · portail uniquement",
+      "localAccount": "Compte local",
+      "mfaOn": "Vérification en deux étapes activée",
+      "mfaOff": "Vérification en deux étapes désactivée",
+      "empty": "Aucun membre ne correspond",
+      "emptyHint": "Modifiez la recherche ou les filtres, ou invitez quelqu’un.",
+      "loadMore": "Afficher plus de membres",
+      "actionsOf": "Actions pour {{ name }}",
+      "edit": "Modifier l’accès",
+      "remove": "Retirer de l’organisation",
+      "resend": "Renvoyer l’invitation",
+      "revoke": "Révoquer l’invitation",
+      "removeTitle": "Retirer {{ name }} ?",
+      "removeMessage": "{{ name }} perd immédiatement l’accès à cette organisation et quitte ses groupes. Son compte et ses autres organisations restent.",
+      "removeConfirm": "Retirer",
+      "revokeTitle": "Révoquer l’invitation ?",
+      "revokeMessage": "Le lien envoyé à {{ email }} ne fonctionnera plus.",
+      "revokeConfirm": "Révoquer",
+      "invited": "Invitation envoyée à {{ email }}.",
+      "resent": "Invitation renvoyée à {{ email }}.",
+      "revoked": "Invitation à {{ email }} révoquée.",
+      "removed": "{{ name }} a été retiré de l’organisation.",
+      "saved": "Accès de {{ name }} modifié."
+    },
+    "invite": {
+      "title": "Inviter un membre",
+      "email": "E-mail",
+      "accountType": "Type de compte",
+      "internalHint": "Utilise l’application de l’organisation.",
+      "externalHint": "Un client ou un fournisseur : utilise uniquement le portail de demandes.",
+      "role": "Rôle d’organisation",
+      "externalRole": "Les comptes externes sont de simples membres.",
+      "submit": "Envoyer l’invitation"
+    },
+    "member": {
+      "title": "Accès de {{ name }}",
+      "localAccount": "Compte local",
+      "localAccountHint": "Se connecte avec un mot de passe même quand l’organisation impose son fournisseur d’identité (personnes hors de son annuaire).",
+      "save": "Enregistrer"
+    },
+    "groups": {
+      "intro": "Les groupes permettent d’attribuer des rôles à plusieurs membres à la fois.",
+      "add": "Nouveau groupe",
+      "caption": "Groupes de l’organisation",
+      "columns": {
+        "name": "Groupe",
+        "members": "Membres"
+      },
+      "empty": "Aucun groupe pour l’instant",
+      "emptyHint": "Créez un groupe, puis ajoutez-y des membres.",
+      "manageMembers": "Membres",
+      "editOf": "Modifier {{ name }}",
+      "deleteOf": "Supprimer {{ name }}",
+      "deleteTitle": "Supprimer {{ name }} ?",
+      "deleteMessage": "Le groupe disparaît ; ses membres restent dans l’organisation.",
+      "deleteConfirm": "Supprimer",
+      "deleted": "Groupe {{ name }} supprimé.",
+      "saved": "Groupe {{ name }} enregistré.",
+      "createTitle": "Nouveau groupe",
+      "editTitle": "Modifier le groupe",
+      "name": "Nom",
+      "description": "Description",
+      "save": "Enregistrer",
+      "membersOf": "Membres de {{ name }}",
+      "addMember": "Ajouter un membre",
+      "noMember": "Aucun membre dans ce groupe pour l’instant.",
+      "removeMemberOf": "Retirer {{ name }} du groupe"
     }
   },
   "errors": {
@@ -256,7 +359,38 @@
       "same_as_email": "Le mot de passe doit être différent de l’e-mail.",
       "email": "Saisissez une adresse e-mail valide.",
       "unknown_time_zone": "Ce fuseau horaire est inconnu.",
-      "not_default_slug": "En mode mono-organisation, seul l’identifiant configuré est accepté."
+      "not_default_slug": "En mode mono-organisation, seul l’identifiant configuré est accepté.",
+      "external_member_only": "Un compte externe ne peut pas administrer l’organisation."
+    },
+    "invitation": {
+      "invalid": "Ce lien d’invitation est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
+      "pending": "Cet e-mail a déjà une invitation en attente : renvoyez-la plutôt.",
+      "already_member": "Cet e-mail appartient déjà à un membre de l’organisation.",
+      "closed": "Cette invitation a déjà été acceptée ou révoquée."
+    },
+    "member": {
+      "last_admin": "L’organisation doit garder au moins un admin de l’organisation actif."
+    },
+    "group": {
+      "name_taken": "Un autre groupe porte déjà ce nom."
+    }
+  },
+  "dialog": {
+    "cancel": "Annuler",
+    "close": "Fermer"
+  },
+  "member": {
+    "accountType": {
+      "label": "Type de compte :",
+      "internal": "Interne",
+      "external": "Externe"
+    },
+    "status": {
+      "label": "Statut :",
+      "active": "Actif",
+      "suspended": "Suspendu",
+      "invited": "Invitation envoyée",
+      "expired": "Invitation expirée"
     }
   }
 }

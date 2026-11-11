@@ -11,10 +11,14 @@ export interface AdminTab {
 }
 
 /**
- * Tabs of the administration (mockup 09). Members, groups, roles, project
- * configurations and quotas come with their work packages.
+ * Tabs of the administration (mockup 09). Roles, project configurations
+ * and quotas come with their work packages.
  */
-export const ADMIN_TABS: readonly AdminTab[] = [{ path: 'authentication', labelKey: 'admin.tabs.authentication' }];
+export const ADMIN_TABS: readonly AdminTab[] = [
+  { path: 'members', labelKey: 'admin.tabs.members' },
+  { path: 'groups', labelKey: 'admin.tabs.groups' },
+  { path: 'authentication', labelKey: 'admin.tabs.authentication' },
+];
 
 /** Administration screen of the tenant: routed tabs. */
 @Component({

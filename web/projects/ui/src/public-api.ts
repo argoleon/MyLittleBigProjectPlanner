@@ -35,6 +35,8 @@ export * from './lib/shell/account-menu';
 // Shared components.
 export * from './lib/components/status-chip';
 export * from './lib/components/type-chip';
+export * from './lib/components/member-chips';
+export * from './lib/components/confirm-dialog';
 export * from './lib/components/empty-state';
 export * from './lib/components/error-state';
 export * from './lib/components/loading-state';

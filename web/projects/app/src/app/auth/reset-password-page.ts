@@ -11,7 +11,7 @@ import { AuthLayout, AuthService, errorTranslationKey, fieldErrorTranslationKey,
 export const PASSWORD_MIN_LENGTH = 12;
 
 /** The confirmation must repeat the password. */
-function sameAsPassword(control: AbstractControl): ValidationErrors | null {
+export function sameAsPassword(control: AbstractControl): ValidationErrors | null {
   const password = control.parent?.get('password')?.value as string | undefined;
   return control.value === password ? null : { mismatch: true };
 }
