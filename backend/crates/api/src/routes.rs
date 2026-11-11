@@ -23,6 +23,7 @@ use crate::openapi;
 use crate::platform;
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
 use crate::reference_items;
+use crate::sso;
 use crate::tenant::{AppState, PublicTenantTx};
 
 /// OpenAPI tag of the technical endpoints.
@@ -72,7 +73,17 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(mfa::setup))
         .routes(routes!(mfa::confirm))
         .routes(routes!(mfa::disable))
-        .routes(routes!(mfa::get_policy, mfa::update_policy))
+        .routes(routes!(sso::get_policy, sso::update_policy))
+        .routes(routes!(sso::list_providers, sso::create_provider))
+        .routes(routes!(
+            sso::read_provider,
+            sso::update_provider,
+            sso::delete_provider
+        ))
+        .routes(routes!(sso::test_provider))
+        .routes(routes!(sso::sign_in_providers))
+        .routes(routes!(sso::start))
+        .routes(routes!(sso::callback))
         .routes(routes!(platform::list, platform::create))
         .routes(routes!(platform::read, platform::update, platform::delete))
         .routes(routes!(reference_items::list, reference_items::create))

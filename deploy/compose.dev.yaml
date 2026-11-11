@@ -44,12 +44,16 @@ x-backend: &backend
     TEST_VALKEY_URL: redis://valkey:6379
     TEST_SMTP_URL: smtp://mailpit:1025
     TEST_MAILPIT_URL: http://mailpit:8025
+    # OIDC provider of the integration tests.
+    TEST_OIDC_ISSUER: http://keycloak:8080/realms/mlbpp-test
   depends_on:
     postgres:
       condition: service_healthy
     valkey:
       condition: service_healthy
     mailpit:
+      condition: service_healthy
+    keycloak:
       condition: service_healthy
 
 services:
@@ -72,6 +76,33 @@ services:
       interval: 2s
       timeout: 3s
       retries: 30
+
+  # OIDC provider of the integration tests: realm "mlbpp-test" (client
+  # "mlbpp", users alice, bob, carol; deploy/dev/keycloak/). Reached as
+  # http://keycloak:8080 from the containers only (the issuer names this host).
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.6
+    command:
+      - start-dev
+      - --import-realm
+      - --hostname=http://keycloak:8080
+      - --health-enabled=true
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin # gitleaks:allow (development only)
+    volumes:
+      - ./dev/keycloak:/opt/keycloak/data/import:ro
+    healthcheck:
+      # No curl in the image: plain HTTP over bash's /dev/tcp.
+      test:
+        - CMD-SHELL
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9000 &&
+          printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          grep -q '"status": "UP"' <&3
+      interval: 5s
+      timeout: 5s
+      retries: 60
 
   postgres:
     image: postgres:18
@@ -121,8 +152,10 @@ services:
       PUBLIC_URL: http://127.0.0.1:4200
       # The development front end is served over plain http.
       SESSION_COOKIE_SECURE: "false"
-      # Encrypts the TOTP secrets; development only (32 bytes in base64).
-      MFA_ENCRYPTION_KEY: ZGV2ZWxvcG1lbnQga2V5IG9ubHksIDMyIGJ5dGVzISE= # gitleaks:allow
+      # Local identity providers may run over plain HTTP.
+      OIDC_ALLOW_HTTP: "true"
+      # Encrypts the stored secrets (TOTP, OIDC); development only (32 bytes in base64).
+      DATA_ENCRYPTION_KEY: ZGV2ZWxvcG1lbnQga2V5IG9ubHksIDMyIGJ5dGVzISE= # gitleaks:allow
       # Readable logs in the terminal; production writes JSON lines.
       LOG_FORMAT: text
     command:

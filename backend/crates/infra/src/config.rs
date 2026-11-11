@@ -302,9 +302,13 @@ pub struct ApiConfig {
     pub sessions: SessionSettings,
     /// First tenant and super admin, created with the migrations.
     pub bootstrap: Option<BootstrapConfig>,
-    /// `MFA_ENCRYPTION_KEY` (secret: prefer `_FILE`): 32 random bytes in
-    /// base64, encrypting the TOTP secrets at rest.
-    pub mfa_key: Secret,
+    /// `DATA_ENCRYPTION_KEY` (secret: prefer `_FILE`): 32 random bytes in
+    /// base64, encrypting the secrets stored in the database (TOTP, OIDC
+    /// client secrets).
+    pub data_key: Secret,
+    /// `OIDC_ALLOW_HTTP` (default false): accept plain-HTTP OIDC issuers.
+    /// Development and tests only.
+    pub oidc_allow_http: bool,
 }
 
 /// Public address of the front end, used to build the links of emails:
@@ -408,7 +412,8 @@ impl ApiConfig {
             sessions: SessionSettings::from_env(env)?,
             bootstrap: BootstrapConfig::from_env(env, &tenancy)?,
             tenancy,
-            mfa_key: env.required("MFA_ENCRYPTION_KEY")?,
+            data_key: env.required("DATA_ENCRYPTION_KEY")?,
+            oidc_allow_http: env.optional("OIDC_ALLOW_HTTP", false)?,
         })
     }
 }
@@ -664,7 +669,7 @@ mod tests {
             ("VALKEY_URL", VALKEY_URL),
             ("PUBLIC_URL", "https://planner.example.org/"),
             (
-                "MFA_ENCRYPTION_KEY",
+                "DATA_ENCRYPTION_KEY",
                 "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
             ),
         ]);

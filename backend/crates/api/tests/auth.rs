@@ -506,6 +506,7 @@ async fn a_reset_link_sets_a_new_password_and_ends_every_session() {
             password_hash: None,
             account_type: AccountType::Internal,
             tenant_role: TenantRole::Member,
+            local_account: false,
         },
     )
     .await

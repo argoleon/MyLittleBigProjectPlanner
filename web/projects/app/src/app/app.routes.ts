@@ -42,13 +42,27 @@ export const routes: Routes = [
     path: '',
     component: MainLayout,
     canActivate: [authGuard],
-    children: NAVIGATION.map((item) => ({
-      path: item.route.slice(1),
-      pathMatch: 'full' as const,
-      title: item.labelKey,
-      data: { titleKey: item.labelKey, icon: item.icon },
-      loadComponent: () => import('./coming-soon/coming-soon-page').then((m) => m.ComingSoonPage),
-    })),
+    children: [
+      ...NAVIGATION.filter((item) => item.route !== '/admin').map((item) => ({
+        path: item.route.slice(1),
+        pathMatch: 'full' as const,
+        title: item.labelKey,
+        data: { titleKey: item.labelKey, icon: item.icon },
+        loadComponent: () => import('./coming-soon/coming-soon-page').then((m) => m.ComingSoonPage),
+      })),
+      {
+        path: 'admin',
+        loadComponent: () => import('./admin/admin-page').then((m) => m.AdminPage),
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'authentication' },
+          {
+            path: 'authentication',
+            title: 'admin.tabs.authentication',
+            loadComponent: () => import('./admin/authentication-settings').then((m) => m.AuthenticationSettings),
+          },
+        ],
+      },
+    ],
   },
   { path: '**', redirectTo: '' },
 ];

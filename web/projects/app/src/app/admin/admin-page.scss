@@ -1,0 +1,15 @@
+.eyebrow {
+  margin: 0;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.title {
+  margin: var(--app-space-1) 0 var(--app-space-4);
+  font: var(--mat-sys-headline-medium);
+}
+
+.panel {
+  display: block;
+  padding-top: var(--app-space-6);
+}

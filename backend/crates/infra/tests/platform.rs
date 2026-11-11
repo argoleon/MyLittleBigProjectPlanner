@@ -266,6 +266,7 @@ async fn fill_beta(db: &TestDb) -> (TestMember, TestMember) {
             password_hash: None,
             account_type: AccountType::Internal,
             tenant_role: TenantRole::Member,
+            local_account: false,
         },
     )
     .await
@@ -447,6 +448,10 @@ async fn bootstrap_creates_the_first_tenant_and_super_admin_once() {
         .unwrap()
         .unwrap();
     assert_eq!(member.member.tenant_role, TenantRole::TenantAdmin);
+    assert!(
+        member.member.local_account,
+        "a local account: a way in if the SSO breaks"
+    );
     assert!(infra::credentials::verify_password(
         "bootstrap passphrase",
         member.password_hash.as_deref().unwrap()

@@ -5,17 +5,13 @@
 //! module computes the codes and stores the state, always in a tenant
 //! transaction (row-level security shows the current tenant's members only).
 
-use aes_gcm::aead::{Aead, KeyInit, Payload};
-use aes_gcm::{Aes256Gcm, Nonce};
-use base64::Engine;
-use base64::engine::general_purpose::STANDARD;
 use domain::mfa::{BACKUP_CODE_ALPHABET, BACKUP_CODE_CHARS, BACKUP_CODE_COUNT, TOTP_DIGITS, TOTP_STEP_SECS};
 use sqlx::postgres::PgConnection;
 use totp_rs::{Algorithm, Builder, Totp};
 use uuid::Uuid;
 
-use crate::config::Secret;
 use crate::credentials::{constant_time_eq, token_hash};
+pub use crate::crypto::{CryptoError, SecretCipher};
 use crate::id::new_id;
 
 /// Name shown by authenticator apps next to the account.
@@ -26,65 +22,12 @@ const SECRET_BYTES: usize = 20;
 
 #[derive(Debug, thiserror::Error)]
 pub enum MfaError {
-    #[error("MFA_ENCRYPTION_KEY must be 32 bytes encoded in base64")]
-    Key,
-    #[error("cannot encrypt or decrypt a TOTP secret")]
-    Cipher,
+    #[error(transparent)]
+    Crypto(#[from] CryptoError),
     #[error("invalid TOTP secret: {0}")]
     Totp(String),
     #[error("cannot draw the QR code: {0}")]
     Qr(String),
-}
-
-/// Encrypts TOTP secrets with AES-256-GCM. The account id is the associated
-/// data: a ciphertext copied to another account does not decrypt.
-#[derive(Clone)]
-pub struct MfaCipher {
-    cipher: Aes256Gcm,
-}
-
-impl std::fmt::Debug for MfaCipher {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("MfaCipher").finish_non_exhaustive()
-    }
-}
-
-impl MfaCipher {
-    /// `key`: 32 random bytes in base64 (`MFA_ENCRYPTION_KEY`).
-    pub fn new(key: &Secret) -> Result<Self, MfaError> {
-        let bytes = STANDARD.decode(key.expose().trim()).map_err(|_| MfaError::Key)?;
-        let cipher = Aes256Gcm::new_from_slice(&bytes).map_err(|_| MfaError::Key)?;
-        Ok(Self { cipher })
-    }
-
-    /// `(ciphertext, nonce)` of `secret`.
-    pub fn encrypt(&self, account_id: Uuid, secret: &[u8]) -> Result<(Vec<u8>, Vec<u8>), MfaError> {
-        let nonce: [u8; 12] = rand::random();
-        let ciphertext = self
-            .cipher
-            .encrypt(
-                &Nonce::from(nonce),
-                Payload {
-                    msg: secret,
-                    aad: account_id.as_bytes(),
-                },
-            )
-            .map_err(|_| MfaError::Cipher)?;
-        Ok((ciphertext, nonce.to_vec()))
-    }
-
-    pub fn decrypt(&self, account_id: Uuid, ciphertext: &[u8], nonce: &[u8]) -> Result<Vec<u8>, MfaError> {
-        let nonce: [u8; 12] = nonce.try_into().map_err(|_| MfaError::Cipher)?;
-        self.cipher
-            .decrypt(
-                &Nonce::from(nonce),
-                Payload {
-                    msg: ciphertext,
-                    aad: account_id.as_bytes(),
-                },
-            )
-            .map_err(|_| MfaError::Cipher)
-    }
 }
 
 /// A new random TOTP secret.
@@ -327,82 +270,14 @@ pub async fn disable(conn: &mut PgConnection, account_id: Uuid) -> Result<(), sq
     Ok(())
 }
 
-// --- Authentication policy of the tenant -------------------------------------------
-
-/// Authentication policy of the current tenant (§3), set by its tenant admin.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct AuthPolicy {
-    /// Members signing in with a password must use two-step verification.
-    pub local_accounts_require_mfa: bool,
-    pub version: i64,
-}
-
-/// The policy of the current tenant.
-pub async fn auth_policy(conn: &mut PgConnection) -> Result<AuthPolicy, sqlx::Error> {
-    sqlx::query_as!(
-        AuthPolicy,
-        "SELECT local_accounts_require_mfa, version FROM tenant_auth_policy"
-    )
-    .fetch_one(conn)
-    .await
-}
-
-/// Changes the policy if its version is one of `expected_versions` (`None`:
-/// any). `None` when the version did not match.
-pub async fn set_auth_policy(
-    conn: &mut PgConnection,
-    local_accounts_require_mfa: bool,
-    expected_versions: Option<&[i64]>,
-) -> Result<Option<AuthPolicy>, sqlx::Error> {
-    sqlx::query_as!(
-        AuthPolicy,
-        r#"
-        UPDATE tenant_auth_policy
-        SET local_accounts_require_mfa = $1, version = version + 1
-        WHERE $2::bigint[] IS NULL OR version = ANY($2)
-        RETURNING local_accounts_require_mfa, version
-        "#,
-        local_accounts_require_mfa,
-        expected_versions
-    )
-    .fetch_optional(conn)
-    .await
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn cipher() -> MfaCipher {
-        MfaCipher::new(&Secret::new(STANDARD.encode([7_u8; 32]))).unwrap()
-    }
-
     #[test]
-    fn secrets_round_trip_and_are_bound_to_their_account() {
-        let (account, other) = (new_id(), new_id());
-        let secret = generate_secret();
-        assert_eq!(secret.len(), 20);
-        let (ciphertext, nonce) = cipher().encrypt(account, &secret).unwrap();
-        assert_ne!(ciphertext, secret);
-        assert_eq!(cipher().decrypt(account, &ciphertext, &nonce).unwrap(), secret);
-        assert!(
-            cipher().decrypt(other, &ciphertext, &nonce).is_err(),
-            "not for another account"
-        );
-        let wrong_key = MfaCipher::new(&Secret::new(STANDARD.encode([8_u8; 32]))).unwrap();
-        assert!(wrong_key.decrypt(account, &ciphertext, &nonce).is_err());
-        let (again, nonce_again) = cipher().encrypt(account, &secret).unwrap();
-        assert_ne!(
-            (again, nonce_again),
-            (ciphertext, nonce),
-            "a fresh nonce each time"
-        );
-    }
-
-    #[test]
-    fn keys_must_be_32_bytes_of_base64() {
-        assert!(MfaCipher::new(&Secret::new(STANDARD.encode([1_u8; 16]))).is_err());
-        assert!(MfaCipher::new(&Secret::new("not base64!")).is_err());
+    fn secrets_are_160_bits() {
+        assert_eq!(generate_secret().len(), 20);
+        assert_ne!(generate_secret(), generate_secret());
     }
 
     #[test]

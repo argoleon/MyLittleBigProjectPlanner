@@ -288,6 +288,7 @@ impl TestDb {
                 password_hash: Some(hash),
                 account_type,
                 tenant_role: role,
+                local_account: false,
             },
         )
         .await
@@ -391,4 +392,83 @@ pub async fn delete_caught_emails(recipient: &str) {
         .await
         .expect("delete in Mailpit");
     assert!(res.status().is_success(), "Mailpit answered {}", res.status());
+}
+
+// --- OIDC provider (Keycloak) -------------------------------------------------
+
+/// Issuer of the test OIDC provider: the realm `mlbpp-test` of the Keycloak
+/// of `deploy/compose.dev.yaml` (`TEST_OIDC_ISSUER`).
+pub fn oidc_issuer() -> String {
+    std::env::var("TEST_OIDC_ISSUER").unwrap_or_else(|_| "http://keycloak:8080/realms/mlbpp-test".to_owned())
+}
+
+/// Client of the test realm (`deploy/dev/keycloak/mlbpp-test-realm.json`).
+pub const OIDC_CLIENT_ID: &str = "mlbpp";
+pub const OIDC_CLIENT_SECRET: &str = "test-only-client-secret"; // gitleaks:allow (test realm)
+
+/// A user of the test realm.
+#[derive(Debug, Clone, Copy)]
+pub struct OidcUser {
+    pub username: &'static str,
+    pub password: &'static str,
+    pub email: &'static str,
+}
+
+/// Email verified by the provider.
+pub const ALICE: OidcUser = OidcUser {
+    username: "alice",
+    password: "alice-test-password", // gitleaks:allow (test realm)
+    email: "alice@acme.test",
+};
+/// Email not verified by the provider.
+pub const BOB: OidcUser = OidcUser {
+    username: "bob",
+    password: "bob-test-password", // gitleaks:allow (test realm)
+    email: "bob@acme.test",
+};
+/// Email verified, member of no test tenant.
+pub const CAROL: OidcUser = OidcUser {
+    username: "carol",
+    password: "carol-test-password", // gitleaks:allow (test realm)
+    email: "carol@outsider.test",
+};
+
+/// Signs `user` in on the provider's page at `authorization_url`, as a
+/// browser would (cookies, login form), and returns where the provider sends
+/// the browser back: the redirect URI with `code` and `state`.
+pub async fn provider_login(authorization_url: &str, user: OidcUser) -> String {
+    let browser = reqwest::Client::builder()
+        .cookie_store(true)
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .expect("browser");
+    let page = browser
+        .get(authorization_url)
+        .send()
+        .await
+        .expect("the provider's login page");
+    assert_eq!(page.status(), 200, "login page of {authorization_url}");
+    let html = page.text().await.expect("login page");
+    let form = html
+        .find("id=\"kc-form-login\"")
+        .map(|at| &html[at..])
+        .expect("Keycloak's login form");
+    let start = form.find("action=\"").expect("form action") + "action=\"".len();
+    let end = start + form[start..].find('"').expect("end of the form action");
+    let action = form[start..end].replace("&amp;", "&");
+    let answer = browser
+        .post(action)
+        .form(&[
+            ("username", user.username),
+            ("password", user.password),
+            ("credentialId", ""),
+        ])
+        .send()
+        .await
+        .expect("login form submission");
+    assert_eq!(answer.status(), 302, "the provider accepts {}", user.username);
+    answer.headers()["location"]
+        .to_str()
+        .expect("redirect URL")
+        .to_owned()
 }

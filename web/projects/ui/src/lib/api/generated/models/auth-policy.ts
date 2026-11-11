@@ -8,8 +8,25 @@
 export interface AuthPolicy {
 
   /**
+   * Internal members sign in through an enabled OIDC provider of the
+   * tenant, except the members marked as local accounts. Without an
+   * enabled provider, nobody is held to it.
+   */
+  internalAccountsRequireSso: boolean;
+
+  /**
    * Members signing in with a password must use two-step verification;
    * those without it enroll at their next sign-in.
    */
   localAccountsRequireMfa: boolean;
+
+  /**
+   * Request portal: sign-in with a link sent by email.
+   */
+  portalMagicLinkEnabled: boolean;
+
+  /**
+   * Request portal: sign-in with a password.
+   */
+  portalPasswordEnabled: boolean;
 }

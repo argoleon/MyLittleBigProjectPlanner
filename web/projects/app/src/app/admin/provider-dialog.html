@@ -1,0 +1,50 @@
+<h2 mat-dialog-title>{{ (editing ? 'admin.auth.providerEdit' : 'admin.auth.providerAdd') | transloco }}</h2>
+<form [formGroup]="form" (ngSubmit)="save()" novalidate>
+  <mat-dialog-content class="fields">
+    @if (errorKey(); as key) {
+      <p class="message error" role="alert">{{ key | transloco }}</p>
+    }
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'admin.auth.displayName' | transloco }}</mat-label>
+      <input matInput formControlName="displayName" required />
+      <mat-hint>{{ 'admin.auth.displayNameHint' | transloco }}</mat-hint>
+      <mat-error>{{ fieldError('displayName') ?? '' | transloco }}</mat-error>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'admin.auth.issuer' | transloco }}</mat-label>
+      <input matInput formControlName="issuer" type="url" required />
+      <mat-hint>{{ 'admin.auth.issuerHint' | transloco }}</mat-hint>
+      <mat-error>{{ fieldError('issuer') ?? '' | transloco }}</mat-error>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'admin.auth.clientId' | transloco }}</mat-label>
+      <input matInput formControlName="clientId" autocomplete="off" required />
+      <mat-error>{{ fieldError('clientId') ?? '' | transloco }}</mat-error>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'admin.auth.clientSecret' | transloco }}</mat-label>
+      <input matInput formControlName="clientSecret" type="password" autocomplete="new-password" [required]="!editing" />
+      @if (editing) {
+        <mat-hint>{{ 'admin.auth.clientSecretKeep' | transloco }}</mat-hint>
+      }
+      <mat-error>{{ fieldError('clientSecret') ?? '' | transloco }}</mat-error>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'admin.auth.emailClaim' | transloco }}</mat-label>
+      <input matInput formControlName="emailClaim" autocomplete="off" required />
+      <mat-hint>{{ 'admin.auth.emailClaimHint' | transloco }}</mat-hint>
+      <mat-error>{{ fieldError('emailClaim') ?? '' | transloco }}</mat-error>
+    </mat-form-field>
+    <mat-slide-toggle formControlName="enabled">{{ 'admin.auth.enabled' | transloco }}</mat-slide-toggle>
+    @if (data.provider; as provider) {
+      <p class="redirect">
+        <span class="redirect-label" id="redirect-label">{{ 'admin.auth.redirectUri' | transloco }}</span>
+        <code aria-labelledby="redirect-label">{{ provider.redirectUri }}</code>
+      </p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button matButton type="button" mat-dialog-close>{{ 'admin.auth.cancel' | transloco }}</button>
+    <button matButton="filled" type="submit" [disabled]="saving()">{{ 'admin.auth.save' | transloco }}</button>
+  </mat-dialog-actions>
+</form>

@@ -71,6 +71,7 @@ async fn adding_an_existing_email_to_another_tenant_links_the_same_account() {
             password_hash: None,
             account_type: AccountType::External,
             tenant_role: TenantRole::Member,
+            local_account: false,
         },
     )
     .await
@@ -105,6 +106,7 @@ async fn an_external_member_cannot_hold_an_administration_role() {
             password_hash: None,
             account_type: AccountType::External,
             tenant_role: TenantRole::TenantAdmin,
+            local_account: false,
         },
     )
     .await

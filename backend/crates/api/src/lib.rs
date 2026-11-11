@@ -19,6 +19,7 @@ pub mod platform;
 pub mod problem;
 pub mod reference_items;
 mod routes;
+pub mod sso;
 pub mod tenant;
 
 use std::future::{Future, IntoFuture};

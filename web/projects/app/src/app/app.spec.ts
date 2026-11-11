@@ -93,6 +93,10 @@ async function boot(
   await navigated;
   TestBed.tick();
   const request = await answer('/api/v1/tenant', tenant, tenant ? 200 : 404);
+  if (!session) {
+    // The sign-in page also lists the tenant's identity providers.
+    await answer('/api/v1/auth/providers', []);
+  }
   await fixture.whenStable();
   return { fixture, request };
 }
@@ -228,6 +232,7 @@ describe('App', () => {
     const request = await answer('/api/v1/auth/sign-out', null, 204);
     expect(request.request.method).toBe('POST');
     await answer('/api/v1/tenant', TENANT);
+    await answer('/api/v1/auth/providers', []);
     await fixture.whenStable();
     expect(TestBed.inject(Router).url).toBe('/sign-in');
   });

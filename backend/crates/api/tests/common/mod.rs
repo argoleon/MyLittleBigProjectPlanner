@@ -80,15 +80,17 @@ pub fn offline_auth(tenancy: &Tenancy) -> Auth {
         "offline:",
         public_url(tenancy),
         session_settings(),
-        mfa_cipher(),
+        data_cipher(),
+        true,
     )
+    .unwrap()
 }
 
-/// The key encrypting TOTP secrets in the tests (32 bytes in base64).
-pub const MFA_KEY: &str = "S2V5IG9mIHRoZSB0ZXN0cywgMzIgYnl0ZXMgbG9uZyE="; // gitleaks:allow
+/// The key encrypting stored secrets in the tests (32 bytes in base64).
+pub const DATA_KEY: &str = "S2V5IG9mIHRoZSB0ZXN0cywgMzIgYnl0ZXMgbG9uZyE="; // gitleaks:allow
 
-pub fn mfa_cipher() -> infra::mfa::MfaCipher {
-    infra::mfa::MfaCipher::new(&infra::config::Secret::new(MFA_KEY)).unwrap()
+pub fn data_cipher() -> infra::crypto::SecretCipher {
+    infra::crypto::SecretCipher::new(&infra::config::Secret::new(DATA_KEY)).unwrap()
 }
 
 pub async fn start(db: &TestDb, tenancy: Tenancy) -> TestApi {
@@ -98,8 +100,11 @@ pub async fn start(db: &TestDb, tenancy: Tenancy) -> TestApi {
         &key_prefix,
         public_url(&tenancy),
         session_settings(),
-        mfa_cipher(),
-    );
+        data_cipher(),
+        // The test identity provider (Keycloak) is served over plain HTTP.
+        true,
+    )
+    .unwrap();
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let base = format!("http://{}", listener.local_addr().unwrap());
     let settings = HttpSettings {

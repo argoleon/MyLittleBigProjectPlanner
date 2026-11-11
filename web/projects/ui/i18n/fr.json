@@ -65,7 +65,9 @@
       "password": "Mot de passe",
       "forgotPassword": "Mot de passe oublié ?",
       "submit": "Se connecter",
-      "passwordChanged": "Votre mot de passe a été changé. Connectez-vous avec le nouveau."
+      "passwordChanged": "Votre mot de passe a été changé. Connectez-vous avec le nouveau.",
+      "continueWith": "Continuer avec {{ name }}",
+      "orLocal": "ou avec un compte local"
     },
     "forgotPassword": {
       "title": "Mot de passe oublié",
@@ -128,6 +130,59 @@
       "close": "Fermer"
     }
   },
+  "admin": {
+    "tabs": {
+      "label": "Rubriques de l’administration",
+      "authentication": "Authentification"
+    },
+    "auth": {
+      "policyTitle": "Politique d’authentification",
+      "providersTitle": "Fournisseurs d’identité (OIDC)",
+      "providersIntro": "Entra ID, Google, Okta, Keycloak… Les membres se connectent avec le compte du fournisseur dont l’e-mail vérifié est le leur. Les annuaires SAML et LDAP passent par Keycloak.",
+      "noProvider": "Aucun fournisseur d’identité : les membres se connectent avec leur mot de passe.",
+      "policy": {
+        "internalAccountsRequireSso": {
+          "label": "Comptes internes : connexion par le fournisseur d’identité imposée",
+          "hint": "Sauf les membres marqués comptes locaux (prestataires hors annuaire)."
+        },
+        "localAccountsRequireMfa": {
+          "label": "Comptes locaux : vérification en deux étapes obligatoire",
+          "hint": "Les membres qui se connectent par mot de passe l’activent à leur prochaine connexion."
+        },
+        "portalPasswordEnabled": {
+          "label": "Portail : connexion par mot de passe",
+          "hint": "Pour les comptes externes du portail de demandes."
+        },
+        "portalMagicLinkEnabled": {
+          "label": "Portail : connexion par lien envoyé par e-mail",
+          "hint": "Pour les comptes externes du portail de demandes."
+        }
+      },
+      "ssoWithoutProvider": "Aucun fournisseur d’identité n’est activé : la règle s’appliquera dès qu’il y en aura un.",
+      "policySaved": "La politique est enregistrée.",
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "providerAdd": "Ajouter un fournisseur",
+      "providerEdit": "Modifier le fournisseur",
+      "displayName": "Nom sur le bouton",
+      "displayNameHint": "« Continuer avec … » sur la page de connexion",
+      "issuer": "URL de l’émetteur",
+      "issuerHint": "ex. https://login.microsoftonline.com/<tenant>/v2.0",
+      "clientId": "Identifiant client",
+      "clientSecret": "Secret client",
+      "clientSecretKeep": "Laisser vide pour conserver le secret enregistré",
+      "emailClaim": "Claim de l’e-mail",
+      "emailClaimHint": "email (vérifié par le fournisseur), ou un claim de l’annuaire comme upn",
+      "enabled": "Activé sur la page de connexion",
+      "redirectUri": "URI de redirection à déclarer chez le fournisseur :",
+      "enabledState": "Activé",
+      "disabledState": "Désactivé",
+      "test": "Tester la connexion",
+      "testOk": "Le fournisseur répond.",
+      "editOf": "Modifier {{ name }}",
+      "deleteOf": "Supprimer {{ name }}"
+    }
+  },
   "errors": {
     "bad_request": "La requête est mal formée.",
     "validation_failed": "Certains champs sont invalides.",
@@ -151,12 +206,20 @@
     "auth": {
       "invalid_credentials": "E-mail ou mot de passe incorrect.",
       "reset_token_invalid": "Ce lien est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
-      "invalid_code": "Code incorrect ou déjà utilisé."
+      "invalid_code": "Code incorrect ou déjà utilisé.",
+      "sso_required": "Votre organisation vous connecte par son fournisseur d’identité : utilisez le bouton ci-dessus.",
+      "oidc_failed": "La connexion par le fournisseur d’identité a échoué. Réessayez.",
+      "oidc_no_member": "Aucun membre de cette organisation n’a l’e-mail de ce compte.",
+      "oidc_email_unverified": "Le fournisseur d’identité ne confirme pas l’e-mail de ce compte."
     },
     "mfa": {
       "already_enabled": "La vérification en deux étapes est déjà activée.",
       "not_started": "Recommencez l’activation.",
       "required_by_policy": "Votre organisation exige la vérification en deux étapes."
+    },
+    "oidc_provider": {
+      "duplicate": "Ce fournisseur d’identité est déjà configuré.",
+      "unreachable": "Le fournisseur d’identité est injoignable ou a mal répondu."
     },
     "idempotency_key": {
       "invalid": "La requête est mal formée.",

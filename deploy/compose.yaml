@@ -104,12 +104,12 @@ services:
       TENANCY_MODE: ${TENANCY_MODE:-single}
       TENANT_DEFAULT_SLUG: ${TENANT_DEFAULT_SLUG:-default}
       TENANT_BASE_DOMAIN: ${TENANT_BASE_DOMAIN:-}
-      # Encrypts the TOTP secrets of two-step verification.
-      MFA_ENCRYPTION_KEY_FILE: /run/secrets/mfa_encryption_key
+      # Encrypts the secrets stored in the database (TOTP, OIDC clients).
+      DATA_ENCRYPTION_KEY_FILE: /run/secrets/data_encryption_key
       # Sessions and rate limits use Valkey (VALKEY_URL_FILE above).
       # Links of emails; multi-tenant mode needs https://{tenant}.<domain>.
       PUBLIC_URL: ${PUBLIC_URL:-https://${MLBPP_DOMAIN}${MLBPP_PUBLIC_PORT:-}}
-    secrets: [database_url, valkey_url, mfa_encryption_key]
+    secrets: [database_url, valkey_url, data_encryption_key]
     networks: [edge, backend]
     depends_on:
       migrate:
@@ -548,9 +548,9 @@ secrets:
   # SMTP server of the emails: replace the placeholder (deploy/README.md).
   smtp_url:
     file: ./secrets/smtp_url
-  # Key encrypting the TOTP secrets at rest (32 random bytes, base64).
-  mfa_encryption_key:
-    file: ./secrets/mfa_encryption_key
+  # Key encrypting the secrets stored in the database (32 random bytes, base64).
+  data_encryption_key:
+    file: ./secrets/data_encryption_key
   # Password of the first platform super admin (BOOTSTRAP_ADMIN_EMAIL).
   bootstrap_admin_password:
     file: ./secrets/bootstrap_admin_password

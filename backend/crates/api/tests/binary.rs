@@ -100,7 +100,7 @@ fn with_auth_settings(command: &mut Command) -> &mut Command {
         .env("PUBLIC_URL", "https://planner.example.test")
         // 32 bytes in base64, for the tests only.
         .env(
-            "MFA_ENCRYPTION_KEY",
+            "DATA_ENCRYPTION_KEY",
             "S2V5IG9mIHRoZSB0ZXN0cywgMzIgYnl0ZXMgbG9uZyE=", // gitleaks:allow
         )
 }
