@@ -83,11 +83,14 @@ pub enum ErrorCode {
     InvitationClosed,
     MemberLastAdmin,
     GroupNameTaken,
+    PermissionDenied,
+    RoleLabelTaken,
+    RoleInUse,
 }
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 44] = [
+    pub const ALL: [Self; 47] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -132,6 +135,9 @@ impl ErrorCode {
         Self::InvitationClosed,
         Self::MemberLastAdmin,
         Self::GroupNameTaken,
+        Self::PermissionDenied,
+        Self::RoleLabelTaken,
+        Self::RoleInUse,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -180,6 +186,9 @@ impl ErrorCode {
             Self::InvitationClosed => "invitation.closed",
             Self::MemberLastAdmin => "member.last_admin",
             Self::GroupNameTaken => "group.name_taken",
+            Self::PermissionDenied => "permission.denied",
+            Self::RoleLabelTaken => "role.label_taken",
+            Self::RoleInUse => "role.in_use",
         }
     }
 
@@ -199,6 +208,7 @@ impl ErrorCode {
                 StatusCode::UNAUTHORIZED
             }
             Self::Forbidden
+            | Self::PermissionDenied
             | Self::CsrfInvalid
             | Self::AuthSsoRequired
             | Self::AuthOidcNoMember
@@ -221,7 +231,9 @@ impl ErrorCode {
             | Self::InvitationAlreadyMember
             | Self::InvitationClosed
             | Self::MemberLastAdmin
-            | Self::GroupNameTaken => StatusCode::CONFLICT,
+            | Self::GroupNameTaken
+            | Self::RoleLabelTaken
+            | Self::RoleInUse => StatusCode::CONFLICT,
             Self::PreconditionFailed => StatusCode::PRECONDITION_FAILED,
             Self::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -278,6 +290,9 @@ impl ErrorCode {
             Self::InvitationClosed => "This invitation was already accepted or revoked",
             Self::MemberLastAdmin => "The tenant needs at least one active tenant admin",
             Self::GroupNameTaken => "Another group already has this name",
+            Self::PermissionDenied => "You do not have the permission this needs",
+            Self::RoleLabelTaken => "Another role already has this label",
+            Self::RoleInUse => "Grants use this role: remove them first",
         }
     }
 
@@ -521,7 +536,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 44] = [
+        let expected: [(ErrorCode, u16); 47] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -566,6 +581,9 @@ mod tests {
             (ErrorCode::InvitationClosed, 409),
             (ErrorCode::MemberLastAdmin, 409),
             (ErrorCode::GroupNameTaken, 409),
+            (ErrorCode::PermissionDenied, 403),
+            (ErrorCode::RoleLabelTaken, 409),
+            (ErrorCode::RoleInUse, 409),
         ];
         for (code, status) in expected {
             assert_eq!(code.status().as_u16(), status, "{}", code.as_str());

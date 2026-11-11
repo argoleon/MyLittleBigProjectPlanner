@@ -94,6 +94,16 @@ pub fn data_cipher() -> infra::crypto::SecretCipher {
 }
 
 pub async fn start(db: &TestDb, tenancy: Tenancy) -> TestApi {
+    start_with(db, tenancy, api::app).await
+}
+
+/// [`start`], with the application `build` makes from the state (another
+/// grant source, extra routes).
+pub async fn start_with(
+    db: &TestDb,
+    tenancy: Tenancy,
+    build: impl FnOnce(AppState, &HttpSettings) -> axum::Router,
+) -> TestApi {
     let (valkey, key_prefix) = testkit::valkey().await;
     let auth = Auth::new(
         valkey.clone(),
@@ -111,7 +121,7 @@ pub async fn start(db: &TestDb, tenancy: Tenancy) -> TestApi {
         request_timeout: Duration::from_secs(10),
         body_limit_bytes: 16 * 1024,
     };
-    let app = api::app(AppState::new(db.app_pool.clone(), tenancy, auth), &settings);
+    let app = build(AppState::new(db.app_pool.clone(), tenancy, auth), &settings);
     let (stop, stopped) = oneshot::channel::<()>();
     tokio::spawn(api::serve(
         listener,

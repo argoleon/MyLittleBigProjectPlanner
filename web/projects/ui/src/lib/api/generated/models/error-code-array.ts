@@ -50,5 +50,8 @@ export const ERROR_CODE: ErrorCode[] = [
   'invitation.already_member',
   'invitation.closed',
   'member.last_admin',
-  'group.name_taken'
+  'group.name_taken',
+  'permission.denied',
+  'role.label_taken',
+  'role.in_use'
 ];

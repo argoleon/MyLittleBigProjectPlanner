@@ -28,6 +28,7 @@ use axum::http::request::Parts;
 use domain::tenancy::{Tenancy, tenant_slug_from_host};
 use infra::accounts::Member;
 use infra::health::Dependency;
+use infra::permissions::{GrantSource, NoGrants};
 use infra::sessions::{Session, SessionStage};
 use infra::sqlx::postgres::{PgConnection, PgPool};
 use infra::sqlx::{Postgres, Transaction};
@@ -44,6 +45,8 @@ pub struct AppState {
     /// Checked by `/health/ready`: PostgreSQL, plus the shared services.
     pub(crate) dependencies: Arc<[Dependency]>,
     pub(crate) auth: Arc<Auth>,
+    /// Grants of roles on nodes: none until L03 (`crate::permissions`).
+    pub(crate) grants: Arc<dyn GrantSource>,
 }
 
 impl AppState {
@@ -54,7 +57,15 @@ impl AppState {
             tenancy: Arc::new(tenancy),
             dependencies,
             auth: Arc::new(auth),
+            grants: Arc::new(NoGrants),
         }
+    }
+
+    /// Takes the grants of roles from `grants` (tests; L03 plugs its own).
+    #[must_use]
+    pub fn with_grants(mut self, grants: Arc<dyn GrantSource>) -> Self {
+        self.grants = grants;
+        self
     }
 
     /// Adds dependencies to the readiness checks (Valkey, S3…).
