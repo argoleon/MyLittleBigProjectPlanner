@@ -71,6 +71,11 @@ export const routes: Routes = [
             loadComponent: () => import('./admin/groups-tab').then((m) => m.GroupsTab),
           },
           {
+            path: 'roles',
+            title: 'admin.tabs.roles',
+            loadComponent: () => import('./admin/roles-tab').then((m) => m.RolesTab),
+          },
+          {
             path: 'authentication',
             title: 'admin.tabs.authentication',
             loadComponent: () => import('./admin/authentication-settings').then((m) => m.AuthenticationSettings),

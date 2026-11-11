@@ -1,0 +1,32 @@
+@use './admin-shared';
+
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--app-space-4);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(0, 2fr);
+  align-items: start;
+  gap: var(--app-space-4);
+
+  @media (width <= 840px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.list {
+  // The role shown, as the active entry of the navigation drawer.
+  --mat-list-list-item-selected-container-color: var(--mat-sys-secondary-container);
+
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface);
+}
+
+.detail {
+  display: block;
+  min-width: 0;
+}
