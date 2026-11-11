@@ -164,7 +164,7 @@ To send telemetry to another backend, point Alloy at it (`deploy/observability/c
 ## Running the stack locally
 
 ```sh
-just compose-up        # builds the images, starts the stack: https://localhost:18443
+just compose-up        # builds the images, starts the stack: https://localhost:18443 (or https://127.0.0.1:18443)
 just compose-test      # smoke, backup, scaling and profile tests
 just images-test       # image tests and SBOMs
 just compose-down      # stops it (data kept); just compose-reset deletes the data
