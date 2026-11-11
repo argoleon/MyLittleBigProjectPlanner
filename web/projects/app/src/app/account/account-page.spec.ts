@@ -19,6 +19,7 @@ const ME: Me = {
   displayName: 'Lucas Bernard',
   locale: null,
   timeZone: null,
+  hasPassword: true,
   tenantId: 't1',
   tenantRole: 'tenant_admin',
   accountType: 'internal',

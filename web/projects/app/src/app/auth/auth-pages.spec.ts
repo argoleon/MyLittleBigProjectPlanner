@@ -160,6 +160,11 @@ describe('SignInPage', () => {
     expect(text('[role="alert"]')).toBe('Your organization signs you in through its identity provider: use the button above.');
   });
 
+  it('confirms that the account was erased', async () => {
+    const { text } = await openSignIn('/sign-in?accountErased=true');
+    expect(text('[role="status"]')).toBe('Your account was deleted.');
+  });
+
   it('confirms a password change and links to the reset request', async () => {
     const { text, element } = await openSignIn('/sign-in?passwordChanged=1');
     expect(text('[role="status"]')).toBe('Your password has been changed. Sign in with the new one.');

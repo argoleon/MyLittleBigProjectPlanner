@@ -224,6 +224,17 @@ describe('AuthService', () => {
     auth.sessionEnded();
     expect(navigate).toHaveBeenCalledTimes(1);
   });
+
+  it('forgets an erased account and says so on the sign-in page, without way back', async () => {
+    const { auth, backend, router } = setUp();
+    void auth.load();
+    backend.respond(200);
+    await settle();
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    await auth.accountErased();
+    expect(auth.session()).toBeNull();
+    expect(navigate).toHaveBeenCalledWith(['/sign-in'], { queryParams: { accountErased: 'true' } });
+  });
 });
 
 describe('pathForStage', () => {

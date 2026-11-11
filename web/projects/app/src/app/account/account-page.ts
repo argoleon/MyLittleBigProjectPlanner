@@ -25,16 +25,17 @@ import {
 import { MfaDialog } from '../layout/mfa-dialog';
 import { MyAccount } from './my-account';
 import { PasswordDialog } from './password-dialog';
+import { PersonalDataCard } from './personal-data-card';
 import { SessionsDialog } from './sessions-dialog';
 
 /** What the language select holds: the account's language, or `auto`. */
 const AUTO = 'auto';
 
 /**
- * My account (mockup 10, L02-US08): preferences, security (two-step
- * verification, password, sessions) and the account's organizations. API
- * tokens and authorized applications come with L15, personal data with
- * L02-US09.
+ * My account (mockup 10, L02-US08, L02-US09): preferences, security
+ * (two-step verification, password, sessions), personal data (export,
+ * erasure) and the account's organizations. API
+ * tokens and authorized applications come with L15.
  */
 @Component({
   selector: 'app-account-page',
@@ -47,6 +48,7 @@ const AUTO = 'auto';
     MatProgressBarModule,
     MatSelectModule,
     MatSlideToggleModule,
+    PersonalDataCard,
     TranslocoPipe,
   ],
   styleUrl: './account-page.scss',

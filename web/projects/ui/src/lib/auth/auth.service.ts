@@ -202,6 +202,15 @@ export class AuthService {
    * The API answered 401 to a request: the session ended (expired, signed
    * out elsewhere, password reset). Shows the sign-in page, then comes back.
    */
+  /**
+   * The account was erased: every session has ended. Forgets it, then
+   * shows the sign-in page saying so.
+   */
+  async accountErased(): Promise<void> {
+    this.state.set(null);
+    await this.router.navigate([SIGN_IN_PATH], { queryParams: { accountErased: 'true' } });
+  }
+
   sessionEnded(): void {
     const wasSignedIn = this.state() !== null;
     this.state.set(null);

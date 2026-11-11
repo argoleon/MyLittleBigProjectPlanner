@@ -44,6 +44,7 @@ export const ME = {
   displayName: SESSION.account.displayName,
   locale: null,
   timeZone: null,
+  hasPassword: true,
   tenantId: TENANT.id,
   tenantRole: 'member',
   accountType: 'internal',
