@@ -2,7 +2,14 @@ import { TestBed } from '@angular/core/testing';
 import { TranslocoService } from '@jsverse/transloco';
 
 import { provideI18nTesting } from '../testing/i18n-testing';
-import { LocaleService, formattingLocale, isLanguage, languageFrom } from './locale.service';
+import {
+  LocaleService,
+  formattingLocale,
+  isKnownTimeZone,
+  isLanguage,
+  knownTimeZones,
+  languageFrom,
+} from './locale.service';
 
 describe('language helpers', () => {
   it('picks the first supported browser language', () => {
@@ -15,6 +22,16 @@ describe('language helpers', () => {
   it('keeps the browser region for formatting when it matches', () => {
     expect(formattingLocale('en', ['fr-FR', 'en-GB'])).toBe('en-GB');
     expect(formattingLocale('fr', ['en-GB'])).toBe('fr');
+  });
+
+  it('knows the IANA time zones of the browser', () => {
+    expect(isKnownTimeZone('Europe/Paris')).toBe(true);
+    expect(isKnownTimeZone('UTC')).toBe(true);
+    expect(isKnownTimeZone('Mars/Olympus_Mons')).toBe(false);
+    const zones = knownTimeZones();
+    expect(zones).toContain('America/New_York');
+    expect(zones).toContain('UTC');
+    expect(zones).toEqual([...zones].sort());
   });
 
   it('recognises languages', () => {
@@ -62,5 +79,27 @@ describe('LocaleService', () => {
 
   it('exposes the browser time zone', () => {
     expect(create().timeZone()).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  });
+
+  it('shows instants in the time zone of the account, else the browser’s', () => {
+    const locale = create();
+    const browser = locale.timeZone();
+    locale.useTimeZone('Asia/Tokyo');
+    expect(locale.timeZone()).toBe('Asia/Tokyo');
+    locale.useTimeZone('Mars/Olympus_Mons');
+    expect(locale.timeZone()).toBe(browser);
+    locale.useTimeZone('Asia/Tokyo');
+    locale.useTimeZone(null);
+    expect(locale.timeZone()).toBe(browser);
+  });
+
+  it('tells the languages the user picks, not the ones applied', () => {
+    const locale = create();
+    const picked: string[] = [];
+    locale.picked.subscribe((language) => picked.push(language));
+    locale.use('fr');
+    locale.pick('en');
+    expect(picked).toEqual(['en']);
+    expect(locale.language()).toBe('en');
   });
 });

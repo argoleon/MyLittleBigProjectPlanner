@@ -76,9 +76,12 @@ test.describe('application shell', () => {
 
   test('switches language from the top app bar', async ({ page }) => {
     await page.goto('/workload');
+    const saved = page.waitForRequest((r) => r.url().endsWith('/api/v1/me/preferences') && r.method() === 'PUT');
     await page.getByRole('button', { name: 'Language: English' }).click();
     await page.getByRole('menuitemradio', { name: 'Français' }).click();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Charge');
+    // Kept for the account too.
+    expect((await saved).postDataJSON()).toEqual({ locale: 'fr', timeZone: null });
     await expect(page.getByRole('navigation', { name: 'Navigation principale' })).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
     await expect(page).toHaveTitle('Charge · My Little Big Project Planner');

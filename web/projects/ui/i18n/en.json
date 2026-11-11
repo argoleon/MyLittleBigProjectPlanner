@@ -94,7 +94,8 @@
     "account": {
       "menu": "Account: {{ name }}",
       "signOut": "Sign out",
-      "security": "Two-step verification"
+      "security": "Two-step verification",
+      "myAccount": "My account"
     },
     "verify": {
       "step": "Step 2 of 2",
@@ -394,7 +395,8 @@
       "email": "Enter a valid email address.",
       "unknown_time_zone": "This time zone is unknown.",
       "not_default_slug": "In single-organization mode, only the configured identifier is allowed.",
-      "external_member_only": "An external account cannot administer the organization."
+      "external_member_only": "An external account cannot administer the organization.",
+      "incorrect": "Incorrect value."
     },
     "invitation": {
       "invalid": "This invitation link is invalid, has expired or was already used. Ask for a new one.",
@@ -414,6 +416,12 @@
     "role": {
       "label_taken": "Another role already has this name.",
       "in_use": "Grants use this role: remove them first."
+    },
+    "account": {
+      "no_password": "Your organization signs you in: your account has no password to change."
+    },
+    "session": {
+      "current": "This is the current session: sign out instead."
     }
   },
   "dialog": {
@@ -445,5 +453,59 @@
     "manage_sprints": "Manage sprints",
     "manage_members": "Manage members",
     "administer_node": "Administer the node"
+  },
+  "account": {
+    "title": "My account",
+    "eyebrow": "Global account",
+    "organizations": {
+      "title": "My organizations",
+      "current": "Current"
+    },
+    "preferences": {
+      "title": "Preferences",
+      "language": "Language",
+      "languageAuto": "This device’s language",
+      "timeZone": "Time zone",
+      "timeZoneAuto": "The organization’s ({{ zone }})",
+      "saved": "Preferences saved."
+    },
+    "security": {
+      "title": "Security",
+      "mfa": "Two-step verification",
+      "mfaOn": "Authenticator app · backup codes left: {{ count }}",
+      "mfaOff": "Off: your password alone signs you in.",
+      "mfaRequired": "required by your organization",
+      "password": "Password",
+      "passwordHint": "Changing it signs your other sessions out.",
+      "changePassword": "Change",
+      "sessions": "Active sessions",
+      "sessionsSummary": "Devices: {{ count }}",
+      "lastSignIn": "latest sign-in {{ when }}",
+      "manageSessions": "Manage"
+    },
+    "password": {
+      "title": "Change your password",
+      "intro": "Your other sessions will be signed out; this one stays open.",
+      "current": "Current password",
+      "new": "New password",
+      "newHint": "At least {{ count }} characters.",
+      "confirmation": "Confirm the new password",
+      "mismatch": "The two passwords differ.",
+      "submit": "Change the password",
+      "changed": "Password changed. Your other sessions are signed out.",
+      "incorrect": "This is not your current password."
+    },
+    "sessions": {
+      "title": "Active sessions",
+      "intro": "The devices signed in to your account, in all your organizations. Sign out the ones you do not recognize.",
+      "current": "This session",
+      "unknownDevice": "Unknown device",
+      "formerOrganization": "Organization left",
+      "lastSeen": "latest activity {{ when }}",
+      "signedIn": "Signed in {{ when }}",
+      "revoke": "Sign out",
+      "revokeOf": "Sign out the session on {{ device }}",
+      "revoked": "Session signed out."
+    }
   }
 }

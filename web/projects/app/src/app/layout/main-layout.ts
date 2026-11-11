@@ -1,12 +1,15 @@
 import { Component, computed, inject, resource } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { RouterOutlet } from '@angular/router';
+import { Router, RouterOutlet } from '@angular/router';
 import { TranslocoService } from '@jsverse/transloco';
 import {
   AccountMenu,
   Api,
   AuthService,
+  Language,
+  LocaleService,
   Shell,
   TenantOption,
   TenantSwitcher,
@@ -15,6 +18,7 @@ import {
   listMyMemberships,
 } from 'ui';
 
+import { MyAccount } from '../account/my-account';
 import { NAVIGATION } from '../navigation';
 import { MfaDialog } from './mfa-dialog';
 
@@ -36,6 +40,7 @@ import { MfaDialog } from './mfa-dialog';
           [displayName]="session.account.displayName"
           [email]="session.account.email"
           (signOut)="auth.signOut()"
+          (account)="router.navigate(['/account'])"
           (security)="openSecurity()"
         />
       }
@@ -46,12 +51,35 @@ import { MfaDialog } from './mfa-dialog';
 export class MainLayout {
   protected readonly navigation = NAVIGATION;
   protected readonly auth = inject(AuthService);
+  protected readonly router = inject(Router);
+  private readonly myAccount = inject(MyAccount);
 
   private readonly api = inject(Api);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly transloco = inject(TranslocoService);
   private readonly memberships = resource({ loader: () => this.api.invoke(listMyMemberships) });
+
+  constructor() {
+    // The account's language and time zone; the device's until loaded, or
+    // if the API cannot answer.
+    this.myAccount.load().catch(() => undefined);
+    inject(LocaleService)
+      .picked.pipe(takeUntilDestroyed())
+      .subscribe((language) => this.keepLanguage(language));
+  }
+
+  /** Saves the language picked in the menu for the account. */
+  private async keepLanguage(language: Language): Promise<void> {
+    const preferences = this.myAccount.preferences();
+    if (!preferences || preferences.locale === language) return;
+    try {
+      await this.myAccount.save({ ...preferences, locale: language });
+    } catch (error) {
+      const key = isApiProblem(error) ? error.translationKey : errorTranslationKey('unknown');
+      this.snackBar.open(this.transloco.translate(key), undefined, { duration: 8000 });
+    }
+  }
 
   protected openSecurity(): void {
     this.dialog.open(MfaDialog, { width: 'min(560px, 100vw)', autoFocus: 'first-heading' });

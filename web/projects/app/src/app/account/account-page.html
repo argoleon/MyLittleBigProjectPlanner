@@ -1,0 +1,127 @@
+<p class="eyebrow">
+  {{ 'account.eyebrow' | transloco }}
+  @if (account.me(); as me) {
+    · {{ me.email }}
+  }
+</p>
+<h1 class="title">{{ 'account.title' | transloco }}</h1>
+@if (notice(); as notice) {
+  <p class="message" [class.info]="notice.ok" [class.error]="!notice.ok" [attr.role]="notice.ok ? 'status' : 'alert'">
+    {{ notice.key | transloco }}
+  </p>
+}
+
+<div class="layout">
+  <section class="card organizations" aria-labelledby="organizations-title">
+    <h2 id="organizations-title" class="card-title">{{ 'account.organizations.title' | transloco }}</h2>
+    @if (memberships.isLoading() && !memberships.hasValue()) {
+      <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+    } @else if (memberships.error()) {
+      <ui-error-state [error]="memberships.error()" [headingLevel]="3" (retry)="memberships.reload()" />
+    } @else {
+      <ul class="rows">
+        @for (membership of memberships.value(); track membership.tenantId) {
+          <li class="row">
+            <mat-icon class="row-icon" aria-hidden="true">corporate_fare</mat-icon>
+            <span class="row-text">
+              <span class="row-title">{{ membership.name }}</span>
+              <span class="row-detail">
+                {{ 'shell.role.' + membership.tenantRole | transloco }} ·
+                {{ 'member.accountType.' + membership.accountType | transloco }}
+              </span>
+            </span>
+            @if (membership.current) {
+              <span class="current">{{ 'account.organizations.current' | transloco }}</span>
+            }
+          </li>
+        }
+      </ul>
+    }
+  </section>
+
+  <div class="side">
+    <section class="card" aria-labelledby="preferences-title">
+      <h2 id="preferences-title" class="card-title">{{ 'account.preferences.title' | transloco }}</h2>
+      @if (account.preferences()) {
+        <mat-form-field appearance="outline" class="field">
+          <mat-label>{{ 'account.preferences.language' | transloco }}</mat-label>
+          <mat-select [value]="languageValue()" [disabled]="saving()" (selectionChange)="saveLanguage($event.value)">
+            <mat-option [value]="auto">{{ 'account.preferences.languageAuto' | transloco }}</mat-option>
+            @for (language of languages; track language) {
+              <mat-option [value]="language" [attr.lang]="language">{{ languageNames[language] }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="field">
+          <mat-label>{{ 'account.preferences.timeZone' | transloco }}</mat-label>
+          <mat-select [value]="timeZoneValue()" [disabled]="saving()" (selectionChange)="saveTimeZone($event.value)">
+            <mat-option [value]="auto">
+              {{ 'account.preferences.timeZoneAuto' | transloco: { zone: account.tenant()?.timeZone ?? '' } }}
+            </mat-option>
+            @for (zone of timeZones; track zone) {
+              <mat-option [value]="zone">{{ zone }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      } @else if (loadError()) {
+        <ui-error-state [error]="loadError()" [headingLevel]="3" (retry)="loadAccount()" />
+      } @else {
+        <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+      }
+    </section>
+
+    <section class="card" aria-labelledby="security-title">
+      <h2 id="security-title" class="card-title">{{ 'account.security.title' | transloco }}</h2>
+      <div class="row">
+        <span class="row-text">
+          <span class="row-title" id="mfa-label">{{ 'account.security.mfa' | transloco }}</span>
+          <span class="row-detail" id="mfa-detail">
+            @if (mfa.value(); as status) {
+              @if (status.enabled) {
+                {{ 'account.security.mfaOn' | transloco: { count: status.backupCodesLeft } }}
+                @if (status.requiredByPolicy) {
+                  · {{ 'account.security.mfaRequired' | transloco }}
+                }
+              } @else {
+                {{ 'account.security.mfaOff' | transloco }}
+              }
+            }
+          </span>
+        </span>
+        <mat-slide-toggle
+          #mfaToggle
+          aria-labelledby="mfa-label"
+          aria-describedby="mfa-detail"
+          [checked]="mfa.value()?.enabled ?? false"
+          [disabled]="!mfa.hasValue()"
+          (change)="openMfa(mfaToggle)"
+        />
+      </div>
+      <div class="row">
+        <span class="row-text">
+          <span class="row-title">{{ 'account.security.password' | transloco }}</span>
+          <span class="row-detail">{{ 'account.security.passwordHint' | transloco }}</span>
+        </span>
+        <button matButton="outlined" type="button" class="change-password" (click)="changePassword()">
+          {{ 'account.security.changePassword' | transloco }}
+        </button>
+      </div>
+      <div class="row">
+        <span class="row-text">
+          <span class="row-title">{{ 'account.security.sessions' | transloco }}</span>
+          <span class="row-detail">
+            @if (sessions.value(); as list) {
+              {{ 'account.security.sessionsSummary' | transloco: { count: list.length } }}
+              @if (lastSignIn(); as when) {
+                · {{ 'account.security.lastSignIn' | transloco: { when: (when | instant: { dateStyle: 'medium', timeStyle: 'short' }) } }}
+              }
+            }
+          </span>
+        </span>
+        <button matButton="outlined" type="button" class="manage-sessions" (click)="manageSessions()">
+          {{ 'account.security.manageSessions' | transloco }}
+        </button>
+      </div>
+    </section>
+  </div>
+</div>

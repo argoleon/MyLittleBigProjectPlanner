@@ -94,7 +94,8 @@
     "account": {
       "menu": "Compte : {{ name }}",
       "signOut": "Se déconnecter",
-      "security": "Vérification en deux étapes"
+      "security": "Vérification en deux étapes",
+      "myAccount": "Mon compte"
     },
     "verify": {
       "step": "Étape 2 sur 2",
@@ -394,7 +395,8 @@
       "email": "Saisissez une adresse e-mail valide.",
       "unknown_time_zone": "Ce fuseau horaire est inconnu.",
       "not_default_slug": "En mode mono-organisation, seul l’identifiant configuré est accepté.",
-      "external_member_only": "Un compte externe ne peut pas administrer l’organisation."
+      "external_member_only": "Un compte externe ne peut pas administrer l’organisation.",
+      "incorrect": "Valeur incorrecte."
     },
     "invitation": {
       "invalid": "Ce lien d’invitation est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
@@ -414,6 +416,12 @@
     "role": {
       "label_taken": "Un autre rôle porte déjà ce nom.",
       "in_use": "Des attributions utilisent ce rôle : retirez-les d’abord."
+    },
+    "account": {
+      "no_password": "Votre organisation vous connecte : votre compte n’a pas de mot de passe à changer."
+    },
+    "session": {
+      "current": "C’est la session en cours : déconnectez-vous plutôt."
     }
   },
   "dialog": {
@@ -445,5 +453,59 @@
     "manage_sprints": "Gérer les sprints",
     "manage_members": "Gérer les membres",
     "administer_node": "Administrer le nœud"
+  },
+  "account": {
+    "title": "Mon compte",
+    "eyebrow": "Compte global",
+    "organizations": {
+      "title": "Mes organisations",
+      "current": "Actuelle"
+    },
+    "preferences": {
+      "title": "Préférences",
+      "language": "Langue",
+      "languageAuto": "Celle de cet appareil",
+      "timeZone": "Fuseau horaire",
+      "timeZoneAuto": "Celui de l’organisation ({{ zone }})",
+      "saved": "Préférences enregistrées."
+    },
+    "security": {
+      "title": "Sécurité",
+      "mfa": "Vérification en deux étapes",
+      "mfaOn": "Application d’authentification · codes de secours restants : {{ count }}",
+      "mfaOff": "Désactivée : votre mot de passe suffit pour vous connecter.",
+      "mfaRequired": "exigée par votre organisation",
+      "password": "Mot de passe",
+      "passwordHint": "Le changer déconnecte vos autres sessions.",
+      "changePassword": "Changer",
+      "sessions": "Sessions actives",
+      "sessionsSummary": "Appareils : {{ count }}",
+      "lastSignIn": "dernière connexion {{ when }}",
+      "manageSessions": "Gérer"
+    },
+    "password": {
+      "title": "Changer votre mot de passe",
+      "intro": "Vos autres sessions seront déconnectées ; celle-ci reste ouverte.",
+      "current": "Mot de passe actuel",
+      "new": "Nouveau mot de passe",
+      "newHint": "Au moins {{ count }} caractères.",
+      "confirmation": "Confirmez le nouveau mot de passe",
+      "mismatch": "Les deux mots de passe diffèrent.",
+      "submit": "Changer le mot de passe",
+      "changed": "Mot de passe changé. Vos autres sessions sont déconnectées.",
+      "incorrect": "Ce n’est pas votre mot de passe actuel."
+    },
+    "sessions": {
+      "title": "Sessions actives",
+      "intro": "Les appareils connectés à votre compte, dans toutes vos organisations. Déconnectez ceux que vous ne reconnaissez pas.",
+      "current": "Cette session",
+      "unknownDevice": "Appareil inconnu",
+      "formerOrganization": "Organisation quittée",
+      "lastSeen": "dernière activité {{ when }}",
+      "signedIn": "Connecté le {{ when }}",
+      "revoke": "Déconnecter",
+      "revokeOf": "Déconnecter la session {{ device }}",
+      "revoked": "Session déconnectée."
+    }
   }
 }

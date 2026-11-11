@@ -37,6 +37,18 @@ export const SESSION = {
   expiresAt: '2026-11-17T09:00:00Z',
 };
 
+/** The signed-in account, in `GET /api/v1/me`: no preferences of its own. */
+export const ME = {
+  id: SESSION.account.id,
+  email: SESSION.account.email,
+  displayName: SESSION.account.displayName,
+  locale: null,
+  timeZone: null,
+  tenantId: TENANT.id,
+  tenantRole: 'member',
+  accountType: 'internal',
+};
+
 /** A Problem Details response. */
 export function problem(status: number, code: string, errors: object[] = []) {
   return {
@@ -57,6 +69,9 @@ export const test = base.extend<{ language: 'fr' | 'en'; theme: 'system' | 'ligh
   page: async ({ page, language, theme, signedIn }, use) => {
     await page.route('**/api/v1/tenant', (route) => route.fulfill({ json: TENANT }));
     await page.route('**/api/v1/me/memberships', (route) => route.fulfill({ json: [MEMBERSHIP] }));
+    await page.route('**/api/v1/me', (route) => route.fulfill({ json: ME }));
+    // Languages picked in the menu are saved for the account.
+    await page.route('**/api/v1/me/preferences', (route) => route.fulfill({ json: route.request().postDataJSON() }));
     await page.route('**/api/v1/auth/session', (route) =>
       signedIn ? route.fulfill({ json: SESSION }) : route.fulfill(problem(401, 'unauthenticated')),
     );
