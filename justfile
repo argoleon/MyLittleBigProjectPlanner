@@ -51,6 +51,18 @@ seed: migrate
 reset:
     {{compose}} --profile tools --profile web --profile e2e down --volumes
 
+# The compiled Rust crates of the development containers reach tens of GB,
+# and image builds leave an unused BuildKit cache (shared by every project
+# on this machine). This stops the development containers; the database,
+# the npm cache and the downloaded crates are kept, and the next build
+# starts from scratch.
+
+# Free the disk space of the build caches (Rust target volumes, BuildKit cache)
+clean-cache:
+    {{compose}} --profile tools --profile web --profile e2e down
+    docker volume rm --force mlbpp-dev_cargo-target mlbpp-dev_api-target mlbpp-dev_worker-target
+    docker builder prune --force
+
 # Open a shell in the Rust toolchain container
 shell:
     {{be}} bash

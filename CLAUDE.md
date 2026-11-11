@@ -45,6 +45,7 @@ Every CI step is a `just` recipe; GitHub Actions only calls them (one `ci-*` rec
 - The production stack (`deploy/compose.yaml`, see `deploy/README.md`) also runs locally: `just compose-up` (https://localhost:18443), `just compose-test`, `just images-test` (images and SBOMs), `just deploy-lint`, `just compose-down`. A change to a Dockerfile, the compose file or a service's configuration must keep these green.
 - Never install a toolchain (Rust, Node, sqlx-cli, Playwright…) on the host for project work, and never call `cargo` or `npm` directly from the host. A new tool goes into the matching dev image (`deploy/dev/*.Dockerfile`) and is reached through a `just` recipe.
 - Containers run with the host user's uid and gid, so generated files (lock files, `.sqlx`, formatted code) belong to the developer.
+- Build caches grow fast: the `cargo-target` volume reaches tens of GB, and image builds (`just images-build`, `just ci-deploy`) fill the BuildKit cache. Run `just clean-cache` once you no longer need them, and at the latest when a feature is finished (merged and its branch deleted). It keeps the database and the downloaded crates; `just reset` also deletes the database.
 
 ## Tests (mandatory)
 
