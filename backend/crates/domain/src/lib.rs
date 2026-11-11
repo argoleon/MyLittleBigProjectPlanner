@@ -8,6 +8,7 @@ pub mod auth_policy;
 pub mod i18n;
 pub mod idempotency;
 pub mod jobs;
+pub mod members;
 pub mod mfa;
 pub mod oidc;
 pub mod reference_item;

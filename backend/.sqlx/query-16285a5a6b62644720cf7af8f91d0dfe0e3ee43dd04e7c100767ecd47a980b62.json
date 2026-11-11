@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO group_member (id, tenant_id, group_id, account_id)\n        VALUES ($1, app_current_tenant(), $2, $3)\n        ON CONFLICT (tenant_id, group_id, account_id) DO NOTHING\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "16285a5a6b62644720cf7af8f91d0dfe0e3ee43dd04e7c100767ecd47a980b62"
+}

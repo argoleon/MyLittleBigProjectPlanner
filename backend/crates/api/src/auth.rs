@@ -267,13 +267,23 @@ pub struct PasswordResetConfirmation {
 }
 
 /// Role of a member in its tenant.
-#[derive(Debug, Clone, Copy, Serialize, ToSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
 #[schema(as = TenantRole)]
 pub enum TenantRoleView {
     Member,
     ConfigurationAdmin,
     TenantAdmin,
+}
+
+impl From<TenantRoleView> for TenantRole {
+    fn from(role: TenantRoleView) -> Self {
+        match role {
+            TenantRoleView::Member => Self::Member,
+            TenantRoleView::ConfigurationAdmin => Self::ConfigurationAdmin,
+            TenantRoleView::TenantAdmin => Self::TenantAdmin,
+        }
+    }
 }
 
 impl From<TenantRole> for TenantRoleView {

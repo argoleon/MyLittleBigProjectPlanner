@@ -45,6 +45,12 @@
  * | `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |
  * | `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |
  * | `reference_item.code_taken` | 409 | Another reference item already has this code |
+ * | `invitation.invalid` | 400 | This invitation link is invalid, expired or already used |
+ * | `invitation.pending` | 409 | This email already has an open invitation; send it again instead |
+ * | `invitation.already_member` | 409 | This email already belongs to a member of the tenant |
+ * | `invitation.closed` | 409 | This invitation was already accepted or revoked |
+ * | `member.last_admin` | 409 | The tenant needs at least one active tenant admin |
+ * | `group.name_taken` | 409 | Another group already has this name |
  */
-export type ErrorCode = 'bad_request' | 'validation_failed' | 'invalid_json' | 'invalid_query' | 'not_found' | 'method_not_allowed' | 'request_timeout' | 'conflict' | 'precondition_failed' | 'payload_too_large' | 'unsupported_media_type' | 'precondition_required' | 'too_many_requests' | 'internal' | 'unauthenticated' | 'forbidden' | 'csrf.invalid' | 'auth.invalid_credentials' | 'auth.reset_token_invalid' | 'auth.invalid_code' | 'mfa.already_enabled' | 'mfa.not_started' | 'mfa.required_by_policy' | 'auth.sso_required' | 'auth.oidc_failed' | 'auth.oidc_no_member' | 'auth.oidc_email_unverified' | 'auth.switch_failed' | 'oidc_provider.duplicate' | 'oidc_provider.unreachable' | 'idempotency_key.invalid' | 'idempotency_key.reused' | 'idempotency_key.in_flight' | 'tenant.not_found' | 'tenant.slug_taken' | 'tenant.confirmation_mismatch' | 'tenant.delete_current' | 'reference_item.code_taken';
+export type ErrorCode = 'bad_request' | 'validation_failed' | 'invalid_json' | 'invalid_query' | 'not_found' | 'method_not_allowed' | 'request_timeout' | 'conflict' | 'precondition_failed' | 'payload_too_large' | 'unsupported_media_type' | 'precondition_required' | 'too_many_requests' | 'internal' | 'unauthenticated' | 'forbidden' | 'csrf.invalid' | 'auth.invalid_credentials' | 'auth.reset_token_invalid' | 'auth.invalid_code' | 'mfa.already_enabled' | 'mfa.not_started' | 'mfa.required_by_policy' | 'auth.sso_required' | 'auth.oidc_failed' | 'auth.oidc_no_member' | 'auth.oidc_email_unverified' | 'auth.switch_failed' | 'oidc_provider.duplicate' | 'oidc_provider.unreachable' | 'idempotency_key.invalid' | 'idempotency_key.reused' | 'idempotency_key.in_flight' | 'tenant.not_found' | 'tenant.slug_taken' | 'tenant.confirmation_mismatch' | 'tenant.delete_current' | 'reference_item.code_taken' | 'invitation.invalid' | 'invitation.pending' | 'invitation.already_member' | 'invitation.closed' | 'member.last_admin' | 'group.name_taken';
 

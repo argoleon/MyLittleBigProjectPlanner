@@ -35,6 +35,15 @@ pub enum EmailMessage {
         link: String,
         valid_minutes: u64,
     },
+    /// Invitation to join a tenant.
+    Invitation {
+        inviter_name: String,
+        tenant_name: String,
+        link: String,
+        valid_days: u64,
+        /// The invitee will use the request portal, not the application.
+        external: bool,
+    },
 }
 
 /// A rendered email.
@@ -54,7 +63,56 @@ pub fn render(message: &EmailMessage, locale: &str) -> RenderedEmail {
             link,
             valid_minutes,
         } => password_reset(locale, display_name, tenant_name, link, *valid_minutes),
+        EmailMessage::Invitation {
+            inviter_name,
+            tenant_name,
+            link,
+            valid_days,
+            external,
+        } => invitation(locale, inviter_name, tenant_name, link, *valid_days, *external),
     }
+}
+
+fn invitation(
+    locale: &str,
+    inviter: &str,
+    tenant: &str,
+    link: &str,
+    days: u64,
+    external: bool,
+) -> RenderedEmail {
+    let (subject, hello, body, button, ignore) = if locale == "en" {
+        let place = if external { "request portal" } else { "workspace" };
+        (
+            format!("{inviter} invites you to {tenant}"),
+            "Hello,".to_owned(),
+            format!(
+                "{inviter} invites you to join the {place} of {tenant} on {product}. \
+                 This link is valid for {days} days:",
+                product = domain::PRODUCT_NAME
+            ),
+            "Accept the invitation".to_owned(),
+            "If you do not expect this invitation, ignore this email.".to_owned(),
+        )
+    } else {
+        let place = if external {
+            "le portail de demandes"
+        } else {
+            "l’espace de travail"
+        };
+        (
+            format!("{inviter} vous invite à rejoindre {tenant}"),
+            "Bonjour,".to_owned(),
+            format!(
+                "{inviter} vous invite à rejoindre {place} de {tenant} sur {product}. \
+                 Ce lien est valable {days} jours :",
+                product = domain::PRODUCT_NAME
+            ),
+            "Accepter l’invitation".to_owned(),
+            "Si vous n’attendiez pas cette invitation, ignorez cet e-mail.".to_owned(),
+        )
+    };
+    message(locale, subject, &hello, &body, link, &button, &ignore)
 }
 
 fn password_reset(locale: &str, name: &str, tenant: &str, link: &str, minutes: u64) -> RenderedEmail {
@@ -82,6 +140,19 @@ fn password_reset(locale: &str, name: &str, tenant: &str, link: &str, minutes: u
                 .to_owned(),
         )
     };
+    message(locale, subject, &hello, &body, link, &button, &ignore)
+}
+
+/// An email with a greeting, a paragraph, a link as button and a closing line.
+fn message(
+    locale: &str,
+    subject: String,
+    hello: &str,
+    body: &str,
+    link: &str,
+    button: &str,
+    ignore: &str,
+) -> RenderedEmail {
     let text = format!("{hello}\n\n{body}\n\n{link}\n\n{ignore}\n");
     let html = format!(
         "<!doctype html><html lang=\"{lang}\"><body>\
@@ -89,11 +160,11 @@ fn password_reset(locale: &str, name: &str, tenant: &str, link: &str, minutes: u
          <p><a href=\"{link_attr}\">{button}</a></p>\
          <p>{ignore}</p></body></html>",
         lang = if locale == "en" { "en" } else { "fr" },
-        hello = escape_html(&hello),
-        body = escape_html(&body),
+        hello = escape_html(hello),
+        body = escape_html(body),
         link_attr = escape_html(link),
-        button = escape_html(&button),
-        ignore = escape_html(&ignore),
+        button = escape_html(button),
+        ignore = escape_html(ignore),
     );
     RenderedEmail { subject, text, html }
 }
@@ -224,6 +295,45 @@ mod tests {
                 .contains("href=\"https://acme.example.org/reset-password?token=abc&amp;x=1\"")
         );
         assert!(!email.html.contains("<b>"));
+    }
+
+    fn invitation(external: bool) -> EmailMessage {
+        EmailMessage::Invitation {
+            inviter_name: "Lucas <i>".to_owned(),
+            tenant_name: "Acme".to_owned(),
+            link: "https://acme.example.org/accept-invitation?token=abc".to_owned(),
+            valid_days: 7,
+            external,
+        }
+    }
+
+    #[test]
+    fn invitations_name_the_inviter_the_tenant_and_the_deadline() {
+        let email = render(&invitation(false), "fr");
+        assert_eq!(email.subject, "Lucas <i> vous invite à rejoindre Acme");
+        assert!(
+            email.text.contains("rejoindre l’espace de travail de Acme"),
+            "{}",
+            email.text
+        );
+        assert!(email.text.contains("valable 7 jours"), "{}", email.text);
+        assert!(
+            email
+                .text
+                .contains("https://acme.example.org/accept-invitation?token=abc")
+        );
+        assert!(email.html.contains("Lucas &lt;i&gt;"), "{}", email.html);
+        assert!(email.html.contains("Accepter l’invitation"));
+
+        let email = render(&invitation(true), "en");
+        assert_eq!(email.subject, "Lucas <i> invites you to Acme");
+        assert!(
+            email.text.contains("join the request portal of Acme"),
+            "{}",
+            email.text
+        );
+        assert!(email.text.contains("valid for 7 days"), "{}", email.text);
+        assert!(email.html.contains("Accept the invitation"));
     }
 
     #[test]

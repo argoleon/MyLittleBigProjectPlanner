@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO invitation (id, tenant_id, email, account_type, tenant_role, token_hash, expires_at, invited_by)\n        VALUES ($1, app_current_tenant(), $2, $3, $4, $5, $6, $7)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Bytea",
+        "Timestamptz",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8192fdb9f0128da85af9a1f74abd17a0c073b5606104d85c49d06d8776c647dc"
+}

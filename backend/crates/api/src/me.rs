@@ -39,7 +39,7 @@ pub const TAG: &str = "me";
 pub const SWITCH_PATH: &str = "/api/v1/auth/switch";
 
 /// Kind of account in a tenant.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, ToSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
 #[schema(as = AccountType)]
 pub enum AccountTypeView {
@@ -47,6 +47,15 @@ pub enum AccountTypeView {
     Internal,
     /// A customer or partner: uses the request portal only.
     External,
+}
+
+impl From<AccountTypeView> for AccountType {
+    fn from(account_type: AccountTypeView) -> Self {
+        match account_type {
+            AccountTypeView::Internal => Self::Internal,
+            AccountTypeView::External => Self::External,
+        }
+    }
 }
 
 impl From<AccountType> for AccountTypeView {
