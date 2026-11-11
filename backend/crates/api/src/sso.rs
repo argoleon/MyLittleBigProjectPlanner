@@ -627,7 +627,7 @@ pub struct StartParams {
 }
 
 /// The sign-in page with an error, as the browser's next stop.
-fn sign_in_error(auth: &Auth, slug: &str, code: ErrorCode) -> Response {
+pub(crate) fn sign_in_error(auth: &Auth, slug: &str, code: ErrorCode) -> Response {
     Redirect::to(&format!(
         "{}/sign-in?error={}",
         auth.public_url().for_tenant(slug),
@@ -800,7 +800,19 @@ pub async fn callback(
         return fail(ErrorCode::AuthOidcNoMember);
     };
     // Two-step verification is the provider's business: the session is complete.
-    let opened = auth.sessions.create(member.account_id, tx.tenant_id()).await?;
+    let proof = infra::sessions::Proof {
+        second_factor: false,
+        sso: true,
+    };
+    let opened = auth
+        .sessions
+        .create_proven(
+            member.account_id,
+            tx.tenant_id(),
+            infra::sessions::SessionStage::Complete,
+            proof,
+        )
+        .await?;
     tx.commit().await?;
     tracing::info!(account = %member.account_id, provider = %provider.id, "signed in through OIDC");
     let target = format!(

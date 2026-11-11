@@ -34,6 +34,7 @@ export const ERROR_CODE: ErrorCode[] = [
   'auth.oidc_failed',
   'auth.oidc_no_member',
   'auth.oidc_email_unverified',
+  'auth.switch_failed',
   'oidc_provider.duplicate',
   'oidc_provider.unreachable',
   'idempotency_key.invalid',

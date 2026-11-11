@@ -14,6 +14,7 @@ pub mod http_client;
 pub mod id;
 pub mod idempotency;
 pub mod jobs;
+pub mod memberships;
 pub mod mfa;
 pub mod oidc;
 pub mod oidc_providers;
@@ -24,6 +25,7 @@ pub mod reference_items;
 pub mod sessions;
 pub mod shutdown;
 pub mod telemetry;
+pub mod tenant_switch;
 pub mod valkey;
 
 pub use sqlx;

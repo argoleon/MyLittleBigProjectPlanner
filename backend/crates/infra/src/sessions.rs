@@ -9,6 +9,7 @@
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
+pub use domain::auth_policy::Proof;
 pub use domain::mfa::SessionStage;
 use fred::prelude::{KeysInterface, SetsInterface};
 use fred::types::Expiration;
@@ -33,6 +34,20 @@ pub struct Session {
     /// were complete.
     #[serde(default = "complete", with = "stage_serde")]
     pub stage: SessionStage,
+    /// What the sign-in proved, carried over when switching tenants.
+    #[serde(default)]
+    pub second_factor: bool,
+    #[serde(default)]
+    pub sso: bool,
+}
+
+impl Session {
+    pub fn proof(&self) -> Proof {
+        Proof {
+            second_factor: self.second_factor,
+            sso: self.sso,
+        }
+    }
 }
 
 fn complete() -> SessionStage {
@@ -130,6 +145,18 @@ impl SessionStore {
         tenant_id: Uuid,
         stage: SessionStage,
     ) -> Result<NewSession, ValkeyError> {
+        self.create_proven(account_id, tenant_id, stage, Proof::default())
+            .await
+    }
+
+    /// Opens a session at `stage` that remembers what its sign-in `proof`.
+    pub async fn create_proven(
+        &self,
+        account_id: Uuid,
+        tenant_id: Uuid,
+        stage: SessionStage,
+        proof: Proof,
+    ) -> Result<NewSession, ValkeyError> {
         let lifetime = self.lifetime_of(stage);
         let token = random_token();
         let now = Utc::now();
@@ -141,6 +168,8 @@ impl SessionStore {
             created_at: now,
             expires_at: now + max_age,
             stage,
+            second_factor: proof.second_factor,
+            sso: proof.sso,
         };
         let hash = token_hash_hex(&token);
         let json = serde_json::to_string(&session)

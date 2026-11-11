@@ -11,6 +11,7 @@ pub mod etag;
 pub mod extract;
 pub mod fields;
 pub mod idempotency;
+pub mod me;
 pub mod mfa;
 pub mod middleware;
 pub mod openapi;

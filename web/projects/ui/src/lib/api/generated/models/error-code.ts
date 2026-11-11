@@ -34,6 +34,7 @@
  * | `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |
  * | `auth.oidc_no_member` | 403 | No member of this organization has this account's email |
  * | `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |
+ * | `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |
  * | `oidc_provider.duplicate` | 409 | This identity provider is already configured |
  * | `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |
  * | `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |
@@ -45,5 +46,5 @@
  * | `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |
  * | `reference_item.code_taken` | 409 | Another reference item already has this code |
  */
-export type ErrorCode = 'bad_request' | 'validation_failed' | 'invalid_json' | 'invalid_query' | 'not_found' | 'method_not_allowed' | 'request_timeout' | 'conflict' | 'precondition_failed' | 'payload_too_large' | 'unsupported_media_type' | 'precondition_required' | 'too_many_requests' | 'internal' | 'unauthenticated' | 'forbidden' | 'csrf.invalid' | 'auth.invalid_credentials' | 'auth.reset_token_invalid' | 'auth.invalid_code' | 'mfa.already_enabled' | 'mfa.not_started' | 'mfa.required_by_policy' | 'auth.sso_required' | 'auth.oidc_failed' | 'auth.oidc_no_member' | 'auth.oidc_email_unverified' | 'oidc_provider.duplicate' | 'oidc_provider.unreachable' | 'idempotency_key.invalid' | 'idempotency_key.reused' | 'idempotency_key.in_flight' | 'tenant.not_found' | 'tenant.slug_taken' | 'tenant.confirmation_mismatch' | 'tenant.delete_current' | 'reference_item.code_taken';
+export type ErrorCode = 'bad_request' | 'validation_failed' | 'invalid_json' | 'invalid_query' | 'not_found' | 'method_not_allowed' | 'request_timeout' | 'conflict' | 'precondition_failed' | 'payload_too_large' | 'unsupported_media_type' | 'precondition_required' | 'too_many_requests' | 'internal' | 'unauthenticated' | 'forbidden' | 'csrf.invalid' | 'auth.invalid_credentials' | 'auth.reset_token_invalid' | 'auth.invalid_code' | 'mfa.already_enabled' | 'mfa.not_started' | 'mfa.required_by_policy' | 'auth.sso_required' | 'auth.oidc_failed' | 'auth.oidc_no_member' | 'auth.oidc_email_unverified' | 'auth.switch_failed' | 'oidc_provider.duplicate' | 'oidc_provider.unreachable' | 'idempotency_key.invalid' | 'idempotency_key.reused' | 'idempotency_key.in_flight' | 'tenant.not_found' | 'tenant.slug_taken' | 'tenant.confirmation_mismatch' | 'tenant.delete_current' | 'reference_item.code_taken';
 

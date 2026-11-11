@@ -176,6 +176,26 @@ async fn a_member_signs_in_through_the_tenants_provider() {
     assert_eq!(status, 200);
     assert_eq!(session["account"]["email"], ALICE.email);
     assert_eq!(session["stage"], "complete");
+    // The session records the SSO sign-in, which a tenant switch carries.
+    let stored = infra::sessions::SessionStore::new(
+        api.valkey.clone(),
+        api.key_prefix.clone(),
+        infra::sessions::SessionLifetime {
+            idle: common::session_settings().idle,
+            max_age: common::session_settings().max_age,
+        },
+    )
+    .get(&token)
+    .await
+    .unwrap()
+    .unwrap();
+    assert_eq!(
+        stored.proof(),
+        infra::sessions::Proof {
+            second_factor: false,
+            sso: true
+        }
+    );
 }
 
 #[tokio::test]
