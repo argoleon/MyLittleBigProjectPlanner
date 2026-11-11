@@ -55,5 +55,8 @@ export const ERROR_CODE: ErrorCode[] = [
   'role.label_taken',
   'role.in_use',
   'account.no_password',
-  'session.current'
+  'session.current',
+  'account.reauthentication_required',
+  'account.platform_admin',
+  'export.pending'
 ];

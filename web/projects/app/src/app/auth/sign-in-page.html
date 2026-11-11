@@ -9,6 +9,9 @@
   @if (passwordChanged()) {
     <p class="message info" role="status">{{ 'auth.signIn.passwordChanged' | transloco }}</p>
   }
+  @if (accountErased()) {
+    <p class="message info" role="status">{{ 'auth.signIn.accountErased' | transloco }}</p>
+  }
   @if (errorKey() ?? returnedErrorKey(); as key) {
     <p class="message error" role="alert">{{ key | transloco }}</p>
   }

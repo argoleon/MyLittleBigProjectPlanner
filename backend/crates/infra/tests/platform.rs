@@ -350,6 +350,7 @@ async fn rows_of(db: &TestDb, tenant: Uuid) -> i64 {
         "group",
         "group_member",
         "role",
+        "erased_member",
     ] {
         assert!(
             tables.iter().any(|t| t == expected),

@@ -50,6 +50,31 @@ async function mockAccount(page: Page) {
   return sent;
 }
 
+/** The GDPR endpoints: an export ready at the second look, an erasure that works. */
+async function mockPersonalData(page: Page) {
+  const sent: { method: string; path: string; body: unknown }[] = [];
+  const id = 'export-id-0123456789';
+  let looks = 0;
+  await page.route('**/api/v1/me/exports', (route) =>
+    route.fulfill({ status: 202, json: { id, status: 'pending', expiresAt: '2026-11-11T10:15:00Z' } }),
+  );
+  await page.route(`**/api/v1/me/exports/${id}`, (route) => {
+    looks += 1;
+    return route.fulfill({ json: { id, status: looks > 1 ? 'ready' : 'pending', expiresAt: '2026-11-11T10:15:00Z' } });
+  });
+  await page.route(`**/api/v1/me/exports/${id}/file`, (route) =>
+    route.fulfill({
+      headers: { 'content-type': 'application/json', 'content-disposition': 'attachment; filename="personal-data-2026-11-11.json"' },
+      body: JSON.stringify({ format: 'mlbpp.personal-data.v1', account: { email: ME.email } }),
+    }),
+  );
+  await page.route('**/api/v1/me/erasure', (route) => {
+    sent.push({ method: 'POST', path: '/api/v1/me/erasure', body: route.request().postDataJSON() });
+    return route.fulfill({ status: 204 });
+  });
+  return sent;
+}
+
 async function animationsDone(page: Page) {
   await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
 }
@@ -112,6 +137,40 @@ test('another device is signed out from the sessions', async ({ page }) => {
   expect(sent).toEqual([{ method: 'DELETE', path: `/api/v1/me/sessions/${PHONE.id}`, body: null }]);
 });
 
+test('the personal data are exported as a JSON file', async ({ page }) => {
+  await mockAccount(page);
+  await mockPersonalData(page);
+  await page.goto('/account');
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export (JSON)' }).click();
+  expect((await download).suggestedFilename()).toBe('personal-data-2026-11-11.json');
+  await expect(page.getByRole('status')).toHaveText('Your export is downloaded.');
+});
+
+test('the account is erased with its password and email, then signed out', async ({ page }) => {
+  await mockAccount(page);
+  const sent = await mockPersonalData(page);
+  await page.goto('/account');
+  await page.getByRole('button', { name: 'Delete my account' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Delete your account?' });
+  await dialog.getByLabel('Your password').fill('correct horse battery staple');
+  await dialog.getByLabel(`Type ${ME.email} to confirm`).fill(ME.email);
+  // Signed out from now on.
+  await page.route('**/api/v1/auth/session', (route) =>
+    route.fulfill({ status: 401, contentType: 'application/problem+json', body: JSON.stringify({ code: 'unauthenticated', status: 401 }) }),
+  );
+  await dialog.getByRole('button', { name: 'Delete for good' }).click();
+  await expect(page).toHaveURL(/\/sign-in\?accountErased=true$/);
+  await expect(page.getByRole('status')).toHaveText('Your account was deleted.');
+  expect(sent).toEqual([
+    {
+      method: 'POST',
+      path: '/api/v1/me/erasure',
+      body: { confirmation: ME.email, purgeComments: false, password: 'correct horse battery staple' },
+    },
+  ]);
+});
+
 for (const theme of ['light', 'dark'] as const) {
   for (const language of ['fr', 'en'] as const) {
     test.describe(`accessibility of My account, ${theme} mode, ${language}`, () => {
@@ -135,6 +194,13 @@ for (const theme of ['light', 'dark'] as const) {
         await expect(page.getByRole('dialog')).toBeVisible();
         await animationsDone(page);
         expect(await accessibilityViolations(page), 'password').toEqual([]);
+        await page.keyboard.press('Escape');
+        await expect(page.getByRole('dialog')).toHaveCount(0);
+
+        await page.locator('button.erase').click();
+        await expect(page.getByRole('dialog')).toBeVisible();
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'erasure').toEqual([]);
       });
     });
   }

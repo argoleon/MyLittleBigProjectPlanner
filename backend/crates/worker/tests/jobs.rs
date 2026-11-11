@@ -232,10 +232,12 @@ async fn the_job_of_a_dead_worker_is_claimed_again_when_its_lease_expires() {
     );
 }
 
-fn jobs() -> Jobs {
+async fn jobs() -> Jobs {
     let smtp = infra::config::Secret::new(testkit::smtp_url());
+    let (valkey, prefix) = testkit::valkey().await;
     Jobs {
         mailer: Mailer::new(&smtp, "Planner <noreply@example.org>").unwrap(),
+        exports: infra::exports::ExportStore::new(valkey, prefix),
     }
 }
 
@@ -262,7 +264,7 @@ async fn an_email_job_sends_the_email_in_the_recipients_language() {
     .await;
 
     let runner = JobRunner::new(db.app_pool.clone());
-    assert_eq!(runner.next_batch(&jobs()).await, Batch::Processed);
+    assert_eq!(runner.next_batch(&jobs().await).await, Batch::Processed);
     assert_eq!(job_row(&db, id).await, None, "done");
 
     let caught = testkit::caught_email(&to).await;
@@ -280,7 +282,9 @@ async fn unknown_kinds_and_unreadable_payloads_fail_without_retry() {
     let unknown = enqueue(&db, db.tenant_a.id, "test.unknown", serde_json::json!({})).await;
     let unreadable = enqueue(&db, db.tenant_a.id, EMAIL_JOB, serde_json::json!({ "to": 3 })).await;
 
-    JobRunner::new(db.app_pool.clone()).next_batch(&jobs()).await;
+    JobRunner::new(db.app_pool.clone())
+        .next_batch(&jobs().await)
+        .await;
     for id in [unknown, unreadable] {
         let (status, attempts, error, _) = job_row(&db, id).await.unwrap();
         assert_eq!((status.as_str(), attempts), ("failed", 1), "{error:?}");
@@ -309,7 +313,7 @@ async fn the_purge_job_removes_a_deleted_tenant_and_its_rows() {
 
     // The purge runs whatever the order of the claimed jobs.
     let runner = JobRunner::new(db.app_pool.clone());
-    while runner.next_batch(&jobs()).await == Batch::Processed {}
+    while runner.next_batch(&jobs().await).await == Batch::Processed {}
 
     let count = |sql: &str| {
         let sql = sql.to_owned();

@@ -19,6 +19,7 @@ use utoipa_axum::routes;
 
 use crate::account;
 use crate::auth;
+use crate::gdpr;
 use crate::groups;
 use crate::invitations;
 use crate::me;
@@ -83,6 +84,12 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(account::change_password))
         .routes(routes!(account::sessions))
         .routes(routes!(account::revoke_session))
+        .routes(routes!(gdpr::create_export))
+        .routes(routes!(gdpr::get_export))
+        .routes(routes!(gdpr::download_export))
+        .routes(routes!(gdpr::erase_me))
+        .routes(routes!(gdpr::erase_member))
+        .routes(routes!(gdpr::erase_account))
         .routes(routes!(members::list))
         .routes(routes!(members::read, members::update, members::remove))
         .routes(routes!(invitations::list, invitations::create))

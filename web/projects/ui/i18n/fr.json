@@ -72,7 +72,8 @@
       "submit": "Se connecter",
       "passwordChanged": "Votre mot de passe a été changé. Connectez-vous avec le nouveau.",
       "continueWith": "Continuer avec {{ name }}",
-      "orLocal": "ou avec un compte local"
+      "orLocal": "ou avec un compte local",
+      "accountErased": "Votre compte a été supprimé."
     },
     "forgotPassword": {
       "title": "Mot de passe oublié",
@@ -396,7 +397,8 @@
       "unknown_time_zone": "Ce fuseau horaire est inconnu.",
       "not_default_slug": "En mode mono-organisation, seul l’identifiant configuré est accepté.",
       "external_member_only": "Un compte externe ne peut pas administrer l’organisation.",
-      "incorrect": "Valeur incorrecte."
+      "incorrect": "Valeur incorrecte.",
+      "mismatch": "Les valeurs ne correspondent pas."
     },
     "invitation": {
       "invalid": "Ce lien d’invitation est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
@@ -418,10 +420,15 @@
       "in_use": "Des attributions utilisent ce rôle : retirez-les d’abord."
     },
     "account": {
-      "no_password": "Votre organisation vous connecte : votre compte n’a pas de mot de passe à changer."
+      "no_password": "Votre organisation vous connecte : votre compte n’a pas de mot de passe à changer.",
+      "reauthentication_required": "Reconnectez-vous par votre organisation, puis supprimez votre compte dans les 10 minutes.",
+      "platform_admin": "Un super administrateur de la plateforme ne peut pas être effacé : un autre doit d’abord lui retirer ce rôle."
     },
     "session": {
       "current": "C’est la session en cours : déconnectez-vous plutôt."
+    },
+    "export": {
+      "pending": "L’export n’est pas encore prêt."
     }
   },
   "dialog": {
@@ -506,6 +513,30 @@
       "revoke": "Déconnecter",
       "revokeOf": "Déconnecter la session {{ device }}",
       "revoked": "Session déconnectée."
+    },
+    "personalData": {
+      "title": "Mes données personnelles",
+      "intro": "L’effacement anonymise votre nom et votre e-mail partout, historique compris. Le contenu de vos tickets est conservé.",
+      "export": "Exporter (JSON)",
+      "exporting": "Préparation de l’export…",
+      "exported": "Votre export est téléchargé.",
+      "exportSlow": "L’export prend plus de temps que prévu. Réessayez dans quelques minutes.",
+      "erase": "Supprimer mon compte"
+    },
+    "erasure": {
+      "title": "Supprimer votre compte ?",
+      "intro": "Votre compte est effacé dans toutes vos organisations :",
+      "removed": "votre nom, votre e-mail, votre mot de passe et vos préférences sont supprimés ;",
+      "pseudonym": "vous apparaissez partout comme « Utilisateur supprimé n° N », historique compris ;",
+      "kept": "le contenu que vous avez créé est conservé, sauf vos commentaires si vous le demandez ;",
+      "signedOut": "toutes vos sessions sont fermées.",
+      "irreversible": "C’est définitif.",
+      "password": "Votre mot de passe",
+      "ssoHint": "Vous vous connectez par votre organisation : reconnectez-vous juste avant (moins de 10 minutes) pour pouvoir supprimer votre compte.",
+      "confirmation": "Saisissez {{ email }} pour confirmer",
+      "mismatch": "Ce n’est pas l’e-mail de votre compte.",
+      "purgeComments": "Supprimer aussi mes commentaires",
+      "submit": "Supprimer définitivement"
     }
   }
 }

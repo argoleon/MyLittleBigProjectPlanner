@@ -332,13 +332,11 @@ async fn deleting_a_tenant_needs_its_slug_and_purges_it_in_the_background() {
     )
     .unwrap();
     let runner = worker::jobs::JobRunner::new(db.app_pool.clone());
-    while runner
-        .next_batch(&worker::jobs::Jobs {
-            mailer: mailer.clone(),
-        })
-        .await
-        == worker::Batch::Processed
-    {}
+    let jobs = worker::jobs::Jobs {
+        mailer,
+        exports: infra::exports::ExportStore::new(api.valkey.clone(), api.key_prefix.clone()),
+    };
+    while runner.next_batch(&jobs).await == worker::Batch::Processed {}
     let (status, _) = send(&api, &db.tenant_a, Method::GET, &beta, None).await;
     assert_eq!(status, 404, "nothing left of it");
     let left: i64 = infra::sqlx::query_scalar("SELECT count(*) FROM tenant WHERE id = $1")

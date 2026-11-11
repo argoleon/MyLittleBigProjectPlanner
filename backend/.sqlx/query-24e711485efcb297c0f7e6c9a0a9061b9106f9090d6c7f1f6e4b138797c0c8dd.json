@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM job WHERE kind = $1 AND status = 'queued' AND lower(payload ->> 'to') = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "24e711485efcb297c0f7e6c9a0a9061b9106f9090d6c7f1f6e4b138797c0c8dd"
+}

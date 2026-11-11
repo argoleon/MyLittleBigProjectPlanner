@@ -45,6 +45,8 @@ export class SignInPage {
   readonly returnUrl = input<string>();
   /** Set after a password reset (query parameter). */
   readonly passwordChanged = input<string>();
+  /** Set after the account was erased (query parameter). */
+  readonly accountErased = input<string>();
   /** Error code of a sign-in through a provider that failed (query parameter). */
   readonly error = input<string>();
 

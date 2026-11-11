@@ -11,6 +11,7 @@ pub mod correlation;
 pub mod etag;
 pub mod extract;
 pub mod fields;
+pub mod gdpr;
 pub mod groups;
 pub mod idempotency;
 pub mod invitations;

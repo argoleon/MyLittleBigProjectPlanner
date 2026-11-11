@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT pseudonym_number FROM erased_member WHERE account_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pseudonym_number",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "erased_member",
+            "name": "pseudonym_number"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "dd709a4d9fc59926bbd96fe495a4e1a6b8065365ab14d2c5df441aed147dc3dc"
+}

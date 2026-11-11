@@ -15,6 +15,15 @@ IFS='|' read -r _ state _ code <<< "$(service_states migrate)"
 [ "$state" = "exited" ] && [ "$code" = "0" ] || fail "migrate: $state, exit code $code"
 pass "migrate ran and exited 0"
 
+section "container logs"
+# Traefik's access logs and the api's hold client IP addresses (GDPR,
+# specification §14): rotated by size, never kept whole on the host.
+for service in traefik api; do
+    log_config="$(docker inspect --format '{{.HostConfig.LogConfig.Type}} {{index .HostConfig.LogConfig.Config "max-size"}} {{index .HostConfig.LogConfig.Config "max-file"}}' "$(compose ps -q "$service")")"
+    [ "$log_config" = "json-file 20m 5" ] || fail "$service: logs not rotated as configured: $log_config"
+done
+pass "container logs are rotated (20m, 5 files)"
+
 section "routing through Traefik"
 redirect="$(curl_edge --output /dev/null --write-out '%{http_code} %{redirect_url}' http://localhost/workload)"
 [[ "$redirect" =~ ^30[178]\ https://localhost/workload$ ]] || fail "http is not redirected to https: $redirect"

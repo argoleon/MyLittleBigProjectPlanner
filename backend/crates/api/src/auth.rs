@@ -33,6 +33,7 @@ use infra::config::{PublicUrl, SessionSettings};
 use infra::credentials;
 use infra::crypto::SecretCipher;
 use infra::email::{EMAIL_JOB, EmailJob, EmailMessage};
+use infra::exports::ExportStore;
 use infra::http_client::{HttpClient, HttpError};
 use infra::oidc::LoginStore;
 use infra::permissions::PermissionCache;
@@ -80,6 +81,8 @@ pub struct Auth {
     pub(crate) switches: SwitchStore,
     /// Effective permissions of members (`crate::permissions`).
     pub(crate) permissions: PermissionCache,
+    /// Exports of personal data (`crate::gdpr`).
+    pub(crate) exports: ExportStore,
 }
 
 impl Auth {
@@ -103,7 +106,8 @@ impl Auth {
             limits: RateLimiter::new(valkey.clone(), key_prefix),
             logins: LoginStore::new(valkey.clone(), key_prefix),
             switches: SwitchStore::new(valkey.clone(), key_prefix),
-            permissions: PermissionCache::new(valkey, key_prefix),
+            permissions: PermissionCache::new(valkey.clone(), key_prefix),
+            exports: ExportStore::new(valkey, key_prefix),
             http: HttpClient::new(oidc_allow_http)?,
             public_url,
             cookie_secure: settings.cookie_secure,
@@ -168,7 +172,7 @@ impl Auth {
     }
 
     /// `Set-Cookie` headers removing the session's cookies.
-    fn cleared_cookies(&self) -> Result<[(axum::http::HeaderName, HeaderValue); 2], Problem> {
+    pub(crate) fn cleared_cookies(&self) -> Result<[(axum::http::HeaderName, HeaderValue); 2], Problem> {
         let attributes = self.cookie_attributes(0);
         Ok([
             (

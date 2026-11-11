@@ -24,6 +24,8 @@ fn required_env(command: &mut Command) -> &mut Command {
         .env("DATABASE_ACQUIRE_TIMEOUT_SECS", "1")
         .env("SMTP_URL", "smtp://127.0.0.1:1")
         .env("MAIL_FROM", "Planner <noreply@example.org>")
+        // Unreachable: the worker starts anyway, its readiness says so.
+        .env("VALKEY_URL", "redis://127.0.0.1:1")
 }
 
 fn healthcheck(port: u16) -> ExitStatus {

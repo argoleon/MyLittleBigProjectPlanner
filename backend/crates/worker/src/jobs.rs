@@ -16,6 +16,8 @@ use std::time::Duration;
 use chrono::Utc;
 use domain::jobs::{AfterFailure, after_failure};
 use infra::email::{EMAIL_JOB, EmailJob, MailError, Mailer, render};
+use infra::erasure::{ERASURE_JOB, ErasedMember};
+use infra::exports::{EXPORT_JOB, ExportJob, ExportStore};
 use infra::jobs::ClaimedJob;
 use infra::platform::PURGE_TENANT_JOB;
 use infra::sqlx::postgres::{PgConnection, PgPool};
@@ -44,6 +46,13 @@ pub trait JobHandler: Send + Sync {
 #[derive(Debug, Clone)]
 pub struct Jobs {
     pub mailer: Mailer,
+    /// Exports of personal data, in Valkey.
+    pub exports: ExportStore,
+}
+
+fn payload<T: serde::de::DeserializeOwned>(job: &ClaimedJob) -> Result<T, JobError> {
+    serde_json::from_value(job.payload.clone())
+        .map_err(|e| JobError::Permanent(format!("unreadable payload: {e}")))
 }
 
 impl JobHandler for Jobs {
@@ -67,6 +76,43 @@ impl JobHandler for Jobs {
                         .await
                         .map_err(|e| JobError::Retry(e.to_string()))?;
                     tracing::info!(removed, "tenant purged");
+                    Ok(())
+                }
+                EXPORT_JOB => {
+                    let export: ExportJob = payload(job)?;
+                    // The data of that account only (`app_my_personal_data`).
+                    infra::db::set_account(conn, export.account_id)
+                        .await
+                        .map_err(|e| JobError::Retry(e.to_string()))?;
+                    let Some(content) = infra::exports::collect(conn)
+                        .await
+                        .map_err(|e| JobError::Retry(e.to_string()))?
+                    else {
+                        return Err(JobError::Permanent("the account has no data (erased)".to_owned()));
+                    };
+                    let stored = self
+                        .exports
+                        .complete(&export.export_id, content)
+                        .await
+                        .map_err(|e| JobError::Retry(e.to_string()))?;
+                    tracing::info!(target: "audit", account = %export.account_id, stored, "personal data exported");
+                    Ok(())
+                }
+                ERASURE_JOB => {
+                    let member: ErasedMember = payload(job)?;
+                    let done = infra::erasure::anonymize(conn, &member, &infra::erasure::steps())
+                        .await
+                        .map_err(|e| JobError::Retry(e.to_string()))?;
+                    for (step, changed) in done {
+                        tracing::info!(
+                            target: "audit",
+                            account = %member.account_id,
+                            pseudonym = member.pseudonym_number,
+                            step,
+                            changed,
+                            "erased member's content anonymized"
+                        );
+                    }
                     Ok(())
                 }
                 other => Err(JobError::Permanent(format!("unknown job kind {other}"))),

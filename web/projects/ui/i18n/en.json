@@ -72,7 +72,8 @@
       "submit": "Sign in",
       "passwordChanged": "Your password has been changed. Sign in with the new one.",
       "continueWith": "Continue with {{ name }}",
-      "orLocal": "or with a local account"
+      "orLocal": "or with a local account",
+      "accountErased": "Your account was deleted."
     },
     "forgotPassword": {
       "title": "Forgot your password",
@@ -396,7 +397,8 @@
       "unknown_time_zone": "This time zone is unknown.",
       "not_default_slug": "In single-organization mode, only the configured identifier is allowed.",
       "external_member_only": "An external account cannot administer the organization.",
-      "incorrect": "Incorrect value."
+      "incorrect": "Incorrect value.",
+      "mismatch": "The values do not match."
     },
     "invitation": {
       "invalid": "This invitation link is invalid, has expired or was already used. Ask for a new one.",
@@ -418,10 +420,15 @@
       "in_use": "Grants use this role: remove them first."
     },
     "account": {
-      "no_password": "Your organization signs you in: your account has no password to change."
+      "no_password": "Your organization signs you in: your account has no password to change.",
+      "reauthentication_required": "Sign in again through your organization, then delete your account within 10 minutes.",
+      "platform_admin": "A platform super admin cannot be erased: another one must remove the role first."
     },
     "session": {
       "current": "This is the current session: sign out instead."
+    },
+    "export": {
+      "pending": "The export is not ready yet."
     }
   },
   "dialog": {
@@ -506,6 +513,30 @@
       "revoke": "Sign out",
       "revokeOf": "Sign out the session on {{ device }}",
       "revoked": "Session signed out."
+    },
+    "personalData": {
+      "title": "My personal data",
+      "intro": "Erasure anonymizes your name and email everywhere, history included. The content of your tickets is kept.",
+      "export": "Export (JSON)",
+      "exporting": "Preparing the export…",
+      "exported": "Your export is downloaded.",
+      "exportSlow": "The export takes longer than expected. Try again in a few minutes.",
+      "erase": "Delete my account"
+    },
+    "erasure": {
+      "title": "Delete your account?",
+      "intro": "Your account is erased in all your organizations:",
+      "removed": "your name, email, password and preferences are deleted;",
+      "pseudonym": "you appear everywhere as “Deleted user #N”, history included;",
+      "kept": "the content you created is kept, except your comments if you ask so;",
+      "signedOut": "all your sessions end.",
+      "irreversible": "This cannot be undone.",
+      "password": "Your password",
+      "ssoHint": "You sign in through your organization: sign in again just before (less than 10 minutes) to delete your account.",
+      "confirmation": "Type {{ email }} to confirm",
+      "mismatch": "This is not the email of your account.",
+      "purgeComments": "Also delete my comments",
+      "submit": "Delete for good"
     }
   }
 }

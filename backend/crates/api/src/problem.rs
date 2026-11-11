@@ -88,11 +88,14 @@ pub enum ErrorCode {
     RoleInUse,
     AccountNoPassword,
     SessionCurrent,
+    AccountReauthenticationRequired,
+    AccountPlatformAdmin,
+    ExportPending,
 }
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 49] = [
+    pub const ALL: [Self; 52] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -142,6 +145,9 @@ impl ErrorCode {
         Self::RoleInUse,
         Self::AccountNoPassword,
         Self::SessionCurrent,
+        Self::AccountReauthenticationRequired,
+        Self::AccountPlatformAdmin,
+        Self::ExportPending,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -195,6 +201,9 @@ impl ErrorCode {
             Self::RoleInUse => "role.in_use",
             Self::AccountNoPassword => "account.no_password",
             Self::SessionCurrent => "session.current",
+            Self::AccountReauthenticationRequired => "account.reauthentication_required",
+            Self::AccountPlatformAdmin => "account.platform_admin",
+            Self::ExportPending => "export.pending",
         }
     }
 
@@ -215,6 +224,7 @@ impl ErrorCode {
             }
             Self::Forbidden
             | Self::PermissionDenied
+            | Self::AccountReauthenticationRequired
             | Self::CsrfInvalid
             | Self::AuthSsoRequired
             | Self::AuthOidcNoMember
@@ -241,7 +251,9 @@ impl ErrorCode {
             | Self::RoleLabelTaken
             | Self::RoleInUse
             | Self::AccountNoPassword
-            | Self::SessionCurrent => StatusCode::CONFLICT,
+            | Self::SessionCurrent
+            | Self::AccountPlatformAdmin
+            | Self::ExportPending => StatusCode::CONFLICT,
             Self::PreconditionFailed => StatusCode::PRECONDITION_FAILED,
             Self::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -303,6 +315,13 @@ impl ErrorCode {
             Self::RoleInUse => "Grants use this role: remove them first",
             Self::AccountNoPassword => "This account signs in through its organization: it has no password",
             Self::SessionCurrent => "This is the session of the request: sign out instead",
+            Self::AccountReauthenticationRequired => {
+                "Sign in again through your organization, then erase your account within 10 minutes"
+            }
+            Self::AccountPlatformAdmin => {
+                "A platform super admin cannot be erased: another one removes the role first"
+            }
+            Self::ExportPending => "The export is not ready yet",
         }
     }
 
@@ -546,7 +565,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 49] = [
+        let expected: [(ErrorCode, u16); 52] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -596,6 +615,9 @@ mod tests {
             (ErrorCode::RoleInUse, 409),
             (ErrorCode::AccountNoPassword, 409),
             (ErrorCode::SessionCurrent, 409),
+            (ErrorCode::AccountReauthenticationRequired, 403),
+            (ErrorCode::AccountPlatformAdmin, 409),
+            (ErrorCode::ExportPending, 409),
         ];
         for (code, status) in expected {
             assert_eq!(code.status().as_u16(), status, "{}", code.as_str());

@@ -11,6 +11,12 @@ export interface Me {
   accountType: AccountType;
   displayName: string;
   email: string;
+
+  /**
+   * The account has a password: it confirms its erasure with it. Without
+   * one (SSO only), a recent sign-in through the organization does.
+   */
+  hasPassword: boolean;
   id: string;
 
   /**

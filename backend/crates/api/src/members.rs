@@ -195,7 +195,7 @@ fn with_etag(mut response: Response, version: i64) -> Response {
     response
 }
 
-fn conflict_problem(conflict: WriteConflict) -> Problem {
+pub(crate) fn conflict_problem(conflict: WriteConflict) -> Problem {
     match conflict {
         WriteConflict::NotFound => Problem::new(ErrorCode::NotFound),
         WriteConflict::VersionMismatch => Problem::new(ErrorCode::PreconditionFailed),
@@ -368,7 +368,7 @@ pub async fn update(
 
 /// 409 `member.last_admin` if `current` is the last active tenant admin and
 /// stops being one.
-async fn check_an_admin_stays(
+pub(crate) async fn check_an_admin_stays(
     tx: &mut TenantTx,
     current: &TenantMember,
     stays_admin: bool,

@@ -1,0 +1,30 @@
+@use '../admin/admin-shared';
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-2);
+}
+
+.consequences {
+  margin: 0;
+  padding-inline-start: var(--app-space-5);
+  font: var(--mat-sys-body-medium);
+}
+
+.irreversible {
+  font: var(--mat-sys-title-small);
+  color: var(--mat-sys-error);
+}
+
+.hint {
+  margin: 0;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+// Destructive: the error role of the theme.
+.confirm:not(:disabled) {
+  --mat-button-filled-container-color: var(--mat-sys-error);
+  --mat-button-filled-label-text-color: var(--mat-sys-on-error);
+}

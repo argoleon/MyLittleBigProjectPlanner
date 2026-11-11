@@ -3614,6 +3614,7 @@ dependencies = [
  "chrono",
  "domain",
  "infra",
+ "serde",
  "serde_json",
  "testkit",
  "tokio",
