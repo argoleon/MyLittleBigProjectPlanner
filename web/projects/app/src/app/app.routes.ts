@@ -34,6 +34,11 @@ export const routes: Routes = [
     loadComponent: () => import('./auth/forgot-password-page').then((m) => m.ForgotPasswordPage),
   },
   {
+    path: 'accept-invitation',
+    title: 'auth.acceptInvitation.title',
+    loadComponent: () => import('./auth/accept-invitation-page').then((m) => m.AcceptInvitationPage),
+  },
+  {
     path: 'reset-password',
     title: 'auth.resetPassword.title',
     loadComponent: () => import('./auth/reset-password-page').then((m) => m.ResetPasswordPage),
@@ -54,7 +59,17 @@ export const routes: Routes = [
         path: 'admin',
         loadComponent: () => import('./admin/admin-page').then((m) => m.AdminPage),
         children: [
-          { path: '', pathMatch: 'full', redirectTo: 'authentication' },
+          { path: '', pathMatch: 'full', redirectTo: 'members' },
+          {
+            path: 'members',
+            title: 'admin.tabs.members',
+            loadComponent: () => import('./admin/members-tab').then((m) => m.MembersTab),
+          },
+          {
+            path: 'groups',
+            title: 'admin.tabs.groups',
+            loadComponent: () => import('./admin/groups-tab').then((m) => m.GroupsTab),
+          },
           {
             path: 'authentication',
             title: 'admin.tabs.authentication',

@@ -1,0 +1,25 @@
+[data-kind='internal'] {
+  --chip-container: var(--app-account-internal-container);
+  --chip-on: var(--app-account-internal-on);
+}
+
+[data-kind='external'] {
+  --chip-container: var(--app-account-external-container);
+  --chip-on: var(--app-account-external-on);
+}
+
+[data-state='active'] {
+  --chip-container: var(--app-member-active-container);
+  --chip-on: var(--app-member-active-on);
+}
+
+[data-state='invited'] {
+  --chip-container: var(--app-member-invited-container);
+  --chip-on: var(--app-member-invited-on);
+}
+
+[data-state='suspended'],
+[data-state='expired'] {
+  --chip-container: var(--app-member-blocked-container);
+  --chip-on: var(--app-member-blocked-on);
+}

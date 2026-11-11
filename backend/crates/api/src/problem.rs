@@ -77,11 +77,17 @@ pub enum ErrorCode {
     TenantConfirmationMismatch,
     TenantDeleteCurrent,
     ReferenceItemCodeTaken,
+    InvitationInvalid,
+    InvitationPending,
+    InvitationAlreadyMember,
+    InvitationClosed,
+    MemberLastAdmin,
+    GroupNameTaken,
 }
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 38] = [
+    pub const ALL: [Self; 44] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -120,6 +126,12 @@ impl ErrorCode {
         Self::TenantConfirmationMismatch,
         Self::TenantDeleteCurrent,
         Self::ReferenceItemCodeTaken,
+        Self::InvitationInvalid,
+        Self::InvitationPending,
+        Self::InvitationAlreadyMember,
+        Self::InvitationClosed,
+        Self::MemberLastAdmin,
+        Self::GroupNameTaken,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -162,6 +174,12 @@ impl ErrorCode {
             Self::TenantConfirmationMismatch => "tenant.confirmation_mismatch",
             Self::TenantDeleteCurrent => "tenant.delete_current",
             Self::ReferenceItemCodeTaken => "reference_item.code_taken",
+            Self::InvitationInvalid => "invitation.invalid",
+            Self::InvitationPending => "invitation.pending",
+            Self::InvitationAlreadyMember => "invitation.already_member",
+            Self::InvitationClosed => "invitation.closed",
+            Self::MemberLastAdmin => "member.last_admin",
+            Self::GroupNameTaken => "group.name_taken",
         }
     }
 
@@ -175,7 +193,8 @@ impl ErrorCode {
             | Self::AuthResetTokenInvalid
             | Self::TenantConfirmationMismatch
             | Self::AuthOidcFailed
-            | Self::AuthSwitchFailed => StatusCode::BAD_REQUEST,
+            | Self::AuthSwitchFailed
+            | Self::InvitationInvalid => StatusCode::BAD_REQUEST,
             Self::Unauthenticated | Self::AuthInvalidCredentials | Self::AuthInvalidCode => {
                 StatusCode::UNAUTHORIZED
             }
@@ -197,7 +216,12 @@ impl ErrorCode {
             | Self::MfaAlreadyEnabled
             | Self::MfaNotStarted
             | Self::MfaRequiredByPolicy
-            | Self::OidcProviderDuplicate => StatusCode::CONFLICT,
+            | Self::OidcProviderDuplicate
+            | Self::InvitationPending
+            | Self::InvitationAlreadyMember
+            | Self::InvitationClosed
+            | Self::MemberLastAdmin
+            | Self::GroupNameTaken => StatusCode::CONFLICT,
             Self::PreconditionFailed => StatusCode::PRECONDITION_FAILED,
             Self::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -248,6 +272,12 @@ impl ErrorCode {
             Self::TenantConfirmationMismatch => "Type the tenant's slug in `confirm` to delete it",
             Self::TenantDeleteCurrent => "The tenant you are signed in to cannot be deleted",
             Self::ReferenceItemCodeTaken => "Another reference item already has this code",
+            Self::InvitationInvalid => "This invitation link is invalid, expired or already used",
+            Self::InvitationPending => "This email already has an open invitation; send it again instead",
+            Self::InvitationAlreadyMember => "This email already belongs to a member of the tenant",
+            Self::InvitationClosed => "This invitation was already accepted or revoked",
+            Self::MemberLastAdmin => "The tenant needs at least one active tenant admin",
+            Self::GroupNameTaken => "Another group already has this name",
         }
     }
 
@@ -491,7 +521,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 38] = [
+        let expected: [(ErrorCode, u16); 44] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -530,6 +560,12 @@ mod tests {
             (ErrorCode::TenantConfirmationMismatch, 400),
             (ErrorCode::TenantDeleteCurrent, 409),
             (ErrorCode::ReferenceItemCodeTaken, 409),
+            (ErrorCode::InvitationInvalid, 400),
+            (ErrorCode::InvitationPending, 409),
+            (ErrorCode::InvitationAlreadyMember, 409),
+            (ErrorCode::InvitationClosed, 409),
+            (ErrorCode::MemberLastAdmin, 409),
+            (ErrorCode::GroupNameTaken, 409),
         ];
         for (code, status) in expected {
             assert_eq!(code.status().as_u16(), status, "{}", code.as_str());

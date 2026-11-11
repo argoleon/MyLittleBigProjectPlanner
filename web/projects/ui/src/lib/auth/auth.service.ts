@@ -4,7 +4,9 @@ import { Router } from '@angular/router';
 import { isApiProblem } from '../api/api-problem';
 import { Api } from '../api/generated/api';
 import {
+  acceptInvitation,
   confirmMfa,
+  getInvitation,
   confirmPasswordReset,
   getSession,
   requestPasswordReset,
@@ -13,6 +15,8 @@ import {
   switchTenant,
   verifySignIn,
 } from '../api/generated/functions';
+import type { InvitationAccepted } from '../api/generated/models/invitation-accepted';
+import type { InvitationPreview } from '../api/generated/models/invitation-preview';
 import type { MfaEnabled } from '../api/generated/models/mfa-enabled';
 import type { Session } from '../api/generated/models/session';
 import type { SessionStage } from '../api/generated/models/session-stage';
@@ -163,6 +167,24 @@ export class AuthService {
     this.loading = null;
     this.state.set(null);
     this.leave(url);
+  }
+
+  /** The invitation of an emailed link; rejects with `invitation.invalid`. */
+  async invitation(token: string): Promise<InvitationPreview> {
+    return this.api.invoke(getInvitation, { body: { token } });
+  }
+
+  /**
+   * Accepts an invitation, with a name and a password for a new account.
+   * An internal member comes back signed in (maybe at a two-step
+   * verification stage): the session is taken at once.
+   */
+  async acceptInvitation(token: string, account?: { displayName: string; password: string }): Promise<InvitationAccepted> {
+    const accepted = await this.api.invoke(acceptInvitation, { body: { token, ...account } });
+    if (accepted.session) {
+      this.state.set(accepted.session);
+    }
+    return accepted;
   }
 
   /** Asks for a reset link; the API accepts any email (no enumeration). */

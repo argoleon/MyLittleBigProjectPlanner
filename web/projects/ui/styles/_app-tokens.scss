@@ -63,6 +63,18 @@
   --app-badge-ai-container: var(--mat-sys-tertiary-container);
   --app-badge-ai-on: var(--mat-sys-on-tertiary-container);
 
+  // Members: account type and status of the membership
+  --app-account-internal-container: var(--mat-sys-primary-container);
+  --app-account-internal-on: var(--mat-sys-on-primary-container);
+  --app-account-external-container: var(--app-badge-ai-container);
+  --app-account-external-on: var(--app-badge-ai-on);
+  --app-member-active-container: var(--app-success-container);
+  --app-member-active-on: var(--app-on-success-container);
+  --app-member-invited-container: var(--mat-sys-surface-container-highest);
+  --app-member-invited-on: var(--mat-sys-on-surface-variant);
+  --app-member-blocked-container: var(--mat-sys-error-container);
+  --app-member-blocked-on: var(--mat-sys-on-error-container);
+
   // ---------------------------------------------------------------------------
   // Workload heatmap: occupation levels (0 %, ≤ 40 %, ≤ 70 %, ≤ 95 %, ≤ 100 %)
   // In dark mode the scale is reversed: higher load = brighter cell.

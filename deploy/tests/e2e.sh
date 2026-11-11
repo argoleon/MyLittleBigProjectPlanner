@@ -4,8 +4,8 @@
 # container on the edge network. Run by `just compose-e2e`; extra arguments
 # go to `playwright test`.
 #
-# Creates a member of its own for the flow that mocks nothing
-# (web/e2e/auth-stack.spec.ts), which reads the reset email from Mailpit.
+# Creates members of its own for the flows that mock nothing
+# (web/e2e/*-stack.spec.ts), which read their emails from Mailpit.
 source "$(dirname "$0")/lib.sh"
 
 section "member for the end-to-end flow"
@@ -20,6 +20,13 @@ mfa_passphrase="e2e mfa passphrase $RANDOM$RANDOM"
 printf '%s\n' "$mfa_passphrase" | compose exec -T api /usr/local/bin/api add-member default "$mfa_member" "E2E Mfa" > /dev/null \
     || fail "api add-member failed"
 pass "created $mfa_member"
+# A tenant admin who invites and removes a member (web/e2e/members-stack.spec.ts).
+admin="e2e-admin-$(date +%s)-$RANDOM@example.test"
+admin_passphrase="e2e admin passphrase $RANDOM$RANDOM"
+printf '%s\n' "$admin_passphrase" \
+    | compose exec -T api /usr/local/bin/api add-member default "$admin" "E2E Admin" --role tenant_admin > /dev/null \
+    || fail "api add-member failed"
+pass "created $admin"
 
 section "playwright"
 docker run --rm --network mlbpp_edge --ipc host --user "${DEV_UID:-$(id -u)}:${DEV_GID:-$(id -g)}" \
@@ -27,4 +34,5 @@ docker run --rm --network mlbpp_edge --ipc host --user "${DEV_UID:-$(id -u)}:${D
     -e E2E_BASE_URL=https://localhost -e "E2E_HOST_RULES=MAP localhost traefik" \
     -e "E2E_MEMBER_EMAIL=$member" -e "E2E_MEMBER_SECRET=$passphrase" -e E2E_MAILPIT_URL=http://mailpit:8025 \
     -e "E2E_MFA_EMAIL=$mfa_member" -e "E2E_MFA_SECRET=$mfa_passphrase" \
+    -e "E2E_ADMIN_EMAIL=$admin" -e "E2E_ADMIN_SECRET=$admin_passphrase" \
     mlbpp-dev-e2e npx playwright test "$@"

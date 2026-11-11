@@ -158,6 +158,11 @@ impl TenantTx {
         &self.inner.default_locale
     }
 
+    /// The tenant's identifier in host names and links.
+    pub fn slug(&self) -> &str {
+        &self.inner.slug
+    }
+
     /// The signed-in member.
     pub fn member(&self) -> &Member {
         &self.member

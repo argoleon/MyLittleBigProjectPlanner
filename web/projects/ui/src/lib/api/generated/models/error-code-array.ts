@@ -44,5 +44,11 @@ export const ERROR_CODE: ErrorCode[] = [
   'tenant.slug_taken',
   'tenant.confirmation_mismatch',
   'tenant.delete_current',
-  'reference_item.code_taken'
+  'reference_item.code_taken',
+  'invitation.invalid',
+  'invitation.pending',
+  'invitation.already_member',
+  'invitation.closed',
+  'member.last_admin',
+  'group.name_taken'
 ];

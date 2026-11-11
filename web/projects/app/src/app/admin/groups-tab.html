@@ -1,0 +1,66 @@
+<div class="toolbar">
+  <p class="intro">{{ 'admin.groups.intro' | transloco }}</p>
+  <button matButton="filled" type="button" class="invite" (click)="edit()">
+    <mat-icon aria-hidden="true">group_add</mat-icon>
+    {{ 'admin.groups.add' | transloco }}
+  </button>
+</div>
+@if (notice(); as notice) {
+  <p class="message" [class.info]="notice.ok" [class.error]="!notice.ok" [attr.role]="notice.ok ? 'status' : 'alert'">
+    {{ notice.key | transloco: notice.params }}
+  </p>
+}
+@if (groups.isLoading() && !groups.hasValue()) {
+  <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+} @else if (groups.error()) {
+  <ui-error-state [error]="groups.error()" [headingLevel]="2" (retry)="groups.reload()" />
+} @else if (groups.value()?.length === 0) {
+  <ui-empty-state icon="groups" [title]="'admin.groups.empty' | transloco" [message]="'admin.groups.emptyHint' | transloco" />
+} @else {
+  <div class="table-card">
+    <table mat-table [dataSource]="groups.value() ?? []" class="table">
+      <caption class="cdk-visually-hidden">{{ 'admin.groups.caption' | transloco }}</caption>
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef scope="col">{{ 'admin.groups.columns.name' | transloco }}</th>
+        <td mat-cell *matCellDef="let group">
+          <span class="name">{{ group.name }}</span>
+          @if (group.description) {
+            <span class="secondary">{{ group.description }}</span>
+          }
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="members">
+        <th mat-header-cell *matHeaderCellDef scope="col">{{ 'admin.groups.columns.members' | transloco }}</th>
+        <td mat-cell *matCellDef="let group">{{ group.memberCount | localNumber }}</td>
+      </ng-container>
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef scope="col">
+          <span class="cdk-visually-hidden">{{ 'admin.members.columns.actions' | transloco }}</span>
+        </th>
+        <td mat-cell *matCellDef="let group" class="group-actions">
+          <button matButton type="button" (click)="openMembers(group)">
+            {{ 'admin.groups.manageMembers' | transloco }}
+          </button>
+          <button
+            matIconButton
+            type="button"
+            (click)="edit(group)"
+            [attr.aria-label]="'admin.groups.editOf' | transloco: { name: group.name }"
+          >
+            <mat-icon aria-hidden="true">edit</mat-icon>
+          </button>
+          <button
+            matIconButton
+            type="button"
+            (click)="remove(group)"
+            [attr.aria-label]="'admin.groups.deleteOf' | transloco: { name: group.name }"
+          >
+            <mat-icon aria-hidden="true">delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="columns"></tr>
+      <tr mat-row *matRowDef="let group; columns: columns"></tr>
+    </table>
+  </div>
+}

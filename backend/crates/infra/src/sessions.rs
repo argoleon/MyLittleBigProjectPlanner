@@ -241,6 +241,30 @@ impl SessionStore {
         Ok(deleted)
     }
 
+    /// Ends the sessions of `account_id` in `tenant_id` only (removed from
+    /// that tenant, or no longer allowed in its application). Returns how
+    /// many were open.
+    pub async fn delete_in_tenant(&self, account_id: Uuid, tenant_id: Uuid) -> Result<usize, ValkeyError> {
+        let hashes: Vec<String> = self.valkey.smembers(self.account_key(account_id)).await?;
+        let mut deleted = 0;
+        for hash in &hashes {
+            let json: Option<String> = self.valkey.get(self.session_key(hash)).await?;
+            let session = json.and_then(|json| serde_json::from_str::<Session>(&json).ok());
+            match session {
+                Some(session) if session.tenant_id == tenant_id => {
+                    self.forget(hash, account_id).await?;
+                    deleted += 1;
+                }
+                Some(_) => {}
+                // Expired: only the index still names it.
+                None => {
+                    let _: () = self.valkey.srem(self.account_key(account_id), hash).await?;
+                }
+            }
+        }
+        Ok(deleted)
+    }
+
     async fn forget(&self, hash: &str, account_id: Uuid) -> Result<(), ValkeyError> {
         let _: () = self.valkey.del(self.session_key(hash)).await?;
         let _: () = self.valkey.srem(self.account_key(account_id), hash).await?;

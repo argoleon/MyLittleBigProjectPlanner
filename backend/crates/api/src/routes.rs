@@ -18,7 +18,10 @@ use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
 use crate::auth;
+use crate::groups;
+use crate::invitations;
 use crate::me;
+use crate::members;
 use crate::mfa;
 use crate::openapi;
 use crate::platform;
@@ -74,6 +77,16 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(me::me))
         .routes(routes!(me::memberships))
         .routes(routes!(me::switch))
+        .routes(routes!(members::list))
+        .routes(routes!(members::read, members::update, members::remove))
+        .routes(routes!(invitations::list, invitations::create))
+        .routes(routes!(invitations::revoke))
+        .routes(routes!(invitations::resend))
+        .routes(routes!(invitations::preview))
+        .routes(routes!(invitations::accept))
+        .routes(routes!(groups::list, groups::create))
+        .routes(routes!(groups::read, groups::update, groups::delete))
+        .routes(routes!(groups::add_member, groups::remove_member))
         .routes(routes!(mfa::status))
         .routes(routes!(mfa::setup))
         .routes(routes!(mfa::confirm))

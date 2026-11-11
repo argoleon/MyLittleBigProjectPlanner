@@ -293,6 +293,38 @@ async fn fill_beta(db: &TestDb) -> (TestMember, TestMember) {
     .execute(&mut *tx)
     .await
     .unwrap();
+    // Groups, their members and invitations go with the tenant too.
+    let group = infra::groups::insert(
+        &mut tx,
+        new_id(),
+        &domain::members::GroupInput {
+            name: "Platform".to_owned(),
+            description: None,
+        },
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    infra::groups::add_member(&mut tx, group.id, only_beta.account_id)
+        .await
+        .unwrap();
+    infra::invitations::insert(
+        &mut tx,
+        &infra::invitations::NewInvitation {
+            id: new_id(),
+            email: "invitee@client.example",
+            access: domain::members::Access {
+                account_type: AccountType::External,
+                tenant_role: TenantRole::Member,
+            },
+            token_hash: b"invitation",
+            expires_at: chrono::Utc::now(),
+            invited_by: only_beta.account_id,
+        },
+    )
+    .await
+    .unwrap()
+    .unwrap();
     tx.commit().await.unwrap();
     (only_beta, both)
 }
@@ -314,6 +346,9 @@ async fn rows_of(db: &TestDb, tenant: Uuid) -> i64 {
         "job",
         "reference_item",
         "idempotency_key",
+        "invitation",
+        "group",
+        "group_member",
     ] {
         assert!(
             tables.iter().any(|t| t == expected),
@@ -325,7 +360,8 @@ async fn rows_of(db: &TestDb, tenant: Uuid) -> i64 {
         // The owner sees every row through set_config, table by table.
         let mut tx = begin_tenant_tx(&db.owner_pool, tenant).await.unwrap();
         let n: i64 = sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
-            "SELECT count(*) FROM {table} WHERE tenant_id = $1"
+            // Quoted: a table may be named after a keyword (`group`).
+            "SELECT count(*) FROM \"{table}\" WHERE tenant_id = $1"
         )))
         .bind(tenant)
         .fetch_one(&mut *tx)

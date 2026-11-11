@@ -144,6 +144,14 @@ pub struct AddedMember {
     pub new_account: bool,
 }
 
+/// Id of the account of `email` (normalized), whatever its tenants:
+/// invitations link an existing account.
+pub async fn id_by_email(conn: &mut PgConnection, email: &str) -> Result<Option<Uuid>, sqlx::Error> {
+    sqlx::query_scalar!(r#"SELECT app_account_id_by_email($1) AS "id""#, email)
+        .fetch_one(conn)
+        .await
+}
+
 /// Adds a member to the current tenant: links the existing account of this
 /// email, or creates it. An existing membership is updated (type, role) and
 /// reactivated.

@@ -9,6 +9,7 @@ import { provideI18nTesting } from '../testing/i18n-testing';
 import { EmptyState } from './empty-state';
 import { ErrorState } from './error-state';
 import { LoadingState } from './loading-state';
+import { AccountTypeChip, MemberStatusChip } from './member-chips';
 import { StatusChip } from './status-chip';
 import { TypeChip } from './type-chip';
 
@@ -54,6 +55,19 @@ describe('TypeChip', () => {
   it('shows the configured type name', async () => {
     const fixture = await render(TypeChip, { kind: 'story', label: 'User story' });
     expect(text(fixture)).toContain('Type: User story');
+  });
+});
+
+describe('AccountTypeChip and MemberStatusChip', () => {
+  it('name the type and status, prefixed for screen readers', async () => {
+    const type = await render(AccountTypeChip, { type: 'external' });
+    expect(text(type)).toBe('Account type: External');
+    expect((type.nativeElement as HTMLElement).querySelector('.chip')?.getAttribute('data-kind')).toBe('external');
+    TestBed.resetTestingModule();
+    const status = await render(MemberStatusChip, { state: 'invited' });
+    expect(text(status)).toBe('Status: Invitation sent');
+    expect((status.nativeElement as HTMLElement).querySelector('.chip')?.getAttribute('data-state')).toBe('invited');
+    expect(await axeViolations(status.nativeElement)).toEqual([]);
   });
 });
 
