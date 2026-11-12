@@ -25,6 +25,7 @@ use crate::invitations;
 use crate::me;
 use crate::members;
 use crate::mfa;
+use crate::nodes;
 use crate::openapi;
 use crate::platform;
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
@@ -101,6 +102,8 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(groups::read, groups::update, groups::delete))
         .routes(routes!(groups::add_member, groups::remove_member))
         .routes(routes!(roles::list, roles::create))
+        .routes(routes!(nodes::list, nodes::create))
+        .routes(routes!(nodes::read, nodes::update))
         .routes(routes!(roles::read, roles::update, roles::delete))
         .routes(routes!(mfa::status))
         .routes(routes!(mfa::setup))

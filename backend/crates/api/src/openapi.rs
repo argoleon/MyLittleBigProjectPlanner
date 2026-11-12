@@ -20,7 +20,7 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
 
 use crate::problem::{ErrorCode, ProblemBody};
 use crate::tenant::AppState;
-use crate::{auth, me, members, mfa, platform, reference_items, sso};
+use crate::{auth, me, members, mfa, nodes, platform, reference_items, sso};
 
 /// URL of the contract.
 pub const CONTRACT_PATH: &str = "/api/v1/openapi.json";
@@ -67,6 +67,7 @@ const DOCS_CSP: &str = "default-src 'self'; img-src 'self' data:; style-src 'sel
         (name = me::TAG, description = "The signed-in account and its tenants"),
         (name = members::TAG, description = "Members, invitations and groups of the tenant, for its admins"),
         (name = mfa::TAG, description = "Two-step verification of the signed-in member"),
+        (name = nodes::TAG, description = "Portfolios, programs and projects of the hierarchy"),
         (name = sso::TAG, description = "Authentication policy and OIDC providers of the tenant, for its admins"),
         (name = platform::TAG, description = "Platform administration, for the platform super admin"),
         (name = reference_items::TAG, description = "Reference resource showing every API convention; \

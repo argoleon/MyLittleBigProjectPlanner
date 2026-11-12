@@ -19,6 +19,7 @@ pub mod me;
 pub mod members;
 pub mod mfa;
 pub mod middleware;
+pub mod nodes;
 pub mod openapi;
 pub mod pagination;
 pub mod permissions;
