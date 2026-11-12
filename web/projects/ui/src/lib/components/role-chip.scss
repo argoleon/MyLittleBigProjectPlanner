@@ -1,0 +1,9 @@
+[data-origin='direct'] {
+  --chip-container: var(--mat-sys-primary-container);
+  --chip-on: var(--mat-sys-on-primary-container);
+}
+
+[data-origin='inherited'] {
+  --chip-container: var(--mat-sys-surface-container-highest);
+  --chip-on: var(--mat-sys-on-surface-variant);
+}

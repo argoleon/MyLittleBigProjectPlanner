@@ -48,6 +48,59 @@ async function mockHierarchy(page: Page) {
   return created;
 }
 
+/** The links of the project and who has access to it, for a member who manages its members. */
+async function mockLinks(page: Page) {
+  const node = `**/api/v1/nodes/${PROJECT.id}`;
+  const manager = { id: 'r3', label: 'Project manager', labelTranslations: { fr: 'Chef de projet', en: 'Project manager' } };
+  const reader = { id: 'r1', label: 'Reader', labelTranslations: { fr: 'Lecteur', en: 'Reader' } };
+  await page.route(`${node}/parents`, (route) =>
+    route.fulfill({ json: [{ id: PROGRAM.id, type: 'program', name: 'IT Modernization', key: null, weightPercent: 40, parents: [] }] }),
+  );
+  await page.route(`${node}/children`, (route) =>
+    route.fulfill({
+      json: [{ id: 'c1', type: 'project', name: 'Cyber permissions', key: 'CYBP', weightPercent: 100, parents: [] }],
+    }),
+  );
+  await page.route(`${node}/parent-candidates?*`, (route) =>
+    route.fulfill({
+      json: [
+        { id: 'p3', type: 'program', name: 'Cybersecurity', key: null, parents: [], refusal: null },
+        { id: 'c1', type: 'project', name: 'Cyber permissions', key: 'CYBP', parents: [], refusal: 'cycle' },
+      ],
+    }),
+  );
+  await page.route(`${node}/my-permissions`, (route) => route.fulfill({ json: ['view', 'manage_members'] }));
+  await page.route(`${node}/access`, (route) =>
+    route.fulfill({
+      json: [
+        {
+          grantId: 'g1',
+          holder: { kind: 'member', id: 'a2', name: 'Camille Martin' },
+          role: manager,
+          origin: { id: PROJECT.id, type: 'project', name: PROJECT.name },
+          direct: true,
+        },
+        {
+          grantId: 'g2',
+          holder: { kind: 'group', id: 'gr1', name: 'Managers' },
+          role: reader,
+          origin: { id: PROGRAM.id, type: 'program', name: PROGRAM.name },
+          direct: false,
+        },
+      ],
+    }),
+  );
+  await page.route(`${node}/grant-candidates*`, (route) =>
+    route.fulfill({
+      json: [
+        { kind: 'group', id: 'gr1', name: 'Managers', email: null },
+        { kind: 'member', id: 'a4', name: 'Manon Petit', email: 'manon.petit@acme.example' },
+      ],
+    }),
+  );
+  await page.route(`${node}/grantable-roles`, (route) => route.fulfill({ json: [reader, manager] }));
+}
+
 async function animationsDone(page: Page) {
   await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
 }
@@ -108,6 +161,27 @@ for (const theme of ['light', 'dark'] as const) {
         await expect(page.locator('app-node-general-tab form')).toBeVisible();
         await animationsDone(page);
         expect(await accessibilityViolations(page), 'settings').toEqual([]);
+      });
+
+      test('the attachments, the effective access and the grant dialog have no axe-core violation', async ({ page }) => {
+        await mockHierarchy(page);
+        await mockLinks(page);
+        await page.goto(`/nodes/${PROJECT.id}/links`);
+        await expect(page.locator('app-node-access-card li')).toHaveCount(2);
+        await expect(page.locator('app-weight-field')).toHaveCount(1);
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'attachments and access').toEqual([]);
+
+        await page.locator('button.add-parent').click();
+        await expect(page.locator('#parent-search li')).toHaveCount(2);
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'parent search').toEqual([]);
+
+        await page.locator('button.add-grant').click();
+        await expect(page.getByRole('dialog')).toBeVisible();
+        await expect(page.getByRole('option')).toHaveCount(2);
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'grant dialog').toEqual([]);
       });
     });
   }

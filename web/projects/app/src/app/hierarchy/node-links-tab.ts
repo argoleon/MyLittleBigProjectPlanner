@@ -16,6 +16,7 @@ import {
   NodeLink,
   errorTranslationKey,
   getNode,
+  listMyNodePermissions,
   isApiProblem,
   linkNodeParent,
   listNodeChildren,
@@ -24,6 +25,7 @@ import {
   unlinkNodeParent,
 } from 'ui';
 
+import { NodeAccessCard } from './node-access-card';
 import { NODE_ICONS, parentNames } from './node-links';
 import { NodeContext } from './node-settings-page';
 import { WeightField } from './weight-field';
@@ -38,9 +40,10 @@ interface Notice {
 }
 
 /**
- * "Attachments" tab of a node's settings (mockup 14): its parents with the
- * weighting of each link, a search to add a parent that says why a node
- * cannot be one, and its children.
+ * "Attachments and permissions" tab of a node's settings (mockup 14): its
+ * parents with the weighting of each link, a search to add a parent that
+ * says why a node cannot be one, its children, and, for those who manage
+ * its members, who has access to it.
  */
 @Component({
   selector: 'app-node-links-tab',
@@ -51,6 +54,7 @@ interface Notice {
     MatIconModule,
     MatInputModule,
     MatProgressBarModule,
+    NodeAccessCard,
     RouterLink,
     TranslocoPipe,
     WeightField,
@@ -76,6 +80,15 @@ export class NodeLinksTab {
     params: () => this.id(),
     loader: ({ params }) => this.api.invoke(listNodeChildren, { id: params }),
   });
+
+  private readonly permissions = resource({
+    params: () => this.id(),
+    loader: ({ params }) => this.api.invoke(listMyNodePermissions, { id: params }),
+  });
+  /** Whether the member sees and changes who has access to the node. */
+  protected readonly managesMembers = computed(
+    () => this.permissions.hasValue() && this.permissions.value().includes('manage_members'),
+  );
 
   /** Whether the "Add a parent" search is open. */
   protected readonly searching = signal(false);

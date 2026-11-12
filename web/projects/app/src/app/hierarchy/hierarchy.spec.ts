@@ -1,15 +1,15 @@
 /**
- * Integration tests of the hierarchy screens (L03-US01, US02): the
+ * Integration tests of the hierarchy screens (L03-US01 to US03): the
  * portfolios list, the creation dialog, a node's settings with its General
- * and Attachments tabs, with the API mocked at the HTTP level and the real
- * translations.
+ * and Attachments tabs, the effective access card and the grant dialog,
+ * with the API mocked at the HTTP level and the real translations.
  */
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { Router, provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { AuthService, Node, NodeCandidate, NodeLink, provideApi, provideMaterialDefaults } from 'ui';
+import { AuthService, Node, NodeAccess, NodeCandidate, NodeLink, provideApi, provideMaterialDefaults } from 'ui';
 import { axeViolations, provideI18nTesting } from 'ui/testing';
 
 import { NodeGeneralTab } from './node-general-tab';
@@ -337,7 +337,10 @@ describe('NodeSettingsPage and NodeGeneralTab', () => {
 });
 
 describe('NodeLinksTab', () => {
-  afterEach(() => TestBed.inject(HttpTestingController).verify());
+  afterEach(() => {
+    TestBed.inject(MatDialog).closeAll();
+    TestBed.inject(HttpTestingController).verify();
+  });
 
   const MODERNIZATION: NodeLink = {
     id: PROGRAM.id,
@@ -362,12 +365,21 @@ describe('NodeLinksTab', () => {
   const linkTo = (parent: string) => (url: string, method: string) =>
     url === `/api/v1/nodes/${PROJECT.id}/parents/${parent}` && method === 'PUT';
 
-  async function openLinks(parents: NodeLink[] = [MODERNIZATION, COMPLIANCE], children: NodeLink[] = [SUB_PROJECT]) {
+  const permissionsOf = (url: string) => url === `/api/v1/nodes/${PROJECT.id}/my-permissions`;
+  const accessOf = (url: string, method: string) => url === `/api/v1/nodes/${PROJECT.id}/access` && method === 'GET';
+
+  /** Opens the tab as a member with `permissions` on the project (a reader, by default). */
+  async function openLinks(
+    parents: NodeLink[] = [MODERNIZATION, COMPLIANCE],
+    children: NodeLink[] = [SUB_PROJECT],
+    permissions: string[] = ['view'],
+  ) {
     const context = await setUp();
     await context.harness.navigateByUrl(`/nodes/${PROJECT.id}/links`);
     await context.reply(nodeRead, PROJECT);
     await context.reply(parentsOf, parents);
     await context.reply(childrenOf, children);
+    await context.reply(permissionsOf, permissions);
     const tab = () => context.root().querySelector('app-node-links-tab')!;
     return { ...context, tab };
   }
@@ -383,11 +395,11 @@ describe('NodeLinksTab', () => {
 
   it('shows the parents with their weighting and the children to open', async () => {
     const { root, tab, text } = await openLinks();
-    expect(text(root().querySelector('a[mat-tab-link][aria-selected="true"]'))).toBe('Attachments');
+    expect(text(root().querySelector('a[mat-tab-link][aria-selected="true"]'))).toBe('Attachments and permissions');
     expect(text(tab().querySelector('.hint'))).toBe(
       'A project can be attached to portfolios, programs or other projects.',
     );
-    const parents = Array.from(tab().querySelectorAll('.parents .link'));
+    const parents = Array.from(tab().querySelectorAll('.parents .row'));
     expect(parents.map((row) => text(row.querySelector('.text')))).toEqual([
       'IT Modernization Program · Digital',
       'Compliance Program · Digital',
@@ -398,7 +410,7 @@ describe('NodeLinksTab', () => {
     ]);
     expect(parents[1].querySelector('button.unlink')?.getAttribute('aria-label')).toBe('Detach from Compliance');
     expect(parents[0].querySelector('a.name')?.getAttribute('href')).toBe(`/nodes/${PROGRAM.id}`);
-    const child = tab().querySelector('.children .link')!;
+    const child = tab().querySelector('.children .row')!;
     expect(text(child.querySelector('.text'))).toBe('Cyber permissions Project · CYBP');
     expect(child.querySelector('a')?.getAttribute('href')).toBe('/nodes/c1');
     expect(child.querySelector('a')?.getAttribute('aria-label')).toBe('Open Cyber permissions');
@@ -494,7 +506,187 @@ describe('NodeLinksTab', () => {
     await reply(parentsOf, [MODERNIZATION]);
     await reply(nodeRead, PROJECT);
     expect(text(tab().querySelector('[role="status"]'))).toBe('Detached from Compliance.');
-    expect(tab().querySelectorAll('.parents .link').length).toBe(1);
+    expect(tab().querySelectorAll('.parents .row').length).toBe(1);
     expect(document.activeElement).toBe(tab().querySelector('button.add-parent'));
+  });
+
+  describe('effective access', () => {
+    const READER = { id: 'r1', label: 'Reader', labelTranslations: { fr: 'Lecteur', en: 'Reader' } };
+    const MANAGER = { id: 'r3', label: 'Project manager', labelTranslations: { en: 'Project manager' } };
+    const DIRECT: NodeAccess = {
+      grantId: 'g1',
+      holder: { kind: 'member', id: 'a2', name: 'Camille Martin' },
+      role: MANAGER,
+      origin: { id: PROJECT.id, type: 'project', name: 'Identity platform' },
+      direct: true,
+    };
+    const FROM_PORTFOLIO: NodeAccess = {
+      grantId: 'g2',
+      holder: { kind: 'group', id: 'gr1', name: 'Managers' },
+      role: MANAGER,
+      origin: { id: 'p0', type: 'portfolio', name: 'Digital' },
+      direct: false,
+    };
+    const FROM_PROGRAM: NodeAccess = {
+      grantId: 'g3',
+      holder: { kind: 'group', id: 'gr2', name: 'Compliance team' },
+      role: READER,
+      origin: { id: 'p2', type: 'program', name: 'Compliance' },
+      direct: false,
+    };
+    const candidatesOf = (url: string) => url.startsWith(`/api/v1/nodes/${PROJECT.id}/grant-candidates`);
+    const rolesOf = (url: string) => url === `/api/v1/nodes/${PROJECT.id}/grantable-roles`;
+    const grants = (url: string, method: string) => url === `/api/v1/nodes/${PROJECT.id}/grants` && method === 'POST';
+
+    async function openAccess(access: NodeAccess[] = [DIRECT, FROM_PORTFOLIO, FROM_PROGRAM]) {
+      const context = await openLinks([MODERNIZATION], [], ['view', 'manage_members']);
+      await context.reply(accessOf, access);
+      const card = () => context.root().querySelector('app-node-access-card')!;
+      return { ...context, card };
+    }
+
+    /** Opens the grant dialog, with its first candidates and the roles to grant. */
+    async function openDialog(context: Awaited<ReturnType<typeof openAccess>>) {
+      await context.click(context.card().querySelector('button.add-grant'));
+      await context.reply(candidatesOf, []);
+      await context.reply(rolesOf, [READER, MANAGER]);
+      return context.dialog();
+    }
+
+    it('lists who has access, with the role and where it comes from', async () => {
+      const { root, card, text } = await openAccess();
+      expect(text(card().querySelector('h2'))).toBe('Effective access');
+      const rows = Array.from(card().querySelectorAll('.row'));
+      expect(rows.map((row) => text(row.querySelector('.text')))).toEqual([
+        'Member: Camille Martin Direct role on this project',
+        'Group: Managers Inherited from the portfolio Digital',
+        'Group: Compliance team Inherited from the program Compliance',
+      ]);
+      expect(rows.map((row) => text(row.querySelector('ui-role-chip')))).toEqual([
+        'Role: Project manager',
+        'Role: Project manager',
+        'Role: Reader',
+      ]);
+      expect(rows.map((row) => row.querySelector('.chip')?.getAttribute('data-origin'))).toEqual([
+        'direct',
+        'inherited',
+        'inherited',
+      ]);
+      expect(rows.map((row) => row.querySelector('mat-icon')?.textContent)).toEqual(['person', 'group', 'group']);
+      // Only a direct role is revoked here.
+      expect(rows.map((row) => row.querySelector('button.revoke')?.getAttribute('aria-label') ?? null)).toEqual([
+        'Revoke the role Project manager of Camille Martin',
+        null,
+        null,
+      ]);
+      expect(card().querySelector('button.add-grant')?.getAttribute('aria-label')).toBe('Add a role');
+      expect(await axeViolations(root().querySelector('app-node-settings-page')!)).toEqual([]);
+    });
+
+    it('says when nobody has a role, and stays hidden from those who do not manage the members', async () => {
+      const { card, text } = await openAccess([]);
+      expect(text(card().querySelector('.empty'))).toBe(
+        'Nobody has a role here yet. Organization admins see every node.',
+      );
+      TestBed.resetTestingModule();
+      const reader = await openLinks([MODERNIZATION], []);
+      expect(reader.root().querySelector('app-node-access-card')).toBeNull();
+    });
+
+    it('grants a role to a group found by its name', async () => {
+      const context = await openAccess([]);
+      const { reply, settle, root, card, text, click } = context;
+      const dialog = await openDialog(context);
+      expect(text(dialog.querySelector('h2'))).toBe('Grant a role on Identity platform');
+
+      // Typed, not chosen: nothing is sent.
+      const holder = dialog.querySelector('[formcontrolname="holder"]') as HTMLInputElement;
+      holder.focus();
+      holder.value = 'man';
+      holder.dispatchEvent(new Event('input'));
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      await settle();
+      const found = await reply(candidatesOf, [
+        { kind: 'group', id: 'gr1', name: 'Managers', email: null },
+        { kind: 'member', id: 'a4', name: 'Manon Petit', email: 'manon.petit@acme.example' },
+      ]);
+      expect(found.request.params.get('search')).toBe('man');
+      const options = Array.from(root().querySelectorAll('mat-option'));
+      expect(options.map((o) => text(o.querySelector('.mdc-list-item__primary-text')))).toEqual([
+        'Group: Managers',
+        'Member: Manon Petit · manon.petit@acme.example',
+      ]);
+      expect(options.map((o) => o.querySelector('mat-icon')?.textContent)).toEqual(['group', 'person']);
+      await click(dialog.querySelector('button[type="submit"]'));
+      expect(Array.from(dialog.querySelectorAll('mat-error')).map((e) => text(e))).toEqual([
+        'Choose a member or a group in the list.',
+        'This field is required.',
+      ]);
+
+      // Typing again reopens the list; the group is chosen in it.
+      holder.focus();
+      holder.value = 'mana';
+      holder.dispatchEvent(new Event('input'));
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      await settle();
+      await reply(candidatesOf, [{ kind: 'group', id: 'gr1', name: 'Managers', email: null }]);
+      await click(root().querySelector('mat-option'));
+      expect(holder.value).toBe('Managers');
+      await click(dialog.querySelector('mat-select[formcontrolname="roleId"] .mat-mdc-select-trigger'));
+      expect(Array.from(root().querySelectorAll('mat-option')).map((o) => text(o))).toEqual(['Reader', 'Project manager']);
+      await click(Array.from(root().querySelectorAll('mat-option')).find((o) => text(o) === 'Reader')!);
+      expect(await axeViolations(dialog)).toEqual([]);
+
+      await click(dialog.querySelector('button[type="submit"]'));
+      const granted: NodeAccess = {
+        grantId: 'g9',
+        holder: { kind: 'group', id: 'gr1', name: 'Managers' },
+        role: READER,
+        origin: { id: PROJECT.id, type: 'project', name: 'Identity platform' },
+        direct: true,
+      };
+      const sent = await reply(grants, granted, 201);
+      expect(sent.request.body).toEqual({ roleId: 'r1', groupId: 'gr1' });
+      await reply(accessOf, [granted]);
+      expect(root().querySelector('mat-dialog-container')).toBeNull();
+      expect(text(card().querySelector('[role="status"]'))).toBe('Role Reader granted to Managers.');
+      expect(card().querySelectorAll('.row').length).toBe(1);
+    });
+
+    it('grants to a member, and says when they already have the role', async () => {
+      const context = await openAccess([DIRECT]);
+      const { reply, settle, root, text, click } = context;
+      const dialog = await openDialog(context);
+      const holder = dialog.querySelector('[formcontrolname="holder"]') as HTMLInputElement;
+      holder.focus();
+      holder.value = 'camille';
+      holder.dispatchEvent(new Event('input'));
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      await settle();
+      await reply(candidatesOf, [{ kind: 'member', id: 'a2', name: 'Camille Martin', email: 'camille@acme.example' }]);
+      await click(root().querySelector('mat-option'));
+      await click(dialog.querySelector('mat-select[formcontrolname="roleId"] .mat-mdc-select-trigger'));
+      await click(Array.from(root().querySelectorAll('mat-option')).find((o) => text(o) === 'Project manager')!);
+      await click(dialog.querySelector('button[type="submit"]'));
+      const refused = await reply(grants, problem(409, 'node.grant_exists'), 409);
+      expect(refused.request.body).toEqual({ roleId: 'r3', accountId: 'a2' });
+      expect(text(dialog.querySelector('[role="alert"]'))).toBe('They already have this role on this node.');
+      expect(root().querySelector('mat-dialog-container')).not.toBeNull();
+    });
+
+    it('revokes a direct role', async () => {
+      const { reply, card, text, click } = await openAccess();
+      await click(card().querySelector('button.revoke'));
+      const revoked = await reply(
+        (url, method) => url === `/api/v1/nodes/${PROJECT.id}/grants/g1` && method === 'DELETE',
+        null,
+        204,
+      );
+      expect(revoked.request.method).toBe('DELETE');
+      await reply(accessOf, [FROM_PORTFOLIO, FROM_PROGRAM]);
+      expect(text(card().querySelector('[role="status"]'))).toBe('Role Project manager revoked from Camille Martin.');
+      expect(card().querySelectorAll('.row').length).toBe(2);
+      expect(document.activeElement).toBe(card().querySelector('button.add-grant'));
+    });
   });
 });

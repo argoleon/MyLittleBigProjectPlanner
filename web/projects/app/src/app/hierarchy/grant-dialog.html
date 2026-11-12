@@ -1,0 +1,54 @@
+<h2 mat-dialog-title>{{ 'hierarchy.access.dialog.title' | transloco: { name: data.node.name } }}</h2>
+<form [formGroup]="form" (ngSubmit)="grant()" novalidate>
+  <mat-dialog-content class="fields">
+    @if (errorKey(); as key) {
+      <p class="message error" role="alert">{{ key | transloco }}</p>
+    }
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'hierarchy.access.dialog.holder' | transloco }}</mat-label>
+      <input matInput formControlName="holder" [matAutocomplete]="candidates" required />
+      <mat-autocomplete #candidates="matAutocomplete" [displayWith]="nameOf">
+        @if (found.hasValue()) {
+          @for (candidate of found.value(); track candidate.kind + candidate.id) {
+            <mat-option [value]="candidate">
+              <mat-icon aria-hidden="true">{{ icons[candidate.kind] }}</mat-icon>
+              <span class="cdk-visually-hidden">{{ 'hierarchy.access.kind.' + candidate.kind | transloco }}:</span>
+              {{ candidate.name }}
+              @if (candidate.email) {
+                <span class="email">· {{ candidate.email }}</span>
+              }
+            </mat-option>
+          } @empty {
+            <mat-option disabled>{{ 'hierarchy.access.dialog.noMatch' | transloco }}</mat-option>
+          }
+        }
+      </mat-autocomplete>
+      <mat-hint>{{ 'hierarchy.access.dialog.holderHint' | transloco }}</mat-hint>
+      @if (form.controls.holder.getError('api'); as key) {
+        <mat-error>{{ key | transloco }}</mat-error>
+      } @else {
+        <mat-error>{{ 'hierarchy.access.dialog.chooseHolder' | transloco }}</mat-error>
+      }
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'hierarchy.access.dialog.role' | transloco }}</mat-label>
+      <mat-select formControlName="roleId" required>
+        @if (roles.hasValue()) {
+          @for (role of roles.value(); track role.id) {
+            <mat-option [value]="role.id">{{ roleName(role) }}</mat-option>
+          }
+        }
+      </mat-select>
+      <mat-hint>{{ 'hierarchy.access.dialog.inherit' | transloco }}</mat-hint>
+      @if (form.controls.roleId.getError('api'); as key) {
+        <mat-error>{{ key | transloco }}</mat-error>
+      } @else {
+        <mat-error>{{ 'errors.field.required' | transloco }}</mat-error>
+      }
+    </mat-form-field>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button matButton type="button" mat-dialog-close>{{ 'dialog.cancel' | transloco }}</button>
+    <button matButton="filled" type="submit" [disabled]="saving()">{{ 'hierarchy.access.dialog.grant' | transloco }}</button>
+  </mat-dialog-actions>
+</form>

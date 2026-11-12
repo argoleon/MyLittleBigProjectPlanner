@@ -438,7 +438,8 @@
     "node": {
       "key_taken": "Another project of the organization has this key.",
       "cycle": "This link would make the node its own ancestor.",
-      "parent_not_allowed": "This type of node cannot be attached under that parent."
+      "parent_not_allowed": "This type of node cannot be attached under that parent.",
+      "grant_exists": "They already have this role on this node."
     }
   },
   "dialog": {
@@ -573,7 +574,7 @@
       "general": "General",
       "addChild": "Add a child",
       "breadcrumb": "Breadcrumb",
-      "links": "Attachments"
+      "links": "Attachments and permissions"
     },
     "general": {
       "name": "Name",
@@ -646,6 +647,41 @@
       "noChild": "No children yet.",
       "open": "Open",
       "openOf": "Open {{ name }}"
+    },
+    "access": {
+      "title": "Effective access",
+      "add": "Add",
+      "addLabel": "Add a role",
+      "roleLabel": "Role:",
+      "kind": {
+        "member": "Member",
+        "group": "Group"
+      },
+      "empty": "Nobody has a role here yet. Organization admins see every node.",
+      "note": "Access is the union of the direct roles and of the roles inherited from every parent.",
+      "direct": {
+        "portfolio": "Direct role on this portfolio",
+        "program": "Direct role on this program",
+        "project": "Direct role on this project"
+      },
+      "inherited": {
+        "portfolio": "Inherited from the portfolio {{ name }}",
+        "program": "Inherited from the program {{ name }}",
+        "project": "Inherited from the project {{ name }}"
+      },
+      "revokeOf": "Revoke the role {{ role }} of {{ name }}",
+      "revoked": "Role {{ role }} revoked from {{ name }}.",
+      "granted": "Role {{ role }} granted to {{ name }}.",
+      "dialog": {
+        "title": "Grant a role on {{ name }}",
+        "holder": "Member or group",
+        "holderHint": "Search by name or email.",
+        "noMatch": "No member or group found.",
+        "chooseHolder": "Choose a member or a group in the list.",
+        "role": "Role",
+        "inherit": "The role also applies to everything under this node.",
+        "grant": "Grant"
+      }
     }
   }
 }

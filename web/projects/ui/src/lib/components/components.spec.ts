@@ -11,6 +11,7 @@ import { ErrorState } from './error-state';
 import { LoadingState } from './loading-state';
 import { AccountTypeChip, MemberStatusChip } from './member-chips';
 import { HealthChip, NodeTypeChip } from './node-chips';
+import { RoleChip } from './role-chip';
 import { StatusChip } from './status-chip';
 import { TypeChip } from './type-chip';
 
@@ -199,4 +200,17 @@ describe('shared components together', () => {
       });
     }
   }
+});
+
+describe('RoleChip', () => {
+  it('names the role, prefixed for screen readers, and tells direct from inherited', async () => {
+    const direct = await render(RoleChip, { label: 'Project manager' });
+    expect(text(direct)).toBe('Role: Project manager');
+    expect((direct.nativeElement as HTMLElement).querySelector('.chip')?.getAttribute('data-origin')).toBe('direct');
+    expect(await axeViolations(direct.nativeElement)).toEqual([]);
+    TestBed.resetTestingModule();
+    const inherited = await render(RoleChip, { label: 'Reader', inherited: true });
+    expect((inherited.nativeElement as HTMLElement).querySelector('.chip')?.getAttribute('data-origin')).toBe('inherited');
+    expect(await axeViolations(inherited.nativeElement)).toEqual([]);
+  });
 });
