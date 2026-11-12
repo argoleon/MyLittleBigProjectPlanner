@@ -1,5 +1,6 @@
 //! Integration tests on a real PostgreSQL: the hierarchy's nodes, their
-//! owners, the attachment matrix, cycles and the closure table (L03-US01).
+//! owners, the attachment matrix, cycles and the closure table (L03-US01),
+//! several weighted parents and the candidate parents (L03-US02).
 
 #![allow(clippy::unwrap_used)]
 
@@ -8,7 +9,7 @@ use domain::hierarchy::{Health, NodeType};
 use infra::accounts::TenantRole;
 use infra::db::begin_tenant_tx;
 use infra::id::new_id;
-use infra::nodes::{self, NewNode, Node, NodeFields, WriteConflict};
+use infra::nodes::{self, LinkChange, NewNode, Node, NodeFields, NodeFilter, WriteConflict};
 use infra::sqlx::{self, PgConnection};
 use infra::uuid::Uuid;
 use testkit::{SeedTenant, TestDb};
@@ -107,7 +108,9 @@ async fn project_keys_are_unique_per_tenant_and_nodes_stay_in_theirs() {
     create(&mut tx, NodeType::Project, "Platform", Some("PLAT"), None, beta)
         .await
         .unwrap();
-    let page = nodes::list(&mut tx, None, None, 50).await.unwrap();
+    let page = nodes::list(&mut tx, &NodeFilter::default(), None, 50)
+        .await
+        .unwrap();
     assert_eq!(
         page.items.iter().map(|n| n.name.as_str()).collect::<Vec<_>>(),
         ["Platform"]
@@ -366,4 +369,285 @@ async fn owners_are_members_and_changes_check_the_version() {
         .unwrap(),
         Err(WriteConflict::UnknownOwner)
     );
+}
+
+/// Names of the nodes of `filter`, by name.
+async fn names(conn: &mut PgConnection, filter: NodeFilter) -> Vec<String> {
+    let mut names: Vec<String> = nodes::list(conn, &filter, None, 200)
+        .await
+        .unwrap()
+        .items
+        .into_iter()
+        .map(|n| n.name)
+        .collect();
+    names.sort();
+    names
+}
+
+#[tokio::test]
+async fn a_project_has_several_weighted_parents() {
+    let db = TestDb::new().await;
+    let admin = admin(&db, &db.tenant_a).await;
+    let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+    let digital = create(&mut tx, NodeType::Portfolio, "Digital", None, None, admin)
+        .await
+        .unwrap();
+    let modernization = create(
+        &mut tx,
+        NodeType::Program,
+        "IT Modernization",
+        None,
+        Some(digital.id),
+        admin,
+    )
+    .await
+    .unwrap();
+    let compliance = create(
+        &mut tx,
+        NodeType::Program,
+        "Compliance",
+        None,
+        Some(digital.id),
+        admin,
+    )
+    .await
+    .unwrap();
+    let plat = create(
+        &mut tx,
+        NodeType::Project,
+        "Identity platform",
+        Some("PLAT"),
+        Some(modernization.id),
+        admin,
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(
+        nodes::link(&mut tx, compliance.id, plat.id, 40).await.unwrap(),
+        Ok(LinkChange::Created)
+    );
+    let parents = nodes::parent_links(&mut tx, plat.id).await.unwrap();
+    assert_eq!(
+        parents
+            .iter()
+            .map(|l| (l.name.as_str(), l.weight_percent))
+            .collect::<Vec<_>>(),
+        [("Compliance", 40), ("IT Modernization", 100)]
+    );
+    // Each parent comes with its own parents.
+    assert_eq!(parents[0].parents[0].name, "Digital");
+
+    // The same weighting changes nothing; another one updates the link.
+    assert_eq!(
+        nodes::link(&mut tx, compliance.id, plat.id, 40).await.unwrap(),
+        Ok(LinkChange::Unchanged)
+    );
+    assert_eq!(
+        nodes::link(&mut tx, compliance.id, plat.id, 60).await.unwrap(),
+        Ok(LinkChange::Updated)
+    );
+    let children = nodes::child_links(&mut tx, compliance.id).await.unwrap();
+    assert_eq!(
+        children
+            .iter()
+            .map(|l| (l.name.as_str(), l.key.as_deref(), l.weight_percent))
+            .collect::<Vec<_>>(),
+        [("Identity platform", Some("PLAT"), 60)]
+    );
+
+    // A diamond: Digital reaches PLAT by two paths, and lists it once.
+    let paths: i64 = sqlx::query_scalar(
+        "SELECT path_count FROM node_closure WHERE ancestor_id = $1 AND descendant_id = $2",
+    )
+    .bind(digital.id)
+    .bind(plat.id)
+    .fetch_one(&mut *tx)
+    .await
+    .unwrap();
+    assert_eq!(paths, 2);
+    let descendants = NodeFilter {
+        descendant_of: Some(digital.id),
+        ..NodeFilter::default()
+    };
+    assert_eq!(
+        names(&mut tx, descendants).await,
+        ["Compliance", "IT Modernization", "Identity platform"]
+    );
+    let ancestors = NodeFilter {
+        ancestor_of: Some(plat.id),
+        ..NodeFilter::default()
+    };
+    assert_eq!(
+        names(&mut tx, ancestors).await,
+        ["Compliance", "Digital", "IT Modernization"]
+    );
+
+    // Unknown nodes; a refused link.
+    assert_eq!(
+        nodes::link(&mut tx, compliance.id, new_id(), 100).await.unwrap(),
+        Err(WriteConflict::NotFound)
+    );
+    assert_eq!(
+        nodes::link(&mut tx, new_id(), plat.id, 100).await.unwrap(),
+        Err(WriteConflict::ParentNotFound)
+    );
+    sqlx::query("SAVEPOINT s").execute(&mut *tx).await.unwrap();
+    assert_eq!(
+        nodes::link(&mut tx, plat.id, compliance.id, 100).await.unwrap(),
+        Err(WriteConflict::ParentNotAllowed)
+    );
+    sqlx::query("ROLLBACK TO SAVEPOINT s")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+
+    // Removing a parent link: one path left, Compliance no longer above.
+    assert!(nodes::unlink(&mut tx, modernization.id, plat.id).await.unwrap());
+    assert!(!nodes::unlink(&mut tx, modernization.id, plat.id).await.unwrap());
+    assert_eq!(names(&mut tx, ancestors).await, ["Compliance", "Digital"]);
+    let paths: i64 = sqlx::query_scalar(
+        "SELECT path_count FROM node_closure WHERE ancestor_id = $1 AND descendant_id = $2",
+    )
+    .bind(digital.id)
+    .bind(plat.id)
+    .fetch_one(&mut *tx)
+    .await
+    .unwrap();
+    assert_eq!(paths, 1);
+}
+
+#[tokio::test]
+async fn candidate_parents_say_why_they_are_refused() {
+    let db = TestDb::new().await;
+    let admin = admin(&db, &db.tenant_a).await;
+    let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+    let security = create(&mut tx, NodeType::Program, "Cybersecurity", None, None, admin)
+        .await
+        .unwrap();
+    let plat = create(
+        &mut tx,
+        NodeType::Project,
+        "Identity platform",
+        Some("PLAT"),
+        Some(security.id),
+        admin,
+    )
+    .await
+    .unwrap();
+    create(
+        &mut tx,
+        NodeType::Project,
+        "Cyber permissions",
+        Some("CYBP"),
+        Some(plat.id),
+        admin,
+    )
+    .await
+    .unwrap();
+    create(
+        &mut tx,
+        NodeType::Project,
+        "Cyber resilience",
+        Some("CYBR"),
+        None,
+        admin,
+    )
+    .await
+    .unwrap();
+    create(
+        &mut tx,
+        NodeType::Project,
+        "Payroll 50%",
+        Some("PAY"),
+        None,
+        admin,
+    )
+    .await
+    .unwrap();
+
+    let found = nodes::parent_candidates(&mut tx, plat.id, Some(" CYBER"), 20)
+        .await
+        .unwrap();
+    assert_eq!(
+        found
+            .iter()
+            .map(|c| (c.name.as_str(), c.descends_from_child, c.already_parent))
+            .collect::<Vec<_>>(),
+        [
+            ("Cyber permissions", true, false),
+            ("Cyber resilience", false, false),
+            ("Cybersecurity", false, true),
+        ]
+    );
+    assert_eq!(found[0].parents[0].name, "Identity platform");
+    // Keys match too, wildcards literally; the node itself is never offered.
+    let by_key = nodes::parent_candidates(&mut tx, plat.id, Some("cybr"), 20)
+        .await
+        .unwrap();
+    assert_eq!(
+        by_key.iter().map(|c| c.name.as_str()).collect::<Vec<_>>(),
+        ["Cyber resilience"]
+    );
+    let literal = nodes::parent_candidates(&mut tx, plat.id, Some("50%"), 20)
+        .await
+        .unwrap();
+    assert_eq!(
+        literal.iter().map(|c| c.name.as_str()).collect::<Vec<_>>(),
+        ["Payroll 50%"]
+    );
+    let all = nodes::parent_candidates(&mut tx, plat.id, None, 2).await.unwrap();
+    assert_eq!(all.len(), 2);
+    assert!(
+        nodes::parent_candidates(&mut tx, plat.id, Some("identity"), 20)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+}
+
+#[tokio::test]
+async fn two_links_made_at_once_cannot_close_a_cycle() {
+    let db = TestDb::new().await;
+    let admin = admin(&db, &db.tenant_a).await;
+    let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+    let a = create(&mut tx, NodeType::Project, "A", Some("AA"), None, admin)
+        .await
+        .unwrap();
+    let b = create(&mut tx, NodeType::Project, "B", Some("BB"), None, admin)
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+
+    // A over B, not committed yet; meanwhile, B over A waits for it.
+    let mut first = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+    assert_eq!(
+        nodes::link(&mut first, a.id, b.id, 100).await.unwrap(),
+        Ok(LinkChange::Created)
+    );
+    let pool = db.app_pool.clone();
+    let tenant = db.tenant_a.id;
+    let second = tokio::spawn(async move {
+        let mut tx = begin_tenant_tx(&pool, tenant).await.unwrap();
+        nodes::link(&mut tx, b.id, a.id, 100).await.unwrap()
+    });
+    // Wait until the second link waits for the hierarchy lock.
+    let mut waiting = false;
+    for _ in 0..100 {
+        let blocked: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM pg_locks l JOIN pg_database d ON d.oid = l.database
+             WHERE d.datname = current_database() AND l.locktype = 'advisory' AND NOT l.granted",
+        )
+        .fetch_one(&db.owner_pool)
+        .await
+        .unwrap();
+        if blocked > 0 {
+            waiting = true;
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+    assert!(waiting, "the second link should wait for the first");
+    first.commit().await.unwrap();
+    assert_eq!(second.await.unwrap(), Err(WriteConflict::Cycle));
 }

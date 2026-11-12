@@ -60,5 +60,6 @@ export const ERROR_CODE: ErrorCode[] = [
   'account.platform_admin',
   'export.pending',
   'node.key_taken',
-  'node.cycle'
+  'node.cycle',
+  'node.parent_not_allowed'
 ];

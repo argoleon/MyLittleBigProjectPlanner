@@ -1,5 +1,5 @@
-//! SQL of the hierarchy's nodes (L03-US01): portfolios, programs and
-//! projects, their owners and their parent links. Row-level security scopes
+//! SQL of the hierarchy's nodes (L03-US01, US02): portfolios, programs and
+//! projects, their owners and their weighted parent links. Row-level security scopes
 //! every query to the current tenant; the database enforces the attachment
 //! matrix and refuses cycles (`node_edge` triggers).
 
@@ -9,6 +9,7 @@ use sqlx::postgres::PgConnection;
 use uuid::Uuid;
 
 use crate::id::new_id;
+use crate::invitations::like_pattern;
 use crate::pagination::{Keyset, Page, page_from_rows};
 
 /// A member owning a node.
@@ -76,6 +77,42 @@ pub struct NewNode<'a> {
     pub fields: NodeFields<'a>,
     pub parent: Option<Uuid>,
     pub created_by: Uuid,
+}
+
+/// A node linked to another one (a parent or a child), with the weighting of
+/// the link and the linked node's own parents.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Link {
+    pub id: Uuid,
+    pub node_type: NodeType,
+    pub name: String,
+    pub key: Option<String>,
+    pub weight_percent: i16,
+    pub parents: Vec<NodeRef>,
+}
+
+/// A node that might become a parent, with what the database knows of it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Candidate {
+    pub id: Uuid,
+    pub node_type: NodeType,
+    pub name: String,
+    pub key: Option<String>,
+    pub parents: Vec<NodeRef>,
+    /// It is a descendant of the child: the link would make a cycle.
+    pub descends_from_child: bool,
+    /// It already is a parent of the child.
+    pub already_parent: bool,
+}
+
+/// What [`link`] did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LinkChange {
+    Created,
+    /// The link existed with another weighting.
+    Updated,
+    /// The link existed with this weighting.
+    Unchanged,
 }
 
 /// Why a write did not happen.
@@ -253,10 +290,21 @@ pub async fn find(conn: &mut PgConnection, id: Uuid) -> Result<Option<Node>, sql
     )))
 }
 
-/// One page of nodes, of `node_type` if given, in creation order.
+/// Which nodes a list holds.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct NodeFilter {
+    /// Only nodes of this type.
+    pub node_type: Option<NodeType>,
+    /// Only the ancestors of this node (not the node itself).
+    pub ancestor_of: Option<Uuid>,
+    /// Only the descendants of this node (not the node itself).
+    pub descendant_of: Option<Uuid>,
+}
+
+/// One page of the nodes of `filter`, in creation order.
 pub async fn list(
     conn: &mut PgConnection,
-    node_type: Option<NodeType>,
+    filter: &NodeFilter,
     after: Option<Keyset>,
     limit: usize,
 ) -> Result<Page<Node>, sqlx::Error> {
@@ -269,13 +317,21 @@ pub async fn list(
         FROM node
         WHERE ($1::text IS NULL OR node_type = $1)
           AND ($2::timestamptz IS NULL OR (created_at, id) > ($2, $3::uuid))
+          AND ($5::uuid IS NULL OR EXISTS (
+              SELECT 1 FROM node_closure c
+              WHERE c.ancestor_id = node.id AND c.descendant_id = $5 AND c.ancestor_id <> $5))
+          AND ($6::uuid IS NULL OR EXISTS (
+              SELECT 1 FROM node_closure c
+              WHERE c.ancestor_id = $6 AND c.descendant_id = node.id AND c.descendant_id <> $6))
         ORDER BY created_at, id
         LIMIT $4
         "#,
-        node_type.map(NodeType::as_str),
+        filter.node_type.map(NodeType::as_str),
         after.map(|k| k.created_at),
         after.map(|k| k.id),
-        fetch
+        fetch,
+        filter.ancestor_of,
+        filter.descendant_of
     )
     .fetch_all(&mut *conn)
     .await?;
@@ -363,6 +419,161 @@ async fn set_owners(conn: &mut PgConnection, id: Uuid, owners: &[Uuid]) -> Write
     )
     .await
     .map(|result| result.map(|_| ()))
+}
+
+/// Links `child` under `parent` with `weight_percent`, or sets the weighting
+/// of their existing link. The database checks the matrix and cycles.
+pub async fn link(
+    conn: &mut PgConnection,
+    parent: Uuid,
+    child: Uuid,
+    weight_percent: i16,
+) -> WriteResult<LinkChange> {
+    if !exists(conn, child).await? {
+        return Ok(Err(WriteConflict::NotFound));
+    }
+    if !exists(conn, parent).await? {
+        return Ok(Err(WriteConflict::ParentNotFound));
+    }
+    let created = conflicts(
+        sqlx::query_scalar!(
+            r#"
+            INSERT INTO node_edge (id, tenant_id, parent_id, child_id, weight_percent)
+            VALUES ($1, app_current_tenant(), $2, $3, $4)
+            ON CONFLICT (tenant_id, parent_id, child_id) DO UPDATE
+                SET weight_percent = EXCLUDED.weight_percent, version = node_edge.version + 1
+                WHERE node_edge.weight_percent <> EXCLUDED.weight_percent
+            RETURNING (xmax = 0) AS "created!"
+            "#,
+            new_id(),
+            parent,
+            child,
+            weight_percent
+        )
+        .fetch_optional(&mut *conn),
+    )
+    .await?;
+    Ok(created.map(|created| match created {
+        Some(true) => LinkChange::Created,
+        Some(false) => LinkChange::Updated,
+        None => LinkChange::Unchanged,
+    }))
+}
+
+/// Removes the link of `child` under `parent`; false if there was none.
+pub async fn unlink(conn: &mut PgConnection, parent: Uuid, child: Uuid) -> Result<bool, sqlx::Error> {
+    let removed = sqlx::query_scalar!(
+        "DELETE FROM node_edge WHERE parent_id = $1 AND child_id = $2 RETURNING id",
+        parent,
+        child
+    )
+    .fetch_optional(conn)
+    .await?;
+    Ok(removed.is_some())
+}
+
+struct LinkRow {
+    id: Uuid,
+    node_type: String,
+    name: String,
+    key: Option<String>,
+    weight_percent: i16,
+}
+
+/// Adds their own parents to `rows`.
+async fn links_with_parents(conn: &mut PgConnection, rows: Vec<LinkRow>) -> Result<Vec<Link>, sqlx::Error> {
+    let ids: Vec<Uuid> = rows.iter().map(|row| row.id).collect();
+    let mut parents = parents_of(conn, &ids).await?;
+    Ok(rows
+        .into_iter()
+        .map(|row| Link {
+            id: row.id,
+            node_type: NodeType::parse(&row.node_type).unwrap_or(NodeType::Project),
+            name: row.name,
+            key: row.key,
+            weight_percent: row.weight_percent,
+            parents: parents.remove(&row.id).unwrap_or_default(),
+        })
+        .collect())
+}
+
+/// The parents of `id`, by name, with the weighting of each link.
+pub async fn parent_links(conn: &mut PgConnection, id: Uuid) -> Result<Vec<Link>, sqlx::Error> {
+    let rows = sqlx::query_as!(
+        LinkRow,
+        r#"
+        SELECT p.id, p.node_type, p.name, p.key, e.weight_percent
+        FROM node_edge e JOIN node p ON p.id = e.parent_id
+        WHERE e.child_id = $1
+        ORDER BY p.name, p.id
+        "#,
+        id
+    )
+    .fetch_all(&mut *conn)
+    .await?;
+    links_with_parents(conn, rows).await
+}
+
+/// The children of `id`, by name, with the weighting of each link.
+pub async fn child_links(conn: &mut PgConnection, id: Uuid) -> Result<Vec<Link>, sqlx::Error> {
+    let rows = sqlx::query_as!(
+        LinkRow,
+        r#"
+        SELECT c.id, c.node_type, c.name, c.key, e.weight_percent
+        FROM node_edge e JOIN node c ON c.id = e.child_id
+        WHERE e.parent_id = $1
+        ORDER BY c.name, c.id
+        "#,
+        id
+    )
+    .fetch_all(&mut *conn)
+    .await?;
+    links_with_parents(conn, rows).await
+}
+
+/// Up to `limit` active nodes, other than `child`, whose name or key holds
+/// `search` (all if `None`), by name: the possible parents of `child`, each
+/// with whether it descends from `child` or already is its parent.
+pub async fn parent_candidates(
+    conn: &mut PgConnection,
+    child: Uuid,
+    search: Option<&str>,
+    limit: usize,
+) -> Result<Vec<Candidate>, sqlx::Error> {
+    let pattern = search.map(like_pattern);
+    let rows = sqlx::query!(
+        r#"
+        SELECT n.id, n.node_type, n.name, n.key,
+               EXISTS (SELECT 1 FROM node_closure c WHERE c.ancestor_id = $1 AND c.descendant_id = n.id)
+                   AS "descends!",
+               EXISTS (SELECT 1 FROM node_edge e WHERE e.parent_id = n.id AND e.child_id = $1)
+                   AS "already!"
+        FROM node n
+        WHERE n.id <> $1 AND n.archived_at IS NULL
+          AND ($2::text IS NULL OR lower(n.name) LIKE $2 OR lower(n.key) LIKE $2)
+        ORDER BY lower(n.name), n.id
+        LIMIT $3
+        "#,
+        child,
+        pattern,
+        i64::try_from(limit).unwrap_or(i64::MAX)
+    )
+    .fetch_all(&mut *conn)
+    .await?;
+    let ids: Vec<Uuid> = rows.iter().map(|row| row.id).collect();
+    let mut parents = parents_of(conn, &ids).await?;
+    Ok(rows
+        .into_iter()
+        .map(|row| Candidate {
+            id: row.id,
+            node_type: NodeType::parse(&row.node_type).unwrap_or(NodeType::Project),
+            name: row.name,
+            key: row.key,
+            parents: parents.remove(&row.id).unwrap_or_default(),
+            descends_from_child: row.descends,
+            already_parent: row.already,
+        })
+        .collect())
 }
 
 /// The owners of each of `ids`, by name.

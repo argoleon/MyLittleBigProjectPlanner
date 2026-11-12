@@ -1,0 +1,80 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT n.id, n.node_type, n.name, n.key,\n               EXISTS (SELECT 1 FROM node_closure c WHERE c.ancestor_id = $1 AND c.descendant_id = n.id)\n                   AS \"descends!\",\n               EXISTS (SELECT 1 FROM node_edge e WHERE e.parent_id = n.id AND e.child_id = $1)\n                   AS \"already!\"\n        FROM node n\n        WHERE n.id <> $1 AND n.archived_at IS NULL\n          AND ($2::text IS NULL OR lower(n.name) LIKE $2 OR lower(n.key) LIKE $2)\n        ORDER BY lower(n.name), n.id\n        LIMIT $3\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "node_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "node_type"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "key"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "descends!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "already!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      null,
+      null
+    ]
+  },
+  "hash": "e345575b7ee9f776bd093f054b49ca94f56d71ad508d066b279a0364c5a51dd3"
+}

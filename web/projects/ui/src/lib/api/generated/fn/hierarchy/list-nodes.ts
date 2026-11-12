@@ -18,6 +18,17 @@ export interface ListNodes$Params {
   type?: NodeType;
 
 /**
+ * Only the ancestors of this node, at any depth.
+ */
+  ancestorOf?: string;
+
+/**
+ * Only the descendants of this node, at any depth; a node reached by
+ * several paths comes once.
+ */
+  descendantOf?: string;
+
+/**
  * Page size, from 1 to 200 (default 50).
  */
   limit?: number;
@@ -32,6 +43,8 @@ export function listNodes(http: HttpClient, rootUrl: string, params?: ListNodes$
   const rb = new RequestBuilder(rootUrl, listNodes.PATH, 'get');
   if (params) {
     rb.query('type', params.type, {});
+    rb.query('ancestorOf', params.ancestorOf, {});
+    rb.query('descendantOf', params.descendantOf, {});
     rb.query('limit', params.limit, {});
     rb.query('cursor', params.cursor, {});
   }

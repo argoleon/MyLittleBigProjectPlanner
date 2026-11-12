@@ -437,7 +437,8 @@
     },
     "node": {
       "key_taken": "Another project of the organization has this key.",
-      "cycle": "This link would make the node its own ancestor."
+      "cycle": "This link would make the node its own ancestor.",
+      "parent_not_allowed": "This type of node cannot be attached under that parent."
     }
   },
   "dialog": {
@@ -571,7 +572,8 @@
       "tabs": "Settings sections",
       "general": "General",
       "addChild": "Add a child",
-      "breadcrumb": "Breadcrumb"
+      "breadcrumb": "Breadcrumb",
+      "links": "Attachments"
     },
     "general": {
       "name": "Name",
@@ -612,6 +614,38 @@
       "on_track": "On track",
       "at_risk": "At risk",
       "off_track": "Off track"
+    },
+    "links": {
+      "parents": "Parents",
+      "parentsHint": {
+        "portfolio": "A portfolio can be attached to other portfolios.",
+        "program": "A program can be attached to portfolios or other programs.",
+        "project": "A project can be attached to portfolios, programs or other projects."
+      },
+      "addParent": "Add a parent",
+      "noParent": "At the root: no parent.",
+      "weight": "Weighting",
+      "weightOf": "Weighting under {{ name }}",
+      "weightSaved": "Weighting under {{ name }} saved.",
+      "weightNote": "The weighting only applies to the aggregates of that parent. Higher up, the node is counted once.",
+      "unlinkOf": "Detach from {{ name }}",
+      "unlinked": "Detached from {{ name }}.",
+      "linked": "Attached under {{ name }}.",
+      "search": "Search a node",
+      "candidates": "Possible parents",
+      "allowed": "attachment allowed",
+      "refusal": {
+        "already_parent": "Already a parent",
+        "not_allowed": "Impossible: this type of node cannot be its parent",
+        "cycle": "Impossible: it is a descendant of this node, the link would create a cycle",
+        "forbidden": "You do not administer both nodes"
+      },
+      "noCandidate": "No matching node.",
+      "closeSearch": "Close the search",
+      "children": "Children",
+      "noChild": "No children yet.",
+      "open": "Open",
+      "openOf": "Open {{ name }}"
     }
   }
 }

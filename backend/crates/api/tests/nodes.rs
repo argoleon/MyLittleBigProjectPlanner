@@ -1,6 +1,7 @@
-//! Integration tests of the hierarchy's nodes (L03-US01) on real PostgreSQL
-//! and Valkey: creation at the root or under a parent, project keys, the
-//! attachment matrix, changes with `If-Match`, who sees and who changes.
+//! Integration tests of the hierarchy's nodes (L03-US01, US02) on real
+//! PostgreSQL and Valkey: creation at the root or under a parent, project
+//! keys, the attachment matrix, changes with `If-Match`, who sees and who
+//! changes; several weighted parents, cycles, candidate parents.
 //! Grants on nodes come with L03-US03: a test grant source stands for them.
 
 #![allow(clippy::unwrap_used)]
@@ -117,13 +118,43 @@ async fn session_of(api: &TestApi, account_id: Uuid, tenant: &SeedTenant) -> (St
     (opened.token, opened.session.csrf_token)
 }
 
-/// The default "Node admin" role of `tenant`.
-async fn node_admin_role(db: &TestDb, tenant: &SeedTenant) -> Uuid {
-    infra::sqlx::query_scalar("SELECT id FROM role WHERE tenant_id = $1 AND label ->> 'en' = 'Node admin'")
+/// The default role labelled `label` (English) of `tenant`.
+async fn role(db: &TestDb, tenant: &SeedTenant, label: &str) -> Uuid {
+    infra::sqlx::query_scalar("SELECT id FROM role WHERE tenant_id = $1 AND label ->> 'en' = $2")
         .bind(tenant.id)
+        .bind(label)
         .fetch_one(&db.owner_pool)
         .await
         .unwrap()
+}
+
+/// The default "Node admin" role of `tenant`.
+async fn node_admin_role(db: &TestDb, tenant: &SeedTenant) -> Uuid {
+    role(db, tenant, "Node admin").await
+}
+
+/// Forgets the cached permissions of `tenant`, as a change of grants does.
+async fn forget_permissions(api: &TestApi, tenant: &SeedTenant) {
+    infra::permissions::PermissionCache::new(api.valkey.clone(), api.key_prefix.clone())
+        .invalidate(tenant.id)
+        .await
+        .unwrap();
+}
+
+/// Creates a node as the tenant admin; its id.
+async fn node(api: &TestApi, tenant: &SeedTenant, body: Value) -> String {
+    let (status, node) = create(api, tenant, body).await;
+    assert_eq!(status, 201, "{node}");
+    node["id"].as_str().unwrap().to_owned()
+}
+
+/// The `name` of each item of `list`.
+fn names(list: &Value) -> Vec<String> {
+    list.as_array()
+        .unwrap()
+        .iter()
+        .map(|n| n["name"].as_str().unwrap().to_owned())
+        .collect()
 }
 
 async fn create(api: &TestApi, tenant: &SeedTenant, body: Value) -> (u16, Value) {
@@ -326,10 +357,7 @@ async fn node_admins_create_children_under_their_nodes_only() {
     // Node admin of the program; a grant invalidates the cached permissions,
     // as L03-US03's grants will.
     grants.grant(member, program_id, node_admin_role(&db, &db.tenant_a).await);
-    infra::permissions::PermissionCache::new(api.valkey.clone(), api.key_prefix.clone())
-        .invalidate(db.tenant_a.id)
-        .await
-        .unwrap();
+    forget_permissions(&api, &db.tenant_a).await;
     let (status, created) = send(create_as(child(&program))).await;
     assert_eq!(status, 201, "{created}");
     assert_eq!(
@@ -475,4 +503,252 @@ async fn a_portfolio_is_changed_with_the_version_it_was_read_at() {
     ))
     .await;
     assert_eq!(page["items"], json!([]));
+}
+
+#[tokio::test]
+async fn a_project_gets_a_second_weighted_parent_but_never_a_cycle() {
+    let db = TestDb::new().await;
+    let api = start(&db, Arc::default()).await;
+    let t = &db.tenant_a;
+    let digital = node(&api, t, json!({"type": "portfolio", "name": "Digital"})).await;
+    let modernization = node(
+        &api,
+        t,
+        json!({"type": "program", "name": "IT Modernization", "parentId": digital}),
+    )
+    .await;
+    let compliance = node(
+        &api,
+        t,
+        json!({"type": "program", "name": "Compliance", "parentId": digital}),
+    )
+    .await;
+    let plat = node(
+        &api,
+        t,
+        json!({"type": "project", "name": "Identity platform", "key": "PLAT", "parentId": modernization}),
+    )
+    .await;
+    let cyber = node(
+        &api,
+        t,
+        json!({"type": "project", "name": "Cyber permissions", "key": "CYBP", "parentId": plat}),
+    )
+    .await;
+    let link = |child: &str, parent: &str| {
+        admin(
+            &api,
+            t,
+            Method::PUT,
+            &format!("/api/v1/nodes/{child}/parents/{parent}"),
+        )
+    };
+    let get = |path: String| admin(&api, t, Method::GET, &path);
+
+    // Compliance as a second parent at 40%: the first link stays at 100%.
+    let (status, linked) = send(link(&plat, &compliance).json(&json!({"weightPercent": 40}))).await;
+    assert_eq!(status, 201, "{linked}");
+    assert_eq!(
+        (
+            &linked["name"],
+            &linked["weightPercent"],
+            &linked["parents"][0]["name"]
+        ),
+        (&json!("Compliance"), &json!(40), &json!("Digital"))
+    );
+    let (status, parents) = send(get(format!("/api/v1/nodes/{plat}/parents"))).await;
+    assert_eq!(status, 200);
+    let weights: Vec<(&str, i64)> = parents
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|l| (l["name"].as_str().unwrap(), l["weightPercent"].as_i64().unwrap()))
+        .collect();
+    assert_eq!(weights, [("Compliance", 40), ("IT Modernization", 100)]);
+    let (_, node_read) = send(get(format!("/api/v1/nodes/{plat}"))).await;
+    assert_eq!(names(&node_read["parents"]), ["Compliance", "IT Modernization"]);
+
+    // Putting it again sets the weighting; it stays a percentage.
+    let (status, changed) = send(link(&plat, &compliance).json(&json!({"weightPercent": 60}))).await;
+    assert_eq!((status, &changed["weightPercent"]), (200, &json!(60)));
+    let (status, problem) = send(link(&plat, &compliance).json(&json!({"weightPercent": 101}))).await;
+    assert_problem(status, &problem, 400, "validation_failed");
+    assert_eq!(
+        field_codes(&problem),
+        [("weightPercent".to_owned(), "out_of_range".to_owned())]
+    );
+    let (status, children) = send(get(format!("/api/v1/nodes/{compliance}/children"))).await;
+    assert_eq!(status, 200);
+    assert_eq!(
+        (
+            names(&children),
+            &children[0]["key"],
+            &children[0]["weightPercent"]
+        ),
+        (vec!["Identity platform".to_owned()], &json!("PLAT"), &json!(60))
+    );
+
+    // A program under a project: the matrix refuses it.
+    let (status, problem) = send(link(&modernization, &plat).json(&json!({}))).await;
+    assert_problem(status, &problem, 409, "node.parent_not_allowed");
+    // Its own sub-project as a parent: a cycle.
+    let (status, problem) = send(link(&plat, &cyber).json(&json!({}))).await;
+    assert_problem(status, &problem, 409, "node.cycle");
+    let (status, problem) = send(link(&plat, &plat).json(&json!({}))).await;
+    assert_problem(status, &problem, 409, "node.cycle");
+
+    // The parent picker shows why.
+    let (status, found) = send(get(format!("/api/v1/nodes/{plat}/parent-candidates?search=c"))).await;
+    assert_eq!(status, 200, "{found}");
+    let refusals: Vec<(&str, &Value)> = found
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| (c["name"].as_str().unwrap(), &c["refusal"]))
+        .collect();
+    assert_eq!(
+        refusals,
+        [
+            ("Compliance", &json!("already_parent")),
+            ("Cyber permissions", &json!("cycle")),
+        ]
+    );
+    let (_, found) = send(get(format!(
+        "/api/v1/nodes/{modernization}/parent-candidates?search=identity"
+    )))
+    .await;
+    assert_eq!(found[0]["refusal"], "not_allowed");
+    let (_, found) = send(get(format!(
+        "/api/v1/nodes/{cyber}/parent-candidates?search=compl"
+    )))
+    .await;
+    assert_eq!(
+        (&found[0]["name"], &found[0]["refusal"]),
+        (&json!("Compliance"), &Value::Null)
+    );
+    let (status, _) = send(get(format!("/api/v1/nodes/{plat}/parent-candidates?limit=51"))).await;
+    assert_eq!(status, 400);
+
+    // Descendants come once, however many paths lead to them.
+    let (_, page) = send(get(format!("/api/v1/nodes?descendantOf={digital}"))).await;
+    let mut below = names(&page["items"]);
+    below.sort();
+    assert_eq!(
+        below,
+        [
+            "Compliance",
+            "Cyber permissions",
+            "IT Modernization",
+            "Identity platform"
+        ]
+    );
+
+    // Removing a parent link: the closure follows.
+    let unlink = || {
+        admin(
+            &api,
+            t,
+            Method::DELETE,
+            &format!("/api/v1/nodes/{plat}/parents/{modernization}"),
+        )
+    };
+    let (status, _) = send(unlink()).await;
+    assert_eq!(status, 204);
+    let (status, _) = send(unlink()).await;
+    assert_eq!(status, 404);
+    let (_, page) = send(get(format!("/api/v1/nodes?ancestorOf={cyber}"))).await;
+    let mut above = names(&page["items"]);
+    above.sort();
+    assert_eq!(above, ["Compliance", "Digital", "Identity platform"]);
+    let (_, page) = send(get(format!("/api/v1/nodes?descendantOf={modernization}"))).await;
+    assert_eq!(page["items"], json!([]));
+
+    // Another tenant knows nothing of these nodes.
+    let b = &db.tenant_b;
+    let other = node(&api, b, json!({"type": "program", "name": "Elsewhere"})).await;
+    for (method, path) in [
+        (Method::GET, format!("/api/v1/nodes/{plat}/parents")),
+        (Method::GET, format!("/api/v1/nodes/{plat}/children")),
+        (Method::GET, format!("/api/v1/nodes/{plat}/parent-candidates")),
+        (Method::PUT, format!("/api/v1/nodes/{plat}/parents/{other}")),
+        (Method::PUT, format!("/api/v1/nodes/{other}/parents/{compliance}")),
+        (
+            Method::DELETE,
+            format!("/api/v1/nodes/{plat}/parents/{compliance}"),
+        ),
+    ] {
+        let (status, _) = send(admin(&api, b, method.clone(), &path).json(&json!({}))).await;
+        assert_eq!(status, 404, "{method} {path}");
+    }
+    let (_, found) = send(
+        admin(
+            &api,
+            b,
+            Method::GET,
+            &format!("/api/v1/nodes/{other}/parent-candidates"),
+        )
+        .json(&json!({})),
+    )
+    .await;
+    assert_eq!(found, json!([]));
+}
+
+#[tokio::test]
+async fn linking_needs_both_nodes_administered() {
+    let db = TestDb::new().await;
+    let grants = Arc::new(TestGrants::default());
+    let api = start(&db, grants.clone()).await;
+    let t = &db.tenant_a;
+    let modernization = node(&api, t, json!({"type": "program", "name": "IT Modernization"})).await;
+    let compliance = node(&api, t, json!({"type": "program", "name": "Compliance"})).await;
+    let plat = node(
+        &api,
+        t,
+        json!({"type": "project", "name": "Identity platform", "key": "PLAT", "parentId": modernization}),
+    )
+    .await;
+    let member = db.add_member(t, TenantRole::Member).await.account_id;
+    let session = session_of(&api, member, t).await;
+    let as_lucas = |method: Method, path: String| as_member(&api, t, &session, method, &path);
+    let link_path = format!("/api/v1/nodes/{plat}/parents/{compliance}");
+
+    // Node admin of the project, reader of Compliance.
+    grants.grant(member, plat.parse().unwrap(), node_admin_role(&db, t).await);
+    grants.grant(member, compliance.parse().unwrap(), role(&db, t, "Reader").await);
+    forget_permissions(&api, t).await;
+    let (_, found) = send(as_lucas(
+        Method::GET,
+        format!("/api/v1/nodes/{plat}/parent-candidates?search=compliance"),
+    ))
+    .await;
+    assert_eq!(found[0]["refusal"], "forbidden", "{found}");
+    let (status, problem) = send(as_lucas(Method::PUT, link_path.clone()).json(&json!({}))).await;
+    assert_problem(status, &problem, 403, "forbidden");
+    // Parents the member does not see are left out.
+    let (_, parents) = send(as_lucas(Method::GET, format!("/api/v1/nodes/{plat}/parents"))).await;
+    assert_eq!(parents, json!([]));
+
+    // Node admin of Compliance too: linked, then unlinked.
+    grants.grant(member, compliance.parse().unwrap(), node_admin_role(&db, t).await);
+    forget_permissions(&api, t).await;
+    let (_, found) = send(as_lucas(
+        Method::GET,
+        format!("/api/v1/nodes/{plat}/parent-candidates?search=compliance"),
+    ))
+    .await;
+    assert_eq!(found[0]["refusal"], Value::Null, "{found}");
+    let (status, linked) =
+        send(as_lucas(Method::PUT, link_path.clone()).json(&json!({"weightPercent": 40}))).await;
+    assert_eq!(status, 201, "{linked}");
+    let (_, parents) = send(as_lucas(Method::GET, format!("/api/v1/nodes/{plat}/parents"))).await;
+    assert_eq!(names(&parents), ["Compliance"]);
+    // Not the link to IT Modernization, which they do not administer.
+    let (status, _) = send(as_lucas(
+        Method::DELETE,
+        format!("/api/v1/nodes/{plat}/parents/{modernization}"),
+    ))
+    .await;
+    assert_eq!(status, 404, "a parent they do not see is not revealed");
+    let (status, _) = send(as_lucas(Method::DELETE, link_path)).await;
+    assert_eq!(status, 204);
 }

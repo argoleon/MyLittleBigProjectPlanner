@@ -437,7 +437,8 @@
     },
     "node": {
       "key_taken": "Un autre projet de l’organisation a déjà cette clé.",
-      "cycle": "Ce rattachement ferait du nœud son propre ancêtre."
+      "cycle": "Ce rattachement ferait du nœud son propre ancêtre.",
+      "parent_not_allowed": "Ce type de nœud ne peut pas être rattaché sous ce parent."
     }
   },
   "dialog": {
@@ -571,7 +572,8 @@
       "tabs": "Rubriques des paramètres",
       "general": "Général",
       "addChild": "Ajouter un enfant",
-      "breadcrumb": "Fil d’Ariane"
+      "breadcrumb": "Fil d’Ariane",
+      "links": "Rattachements"
     },
     "general": {
       "name": "Nom",
@@ -612,6 +614,38 @@
       "on_track": "En bonne voie",
       "at_risk": "À risque",
       "off_track": "En difficulté"
+    },
+    "links": {
+      "parents": "Parents",
+      "parentsHint": {
+        "portfolio": "Un portefeuille peut être rattaché à d’autres portefeuilles.",
+        "program": "Un programme peut être rattaché à des portefeuilles ou à d’autres programmes.",
+        "project": "Un projet peut être rattaché à des portefeuilles, des programmes ou d’autres projets."
+      },
+      "addParent": "Ajouter un parent",
+      "noParent": "À la racine : aucun parent.",
+      "weight": "Pondération",
+      "weightOf": "Pondération sous {{ name }}",
+      "weightSaved": "Pondération sous {{ name }} enregistrée.",
+      "weightNote": "La pondération ne s’applique qu’aux agrégats du parent concerné. Plus haut, le nœud reste compté une seule fois.",
+      "unlinkOf": "Détacher de {{ name }}",
+      "unlinked": "Détaché de {{ name }}.",
+      "linked": "Rattaché sous {{ name }}.",
+      "search": "Rechercher un nœud",
+      "candidates": "Parents possibles",
+      "allowed": "rattachement autorisé",
+      "refusal": {
+        "already_parent": "Déjà parent",
+        "not_allowed": "Impossible : ce type de nœud ne peut pas en être le parent",
+        "cycle": "Impossible : c’est un descendant de ce nœud, le lien créerait un cycle",
+        "forbidden": "Vous n’administrez pas les deux nœuds"
+      },
+      "noCandidate": "Aucun nœud ne correspond.",
+      "closeSearch": "Fermer la recherche",
+      "children": "Enfants",
+      "noChild": "Aucun enfant pour l’instant.",
+      "open": "Ouvrir",
+      "openOf": "Ouvrir {{ name }}"
     }
   }
 }

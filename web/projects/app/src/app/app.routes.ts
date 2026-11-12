@@ -71,6 +71,11 @@ export const routes: Routes = [
             title: 'hierarchy.settings.general',
             loadComponent: () => import('./hierarchy/node-general-tab').then((m) => m.NodeGeneralTab),
           },
+          {
+            path: 'links',
+            title: 'hierarchy.settings.links',
+            loadComponent: () => import('./hierarchy/node-links-tab').then((m) => m.NodeLinksTab),
+          },
         ],
       },
       {
