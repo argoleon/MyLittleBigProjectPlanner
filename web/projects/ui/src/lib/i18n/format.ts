@@ -16,6 +16,21 @@
 
 const LOCAL_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
+/**
+ * The local date (`YYYY-MM-DD`) of `date` as the date picker gives it: the
+ * calendar day it shows, never converted through UTC.
+ */
+export function toLocalDate(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/** The date picker's value for a local date (`YYYY-MM-DD`); `null` if invalid. */
+export function fromLocalDate(value: string | null | undefined): Date | null {
+  const parts = value ? parseLocalDate(value) : null;
+  return parts ? new Date(parts.year, parts.month - 1, parts.day) : null;
+}
+
 /** A planning date (`YYYY-MM-DD`), split into its parts; `null` if invalid. */
 export function parseLocalDate(value: string): { year: number; month: number; day: number } | null {
   const match = LOCAL_DATE.exec(value);

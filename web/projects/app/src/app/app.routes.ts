@@ -48,13 +48,31 @@ export const routes: Routes = [
     component: MainLayout,
     canActivate: [authGuard],
     children: [
-      ...NAVIGATION.filter((item) => item.route !== '/admin').map((item) => ({
+      // Screens not built yet show "coming soon".
+      ...NAVIGATION.filter((item) => !['/admin', '/portfolios'].includes(item.route)).map((item) => ({
         path: item.route.slice(1),
         pathMatch: 'full' as const,
         title: item.labelKey,
         data: { titleKey: item.labelKey, icon: item.icon },
         loadComponent: () => import('./coming-soon/coming-soon-page').then((m) => m.ComingSoonPage),
       })),
+      {
+        path: 'portfolios',
+        title: 'nav.portfolios',
+        loadComponent: () => import('./hierarchy/portfolios-page').then((m) => m.PortfoliosPage),
+      },
+      {
+        path: 'nodes/:id',
+        loadComponent: () => import('./hierarchy/node-settings-page').then((m) => m.NodeSettingsPage),
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'general' },
+          {
+            path: 'general',
+            title: 'hierarchy.settings.general',
+            loadComponent: () => import('./hierarchy/node-general-tab').then((m) => m.NodeGeneralTab),
+          },
+        ],
+      },
       {
         path: 'account',
         title: 'account.title',

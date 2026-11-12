@@ -10,6 +10,7 @@ import { EmptyState } from './empty-state';
 import { ErrorState } from './error-state';
 import { LoadingState } from './loading-state';
 import { AccountTypeChip, MemberStatusChip } from './member-chips';
+import { HealthChip, NodeTypeChip } from './node-chips';
 import { StatusChip } from './status-chip';
 import { TypeChip } from './type-chip';
 
@@ -68,6 +69,25 @@ describe('AccountTypeChip and MemberStatusChip', () => {
     expect(text(status)).toBe('Status: Invitation sent');
     expect((status.nativeElement as HTMLElement).querySelector('.chip')?.getAttribute('data-state')).toBe('invited');
     expect(await axeViolations(status.nativeElement)).toEqual([]);
+  });
+});
+
+describe('NodeTypeChip and HealthChip', () => {
+  it('name the kind and the health, prefixed for screen readers', async () => {
+    const type = await render(NodeTypeChip, { type: 'program' });
+    expect(text(type)).toBe('Type: Program');
+    TestBed.resetTestingModule();
+    for (const [health, label] of [
+      ['on_track', 'On track'],
+      ['at_risk', 'At risk'],
+      ['off_track', 'Off track'],
+    ] as const) {
+      const chip = await render(HealthChip, { health });
+      expect(text(chip)).toBe(`Health: ${label}`);
+      expect((chip.nativeElement as HTMLElement).querySelector('.chip')?.getAttribute('data-health')).toBe(health);
+      expect(await axeViolations(chip.nativeElement)).toEqual([]);
+      TestBed.resetTestingModule();
+    }
   });
 });
 

@@ -398,7 +398,12 @@
       "not_default_slug": "En mode mono-organisation, seul l’identifiant configuré est accepté.",
       "external_member_only": "Un compte externe ne peut pas administrer l’organisation.",
       "incorrect": "Valeur incorrecte.",
-      "mismatch": "Les valeurs ne correspondent pas."
+      "mismatch": "Les valeurs ne correspondent pas.",
+      "before_start": "La fin précède le début.",
+      "not_allowed": "Pas autorisé ici.",
+      "not_found": "Introuvable.",
+      "unknown_member": "Ce n’est pas un membre de l’organisation.",
+      "too_many": "Trop d’éléments."
     },
     "invitation": {
       "invalid": "Ce lien d’invitation est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
@@ -429,6 +434,10 @@
     },
     "export": {
       "pending": "L’export n’est pas encore prêt."
+    },
+    "node": {
+      "key_taken": "Un autre projet de l’organisation a déjà cette clé.",
+      "cycle": "Ce rattachement ferait du nœud son propre ancêtre."
     }
   },
   "dialog": {
@@ -537,6 +546,72 @@
       "mismatch": "Ce n’est pas l’e-mail de votre compte.",
       "purgeComments": "Supprimer aussi mes commentaires",
       "submit": "Supprimer définitivement"
+    }
+  },
+  "hierarchy": {
+    "intro": "Les portefeuilles, programmes et projets de l’organisation.",
+    "add": "Nouveau nœud",
+    "filterLabel": "Filtrer par type",
+    "all": "Tous",
+    "caption": "Portefeuilles, programmes et projets",
+    "columns": {
+      "name": "Nom",
+      "health": "Statut",
+      "owners": "Responsables",
+      "dates": "Dates",
+      "parents": "Rattaché à"
+    },
+    "root": "Racine",
+    "dates": "{{ start }} – {{ end }}",
+    "empty": "Aucun portefeuille, programme ni projet pour l’instant",
+    "emptyHint": "Créez un portefeuille, puis ses programmes et ses projets.",
+    "emptyFilter": "Aucun nœud de ce type.",
+    "settings": {
+      "title": "{{ name }} · Paramètres",
+      "tabs": "Rubriques des paramètres",
+      "general": "Général",
+      "addChild": "Ajouter un enfant",
+      "breadcrumb": "Fil d’Ariane"
+    },
+    "general": {
+      "name": "Nom",
+      "key": "Clé",
+      "keyHint": "Fixée à la création : elle préfixe les tickets du projet.",
+      "description": "Description",
+      "objectives": "Objectifs",
+      "startDate": "Début",
+      "endDate": "Fin",
+      "dateHint": "JJ/MM/AAAA",
+      "health": "Statut",
+      "save": "Enregistrer",
+      "saved": "Modifications enregistrées.",
+      "unsaved": "Modifications non enregistrées"
+    },
+    "dialog": {
+      "title": "Nouveau nœud",
+      "childTitle": "Ajouter un enfant à {{ name }}",
+      "type": "Type",
+      "keyHint": "2 à 10 majuscules et chiffres, une lettre d’abord (PLAT).",
+      "create": "Créer",
+      "created": "{{ name }} créé."
+    },
+    "owners": {
+      "label": "Responsables",
+      "add": "Ajouter un responsable",
+      "removeOf": "Retirer {{ name }}",
+      "noMatch": "Aucun membre trouvé."
+    },
+    "type": {
+      "label": "Type :",
+      "portfolio": "Portefeuille",
+      "program": "Programme",
+      "project": "Projet"
+    },
+    "health": {
+      "label": "Statut :",
+      "on_track": "En bonne voie",
+      "at_risk": "À risque",
+      "off_track": "En difficulté"
     }
   }
 }
