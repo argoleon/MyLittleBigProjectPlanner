@@ -1,0 +1,135 @@
+@use '../admin/admin-shared';
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-4);
+  max-width: 960px;
+}
+
+.message {
+  margin: 0;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-2);
+  padding: var(--app-space-4) var(--app-space-5);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface);
+
+  &.search {
+    border-color: var(--mat-sys-primary);
+  }
+}
+
+.card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--app-space-3);
+}
+
+.card-title {
+  margin: 0;
+  font: var(--mat-sys-title-medium);
+}
+
+.hint,
+.note,
+.empty {
+  margin: var(--app-space-1) 0 0;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.links,
+.candidates {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--app-space-2) var(--app-space-3);
+  padding: var(--app-space-3) 0;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.type-icon {
+  flex: none;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.text {
+  display: flex;
+  flex: 1 1 200px;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.name {
+  font: var(--mat-sys-title-small);
+  color: var(--mat-sys-on-surface);
+}
+
+a.name {
+  text-decoration: none;
+
+  &:hover,
+  &:focus-visible {
+    text-decoration: underline;
+  }
+}
+
+.meta {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.candidates {
+  overflow: hidden;
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-surface-container-low);
+}
+
+.candidate {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-3);
+  width: 100%;
+  padding: var(--app-space-2) var(--app-space-4);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+
+  &:is(button) {
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      background: var(--mat-sys-surface-container-high);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mat-sys-primary);
+      outline-offset: -2px;
+    }
+  }
+
+  &.refused .name {
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.reason {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-error);
+}

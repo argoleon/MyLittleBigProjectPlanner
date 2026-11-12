@@ -20,7 +20,10 @@ export class NodeContext {
 }
 
 /** Tabs of a node's settings (mockup 14); the others come with L03. */
-const TABS = [{ path: 'general', labelKey: 'hierarchy.settings.general' }] as const;
+const TABS = [
+  { path: 'general', labelKey: 'hierarchy.settings.general' },
+  { path: 'links', labelKey: 'hierarchy.settings.links' },
+] as const;
 
 /**
  * Settings of a portfolio, program or project (mockup 14): its parents in

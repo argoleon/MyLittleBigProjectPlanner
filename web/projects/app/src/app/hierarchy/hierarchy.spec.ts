@@ -1,17 +1,19 @@
 /**
- * Integration tests of the hierarchy screens (L03-US01): the portfolios
- * list, the creation dialog, a node's settings and its General tab, with
- * the API mocked at the HTTP level and the real translations.
+ * Integration tests of the hierarchy screens (L03-US01, US02): the
+ * portfolios list, the creation dialog, a node's settings with its General
+ * and Attachments tabs, with the API mocked at the HTTP level and the real
+ * translations.
  */
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { Router, provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { AuthService, Node, provideApi, provideMaterialDefaults } from 'ui';
+import { AuthService, Node, NodeCandidate, NodeLink, provideApi, provideMaterialDefaults } from 'ui';
 import { axeViolations, provideI18nTesting } from 'ui/testing';
 
 import { NodeGeneralTab } from './node-general-tab';
+import { NodeLinksTab } from './node-links-tab';
 import { NodeSettingsPage } from './node-settings-page';
 import { PortfoliosPage } from './portfolios-page';
 
@@ -70,6 +72,7 @@ async function setUp(tenantRole = 'tenant_admin') {
             children: [
               { path: '', pathMatch: 'full', redirectTo: 'general' },
               { path: 'general', component: NodeGeneralTab },
+              { path: 'links', component: NodeLinksTab },
             ],
           },
         ],
@@ -330,5 +333,168 @@ describe('NodeSettingsPage and NodeGeneralTab', () => {
     }
     await reply((url) => url === `/api/v1/nodes/${PROJECT.id}`, PROJECT);
     expect(TestBed.inject(Router).url).toBe(`/nodes/${PROJECT.id}/general`);
+  });
+});
+
+describe('NodeLinksTab', () => {
+  afterEach(() => TestBed.inject(HttpTestingController).verify());
+
+  const MODERNIZATION: NodeLink = {
+    id: PROGRAM.id,
+    type: 'program',
+    name: 'IT Modernization',
+    key: null,
+    weightPercent: 100,
+    parents: [{ id: 'p0', type: 'portfolio', name: 'Digital' }],
+  };
+  const COMPLIANCE: NodeLink = { ...MODERNIZATION, id: 'p2', name: 'Compliance', weightPercent: 40 };
+  const SUB_PROJECT: NodeLink = {
+    id: 'c1',
+    type: 'project',
+    name: 'Cyber permissions',
+    key: 'CYBP',
+    weightPercent: 100,
+    parents: [{ id: PROJECT.id, type: 'project', name: 'Identity platform' }],
+  };
+  const parentsOf = (url: string, method: string) => url === `/api/v1/nodes/${PROJECT.id}/parents` && method === 'GET';
+  const childrenOf = (url: string) => url === `/api/v1/nodes/${PROJECT.id}/children`;
+  const nodeRead = (url: string, method: string) => url === `/api/v1/nodes/${PROJECT.id}` && method === 'GET';
+  const linkTo = (parent: string) => (url: string, method: string) =>
+    url === `/api/v1/nodes/${PROJECT.id}/parents/${parent}` && method === 'PUT';
+
+  async function openLinks(parents: NodeLink[] = [MODERNIZATION, COMPLIANCE], children: NodeLink[] = [SUB_PROJECT]) {
+    const context = await setUp();
+    await context.harness.navigateByUrl(`/nodes/${PROJECT.id}/links`);
+    await context.reply(nodeRead, PROJECT);
+    await context.reply(parentsOf, parents);
+    await context.reply(childrenOf, children);
+    const tab = () => context.root().querySelector('app-node-links-tab')!;
+    return { ...context, tab };
+  }
+
+  async function search(context: Awaited<ReturnType<typeof openLinks>>, query: string, found: NodeCandidate[]) {
+    const input = context.tab().querySelector('#parent-search input') as HTMLInputElement;
+    input.value = query;
+    input.dispatchEvent(new Event('input'));
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await context.settle();
+    return context.reply((url) => url.startsWith(`/api/v1/nodes/${PROJECT.id}/parent-candidates?`), found);
+  }
+
+  it('shows the parents with their weighting and the children to open', async () => {
+    const { root, tab, text } = await openLinks();
+    expect(text(root().querySelector('a[mat-tab-link][aria-selected="true"]'))).toBe('Attachments');
+    expect(text(tab().querySelector('.hint'))).toBe(
+      'A project can be attached to portfolios, programs or other projects.',
+    );
+    const parents = Array.from(tab().querySelectorAll('.parents .link'));
+    expect(parents.map((row) => text(row.querySelector('.text')))).toEqual([
+      'IT Modernization Program · Digital',
+      'Compliance Program · Digital',
+    ]);
+    expect(parents.map((row) => (row.querySelector('app-weight-field input') as HTMLInputElement).value)).toEqual([
+      '100',
+      '40',
+    ]);
+    expect(parents[1].querySelector('button.unlink')?.getAttribute('aria-label')).toBe('Detach from Compliance');
+    expect(parents[0].querySelector('a.name')?.getAttribute('href')).toBe(`/nodes/${PROGRAM.id}`);
+    const child = tab().querySelector('.children .link')!;
+    expect(text(child.querySelector('.text'))).toBe('Cyber permissions Project · CYBP');
+    expect(child.querySelector('a')?.getAttribute('href')).toBe('/nodes/c1');
+    expect(child.querySelector('a')?.getAttribute('aria-label')).toBe('Open Cyber permissions');
+    expect(await axeViolations(root().querySelector('app-node-settings-page')!)).toEqual([]);
+  });
+
+  it('says when there is no parent nor child', async () => {
+    const { tab, text } = await openLinks([], []);
+    expect(Array.from(tab().querySelectorAll('.empty')).map((p) => text(p))).toEqual([
+      'At the root: no parent.',
+      'No children yet.',
+    ]);
+    expect(tab().querySelector('.note')).toBeNull();
+  });
+
+  it('saves a new weighting of a parent link', async () => {
+    const { reply, tab, text, settle } = await openLinks();
+    const input = tab().querySelectorAll('app-weight-field input')[1] as HTMLInputElement;
+    input.value = '60';
+    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new Event('change'));
+    await settle();
+    const saved = await reply(linkTo('p2'), { ...COMPLIANCE, weightPercent: 60 });
+    expect(saved.request.body).toEqual({ weightPercent: 60 });
+    await reply(parentsOf, [MODERNIZATION, { ...COMPLIANCE, weightPercent: 60 }]);
+    await reply(nodeRead, PROJECT);
+    expect(text(tab().querySelector('[role="status"]'))).toBe('Weighting under Compliance saved.');
+  });
+
+  it('adds a parent among the allowed candidates, the refused ones saying why', async () => {
+    const context = await openLinks([MODERNIZATION]);
+    const { reply, root, tab, text, click } = context;
+    const add = tab().querySelector('button.add-parent') as HTMLButtonElement;
+    expect(add.getAttribute('aria-expanded')).toBe('false');
+    await click(add);
+    expect(add.getAttribute('aria-expanded')).toBe('true');
+    await reply((url) => url === `/api/v1/nodes/${PROJECT.id}/parent-candidates?limit=20`, []);
+    expect(text(tab().querySelector('#parent-search .empty'))).toBe('No matching node.');
+    expect(document.activeElement).toBe(tab().querySelector('#parent-search input'));
+
+    const found = await search(context, 'cyber', [
+      { id: 'p3', type: 'program', name: 'Cybersecurity', key: null, parents: [], refusal: null },
+      { id: 'c1', type: 'project', name: 'Cyber permissions', key: 'CYBP', parents: [], refusal: 'cycle' },
+    ]);
+    expect(found.request.params.get('search')).toBe('cyber');
+    const items = Array.from(tab().querySelectorAll('.candidates li'));
+    expect(items.map((li) => text(li.querySelector('.text')))).toEqual([
+      'Cybersecurity Program · attachment allowed',
+      'Cyber permissions Impossible: it is a descendant of this node, the link would create a cycle',
+    ]);
+    expect(items[0].querySelector('button')?.textContent?.replace(/\s+/g, ' ')).toContain('Cybersecurity Program');
+    expect(items[1].querySelector('button')).toBeNull();
+    expect(await axeViolations(root().querySelector('app-node-links-tab')!)).toEqual([]);
+
+    await click(items[0].querySelector('button'));
+    const linked = await reply(linkTo('p3'), { ...MODERNIZATION, id: 'p3', name: 'Cybersecurity', parents: [] }, 201);
+    expect(linked.request.body).toEqual({ weightPercent: 100 });
+    await reply(parentsOf, [MODERNIZATION, { ...MODERNIZATION, id: 'p3', name: 'Cybersecurity', parents: [] }]);
+    await reply(nodeRead, PROJECT);
+    await reply((url) => url.startsWith(`/api/v1/nodes/${PROJECT.id}/parent-candidates?`), [
+      { id: 'p3', type: 'program', name: 'Cybersecurity', key: null, parents: [], refusal: 'already_parent' },
+    ]);
+    expect(text(tab().querySelector('[role="status"]'))).toBe('Attached under Cybersecurity.');
+    expect(text(tab().querySelector('.candidates .reason'))).toBe('Already a parent');
+
+    await click(tab().querySelector('#parent-search button[aria-label="Close the search"]'));
+    expect(tab().querySelector('#parent-search')).toBeNull();
+    expect(document.activeElement).toBe(add);
+  });
+
+  it('says why a link is refused', async () => {
+    const context = await openLinks([MODERNIZATION]);
+    const { reply, tab, text, click } = context;
+    await click(tab().querySelector('button.add-parent'));
+    await reply((url) => url.startsWith(`/api/v1/nodes/${PROJECT.id}/parent-candidates?`), [
+      { id: 'p3', type: 'program', name: 'Cybersecurity', key: null, parents: [], refusal: null },
+    ]);
+    await click(tab().querySelector('.candidates button'));
+    await reply(linkTo('p3'), problem(409, 'node.cycle'), 409);
+    await reply(parentsOf, [MODERNIZATION]);
+    expect(text(tab().querySelector('[role="alert"]'))).toBe('This link would make the node its own ancestor.');
+  });
+
+  it('detaches the node from a parent', async () => {
+    const { reply, tab, text, click } = await openLinks();
+    await click(tab().querySelector('button[aria-label="Detach from Compliance"]'));
+    const removed = await reply(
+      (url, method) => url === `/api/v1/nodes/${PROJECT.id}/parents/p2` && method === 'DELETE',
+      null,
+      204,
+    );
+    expect(removed.request.method).toBe('DELETE');
+    await reply(parentsOf, [MODERNIZATION]);
+    await reply(nodeRead, PROJECT);
+    expect(text(tab().querySelector('[role="status"]'))).toBe('Detached from Compliance.');
+    expect(tab().querySelectorAll('.parents .link').length).toBe(1);
+    expect(document.activeElement).toBe(tab().querySelector('button.add-parent'));
   });
 });
