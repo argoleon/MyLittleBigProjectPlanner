@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE invitation SET status = 'revoked', version = version + 1\n        WHERE email = $1 AND status = 'pending'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ced0974ae0e15774d58cf9337e1db04190435b5cb78ac778d15cc3b13e792a3f"
+}

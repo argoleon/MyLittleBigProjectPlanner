@@ -5,6 +5,8 @@
 
 #![allow(clippy::unwrap_used)]
 
+mod common;
+
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -79,7 +81,7 @@ async fn every_request_is_logged_as_one_json_line_with_its_correlation_id() {
     let pool = PgPoolOptions::new()
         .connect_lazy("postgres://localhost/unused")
         .unwrap();
-    let base = serve(AppState::new(pool, single())).await;
+    let base = serve(AppState::new(pool, single(), common::offline_auth(&single()))).await;
     let client = reqwest::Client::new();
 
     // A request without correlation ID gets one.

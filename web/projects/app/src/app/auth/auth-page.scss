@@ -1,0 +1,93 @@
+// Shared by the sign-in, forgot-password and reset-password pages.
+
+.eyebrow {
+  margin: 0 0 var(--app-space-1);
+  font: var(--mat-sys-label-medium);
+  color: var(--mat-sys-primary);
+}
+
+.title {
+  margin: 0 0 var(--app-space-1);
+  font: var(--mat-sys-headline-small);
+  color: var(--mat-sys-on-surface);
+}
+
+.subtitle {
+  margin: 0 0 var(--app-space-6);
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-2);
+}
+
+.field {
+  width: 100%;
+}
+
+.link {
+  align-self: flex-start;
+  font: var(--mat-sys-label-large);
+  color: var(--mat-sys-primary);
+}
+
+.submit {
+  width: 100%;
+  margin-top: var(--app-space-4);
+}
+
+.switch {
+  align-self: center;
+}
+
+.message {
+  margin: 0 0 var(--app-space-4);
+  padding: var(--app-space-3) var(--app-space-4);
+  border-radius: var(--mat-sys-corner-medium);
+  font: var(--mat-sys-body-medium);
+
+  &.error {
+    background: var(--mat-sys-error-container);
+    color: var(--mat-sys-on-error-container);
+  }
+
+  &.info {
+    background: var(--app-success-container);
+    color: var(--app-on-success-container);
+  }
+}
+
+.providers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-2);
+}
+
+.provider {
+  width: 100%;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-3);
+  margin: var(--app-space-4) 0;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    border-top: 1px solid var(--mat-sys-outline-variant);
+  }
+}
+
+.hint {
+  margin: 0 0 var(--app-space-2);
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}

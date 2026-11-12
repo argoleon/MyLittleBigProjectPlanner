@@ -1,0 +1,32 @@
+@use '../admin/admin-shared';
+
+.card {
+  padding: var(--app-space-4) var(--app-space-5);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface);
+}
+
+.card-title {
+  margin: 0 0 var(--app-space-3);
+  font: var(--mat-sys-title-medium);
+}
+
+.intro {
+  margin: 0 0 var(--app-space-3);
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--app-space-2);
+  margin-top: var(--app-space-3);
+}
+
+// Destructive: the error role of the theme (mockup 10).
+.erase:not(:disabled) {
+  --mat-button-outlined-label-text-color: var(--mat-sys-error);
+  --mat-button-outlined-outline-color: var(--mat-sys-error);
+}

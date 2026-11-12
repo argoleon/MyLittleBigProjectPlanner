@@ -1,0 +1,96 @@
+<div class="cards">
+  <section class="card" aria-labelledby="policy-title">
+    <h2 class="card-title" id="policy-title">{{ 'admin.auth.policyTitle' | transloco }}</h2>
+    @if (policy.isLoading()) {
+      <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+    } @else if (policy.error()) {
+      <ui-error-state [error]="policy.error()" [headingLevel]="3" (retry)="policy.reload()" />
+    } @else {
+      <form [formGroup]="form" (ngSubmit)="savePolicy()" novalidate>
+        <ul class="toggles">
+          @for (toggle of toggles; track toggle) {
+            <li class="toggle">
+              <mat-slide-toggle [formControlName]="toggle" [attr.aria-describedby]="toggle + '-hint'">
+                {{ 'admin.auth.policy.' + toggle + '.label' | transloco }}
+              </mat-slide-toggle>
+              <p class="hint" [id]="toggle + '-hint'">{{ 'admin.auth.policy.' + toggle + '.hint' | transloco }}</p>
+            </li>
+          }
+        </ul>
+        @if (ssoWithoutProvider()) {
+          <p class="message warning" role="status">{{ 'admin.auth.ssoWithoutProvider' | transloco }}</p>
+        }
+        @if (policyMessage(); as message) {
+          <p class="message" [class.info]="message.ok" [class.error]="!message.ok" [attr.role]="message.ok ? 'status' : 'alert'">
+            {{ message.key | transloco }}
+          </p>
+        }
+        <button matButton="filled" type="submit" [disabled]="saving() || form.pristine">
+          {{ 'admin.auth.save' | transloco }}
+        </button>
+      </form>
+    }
+  </section>
+
+  <section class="card" aria-labelledby="providers-title">
+    <div class="card-header">
+      <h2 class="card-title" id="providers-title">{{ 'admin.auth.providersTitle' | transloco }}</h2>
+      <button matButton="tonal" type="button" (click)="edit()">
+        <mat-icon aria-hidden="true">add</mat-icon>
+        {{ 'admin.auth.providerAdd' | transloco }}
+      </button>
+    </div>
+    <p class="hint">{{ 'admin.auth.providersIntro' | transloco }}</p>
+    @if (providerError(); as key) {
+      <p class="message error" role="alert">{{ key | transloco }}</p>
+    }
+    @if (providers.isLoading()) {
+      <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+    } @else if (providers.error()) {
+      <ui-error-state [error]="providers.error()" [headingLevel]="3" (retry)="providers.reload()" />
+    } @else if (providers.value()?.length === 0) {
+      <p class="empty">{{ 'admin.auth.noProvider' | transloco }}</p>
+    } @else {
+      <ul class="providers">
+        @for (provider of providers.value(); track provider.id) {
+          <li class="provider">
+            <div class="provider-main">
+              <span class="provider-name">{{ provider.displayName }}</span>
+              <span class="provider-issuer">{{ provider.issuer }}</span>
+              <span class="status" [class.off]="!provider.enabled">
+                {{ (provider.enabled ? 'admin.auth.enabledState' : 'admin.auth.disabledState') | transloco }}
+              </span>
+            </div>
+            <div class="provider-actions">
+              <button matButton type="button" (click)="test(provider)">{{ 'admin.auth.test' | transloco }}</button>
+              <button
+                matIconButton
+                type="button"
+                (click)="edit(provider)"
+                [attr.aria-label]="'admin.auth.editOf' | transloco: { name: provider.displayName }"
+              >
+                <mat-icon aria-hidden="true">edit</mat-icon>
+              </button>
+              <button
+                matIconButton
+                type="button"
+                (click)="remove(provider)"
+                [attr.aria-label]="'admin.auth.deleteOf' | transloco: { name: provider.displayName }"
+              >
+                <mat-icon aria-hidden="true">delete</mat-icon>
+              </button>
+            </div>
+            @if (checks()[provider.id]; as check) {
+              <p class="message" [class.info]="check.ok" [class.error]="!check.ok" [attr.role]="check.ok ? 'status' : 'alert'">
+                {{ check.messageKey | transloco }}
+                @if (check.detail) {
+                  <span class="detail">{{ check.detail }}</span>
+                }
+              </p>
+            }
+          </li>
+        }
+      </ul>
+    }
+  </section>
+</div>

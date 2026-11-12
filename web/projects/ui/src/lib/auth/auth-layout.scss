@@ -1,0 +1,43 @@
+:host {
+  display: block;
+  min-height: 100dvh;
+  background: var(--mat-sys-surface-container-low);
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--app-space-6);
+  padding: var(--app-space-10) var(--app-space-4);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-3);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-headline-small);
+}
+
+.brand-icon {
+  color: var(--mat-sys-primary);
+}
+
+.card {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--app-auth-card-width);
+  padding: var(--app-space-8);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-extra-large);
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--app-space-2);
+}

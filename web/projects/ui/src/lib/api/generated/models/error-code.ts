@@ -19,12 +19,46 @@
  * | `payload_too_large` | 413 | The request body is too large |
  * | `unsupported_media_type` | 415 | Unsupported content type; send application/json |
  * | `precondition_required` | 428 | This request needs an If-Match header |
+ * | `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |
  * | `internal` | 500 | Internal server error |
+ * | `unauthenticated` | 401 | Sign-in required, or the session has ended |
+ * | `forbidden` | 403 | You are not allowed to do this |
+ * | `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |
+ * | `auth.invalid_credentials` | 401 | Incorrect email or password |
+ * | `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |
+ * | `auth.invalid_code` | 401 | Incorrect or already used verification code |
+ * | `mfa.already_enabled` | 409 | Two-step verification is already enabled |
+ * | `mfa.not_started` | 409 | Start two-step verification setup first |
+ * | `mfa.required_by_policy` | 409 | The organization requires two-step verification |
+ * | `auth.sso_required` | 403 | This organization signs its members in through its identity provider |
+ * | `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |
+ * | `auth.oidc_no_member` | 403 | No member of this organization has this account's email |
+ * | `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |
+ * | `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |
+ * | `oidc_provider.duplicate` | 409 | This identity provider is already configured |
+ * | `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |
  * | `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |
  * | `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |
  * | `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |
  * | `tenant.not_found` | 404 | Tenant not found |
+ * | `tenant.slug_taken` | 409 | Another tenant already has this slug |
+ * | `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |
+ * | `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |
  * | `reference_item.code_taken` | 409 | Another reference item already has this code |
+ * | `invitation.invalid` | 400 | This invitation link is invalid, expired or already used |
+ * | `invitation.pending` | 409 | This email already has an open invitation; send it again instead |
+ * | `invitation.already_member` | 409 | This email already belongs to a member of the tenant |
+ * | `invitation.closed` | 409 | This invitation was already accepted or revoked |
+ * | `member.last_admin` | 409 | The tenant needs at least one active tenant admin |
+ * | `group.name_taken` | 409 | Another group already has this name |
+ * | `permission.denied` | 403 | You do not have the permission this needs |
+ * | `role.label_taken` | 409 | Another role already has this label |
+ * | `role.in_use` | 409 | Grants use this role: remove them first |
+ * | `account.no_password` | 409 | This account signs in through its organization: it has no password |
+ * | `session.current` | 409 | This is the session of the request: sign out instead |
+ * | `account.reauthentication_required` | 403 | Sign in again through your organization, then erase your account within 10 minutes |
+ * | `account.platform_admin` | 409 | A platform super admin cannot be erased: another one removes the role first |
+ * | `export.pending` | 409 | The export is not ready yet |
  */
-export type ErrorCode = 'bad_request' | 'validation_failed' | 'invalid_json' | 'invalid_query' | 'not_found' | 'method_not_allowed' | 'request_timeout' | 'conflict' | 'precondition_failed' | 'payload_too_large' | 'unsupported_media_type' | 'precondition_required' | 'internal' | 'idempotency_key.invalid' | 'idempotency_key.reused' | 'idempotency_key.in_flight' | 'tenant.not_found' | 'reference_item.code_taken';
+export type ErrorCode = 'bad_request' | 'validation_failed' | 'invalid_json' | 'invalid_query' | 'not_found' | 'method_not_allowed' | 'request_timeout' | 'conflict' | 'precondition_failed' | 'payload_too_large' | 'unsupported_media_type' | 'precondition_required' | 'too_many_requests' | 'internal' | 'unauthenticated' | 'forbidden' | 'csrf.invalid' | 'auth.invalid_credentials' | 'auth.reset_token_invalid' | 'auth.invalid_code' | 'mfa.already_enabled' | 'mfa.not_started' | 'mfa.required_by_policy' | 'auth.sso_required' | 'auth.oidc_failed' | 'auth.oidc_no_member' | 'auth.oidc_email_unverified' | 'auth.switch_failed' | 'oidc_provider.duplicate' | 'oidc_provider.unreachable' | 'idempotency_key.invalid' | 'idempotency_key.reused' | 'idempotency_key.in_flight' | 'tenant.not_found' | 'tenant.slug_taken' | 'tenant.confirmation_mismatch' | 'tenant.delete_current' | 'reference_item.code_taken' | 'invitation.invalid' | 'invitation.pending' | 'invitation.already_member' | 'invitation.closed' | 'member.last_admin' | 'group.name_taken' | 'permission.denied' | 'role.label_taken' | 'role.in_use' | 'account.no_password' | 'session.current' | 'account.reauthentication_required' | 'account.platform_admin' | 'export.pending';
 

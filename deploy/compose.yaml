@@ -104,7 +104,12 @@ services:
       TENANCY_MODE: ${TENANCY_MODE:-single}
       TENANT_DEFAULT_SLUG: ${TENANT_DEFAULT_SLUG:-default}
       TENANT_BASE_DOMAIN: ${TENANT_BASE_DOMAIN:-}
-    secrets: [database_url, valkey_url]
+      # Encrypts the secrets stored in the database (TOTP, OIDC clients).
+      DATA_ENCRYPTION_KEY_FILE: /run/secrets/data_encryption_key
+      # Sessions and rate limits use Valkey (VALKEY_URL_FILE above).
+      # Links of emails; multi-tenant mode needs https://{tenant}.<domain>.
+      PUBLIC_URL: ${PUBLIC_URL:-https://${MLBPP_DOMAIN}${MLBPP_PUBLIC_PORT:-}}
+    secrets: [database_url, valkey_url, data_encryption_key]
     networks: [edge, backend]
     depends_on:
       migrate:
@@ -134,7 +139,9 @@ services:
       <<: [*rust-logs, *shared-services]
       WORKER_POLL_INTERVAL_MS: ${WORKER_POLL_INTERVAL_MS:-1000}
       DATABASE_URL_FILE: /run/secrets/database_url
-    secrets: [database_url, valkey_url]
+      SMTP_URL_FILE: /run/secrets/smtp_url
+      MAIL_FROM: ${MAIL_FROM:-My Little Big Project Planner <noreply@${MLBPP_DOMAIN}>}
+    secrets: [database_url, valkey_url, smtp_url]
     # The observability profile's collector is on the edge network.
     networks: [backend, edge]
     depends_on:
@@ -174,14 +181,24 @@ services:
       - traefik.http.services.mlbpp-mcp.loadbalancer.server.port=8090
       - traefik.http.services.mlbpp-mcp.loadbalancer.healthcheck.path=/health/ready
 
-  # Applies pending database migrations, then exits; api and worker wait for it.
+  # Applies pending database migrations, then exits; api and worker wait for
+  # it. On the first start, it also creates the first tenant and its platform
+  # super admin when BOOTSTRAP_ADMIN_EMAIL is set (deploy/README.md).
   migrate:
     image: ${MLBPP_REGISTRY:-ghcr.io/argoleon}/mlbpp-api:${MLBPP_VERSION:-latest}
     command: ["migrate"]
     environment:
       <<: *rust-logs
       DATABASE_MIGRATION_URL_FILE: /run/secrets/database_migration_url
-    secrets: [database_migration_url]
+      TENANCY_MODE: ${TENANCY_MODE:-single}
+      TENANT_DEFAULT_SLUG: ${TENANT_DEFAULT_SLUG:-default}
+      TENANT_BASE_DOMAIN: ${TENANT_BASE_DOMAIN:-}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_NAME: ${BOOTSTRAP_ADMIN_NAME:-}
+      BOOTSTRAP_ADMIN_PASSWORD_FILE: /run/secrets/bootstrap_admin_password
+      BOOTSTRAP_TENANT_SLUG: ${BOOTSTRAP_TENANT_SLUG:-}
+      BOOTSTRAP_TENANT_NAME: ${BOOTSTRAP_TENANT_NAME:-}
+    secrets: [database_migration_url, bootstrap_admin_password]
     networks: [backend]
     depends_on:
       postgres:
@@ -528,6 +545,15 @@ secrets:
     file: ./secrets/database_migration_url
   valkey_url:
     file: ./secrets/valkey_url
+  # SMTP server of the emails: replace the placeholder (deploy/README.md).
+  smtp_url:
+    file: ./secrets/smtp_url
+  # Key encrypting the secrets stored in the database (32 random bytes, base64).
+  data_encryption_key:
+    file: ./secrets/data_encryption_key
+  # Password of the first platform super admin (BOOTSTRAP_ADMIN_EMAIL).
+  bootstrap_admin_password:
+    file: ./secrets/bootstrap_admin_password
   pgbackrest_cipher_pass:
     file: ./secrets/pgbackrest_cipher_pass
   valkey_password:

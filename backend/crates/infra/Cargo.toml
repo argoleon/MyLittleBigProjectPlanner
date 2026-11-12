@@ -24,8 +24,28 @@ opentelemetry_sdk = { version = "0.33.1", default-features = false, features = [
 opentelemetry-otlp = { version = "0.33.1", default-features = false, features = ["http-proto", "reqwest-blocking-client", "trace", "metrics"] }
 tracing-opentelemetry = "0.34.0"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
+lettre = { version = "0.11.23", default-features = false, features = ["builder", "smtp-transport", "tokio1", "tokio1-rustls", "ring", "rustls-native-certs"] }
+argon2 = "0.6.0"
+rand = "0.10.3"
+fred = { version = "10.1.0", default-features = false, features = ["i-keys", "i-sets"] }
+base64 = "0.23.1"
+sha2 = "0.11.1"
+aes-gcm = "0.11.1"
+totp-rs = { version = "6.0.0", default-features = false, features = ["std", "otpauth"] }
+qrcode = { version = "0.14.1", default-features = false, features = ["svg"] }
+# OIDC: ID tokens checked by jsonwebtoken (ring backend), HTTPS by hyper-rustls
+# with ring and the system's certificates (no aws-lc, no webpki-roots).
+jsonwebtoken = { version = "9.3.1", default-features = false }
+hyper = { version = "1", default-features = false, features = ["client", "http1"] }
+hyper-util = { version = "0.1", default-features = false, features = ["client-legacy", "http1", "tokio"] }
+hyper-rustls = { version = "0.27.10", default-features = false, features = ["native-tokio", "http1", "tls12", "ring"] }
+http-body-util = "0.1"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+url = "2"
 
 [dev-dependencies]
+# Signs test ID tokens (already in the tree through rustls).
+ring = "0.17"
 opentelemetry = { version = "0.33.1", default-features = false, features = ["metrics"] }
 tempfile = "3.27.0"
 testkit.workspace = true

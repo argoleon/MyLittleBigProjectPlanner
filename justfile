@@ -30,9 +30,9 @@ default:
 images:
     {{compose}} --profile tools --profile web --profile e2e build
 
-# Start PostgreSQL, the API (:18080) and the internal application (:4200) with live reload
+# Start PostgreSQL, Valkey, Mailpit (:18025), the API (:18080), the worker and the app (:4200)
 dev: web-deps
-    {{compose}} --profile web up --build api web
+    {{compose}} --profile web up --build api worker web
 
 # Stop every development container (data is kept)
 down:
@@ -42,13 +42,26 @@ down:
 db-up:
     {{compose}} up -d --wait postgres
 
-# Create the development tenant "default" (until tenant administration exists, L02)
+# Bootstrap the development tenant "default" and its platform super admin
+# dev@example.test, password "development only" (sign in on http://127.0.0.1:4200)
 seed: migrate
-    {{compose}} exec -T postgres psql -v ON_ERROR_STOP=1 -U mlbpp_owner -d mlbpp -c "INSERT INTO tenant (id, slug, name) VALUES (uuidv7(), 'default', 'Development') ON CONFLICT (slug) DO NOTHING"
+    {{be}} bash -c 'DATABASE_MIGRATION_URL="$DEV_DATABASE_OWNER_URL" BOOTSTRAP_TENANT_NAME=Development BOOTSTRAP_ADMIN_EMAIL=dev@example.test BOOTSTRAP_ADMIN_NAME="Dev Admin" BOOTSTRAP_ADMIN_PASSWORD="development only" cargo run --locked --quiet -p api -- migrate'
 
 # Delete the development database and build caches
 reset:
     {{compose}} --profile tools --profile web --profile e2e down --volumes
+
+# The compiled Rust crates of the development containers reach tens of GB,
+# and image builds leave an unused BuildKit cache (shared by every project
+# on this machine). This stops the development containers; the database,
+# the npm cache and the downloaded crates are kept, and the next build
+# starts from scratch.
+
+# Free the disk space of the build caches (Rust target volumes, BuildKit cache)
+clean-cache:
+    {{compose}} --profile tools --profile web --profile e2e down
+    docker volume rm --force mlbpp-dev_cargo-target mlbpp-dev_api-target mlbpp-dev_worker-target
+    docker builder prune --force
 
 # Open a shell in the Rust toolchain container
 shell:
@@ -191,7 +204,7 @@ web-check: web-lint web-i18n client-check web-licenses web-test e2e
 # Run locally with compose.local.yaml: images built from the sources,
 # https://localhost:18443 with a self-signed certificate. See deploy/README.md.
 
-stack := "MLBPP_DOMAIN=localhost MLBPP_REGISTRY=mlbpp-local MLBPP_VERSION=local MLBPP_PUBLIC_PORT=:18443 docker compose -f deploy/compose.yaml -f deploy/compose.local.yaml"
+stack := "MLBPP_DOMAIN=localhost MLBPP_REGISTRY=mlbpp-local MLBPP_VERSION=local MLBPP_PUBLIC_PORT=:18443 BOOTSTRAP_ADMIN_EMAIL=root@example.test docker compose -f deploy/compose.yaml -f deploy/compose.local.yaml"
 
 # Lint the scripts (shellcheck) and the CI workflows (actionlint), validate the compose files
 deploy-lint: compose-secrets
@@ -239,10 +252,7 @@ compose-reset:
 # Run the end-to-end tests against the local production stack
 compose-e2e *args: web-deps
     {{compose}} --profile e2e build e2e
-    docker run --rm --network mlbpp_edge --ipc host --user $DEV_UID:$DEV_GID \
-        -v "$PWD:/workspace" -w /workspace/web \
-        -e E2E_BASE_URL=https://localhost -e "E2E_HOST_RULES=MAP localhost traefik" \
-        mlbpp-dev-e2e npx playwright test {{args}}
+    deploy/tests/e2e.sh {{args}}
 
 # Deployment tests: smoke, backups, scaling, optional profiles, end to end
 compose-test: compose-up

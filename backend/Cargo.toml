@@ -5,7 +5,7 @@ members = ["crates/domain", "crates/infra", "crates/api", "crates/worker", "crat
 exclude = ["deny-fixture"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/argoleon/MyLittleBigProjectPlanner"
@@ -44,3 +44,21 @@ unused_async = "warn"
 dbg_macro = "warn"
 todo = "warn"
 unwrap_used = "warn"
+
+# Test binaries (one per integration test file, each linking the whole
+# workspace) are large with full debug info: together they outgrew the disk
+# of a CI runner. Line tables keep file:line in backtraces and panics;
+# dependencies keep no debug info.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
+
+# Argon2id is slow on purpose; unoptimized, a single hash takes seconds and
+# the authentication tests crawl. Optimize the hashing crates in dev builds.
+[profile.dev.package.argon2]
+opt-level = 3
+
+[profile.dev.package.blake2]
+opt-level = 3

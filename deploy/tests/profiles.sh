@@ -58,6 +58,8 @@ retention="$(grep -E '^\s*retention_period:' <<< "$loki_config" | head -n 1 | tr
 [ "$retention" = "retention_period:6mo" ] || [ "$retention" = "retention_period:180d" ] || [ "$retention" = "retention_period:4320h" ] \
     || fail "Loki's log retention is not the configured 6 months: $retention"
 pass "Loki keeps logs (client IPs included) for the configured retention ($retention)"
+grep -qE '^\s*retention_enabled:\s*true' <<< "$loki_config" || fail "Loki's compactor does not delete expired logs"
+pass "Loki's compactor deletes the logs past their retention (GDPR, L02-US09)"
 
 section "dashboard"
 grafana_password="$(cat deploy/secrets/grafana_admin_password)"

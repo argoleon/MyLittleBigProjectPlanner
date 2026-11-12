@@ -4,18 +4,30 @@
 //! Every route goes through the shared request layer in [`middleware`], so
 //! no feature can forget request IDs, timeouts or body limits.
 
+pub mod account;
+pub mod auth;
 pub mod cli;
 pub mod correlation;
 pub mod etag;
 pub mod extract;
 pub mod fields;
+pub mod gdpr;
+pub mod groups;
 pub mod idempotency;
+pub mod invitations;
+pub mod me;
+pub mod members;
+pub mod mfa;
 pub mod middleware;
 pub mod openapi;
 pub mod pagination;
+pub mod permissions;
+pub mod platform;
 pub mod problem;
 pub mod reference_items;
+pub mod roles;
 mod routes;
+pub mod sso;
 pub mod tenant;
 
 use std::future::{Future, IntoFuture};
@@ -24,8 +36,9 @@ use std::time::Duration;
 use axum::Router;
 use tokio::net::TcpListener;
 
+pub use auth::Auth;
 pub use middleware::{HttpSettings, with_middleware};
-pub use tenant::{AppState, TenantTx};
+pub use tenant::{AppState, PublicTenantTx, TenantTx};
 
 /// The complete API router, with the shared request layer applied.
 pub fn app(state: AppState, settings: &HttpSettings) -> Router {
@@ -41,6 +54,8 @@ pub async fn serve(
     grace: Duration,
 ) -> std::io::Result<()> {
     let (signalled_tx, signalled_rx) = tokio::sync::oneshot::channel::<()>();
+    // The peer address is the client's IP when no proxy forwards it (rate limits).
+    let app = app.into_make_service_with_connect_info::<std::net::SocketAddr>();
     let server = axum::serve(listener, app).with_graceful_shutdown(async move {
         shutdown.await;
         // The receiver is only gone if `serve` itself returned; nothing to do then.

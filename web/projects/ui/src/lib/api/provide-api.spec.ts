@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 
+import { AuthService } from '../auth/auth.service';
 import { ApiProblem } from './api-problem';
 import { ApiConfiguration } from './generated/api-configuration';
 import { ApiOptions, provideApi } from './provide-api';
@@ -92,5 +93,50 @@ describe('provideApi', () => {
     const call = rejection(firstValueFrom(http.get('/i18n/de.json')));
     backend.expectOne('/i18n/de.json').flush('missing', { status: 404, statusText: 'Not Found' });
     expect(await call).toBeInstanceOf(HttpErrorResponse);
+  });
+
+  it('sends the CSRF token of the cookie on state-changing requests only', () => {
+    document.cookie = 'mlbpp_csrf=csrf-123; path=/';
+    try {
+      const { http, backend } = setUp();
+      http.post('/api/v1/reference-items', {}).subscribe();
+      http.get('/api/v1/reference-items').subscribe();
+      const post = backend.expectOne({ method: 'POST', url: '/api/v1/reference-items' });
+      const get = backend.expectOne({ method: 'GET', url: '/api/v1/reference-items' });
+      expect(post.request.headers.get('X-CSRF-Token')).toBe('csrf-123');
+      expect(get.request.headers.has('X-CSRF-Token')).toBe(false);
+    } finally {
+      document.cookie = 'mlbpp_csrf=; path=/; max-age=0';
+    }
+  });
+
+  it('tells AuthService when the API says the session ended', async () => {
+    const { http, backend } = setUp();
+    const ended = vi.spyOn(TestBed.inject(AuthService), 'sessionEnded').mockImplementation(() => undefined);
+    const unauthenticated = {
+      type: 'urn:mlbpp:problem:unauthenticated',
+      title: 'Sign-in required, or the session has ended',
+      status: 401,
+      code: 'unauthenticated',
+    };
+    const options = { status: 401, statusText: 'Unauthorized' };
+
+    const call = rejection(firstValueFrom(http.get('/api/v1/reference-items')));
+    backend.expectOne('/api/v1/reference-items').flush(unauthenticated, options);
+    expect(((await call) as ApiProblem).code).toBe('unauthenticated');
+    expect(ended).toHaveBeenCalledTimes(1);
+
+    // Checking for a session is how AuthService learns there is none.
+    const check = rejection(firstValueFrom(http.get('/api/v1/auth/session')));
+    backend.expectOne('/api/v1/auth/session').flush(unauthenticated, options);
+    await check;
+    // Wrong credentials are not an ended session either.
+    const signIn = rejection(firstValueFrom(http.post('/api/v1/auth/sign-in', {})));
+    backend.expectOne('/api/v1/auth/sign-in').flush(
+      { ...unauthenticated, code: 'auth.invalid_credentials', title: 'Incorrect email or password' },
+      options,
+    );
+    await signIn;
+    expect(ended).toHaveBeenCalledTimes(1);
   });
 });

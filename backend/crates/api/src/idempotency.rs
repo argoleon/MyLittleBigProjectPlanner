@@ -8,10 +8,12 @@
 
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
-use infra::idempotency::StoredResponse;
+use infra::idempotency::{Claim, StoredResponse};
+use infra::sqlx::postgres::PgConnection;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
+use crate::etag::etag;
 use crate::extract::header_str;
 use crate::problem::{ErrorCode, Problem};
 
@@ -56,6 +58,63 @@ pub fn replay(stored: StoredResponse) -> Response {
     }
     headers.insert(REPLAYED_HEADER, HeaderValue::from_static("true"));
     response
+}
+
+/// How an idempotent creation goes on.
+#[derive(Debug)]
+pub enum Start {
+    /// Create, then call [`created`] with this key (if the client sent one).
+    Proceed(Option<String>),
+    /// Already done: answer this replay.
+    Replay(Response),
+}
+
+/// Starts the creation `operation` (`POST /path`) of `body`, in the tenant
+/// transaction `conn`.
+pub async fn start(
+    conn: &mut PgConnection,
+    headers: &HeaderMap,
+    operation: &str,
+    body: &impl Serialize,
+) -> Result<Start, Problem> {
+    let Some(key) = key(headers)? else {
+        return Ok(Start::Proceed(None));
+    };
+    let hash = request_hash(operation, body)?;
+    match infra::idempotency::claim(conn, &key, &hash).await? {
+        Claim::New => Ok(Start::Proceed(Some(key))),
+        Claim::Replay(stored) => Ok(Start::Replay(replay(stored))),
+        Claim::Mismatch => Err(Problem::new(ErrorCode::IdempotencyKeyReused)),
+        Claim::InFlight => Err(Problem::new(ErrorCode::IdempotencyKeyInFlight)),
+    }
+}
+
+/// The `201 Created` response of a creation (`Location`, `ETag`), stored
+/// for replays under `key` in the same transaction. Commit afterwards.
+pub async fn created(
+    conn: &mut PgConnection,
+    key: Option<&str>,
+    body: &impl Serialize,
+    location: String,
+    version: i64,
+) -> Result<Response, Problem> {
+    let json = serde_json::to_value(body).map_err(|e| Problem::internal(&e))?;
+    if let Some(key) = key {
+        let stored = StoredResponse {
+            status: StatusCode::CREATED.as_u16(),
+            body: json.clone(),
+            location: Some(location.clone()),
+            etag: Some(format!("\"{version}\"")),
+        };
+        infra::idempotency::complete(conn, key, &stored).await?;
+    }
+    let mut response = (StatusCode::CREATED, axum::Json(json)).into_response();
+    let headers = response.headers_mut();
+    headers.insert(header::ETAG, etag(version));
+    if let Ok(value) = HeaderValue::from_str(&location) {
+        headers.insert(header::LOCATION, value);
+    }
+    Ok(response)
 }
 
 #[cfg(test)]

@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT app_platform_purge_tenant($1) AS \"removed!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "removed!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "a92ac8974b74fbb63c31af08df30dccfbcd8ed4e932eb3871219f5ae48353044"
+}

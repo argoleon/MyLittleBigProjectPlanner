@@ -1,8 +1,11 @@
 use std::future::Future;
 use std::process::ExitCode;
 
-use api::cli::{self, Command};
-use infra::config::{ApiConfig, Env, MigrateConfig, TelemetryConfig};
+use api::cli::{self, Command, MemberArgs};
+use infra::bootstrap::BootstrapOutcome;
+use infra::config::{
+    ApiConfig, BootstrapConfig, DatabaseConfig, Env, MigrateConfig, Secret, TelemetryConfig,
+};
 use infra::telemetry::Telemetry;
 
 // Not `#[tokio::main]`: telemetry starts before the runtime and stops after
@@ -13,6 +16,7 @@ fn main() -> ExitCode {
         Ok(Command::Migrate) => run_with_logs(migrate()),
         Ok(Command::OpenApi) => openapi(),
         Ok(Command::Healthcheck { ready }) => runtime_block_on(healthcheck(ready)),
+        Ok(Command::AddMember(args)) => runtime_block_on(add_member(args)),
         Ok(Command::Help) => {
             println!("{}", cli::USAGE);
             ExitCode::SUCCESS
@@ -83,6 +87,46 @@ fn openapi() -> ExitCode {
     }
 }
 
+async fn add_member(args: MemberArgs) -> ExitCode {
+    let database = match DatabaseConfig::from_env(&Env::from_process()) {
+        Ok(database) => database,
+        Err(err) => {
+            eprintln!("api: configuration error: {err}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let mut password = String::new();
+    if let Err(err) = std::io::stdin().read_line(&mut password) {
+        eprintln!("api: cannot read the password from standard input: {err}");
+        return ExitCode::FAILURE;
+    }
+    let password = password.trim_end_matches(['\r', '\n']);
+    let pool = match infra::db::connect_lazy(&database) {
+        Ok(pool) => pool,
+        Err(err) => {
+            eprintln!("api: invalid DATABASE_URL: {err}");
+            return ExitCode::FAILURE;
+        }
+    };
+    match cli::add_member(&pool, &args, password).await {
+        Ok(added) if added.new_account => {
+            println!("added {} to {} ({})", args.email, args.tenant, added.account_id);
+            ExitCode::SUCCESS
+        }
+        Ok(added) => {
+            println!(
+                "linked the existing account {} to {}; its password is unchanged",
+                added.account_id, args.tenant
+            );
+            ExitCode::SUCCESS
+        }
+        Err(err) => {
+            eprintln!("api: cannot add the member: {err}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
 async fn migrate() -> ExitCode {
     let config = match MigrateConfig::from_env(&Env::from_process()) {
         Ok(config) => config,
@@ -91,14 +135,45 @@ async fn migrate() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    match infra::db::migrate(&config.migration_url).await {
-        Ok(()) => {
-            tracing::info!("migrations applied");
-            ExitCode::SUCCESS
+    if let Err(err) = infra::db::migrate(&config.migration_url).await {
+        eprintln!("api: migration failed: {err}");
+        return ExitCode::FAILURE;
+    }
+    tracing::info!("migrations applied");
+    if bootstrap(&config.migration_url, config.bootstrap.as_ref()).await {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    }
+}
+
+/// Creates the first tenant and super admin when configured and not done
+/// yet. False when it failed (reported on standard error).
+async fn bootstrap(migration_url: &Secret, config: Option<&BootstrapConfig>) -> bool {
+    let Some(config) = config else {
+        return true;
+    };
+    match infra::bootstrap::run(migration_url, config).await {
+        Ok(BootstrapOutcome::AlreadyDone) => {
+            tracing::info!("bootstrap skipped: a platform super admin exists");
+            true
+        }
+        Ok(BootstrapOutcome::Done {
+            tenant_created,
+            account_created,
+            ..
+        }) => {
+            tracing::info!(
+                tenant = %config.tenant_slug,
+                tenant_created,
+                account_created,
+                "bootstrapped the first tenant and its platform super admin"
+            );
+            true
         }
         Err(err) => {
-            eprintln!("api: migration failed: {err}");
-            ExitCode::FAILURE
+            eprintln!("api: bootstrap failed: {err}");
+            false
         }
     }
 }
@@ -130,6 +205,9 @@ async fn run(config: ApiConfig) -> ExitCode {
             return ExitCode::FAILURE;
         }
         tracing::info!("migrations applied");
+        if !bootstrap(migration_url, config.bootstrap.as_ref()).await {
+            return ExitCode::FAILURE;
+        }
     }
 
     let pool = match infra::db::connect_lazy(&config.database) {
@@ -150,8 +228,36 @@ async fn run(config: ApiConfig) -> ExitCode {
     };
     tracing::info!(addr = %config.bind_addr, "api listening");
 
-    let state =
-        api::AppState::new(pool, config.tenancy.clone()).with_dependencies(config.shared.dependencies());
+    let valkey = match infra::valkey::connect_lazy(&config.valkey) {
+        Ok(valkey) => valkey,
+        Err(err) => {
+            eprintln!("api: invalid VALKEY_URL: {err}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let cipher = match infra::crypto::SecretCipher::new(&config.data_key) {
+        Ok(cipher) => cipher,
+        Err(err) => {
+            eprintln!("api: {err}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let auth = match api::Auth::new(
+        valkey,
+        "mlbpp:",
+        config.public_url.clone(),
+        config.sessions,
+        cipher,
+        config.oidc_allow_http,
+    ) {
+        Ok(auth) => auth,
+        Err(err) => {
+            eprintln!("api: {err}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let state = api::AppState::new(pool, config.tenancy.clone(), auth)
+        .with_dependencies(config.shared.dependencies());
     let app = api::app(state, &api::HttpSettings::from(&config));
     match api::serve(
         listener,

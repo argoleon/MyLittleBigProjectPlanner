@@ -8,6 +8,11 @@
     "openNavigation": "Ouvrir la navigation",
     "mainNavigation": "Navigation principale",
     "tenant": "Organisation",
+    "role": {
+      "member": "Membre",
+      "configuration_admin": "Admin de configuration",
+      "tenant_admin": "Admin de l’organisation"
+    },
     "language": "Langue : {{ language }}",
     "theme": {
       "label": "Thème : {{ mode }}",
@@ -56,6 +61,272 @@
     "errorTitle": "Une erreur est survenue",
     "retry": "Réessayer"
   },
+  "auth": {
+    "languages": "Langue",
+    "signIn": {
+      "title": "Connexion",
+      "organization": "Organisation : {{ name }}",
+      "email": "E-mail",
+      "password": "Mot de passe",
+      "forgotPassword": "Mot de passe oublié ?",
+      "submit": "Se connecter",
+      "passwordChanged": "Votre mot de passe a été changé. Connectez-vous avec le nouveau.",
+      "continueWith": "Continuer avec {{ name }}",
+      "orLocal": "ou avec un compte local",
+      "accountErased": "Votre compte a été supprimé."
+    },
+    "forgotPassword": {
+      "title": "Mot de passe oublié",
+      "intro": "Saisissez l’e-mail de votre compte : vous recevrez un lien pour choisir un nouveau mot de passe.",
+      "submit": "Envoyer le lien",
+      "sent": "Si un compte correspond à {{ email }}, un e-mail contenant un lien vient de lui être envoyé. Ce lien est valable une heure.",
+      "backToSignIn": "Retour à la connexion"
+    },
+    "resetPassword": {
+      "title": "Nouveau mot de passe",
+      "intro": "Au moins 12 caractères. Une longue phrase est facile à retenir et difficile à deviner.",
+      "password": "Nouveau mot de passe",
+      "confirmation": "Confirmez le nouveau mot de passe",
+      "mismatch": "Les deux mots de passe sont différents.",
+      "submit": "Enregistrer le mot de passe",
+      "missingToken": "Ce lien est incomplet. Demandez-en un nouveau.",
+      "requestNewLink": "Demander un nouveau lien"
+    },
+    "account": {
+      "menu": "Compte : {{ name }}",
+      "signOut": "Se déconnecter",
+      "security": "Vérification en deux étapes",
+      "myAccount": "Mon compte"
+    },
+    "verify": {
+      "step": "Étape 2 sur 2",
+      "title": "Vérification en deux étapes",
+      "intro": "Saisissez le code à 6 chiffres affiché par votre application d’authentification.",
+      "backupIntro": "Saisissez l’un des codes de secours conservés lors de l’activation. Chacun ne sert qu’une fois.",
+      "backupCode": "Code de secours",
+      "submit": "Valider",
+      "useBackup": "Utiliser un code de secours",
+      "useApp": "Utiliser l’application d’authentification"
+    },
+    "enroll": {
+      "title": "Activez la vérification en deux étapes",
+      "intro": "Votre organisation exige la vérification en deux étapes : activez-la pour continuer."
+    },
+    "mfa": {
+      "title": "Vérification en deux étapes",
+      "intro": "Protégez votre compte : après votre mot de passe, vous saisirez un code fourni par une application d’authentification (Microsoft Authenticator, Google Authenticator, FreeOTP…).",
+      "scan": "Scannez ce QR code avec votre application d’authentification.",
+      "qrAlt": "QR code à scanner avec votre application d’authentification ; la clé ci-dessous contient la même information.",
+      "key": "Ou saisissez cette clé dans l’application :",
+      "code": "Code à 6 chiffres",
+      "codeHint": "Affiché par l’application, renouvelé toutes les 30 secondes",
+      "enable": "Activer",
+      "enabled": "La vérification en deux étapes est activée.",
+      "backupCodesIntro": "Conservez ces codes de secours en lieu sûr : si vous perdez votre téléphone, chacun remplace une fois un code de l’application. Ils ne seront plus affichés.",
+      "backupCodes": "Codes de secours",
+      "copy": "Copier",
+      "copied": "Copiés",
+      "download": "Télécharger",
+      "done": "J’ai conservé mes codes",
+      "fileTitle": "Codes de secours My Little Big Project Planner",
+      "active": "La vérification en deux étapes est activée. Codes de secours restants : {{ count }}.",
+      "requiredByPolicy": "Votre organisation l’exige : elle ne peut pas être désactivée.",
+      "disableIntro": "Pour la désactiver, saisissez un code de l’application ou un code de secours.",
+      "codeOrBackup": "Code ou code de secours",
+      "disable": "Désactiver",
+      "close": "Fermer"
+    },
+    "acceptInvitation": {
+      "title": "Rejoindre une organisation",
+      "missingToken": "Ce lien d’invitation est incomplet. Ouvrez à nouveau le lien de l’e-mail.",
+      "intro": "{{ inviter }} vous invite à rejoindre {{ tenant }}.",
+      "introNoInviter": "Vous êtes invité à rejoindre {{ tenant }}.",
+      "email": "E-mail",
+      "displayName": "Votre nom",
+      "password": "Choisissez un mot de passe",
+      "existingAccount": "Vous avez déjà un compte avec cet e-mail : accepter ajoute {{ tenant }} à vos organisations. Votre mot de passe ne change pas.",
+      "submit": "Rejoindre",
+      "external": "Votre compte est prêt. Vous accéderez à {{ tenant }} par son portail de demandes.",
+      "sso": "Vous avez rejoint {{ tenant }}. Elle vous connecte par son fournisseur d’identité.",
+      "signIn": "Aller à la page de connexion"
+    }
+  },
+  "admin": {
+    "tabs": {
+      "label": "Rubriques de l’administration",
+      "authentication": "Authentification",
+      "members": "Membres",
+      "groups": "Groupes",
+      "roles": "Rôles"
+    },
+    "auth": {
+      "policyTitle": "Politique d’authentification",
+      "providersTitle": "Fournisseurs d’identité (OIDC)",
+      "providersIntro": "Entra ID, Google, Okta, Keycloak… Les membres se connectent avec le compte du fournisseur dont l’e-mail vérifié est le leur. Les annuaires SAML et LDAP passent par Keycloak.",
+      "noProvider": "Aucun fournisseur d’identité : les membres se connectent avec leur mot de passe.",
+      "policy": {
+        "internalAccountsRequireSso": {
+          "label": "Comptes internes : connexion par le fournisseur d’identité imposée",
+          "hint": "Sauf les membres marqués comptes locaux (prestataires hors annuaire)."
+        },
+        "localAccountsRequireMfa": {
+          "label": "Comptes locaux : vérification en deux étapes obligatoire",
+          "hint": "Les membres qui se connectent par mot de passe l’activent à leur prochaine connexion."
+        },
+        "portalPasswordEnabled": {
+          "label": "Portail : connexion par mot de passe",
+          "hint": "Pour les comptes externes du portail de demandes."
+        },
+        "portalMagicLinkEnabled": {
+          "label": "Portail : connexion par lien envoyé par e-mail",
+          "hint": "Pour les comptes externes du portail de demandes."
+        }
+      },
+      "ssoWithoutProvider": "Aucun fournisseur d’identité n’est activé : la règle s’appliquera dès qu’il y en aura un.",
+      "policySaved": "La politique est enregistrée.",
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "providerAdd": "Ajouter un fournisseur",
+      "providerEdit": "Modifier le fournisseur",
+      "displayName": "Nom sur le bouton",
+      "displayNameHint": "« Continuer avec … » sur la page de connexion",
+      "issuer": "URL de l’émetteur",
+      "issuerHint": "ex. https://login.microsoftonline.com/<tenant>/v2.0",
+      "clientId": "Identifiant client",
+      "clientSecret": "Secret client",
+      "clientSecretKeep": "Laisser vide pour conserver le secret enregistré",
+      "emailClaim": "Claim de l’e-mail",
+      "emailClaimHint": "email (vérifié par le fournisseur), ou un claim de l’annuaire comme upn",
+      "enabled": "Activé sur la page de connexion",
+      "redirectUri": "URI de redirection à déclarer chez le fournisseur :",
+      "enabledState": "Activé",
+      "disabledState": "Désactivé",
+      "test": "Tester la connexion",
+      "testOk": "Le fournisseur répond.",
+      "editOf": "Modifier {{ name }}",
+      "deleteOf": "Supprimer {{ name }}"
+    },
+    "members": {
+      "search": "Rechercher un membre",
+      "searchPlaceholder": "Nom ou e-mail",
+      "filters": "Filtrer les membres",
+      "internal": "Internes",
+      "external": "Externes",
+      "pending": "Invitations en attente",
+      "invite": "Inviter",
+      "caption": "Membres et invitations en attente de l’organisation",
+      "columns": {
+        "member": "Membre",
+        "type": "Type",
+        "role": "Rôle d’organisation",
+        "groups": "Groupes",
+        "mfa": "MFA",
+        "status": "Statut",
+        "actions": "Actions"
+      },
+      "invitedOn": "Invitation envoyée le {{ date }}",
+      "externalRole": "Externe · portail uniquement",
+      "localAccount": "Compte local",
+      "mfaOn": "Vérification en deux étapes activée",
+      "mfaOff": "Vérification en deux étapes désactivée",
+      "empty": "Aucun membre ne correspond",
+      "emptyHint": "Modifiez la recherche ou les filtres, ou invitez quelqu’un.",
+      "loadMore": "Afficher plus de membres",
+      "actionsOf": "Actions pour {{ name }}",
+      "edit": "Modifier l’accès",
+      "remove": "Retirer de l’organisation",
+      "resend": "Renvoyer l’invitation",
+      "revoke": "Révoquer l’invitation",
+      "removeTitle": "Retirer {{ name }} ?",
+      "removeMessage": "{{ name }} perd immédiatement l’accès à cette organisation et quitte ses groupes. Son compte et ses autres organisations restent.",
+      "removeConfirm": "Retirer",
+      "revokeTitle": "Révoquer l’invitation ?",
+      "revokeMessage": "Le lien envoyé à {{ email }} ne fonctionnera plus.",
+      "revokeConfirm": "Révoquer",
+      "invited": "Invitation envoyée à {{ email }}.",
+      "resent": "Invitation renvoyée à {{ email }}.",
+      "revoked": "Invitation à {{ email }} révoquée.",
+      "removed": "{{ name }} a été retiré de l’organisation.",
+      "saved": "Accès de {{ name }} modifié."
+    },
+    "invite": {
+      "title": "Inviter un membre",
+      "email": "E-mail",
+      "accountType": "Type de compte",
+      "internalHint": "Utilise l’application de l’organisation.",
+      "externalHint": "Un client ou un fournisseur : utilise uniquement le portail de demandes.",
+      "role": "Rôle d’organisation",
+      "externalRole": "Les comptes externes sont de simples membres.",
+      "submit": "Envoyer l’invitation"
+    },
+    "member": {
+      "title": "Accès de {{ name }}",
+      "localAccount": "Compte local",
+      "localAccountHint": "Se connecte avec un mot de passe même quand l’organisation impose son fournisseur d’identité (personnes hors de son annuaire).",
+      "save": "Enregistrer"
+    },
+    "groups": {
+      "intro": "Les groupes permettent d’attribuer des rôles à plusieurs membres à la fois.",
+      "add": "Nouveau groupe",
+      "caption": "Groupes de l’organisation",
+      "columns": {
+        "name": "Groupe",
+        "members": "Membres"
+      },
+      "empty": "Aucun groupe pour l’instant",
+      "emptyHint": "Créez un groupe, puis ajoutez-y des membres.",
+      "manageMembers": "Membres",
+      "editOf": "Modifier {{ name }}",
+      "deleteOf": "Supprimer {{ name }}",
+      "deleteTitle": "Supprimer {{ name }} ?",
+      "deleteMessage": "Le groupe disparaît ; ses membres restent dans l’organisation.",
+      "deleteConfirm": "Supprimer",
+      "deleted": "Groupe {{ name }} supprimé.",
+      "saved": "Groupe {{ name }} enregistré.",
+      "createTitle": "Nouveau groupe",
+      "editTitle": "Modifier le groupe",
+      "name": "Nom",
+      "description": "Description",
+      "save": "Enregistrer",
+      "membersOf": "Membres de {{ name }}",
+      "addMember": "Ajouter un membre",
+      "noMember": "Aucun membre dans ce groupe pour l’instant.",
+      "removeMemberOf": "Retirer {{ name }} du groupe"
+    },
+    "roles": {
+      "intro": "Les rôles de nœud sont des ensembles de permissions, attribués sur un portefeuille, un programme ou un projet et hérités par ses descendants.",
+      "add": "Nouveau rôle",
+      "listLabel": "Rôles de l’organisation",
+      "permissionCount": "{{ count }} / {{ total }} permissions",
+      "grantCount": "Attributions : {{ count }}",
+      "empty": "Aucun rôle pour l’instant",
+      "emptyHint": "Créez un rôle, puis attribuez-le sur les nœuds de la hiérarchie.",
+      "select": "Choisissez un rôle dans la liste.",
+      "nodeRole": "Rôle de nœud",
+      "title": "Rôle « {{ label }} »",
+      "newTitle": "Nouveau rôle",
+      "copyTitle": "Copie de « {{ label }} »",
+      "labelFr": "Nom en français",
+      "labelEn": "Nom en anglais",
+      "labelsHint": "Au moins l’un des deux.",
+      "permissions": "Permissions",
+      "permissionsRequired": "Choisissez au moins une permission.",
+      "save": "Enregistrer",
+      "discard": "Annuler les modifications",
+      "duplicate": "Dupliquer",
+      "delete": "Supprimer",
+      "unsaved": "Modifications non enregistrées",
+      "inUse": "Attributions qui utilisent ce rôle : {{ count }}. Retirez-les avant de le supprimer.",
+      "deleteTitle": "Supprimer {{ label }} ?",
+      "deleteMessage": "Le rôle disparaît ; aucune attribution ne l’utilise.",
+      "deleteConfirm": "Supprimer",
+      "deleted": "Rôle {{ label }} supprimé.",
+      "saved": "Rôle {{ label }} enregistré.",
+      "discardTitle": "Abandonner les modifications ?",
+      "discardMessage": "Les modifications de ce rôle ne sont pas enregistrées.",
+      "discardConfirm": "Abandonner"
+    }
+  },
   "errors": {
     "bad_request": "La requête est mal formée.",
     "validation_failed": "Certains champs sont invalides.",
@@ -70,13 +341,41 @@
     "unsupported_media_type": "Ce format de données n’est pas accepté.",
     "precondition_required": "Rechargez l’élément avant de le modifier.",
     "internal": "Le serveur a rencontré une erreur. Réessayez plus tard.",
+    "too_many_requests": "Trop de tentatives. Réessayez dans quelques minutes.",
+    "unauthenticated": "Votre session a pris fin. Reconnectez-vous.",
+    "forbidden": "Vous n’avez pas le droit de faire cela.",
+    "csrf": {
+      "invalid": "Votre session n’a pas pu être vérifiée. Rechargez la page et réessayez."
+    },
+    "auth": {
+      "invalid_credentials": "E-mail ou mot de passe incorrect.",
+      "reset_token_invalid": "Ce lien est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
+      "invalid_code": "Code incorrect ou déjà utilisé.",
+      "sso_required": "Votre organisation vous connecte par son fournisseur d’identité : utilisez le bouton ci-dessus.",
+      "oidc_failed": "La connexion par le fournisseur d’identité a échoué. Réessayez.",
+      "oidc_no_member": "Aucun membre de cette organisation n’a l’e-mail de ce compte.",
+      "oidc_email_unverified": "Le fournisseur d’identité ne confirme pas l’e-mail de ce compte.",
+      "switch_failed": "Ce lien de changement d’organisation est invalide, a expiré ou a déjà servi. Reconnectez-vous."
+    },
+    "mfa": {
+      "already_enabled": "La vérification en deux étapes est déjà activée.",
+      "not_started": "Recommencez l’activation.",
+      "required_by_policy": "Votre organisation exige la vérification en deux étapes."
+    },
+    "oidc_provider": {
+      "duplicate": "Ce fournisseur d’identité est déjà configuré.",
+      "unreachable": "Le fournisseur d’identité est injoignable ou a mal répondu."
+    },
     "idempotency_key": {
       "invalid": "La requête est mal formée.",
       "reused": "Cette demande a déjà été envoyée avec d’autres données.",
       "in_flight": "Cette demande est déjà en cours de traitement."
     },
     "tenant": {
-      "not_found": "Cette organisation est introuvable."
+      "not_found": "Cette organisation est introuvable.",
+      "slug_taken": "Une autre organisation utilise déjà cet identifiant.",
+      "confirmation_mismatch": "Saisissez l’identifiant de l’organisation pour confirmer sa suppression.",
+      "delete_current": "Vous ne pouvez pas supprimer l’organisation sur laquelle vous êtes connecté."
     },
     "reference_item": {
       "code_taken": "Ce code est déjà utilisé."
@@ -91,7 +390,153 @@
       "out_of_range": "La valeur est hors des limites autorisées.",
       "taken": "Cette valeur est déjà utilisée.",
       "unsupported_locale": "Cette langue n’est pas prise en charge.",
-      "unknown_field": "Ce champ n’existe pas."
+      "unknown_field": "Ce champ n’existe pas.",
+      "too_short": "C’est trop court.",
+      "same_as_email": "Le mot de passe doit être différent de l’e-mail.",
+      "email": "Saisissez une adresse e-mail valide.",
+      "unknown_time_zone": "Ce fuseau horaire est inconnu.",
+      "not_default_slug": "En mode mono-organisation, seul l’identifiant configuré est accepté.",
+      "external_member_only": "Un compte externe ne peut pas administrer l’organisation.",
+      "incorrect": "Valeur incorrecte.",
+      "mismatch": "Les valeurs ne correspondent pas."
+    },
+    "invitation": {
+      "invalid": "Ce lien d’invitation est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
+      "pending": "Cet e-mail a déjà une invitation en attente : renvoyez-la plutôt.",
+      "already_member": "Cet e-mail appartient déjà à un membre de l’organisation.",
+      "closed": "Cette invitation a déjà été acceptée ou révoquée."
+    },
+    "member": {
+      "last_admin": "L’organisation doit garder au moins un admin de l’organisation actif."
+    },
+    "group": {
+      "name_taken": "Un autre groupe porte déjà ce nom."
+    },
+    "permission": {
+      "denied": "Vous n’avez pas la permission nécessaire."
+    },
+    "role": {
+      "label_taken": "Un autre rôle porte déjà ce nom.",
+      "in_use": "Des attributions utilisent ce rôle : retirez-les d’abord."
+    },
+    "account": {
+      "no_password": "Votre organisation vous connecte : votre compte n’a pas de mot de passe à changer.",
+      "reauthentication_required": "Reconnectez-vous par votre organisation, puis supprimez votre compte dans les 10 minutes.",
+      "platform_admin": "Un super administrateur de la plateforme ne peut pas être effacé : un autre doit d’abord lui retirer ce rôle."
+    },
+    "session": {
+      "current": "C’est la session en cours : déconnectez-vous plutôt."
+    },
+    "export": {
+      "pending": "L’export n’est pas encore prêt."
+    }
+  },
+  "dialog": {
+    "cancel": "Annuler",
+    "close": "Fermer"
+  },
+  "member": {
+    "accountType": {
+      "label": "Type de compte :",
+      "internal": "Interne",
+      "external": "Externe"
+    },
+    "status": {
+      "label": "Statut :",
+      "active": "Actif",
+      "suspended": "Suspendu",
+      "invited": "Invitation envoyée",
+      "expired": "Invitation expirée"
+    }
+  },
+  "permission": {
+    "view": "Voir",
+    "create_ticket": "Créer un ticket",
+    "edit": "Modifier",
+    "comment": "Commenter",
+    "log_time": "Saisir du temps",
+    "assign_resources": "Affecter des ressources",
+    "force_overload": "Forcer la surcharge",
+    "manage_sprints": "Gérer les sprints",
+    "manage_members": "Gérer les membres",
+    "administer_node": "Administrer le nœud"
+  },
+  "account": {
+    "title": "Mon compte",
+    "eyebrow": "Compte global",
+    "organizations": {
+      "title": "Mes organisations",
+      "current": "Actuelle"
+    },
+    "preferences": {
+      "title": "Préférences",
+      "language": "Langue",
+      "languageAuto": "Celle de cet appareil",
+      "timeZone": "Fuseau horaire",
+      "timeZoneAuto": "Celui de l’organisation ({{ zone }})",
+      "saved": "Préférences enregistrées."
+    },
+    "security": {
+      "title": "Sécurité",
+      "mfa": "Vérification en deux étapes",
+      "mfaOn": "Application d’authentification · codes de secours restants : {{ count }}",
+      "mfaOff": "Désactivée : votre mot de passe suffit pour vous connecter.",
+      "mfaRequired": "exigée par votre organisation",
+      "password": "Mot de passe",
+      "passwordHint": "Le changer déconnecte vos autres sessions.",
+      "changePassword": "Changer",
+      "sessions": "Sessions actives",
+      "sessionsSummary": "Appareils : {{ count }}",
+      "lastSignIn": "dernière connexion {{ when }}",
+      "manageSessions": "Gérer"
+    },
+    "password": {
+      "title": "Changer votre mot de passe",
+      "intro": "Vos autres sessions seront déconnectées ; celle-ci reste ouverte.",
+      "current": "Mot de passe actuel",
+      "new": "Nouveau mot de passe",
+      "newHint": "Au moins {{ count }} caractères.",
+      "confirmation": "Confirmez le nouveau mot de passe",
+      "mismatch": "Les deux mots de passe diffèrent.",
+      "submit": "Changer le mot de passe",
+      "changed": "Mot de passe changé. Vos autres sessions sont déconnectées.",
+      "incorrect": "Ce n’est pas votre mot de passe actuel."
+    },
+    "sessions": {
+      "title": "Sessions actives",
+      "intro": "Les appareils connectés à votre compte, dans toutes vos organisations. Déconnectez ceux que vous ne reconnaissez pas.",
+      "current": "Cette session",
+      "unknownDevice": "Appareil inconnu",
+      "formerOrganization": "Organisation quittée",
+      "lastSeen": "dernière activité {{ when }}",
+      "signedIn": "Connecté le {{ when }}",
+      "revoke": "Déconnecter",
+      "revokeOf": "Déconnecter la session {{ device }}",
+      "revoked": "Session déconnectée."
+    },
+    "personalData": {
+      "title": "Mes données personnelles",
+      "intro": "L’effacement anonymise votre nom et votre e-mail partout, historique compris. Le contenu de vos tickets est conservé.",
+      "export": "Exporter (JSON)",
+      "exporting": "Préparation de l’export…",
+      "exported": "Votre export est téléchargé.",
+      "exportSlow": "L’export prend plus de temps que prévu. Réessayez dans quelques minutes.",
+      "erase": "Supprimer mon compte"
+    },
+    "erasure": {
+      "title": "Supprimer votre compte ?",
+      "intro": "Votre compte est effacé dans toutes vos organisations :",
+      "removed": "votre nom, votre e-mail, votre mot de passe et vos préférences sont supprimés ;",
+      "pseudonym": "vous apparaissez partout comme « Utilisateur supprimé n° N », historique compris ;",
+      "kept": "le contenu que vous avez créé est conservé, sauf vos commentaires si vous le demandez ;",
+      "signedOut": "toutes vos sessions sont fermées.",
+      "irreversible": "C’est définitif.",
+      "password": "Votre mot de passe",
+      "ssoHint": "Vous vous connectez par votre organisation : reconnectez-vous juste avant (moins de 10 minutes) pour pouvoir supprimer votre compte.",
+      "confirmation": "Saisissez {{ email }} pour confirmer",
+      "mismatch": "Ce n’est pas l’e-mail de votre compte.",
+      "purgeComments": "Supprimer aussi mes commentaires",
+      "submit": "Supprimer définitivement"
     }
   }
 }

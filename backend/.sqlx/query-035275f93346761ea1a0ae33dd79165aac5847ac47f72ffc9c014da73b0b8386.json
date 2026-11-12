@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS (SELECT 1 FROM oidc_provider WHERE enabled) AS \"any!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "any!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "035275f93346761ea1a0ae33dd79165aac5847ac47f72ffc9c014da73b0b8386"
+}

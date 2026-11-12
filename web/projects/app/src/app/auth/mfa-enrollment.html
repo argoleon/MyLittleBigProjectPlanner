@@ -1,0 +1,64 @@
+@switch (state().step) {
+  @case ('starting') {
+    <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+  }
+  @case ('failed') {
+    <p class="message error" role="alert">{{ errorKey() | transloco }}</p>
+    <button matButton="tonal" type="button" (click)="start()">{{ 'state.retry' | transloco }}</button>
+  }
+  @case ('scan') {
+    <ol class="steps">
+      <li>
+        <p>{{ 'auth.mfa.scan' | transloco }}</p>
+        <img class="qr" [src]="qrCode()" [alt]="'auth.mfa.qrAlt' | transloco" width="200" height="200" />
+        <p class="key-label" id="mfa-key-label">{{ 'auth.mfa.key' | transloco }}</p>
+        <code class="key" aria-labelledby="mfa-key-label">{{ secret() }}</code>
+      </li>
+      <li>
+        <form class="form" [formGroup]="form" (ngSubmit)="confirm()" novalidate>
+          <mat-form-field class="field" appearance="outline">
+            <mat-label>{{ 'auth.mfa.code' | transloco }}</mat-label>
+            <input
+              matInput
+              formControlName="code"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              maxlength="7"
+              required
+            />
+            <mat-hint>{{ 'auth.mfa.codeHint' | transloco }}</mat-hint>
+            <mat-error>{{ 'errors.field.format' | transloco }}</mat-error>
+          </mat-form-field>
+          @if (errorKey(); as key) {
+            <p class="message error" role="alert">{{ key | transloco }}</p>
+          }
+          <button matButton="filled" type="submit" [disabled]="confirming()">
+            {{ 'auth.mfa.enable' | transloco }}
+          </button>
+        </form>
+      </li>
+    </ol>
+  }
+  @case ('codes') {
+    <p class="message info" role="status">{{ 'auth.mfa.enabled' | transloco }}</p>
+    <p>{{ 'auth.mfa.backupCodesIntro' | transloco }}</p>
+    <ol class="codes" [attr.aria-label]="'auth.mfa.backupCodes' | transloco">
+      @for (code of backupCodes(); track code) {
+        <li><code>{{ code }}</code></li>
+      }
+    </ol>
+    <div class="actions">
+      <button matButton="outlined" type="button" (click)="copy()">
+        <mat-icon aria-hidden="true">content_copy</mat-icon>
+        {{ (copied() ? 'auth.mfa.copied' : 'auth.mfa.copy') | transloco }}
+      </button>
+      <button matButton="outlined" type="button" (click)="download()">
+        <mat-icon aria-hidden="true">download</mat-icon>
+        {{ 'auth.mfa.download' | transloco }}
+      </button>
+      <button matButton="filled" type="button" (click)="finished.emit()">
+        {{ 'auth.mfa.done' | transloco }}
+      </button>
+    </div>
+  }
+}

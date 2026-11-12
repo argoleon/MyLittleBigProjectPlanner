@@ -48,19 +48,54 @@ pub enum ErrorCode {
     PayloadTooLarge,
     UnsupportedMediaType,
     PreconditionRequired,
+    TooManyRequests,
     Internal,
+    // Authentication and access.
+    Unauthenticated,
+    Forbidden,
+    CsrfInvalid,
+    AuthInvalidCredentials,
+    AuthResetTokenInvalid,
+    AuthInvalidCode,
+    MfaAlreadyEnabled,
+    MfaNotStarted,
+    MfaRequiredByPolicy,
+    AuthSsoRequired,
+    AuthOidcFailed,
+    AuthOidcNoMember,
+    AuthOidcEmailUnverified,
+    AuthSwitchFailed,
+    OidcProviderDuplicate,
+    OidcProviderUnreachable,
     // Idempotency-Key header.
     IdempotencyKeyInvalid,
     IdempotencyKeyReused,
     IdempotencyKeyInFlight,
     // Resources.
     TenantNotFound,
+    TenantSlugTaken,
+    TenantConfirmationMismatch,
+    TenantDeleteCurrent,
     ReferenceItemCodeTaken,
+    InvitationInvalid,
+    InvitationPending,
+    InvitationAlreadyMember,
+    InvitationClosed,
+    MemberLastAdmin,
+    GroupNameTaken,
+    PermissionDenied,
+    RoleLabelTaken,
+    RoleInUse,
+    AccountNoPassword,
+    SessionCurrent,
+    AccountReauthenticationRequired,
+    AccountPlatformAdmin,
+    ExportPending,
 }
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 18] = [
+    pub const ALL: [Self; 52] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -73,12 +108,46 @@ impl ErrorCode {
         Self::PayloadTooLarge,
         Self::UnsupportedMediaType,
         Self::PreconditionRequired,
+        Self::TooManyRequests,
         Self::Internal,
+        Self::Unauthenticated,
+        Self::Forbidden,
+        Self::CsrfInvalid,
+        Self::AuthInvalidCredentials,
+        Self::AuthResetTokenInvalid,
+        Self::AuthInvalidCode,
+        Self::MfaAlreadyEnabled,
+        Self::MfaNotStarted,
+        Self::MfaRequiredByPolicy,
+        Self::AuthSsoRequired,
+        Self::AuthOidcFailed,
+        Self::AuthOidcNoMember,
+        Self::AuthOidcEmailUnverified,
+        Self::AuthSwitchFailed,
+        Self::OidcProviderDuplicate,
+        Self::OidcProviderUnreachable,
         Self::IdempotencyKeyInvalid,
         Self::IdempotencyKeyReused,
         Self::IdempotencyKeyInFlight,
         Self::TenantNotFound,
+        Self::TenantSlugTaken,
+        Self::TenantConfirmationMismatch,
+        Self::TenantDeleteCurrent,
         Self::ReferenceItemCodeTaken,
+        Self::InvitationInvalid,
+        Self::InvitationPending,
+        Self::InvitationAlreadyMember,
+        Self::InvitationClosed,
+        Self::MemberLastAdmin,
+        Self::GroupNameTaken,
+        Self::PermissionDenied,
+        Self::RoleLabelTaken,
+        Self::RoleInUse,
+        Self::AccountNoPassword,
+        Self::SessionCurrent,
+        Self::AccountReauthenticationRequired,
+        Self::AccountPlatformAdmin,
+        Self::ExportPending,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -95,12 +164,46 @@ impl ErrorCode {
             Self::PayloadTooLarge => "payload_too_large",
             Self::UnsupportedMediaType => "unsupported_media_type",
             Self::PreconditionRequired => "precondition_required",
+            Self::TooManyRequests => "too_many_requests",
             Self::Internal => "internal",
+            Self::Unauthenticated => "unauthenticated",
+            Self::Forbidden => "forbidden",
+            Self::CsrfInvalid => "csrf.invalid",
+            Self::AuthInvalidCredentials => "auth.invalid_credentials",
+            Self::AuthResetTokenInvalid => "auth.reset_token_invalid",
+            Self::AuthInvalidCode => "auth.invalid_code",
+            Self::MfaAlreadyEnabled => "mfa.already_enabled",
+            Self::MfaNotStarted => "mfa.not_started",
+            Self::MfaRequiredByPolicy => "mfa.required_by_policy",
+            Self::AuthSsoRequired => "auth.sso_required",
+            Self::AuthOidcFailed => "auth.oidc_failed",
+            Self::AuthOidcNoMember => "auth.oidc_no_member",
+            Self::AuthOidcEmailUnverified => "auth.oidc_email_unverified",
+            Self::AuthSwitchFailed => "auth.switch_failed",
+            Self::OidcProviderDuplicate => "oidc_provider.duplicate",
+            Self::OidcProviderUnreachable => "oidc_provider.unreachable",
             Self::IdempotencyKeyInvalid => "idempotency_key.invalid",
             Self::IdempotencyKeyReused => "idempotency_key.reused",
             Self::IdempotencyKeyInFlight => "idempotency_key.in_flight",
             Self::TenantNotFound => "tenant.not_found",
+            Self::TenantSlugTaken => "tenant.slug_taken",
+            Self::TenantConfirmationMismatch => "tenant.confirmation_mismatch",
+            Self::TenantDeleteCurrent => "tenant.delete_current",
             Self::ReferenceItemCodeTaken => "reference_item.code_taken",
+            Self::InvitationInvalid => "invitation.invalid",
+            Self::InvitationPending => "invitation.pending",
+            Self::InvitationAlreadyMember => "invitation.already_member",
+            Self::InvitationClosed => "invitation.closed",
+            Self::MemberLastAdmin => "member.last_admin",
+            Self::GroupNameTaken => "group.name_taken",
+            Self::PermissionDenied => "permission.denied",
+            Self::RoleLabelTaken => "role.label_taken",
+            Self::RoleInUse => "role.in_use",
+            Self::AccountNoPassword => "account.no_password",
+            Self::SessionCurrent => "session.current",
+            Self::AccountReauthenticationRequired => "account.reauthentication_required",
+            Self::AccountPlatformAdmin => "account.platform_admin",
+            Self::ExportPending => "export.pending",
         }
     }
 
@@ -110,13 +213,47 @@ impl ErrorCode {
             | Self::ValidationFailed
             | Self::InvalidJson
             | Self::InvalidQuery
-            | Self::IdempotencyKeyInvalid => StatusCode::BAD_REQUEST,
+            | Self::IdempotencyKeyInvalid
+            | Self::AuthResetTokenInvalid
+            | Self::TenantConfirmationMismatch
+            | Self::AuthOidcFailed
+            | Self::AuthSwitchFailed
+            | Self::InvitationInvalid => StatusCode::BAD_REQUEST,
+            Self::Unauthenticated | Self::AuthInvalidCredentials | Self::AuthInvalidCode => {
+                StatusCode::UNAUTHORIZED
+            }
+            Self::Forbidden
+            | Self::PermissionDenied
+            | Self::AccountReauthenticationRequired
+            | Self::CsrfInvalid
+            | Self::AuthSsoRequired
+            | Self::AuthOidcNoMember
+            | Self::AuthOidcEmailUnverified => StatusCode::FORBIDDEN,
+            Self::OidcProviderUnreachable => StatusCode::BAD_GATEWAY,
+            Self::TooManyRequests => StatusCode::TOO_MANY_REQUESTS,
             Self::NotFound | Self::TenantNotFound => StatusCode::NOT_FOUND,
             Self::MethodNotAllowed => StatusCode::METHOD_NOT_ALLOWED,
             Self::RequestTimeout => StatusCode::REQUEST_TIMEOUT,
-            Self::Conflict | Self::IdempotencyKeyInFlight | Self::ReferenceItemCodeTaken => {
-                StatusCode::CONFLICT
-            }
+            Self::Conflict
+            | Self::IdempotencyKeyInFlight
+            | Self::ReferenceItemCodeTaken
+            | Self::TenantSlugTaken
+            | Self::TenantDeleteCurrent
+            | Self::MfaAlreadyEnabled
+            | Self::MfaNotStarted
+            | Self::MfaRequiredByPolicy
+            | Self::OidcProviderDuplicate
+            | Self::InvitationPending
+            | Self::InvitationAlreadyMember
+            | Self::InvitationClosed
+            | Self::MemberLastAdmin
+            | Self::GroupNameTaken
+            | Self::RoleLabelTaken
+            | Self::RoleInUse
+            | Self::AccountNoPassword
+            | Self::SessionCurrent
+            | Self::AccountPlatformAdmin
+            | Self::ExportPending => StatusCode::CONFLICT,
             Self::PreconditionFailed => StatusCode::PRECONDITION_FAILED,
             Self::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -141,12 +278,50 @@ impl ErrorCode {
             Self::PayloadTooLarge => "The request body is too large",
             Self::UnsupportedMediaType => "Unsupported content type; send application/json",
             Self::PreconditionRequired => "This request needs an If-Match header",
+            Self::TooManyRequests => "Too many attempts; retry after the delay in Retry-After",
             Self::Internal => "Internal server error",
+            Self::Unauthenticated => "Sign-in required, or the session has ended",
+            Self::Forbidden => "You are not allowed to do this",
+            Self::CsrfInvalid => "Missing or invalid X-CSRF-Token header",
+            Self::AuthInvalidCredentials => "Incorrect email or password",
+            Self::AuthResetTokenInvalid => "This password reset link is invalid, expired or already used",
+            Self::AuthInvalidCode => "Incorrect or already used verification code",
+            Self::MfaAlreadyEnabled => "Two-step verification is already enabled",
+            Self::MfaNotStarted => "Start two-step verification setup first",
+            Self::MfaRequiredByPolicy => "The organization requires two-step verification",
+            Self::AuthSsoRequired => "This organization signs its members in through its identity provider",
+            Self::AuthOidcFailed => "Sign-in through the identity provider failed; try again",
+            Self::AuthOidcNoMember => "No member of this organization has this account's email",
+            Self::AuthOidcEmailUnverified => "The identity provider does not vouch for this account's email",
+            Self::AuthSwitchFailed => "This switch link is invalid, expired or already used; sign in again",
+            Self::OidcProviderDuplicate => "This identity provider is already configured",
+            Self::OidcProviderUnreachable => "The identity provider cannot be reached or answered badly",
             Self::IdempotencyKeyInvalid => "The Idempotency-Key header is invalid",
             Self::IdempotencyKeyReused => "This Idempotency-Key was used for a different request",
             Self::IdempotencyKeyInFlight => "A request with this Idempotency-Key is still in progress",
             Self::TenantNotFound => "Tenant not found",
+            Self::TenantSlugTaken => "Another tenant already has this slug",
+            Self::TenantConfirmationMismatch => "Type the tenant's slug in `confirm` to delete it",
+            Self::TenantDeleteCurrent => "The tenant you are signed in to cannot be deleted",
             Self::ReferenceItemCodeTaken => "Another reference item already has this code",
+            Self::InvitationInvalid => "This invitation link is invalid, expired or already used",
+            Self::InvitationPending => "This email already has an open invitation; send it again instead",
+            Self::InvitationAlreadyMember => "This email already belongs to a member of the tenant",
+            Self::InvitationClosed => "This invitation was already accepted or revoked",
+            Self::MemberLastAdmin => "The tenant needs at least one active tenant admin",
+            Self::GroupNameTaken => "Another group already has this name",
+            Self::PermissionDenied => "You do not have the permission this needs",
+            Self::RoleLabelTaken => "Another role already has this label",
+            Self::RoleInUse => "Grants use this role: remove them first",
+            Self::AccountNoPassword => "This account signs in through its organization: it has no password",
+            Self::SessionCurrent => "This is the session of the request: sign out instead",
+            Self::AccountReauthenticationRequired => {
+                "Sign in again through your organization, then erase your account within 10 minutes"
+            }
+            Self::AccountPlatformAdmin => {
+                "A platform super admin cannot be erased: another one removes the role first"
+            }
+            Self::ExportPending => "The export is not ready yet",
         }
     }
 
@@ -159,6 +334,7 @@ impl ErrorCode {
             StatusCode::REQUEST_TIMEOUT => Some(Self::RequestTimeout),
             StatusCode::PAYLOAD_TOO_LARGE => Some(Self::PayloadTooLarge),
             StatusCode::UNSUPPORTED_MEDIA_TYPE => Some(Self::UnsupportedMediaType),
+            StatusCode::TOO_MANY_REQUESTS => Some(Self::TooManyRequests),
             s if s.is_server_error() => Some(Self::Internal),
             _ => None,
         }
@@ -173,6 +349,8 @@ pub struct Problem {
     pub detail: Option<String>,
     /// Field-level errors, for `validation_failed` and similar.
     pub errors: Vec<FieldError>,
+    /// Sent as `Retry-After` (whole seconds), for `too_many_requests`.
+    pub retry_after: Option<std::time::Duration>,
 }
 
 impl Problem {
@@ -181,7 +359,14 @@ impl Problem {
             code,
             detail: None,
             errors: Vec::new(),
+            retry_after: None,
         }
+    }
+
+    /// Adds a `Retry-After` header (at least one second).
+    pub fn with_retry_after(mut self, delay: std::time::Duration) -> Self {
+        self.retry_after = Some(delay);
+        self
     }
 
     pub fn with_detail(mut self, detail: impl Into<String>) -> Self {
@@ -215,6 +400,18 @@ impl From<ErrorCode> for Problem {
 
 impl From<infra::sqlx::Error> for Problem {
     fn from(err: infra::sqlx::Error) -> Self {
+        Self::internal(&err)
+    }
+}
+
+impl From<infra::valkey::ValkeyError> for Problem {
+    fn from(err: infra::valkey::ValkeyError) -> Self {
+        Self::internal(&err)
+    }
+}
+
+impl From<tokio::task::JoinError> for Problem {
+    fn from(err: tokio::task::JoinError) -> Self {
         Self::internal(&err)
     }
 }
@@ -324,6 +521,11 @@ impl IntoResponse for Problem {
         response
             .headers_mut()
             .insert(header::CONTENT_TYPE, HeaderValue::from_static(PROBLEM_JSON));
+        if let Some(delay) = self.retry_after {
+            response
+                .headers_mut()
+                .insert(header::RETRY_AFTER, HeaderValue::from(delay.as_secs().max(1)));
+        }
         response
     }
 }
@@ -363,7 +565,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 18] = [
+        let expected: [(ErrorCode, u16); 52] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -376,12 +578,46 @@ mod tests {
             (ErrorCode::PayloadTooLarge, 413),
             (ErrorCode::UnsupportedMediaType, 415),
             (ErrorCode::PreconditionRequired, 428),
+            (ErrorCode::TooManyRequests, 429),
             (ErrorCode::Internal, 500),
+            (ErrorCode::Unauthenticated, 401),
+            (ErrorCode::Forbidden, 403),
+            (ErrorCode::CsrfInvalid, 403),
+            (ErrorCode::AuthInvalidCredentials, 401),
+            (ErrorCode::AuthResetTokenInvalid, 400),
+            (ErrorCode::AuthInvalidCode, 401),
+            (ErrorCode::MfaAlreadyEnabled, 409),
+            (ErrorCode::MfaNotStarted, 409),
+            (ErrorCode::MfaRequiredByPolicy, 409),
+            (ErrorCode::AuthSsoRequired, 403),
+            (ErrorCode::AuthOidcFailed, 400),
+            (ErrorCode::AuthOidcNoMember, 403),
+            (ErrorCode::AuthOidcEmailUnverified, 403),
+            (ErrorCode::AuthSwitchFailed, 400),
+            (ErrorCode::OidcProviderDuplicate, 409),
+            (ErrorCode::OidcProviderUnreachable, 502),
             (ErrorCode::IdempotencyKeyInvalid, 400),
             (ErrorCode::IdempotencyKeyReused, 422),
             (ErrorCode::IdempotencyKeyInFlight, 409),
             (ErrorCode::TenantNotFound, 404),
+            (ErrorCode::TenantSlugTaken, 409),
+            (ErrorCode::TenantConfirmationMismatch, 400),
+            (ErrorCode::TenantDeleteCurrent, 409),
             (ErrorCode::ReferenceItemCodeTaken, 409),
+            (ErrorCode::InvitationInvalid, 400),
+            (ErrorCode::InvitationPending, 409),
+            (ErrorCode::InvitationAlreadyMember, 409),
+            (ErrorCode::InvitationClosed, 409),
+            (ErrorCode::MemberLastAdmin, 409),
+            (ErrorCode::GroupNameTaken, 409),
+            (ErrorCode::PermissionDenied, 403),
+            (ErrorCode::RoleLabelTaken, 409),
+            (ErrorCode::RoleInUse, 409),
+            (ErrorCode::AccountNoPassword, 409),
+            (ErrorCode::SessionCurrent, 409),
+            (ErrorCode::AccountReauthenticationRequired, 403),
+            (ErrorCode::AccountPlatformAdmin, 409),
+            (ErrorCode::ExportPending, 409),
         ];
         for (code, status) in expected {
             assert_eq!(code.status().as_u16(), status, "{}", code.as_str());
@@ -413,6 +649,25 @@ mod tests {
         assert_eq!(
             body["errors"],
             serde_json::json!([{ "field": "code", "code": "format" }])
+        );
+    }
+
+    #[tokio::test]
+    async fn too_many_requests_says_when_to_retry() {
+        let res = Problem::new(ErrorCode::TooManyRequests)
+            .with_retry_after(std::time::Duration::from_millis(90_500))
+            .into_response();
+        assert_eq!(res.status(), StatusCode::TOO_MANY_REQUESTS);
+        assert_eq!(res.headers()[header::RETRY_AFTER], "90");
+        let res = Problem::new(ErrorCode::TooManyRequests)
+            .with_retry_after(std::time::Duration::ZERO)
+            .into_response();
+        assert_eq!(res.headers()[header::RETRY_AFTER], "1", "never 0");
+        assert!(
+            !Problem::new(ErrorCode::NotFound)
+                .into_response()
+                .headers()
+                .contains_key(header::RETRY_AFTER)
         );
     }
 

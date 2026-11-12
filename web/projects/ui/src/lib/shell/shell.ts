@@ -18,12 +18,13 @@ import { ThemeMenu } from './theme-menu';
 export const MODAL_DRAWER_QUERY = '(max-width: 839.98px)';
 
 /**
- * Application shell: navigation drawer, top app bar (language, theme) and
- * the main area, with a skip link to it.
+ * Application shell: navigation drawer, top app bar (language, theme, then
+ * what the application adds) and the main area, with a skip link to it.
  *
  * ```html
  * <ui-shell [navItems]="nav">
  *   <ui-tenant-switcher uiShellDrawerHeader … />
+ *   <ui-account-menu uiShellTopBar … />
  *   <router-outlet />
  * </ui-shell>
  * ```

@@ -17,10 +17,21 @@ use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
+use crate::account;
+use crate::auth;
+use crate::gdpr;
+use crate::groups;
+use crate::invitations;
+use crate::me;
+use crate::members;
+use crate::mfa;
 use crate::openapi;
+use crate::platform;
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
 use crate::reference_items;
-use crate::tenant::{AppState, TenantTx};
+use crate::roles;
+use crate::sso;
+use crate::tenant::{AppState, PublicTenantTx};
 
 /// OpenAPI tag of the technical endpoints.
 const SYSTEM_TAG: &str = "system";
@@ -59,6 +70,55 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
     let v1 = OpenApiRouter::new()
         .routes(routes!(ping))
         .routes(routes!(current_tenant))
+        .routes(routes!(auth::sign_in))
+        .routes(routes!(auth::sign_out))
+        .routes(routes!(auth::current_session))
+        .routes(routes!(auth::request_password_reset))
+        .routes(routes!(auth::confirm_password_reset))
+        .routes(routes!(auth::verify_sign_in))
+        .routes(routes!(me::arrive))
+        .routes(routes!(me::me))
+        .routes(routes!(me::memberships))
+        .routes(routes!(me::switch))
+        .routes(routes!(account::update_preferences))
+        .routes(routes!(account::change_password))
+        .routes(routes!(account::sessions))
+        .routes(routes!(account::revoke_session))
+        .routes(routes!(gdpr::create_export))
+        .routes(routes!(gdpr::get_export))
+        .routes(routes!(gdpr::download_export))
+        .routes(routes!(gdpr::erase_me))
+        .routes(routes!(gdpr::erase_member))
+        .routes(routes!(gdpr::erase_account))
+        .routes(routes!(members::list))
+        .routes(routes!(members::read, members::update, members::remove))
+        .routes(routes!(invitations::list, invitations::create))
+        .routes(routes!(invitations::revoke))
+        .routes(routes!(invitations::resend))
+        .routes(routes!(invitations::preview))
+        .routes(routes!(invitations::accept))
+        .routes(routes!(groups::list, groups::create))
+        .routes(routes!(groups::read, groups::update, groups::delete))
+        .routes(routes!(groups::add_member, groups::remove_member))
+        .routes(routes!(roles::list, roles::create))
+        .routes(routes!(roles::read, roles::update, roles::delete))
+        .routes(routes!(mfa::status))
+        .routes(routes!(mfa::setup))
+        .routes(routes!(mfa::confirm))
+        .routes(routes!(mfa::disable))
+        .routes(routes!(sso::get_policy, sso::update_policy))
+        .routes(routes!(sso::list_providers, sso::create_provider))
+        .routes(routes!(
+            sso::read_provider,
+            sso::update_provider,
+            sso::delete_provider
+        ))
+        .routes(routes!(sso::test_provider))
+        .routes(routes!(sso::sign_in_providers))
+        .routes(routes!(sso::start))
+        .routes(routes!(sso::callback))
+        .routes(routes!(platform::list, platform::create))
+        .routes(routes!(platform::read, platform::update, platform::delete))
         .routes(routes!(reference_items::list, reference_items::create))
         .routes(routes!(
             reference_items::read,
@@ -84,6 +144,7 @@ struct Ping {
     tag = SYSTEM_TAG,
     operation_id = "ping",
     summary = "Check that the API answers",
+    security(()),
     responses((status = 200, description = "The API is up", body = Ping))
 )]
 async fn ping() -> Json<Ping> {
@@ -117,13 +178,15 @@ struct TenantView {
     tag = SYSTEM_TAG,
     operation_id = "getCurrentTenant",
     summary = "The tenant addressed by the request",
-    description = "Resolved from the request's host name in multi-tenant mode.",
+    description = "Resolved from the request's host name in multi-tenant mode. Needs no session: \
+                   the sign-in page shows the tenant's name.",
+    security(()),
     responses(
         (status = 200, description = "The current tenant", body = TenantView),
         (status = 404, description = "`tenant.not_found`: no tenant for this host", body = ProblemBody, content_type = PROBLEM_JSON),
     )
 )]
-async fn current_tenant(mut tx: TenantTx) -> Result<Json<TenantView>, Problem> {
+async fn current_tenant(mut tx: PublicTenantTx) -> Result<Json<TenantView>, Problem> {
     let tenant = sqlx::query_as!(
         TenantView,
         "SELECT id, slug, name, default_locale, time_zone FROM tenant"

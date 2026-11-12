@@ -1,7 +1,11 @@
 //! Command line of the `api` binary.
 
+use domain::account::{normalize_email, validate_display_name, validate_password};
+use infra::accounts::{AccountType, AddedMember, NewMember, TenantRole};
+use infra::sqlx::postgres::PgPool;
+
 /// What the binary is asked to do.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Command {
     /// Serve the API (default).
     Serve,
@@ -12,6 +16,8 @@ pub enum Command {
     /// Probe the running server's liveness endpoint, or its readiness one
     /// (container health check).
     Healthcheck { ready: bool },
+    /// Add an internal member to a tenant (password on standard input).
+    AddMember(MemberArgs),
     /// Print usage, then exit.
     Help,
 }
@@ -21,11 +27,19 @@ Usage: api [COMMAND]
 
 Commands:
   serve     Serve the REST API (default)
-  migrate   Apply pending database migrations with DATABASE_MIGRATION_URL, then exit
+  migrate   Apply pending database migrations with DATABASE_MIGRATION_URL, then
+            create the first tenant and platform super admin if BOOTSTRAP_ADMIN_EMAIL
+            is set and none exists yet; exit
   openapi   Print the OpenAPI contract (JSON) on standard output, then exit
   healthcheck [--ready]
             Exit 0 if the server listening on API_BIND_ADDR is alive (or, with
             --ready, can serve: database and shared services reachable)
+  add-member TENANT EMAIL DISPLAY_NAME [--role member|configuration_admin|tenant_admin] [--local]
+            Add an internal member to the tenant TENANT (its slug), with the
+            password read from standard input (first line), then exit. An
+            existing account is linked and keeps its password. --local: signs in
+            with a password even when the tenant requires SSO (a contractor
+            outside the directory). Uses DATABASE_URL.
   help      Print this message
 
 Configuration is read from environment variables; see deploy/.env.example.";
@@ -46,8 +60,77 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Command, String> 
         [first, flag] if first == "healthcheck" && flag == "--ready" => {
             Ok(Command::Healthcheck { ready: true })
         }
+        [first, tenant, email, name, rest @ ..] if first == "add-member" => {
+            let mut role = TenantRole::Member;
+            let mut local_account = false;
+            let mut flags = rest.iter();
+            while let Some(flag) = flags.next() {
+                match flag.as_str() {
+                    "--role" => {
+                        let value = flags.next().ok_or("--role needs a value")?;
+                        role = TenantRole::parse(value).ok_or_else(|| format!("unknown role: {value}"))?;
+                    }
+                    "--local" => local_account = true,
+                    _ => return Err(format!("unexpected arguments: {}", rest.join(" "))),
+                }
+            }
+            Ok(Command::AddMember(MemberArgs {
+                tenant: tenant.clone(),
+                email: email.clone(),
+                display_name: name.clone(),
+                role,
+                local_account,
+            }))
+        }
         _ => Err(format!("unexpected arguments: {}", args[1..].join(" "))),
     }
+}
+
+/// Arguments of `add-member`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MemberArgs {
+    /// Slug of the tenant.
+    pub tenant: String,
+    pub email: String,
+    pub display_name: String,
+    pub role: TenantRole,
+    /// Signs in with a password even when the tenant requires SSO.
+    pub local_account: bool,
+}
+
+/// Adds the member of `args` with `password`. Errors are messages for the
+/// operator.
+pub async fn add_member(pool: &PgPool, args: &MemberArgs, password: &str) -> Result<AddedMember, String> {
+    let email = normalize_email(&args.email).ok_or_else(|| format!("invalid email: {}", args.email))?;
+    let display_name = args.display_name.trim();
+    validate_display_name("display name", display_name)
+        .map_err(|e| format!("display name: {}", e[0].code))?;
+    validate_password("password", password, &email).map_err(|e| format!("password: {}", e[0].code))?;
+    let hash = infra::credentials::hash_password(password).map_err(|e| e.to_string())?;
+
+    let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
+    let tenant = infra::db::resolve_tenant(&mut tx, &args.tenant)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("no tenant with the slug {}", args.tenant))?;
+    infra::db::set_tenant(&mut tx, tenant.id)
+        .await
+        .map_err(|e| e.to_string())?;
+    let added = infra::accounts::add_member(
+        &mut tx,
+        &NewMember {
+            email: &email,
+            display_name,
+            password_hash: Some(&hash),
+            account_type: AccountType::Internal,
+            tenant_role: args.role,
+            local_account: args.local_account,
+        },
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+    tx.commit().await.map_err(|e| e.to_string())?;
+    Ok(added)
 }
 
 #[cfg(test)]
@@ -80,6 +163,59 @@ mod tests {
         for flag in ["help", "--help", "-h"] {
             assert_eq!(parse(args(&[flag])), Ok(Command::Help));
         }
+    }
+
+    #[test]
+    fn add_member_takes_a_tenant_an_email_a_name_and_an_optional_role() {
+        assert_eq!(
+            parse(args(&["add-member", "acme", "lucas@acme.io", "Lucas Bernard"])),
+            Ok(Command::AddMember(MemberArgs {
+                tenant: "acme".to_owned(),
+                email: "lucas@acme.io".to_owned(),
+                display_name: "Lucas Bernard".to_owned(),
+                role: TenantRole::Member,
+                local_account: false,
+            }))
+        );
+        let admin = parse(args(&[
+            "add-member",
+            "acme",
+            "a@acme.io",
+            "A",
+            "--role",
+            "tenant_admin",
+        ]));
+        assert!(matches!(
+            admin,
+            Ok(Command::AddMember(MemberArgs {
+                role: TenantRole::TenantAdmin,
+                ..
+            }))
+        ));
+        assert_eq!(
+            parse(args(&["add-member", "acme", "a@acme.io", "A", "--role", "owner"])),
+            Err("unknown role: owner".to_owned())
+        );
+        assert!(parse(args(&["add-member", "acme", "a@acme.io"])).is_err());
+        assert!(parse(args(&["add-member", "acme", "a@acme.io", "A", "--admin"])).is_err());
+        let local = parse(args(&[
+            "add-member",
+            "acme",
+            "a@acme.io",
+            "A",
+            "--local",
+            "--role",
+            "tenant_admin",
+        ]));
+        assert!(matches!(
+            local,
+            Ok(Command::AddMember(MemberArgs {
+                role: TenantRole::TenantAdmin,
+                local_account: true,
+                ..
+            }))
+        ));
+        assert!(parse(args(&["add-member", "acme", "a@acme.io", "A", "--role"])).is_err());
     }
 
     #[test]

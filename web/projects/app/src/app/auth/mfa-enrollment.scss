@@ -1,0 +1,43 @@
+@use './auth-page';
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-4);
+  margin: 0;
+  padding-inline-start: var(--app-space-6);
+  font: var(--mat-sys-body-medium);
+}
+
+.qr {
+  display: block;
+  margin: var(--app-space-2) 0;
+
+  // The SVG draws its own white background: scannable in dark mode too.
+  border-radius: var(--mat-sys-corner-small);
+}
+
+.key-label {
+  margin: 0;
+  font: var(--mat-sys-label-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.key {
+  font: var(--mat-sys-title-medium);
+  word-break: break-all;
+}
+
+.codes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--app-space-2) var(--app-space-6);
+  margin: 0 0 var(--app-space-4);
+  font: var(--mat-sys-title-small);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--app-space-2);
+}

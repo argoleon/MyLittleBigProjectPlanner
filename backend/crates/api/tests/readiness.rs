@@ -62,7 +62,7 @@ async fn unavailable_when_a_dependency_is_down() {
     let pool = PgPoolOptions::new()
         .connect_lazy("postgres://app@127.0.0.1:1/mlbpp")
         .unwrap();
-    let base = serve(AppState::new(pool, single())).await;
+    let base = serve(AppState::new(pool, single(), common::offline_auth(&single()))).await;
 
     let res = reqwest::get(format!("{base}/health/ready")).await.unwrap();
     let (status, body) = json(res).await;
@@ -83,10 +83,11 @@ async fn readiness_covers_the_shared_services() {
     let closed = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let closed_addr = closed.local_addr().unwrap().to_string();
     drop(closed);
-    let state = AppState::new(db.app_pool.clone(), single()).with_dependencies([Dependency::Tcp {
-        name: "valkey",
-        address: closed_addr,
-    }]);
+    let state = AppState::new(db.app_pool.clone(), single(), common::offline_auth(&single()))
+        .with_dependencies([Dependency::Tcp {
+            name: "valkey",
+            address: closed_addr,
+        }]);
     let base = serve(state).await;
 
     let (status, body) = json(reqwest::get(format!("{base}/health/ready")).await.unwrap()).await;

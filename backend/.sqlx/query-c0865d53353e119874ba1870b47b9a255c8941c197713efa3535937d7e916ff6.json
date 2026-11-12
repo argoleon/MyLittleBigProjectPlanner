@@ -1,0 +1,117 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id AS \"id!\", slug AS \"slug!\", name AS \"name!\", default_locale AS \"default_locale!\",\n               time_zone AS \"time_zone!\", default_capacity_minutes AS \"default_capacity_minutes!\",\n               overload_tolerance_percent AS \"overload_tolerance_percent!\", overload_mode AS \"overload_mode!\",\n               storage_quota_bytes AS \"storage_quota_bytes?\", api_rate_limit_per_minute AS \"api_rate_limit_per_minute?\",\n               status AS \"status!\", version AS \"version!\", created_at AS \"created_at!\", updated_at AS \"updated_at!\"\n        FROM app_platform_delete_tenant($1, $2, $3, $4)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "slug!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "name!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "default_locale!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "time_zone!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "default_capacity_minutes!",
+        "type_info": "Int4Array",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "overload_tolerance_percent!",
+        "type_info": "Int2",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "overload_mode!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
+        "name": "storage_quota_bytes?",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 9,
+        "name": "api_rate_limit_per_minute?",
+        "type_info": "Int4",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 10,
+        "name": "status!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 11,
+        "name": "version!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 12,
+        "name": "created_at!",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 13,
+        "name": "updated_at!",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Int8Array",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "c0865d53353e119874ba1870b47b9a255c8941c197713efa3535937d7e916ff6"
+}

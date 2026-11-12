@@ -1,0 +1,18 @@
+// Shared by the administration screens.
+
+.message {
+  margin: 0 0 var(--app-space-3);
+  padding: var(--app-space-3) var(--app-space-4);
+  border-radius: var(--mat-sys-corner-medium);
+  font: var(--mat-sys-body-medium);
+
+  &.error {
+    background: var(--mat-sys-error-container);
+    color: var(--mat-sys-on-error-container);
+  }
+
+  &.info {
+    background: var(--app-success-container);
+    color: var(--app-on-success-container);
+  }
+}

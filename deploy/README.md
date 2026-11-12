@@ -35,7 +35,7 @@ Our images (`api`, `worker`, `mcp`: distroless; `web`: nginx-unprivileged) run a
 
 Requirements: Docker Engine with Compose v2.24 or later, ports 80 and 443 open, a DNS record for the domain.
 
-1. **Variables.** `cp deploy/.env.example deploy/.env`, then set at least `MLBPP_DOMAIN` and `ACME_EMAIL`. Pin `MLBPP_VERSION` to a release (`v0.1.0`) rather than `latest`.
+1. **Variables.** `cp deploy/.env.example deploy/.env`, then set at least `MLBPP_DOMAIN`, `ACME_EMAIL`, `MAIL_FROM` (sender of the emails) and `BOOTSTRAP_ADMIN_EMAIL` (the first platform super admin, see step 4). In multi-tenant mode, also set `PUBLIC_URL=https://{tenant}.<domain>`: email links point to it. Pin `MLBPP_VERSION` to a release (`v0.1.0`) rather than `latest`.
 2. **Secrets.** `deploy/scripts/generate-secrets.sh` creates every file of `deploy/secrets/` with random values (it never overwrites an existing one). To use your own values, write the files yourself first:
 
    | File | Content |
@@ -48,17 +48,51 @@ Requirements: Docker Engine with Compose v2.24 or later, ports 80 and 443 open, 
    | `seaweedfs_s3_config` | SeaweedFS S3 identities (JSON) |
    | `keycloak_db_password`, `keycloak_admin_password` | Profile `sso` |
    | `grafana_admin_password` | Profile `observability` (user `admin`) |
+   | `data_encryption_key` | AES-256 key encrypting the secrets stored in the database (two-step verification, OIDC client secrets): 32 random bytes in base64 (`head -c 32 /dev/urandom \| base64`). **Keep a copy with the backups**: without it, members with two-step verification cannot sign in, and OIDC providers must be entered again |
+   | `bootstrap_admin_password` | Password of the first platform super admin (`BOOTSTRAP_ADMIN_EMAIL`), 12 characters or more. Change it once signed in |
+   | `smtp_url` | SMTP server of the emails (password resets): `smtp://host:587?tls=required` (STARTTLS) or `smtps://host:465`, with the account in the URL if needed. **The script writes a placeholder: replace it.** Until then, emails stay in the job queue and the worker logs the failures |
 
    Secrets are mounted as files (`/run/secrets/…`) and read through the `*_FILE` variables; none appears in the compose file, in the images, or in `docker inspect`.
 3. **Start.** `docker compose -f deploy/compose.yaml up -d --wait`. The first start takes a few minutes (ClamAV signatures).
-4. **First tenant.** Tenant administration comes with L02. Until then, create it in SQL:
+4. **First tenant and super admin.** On the first start, the `migrate` service creates the tenant (`TENANT_DEFAULT_SLUG` in single-tenant mode, `BOOTSTRAP_TENANT_SLUG` in multi-tenant mode) and its administrator `BOOTSTRAP_ADMIN_EMAIL`, who is also the **platform super admin**: sign in at `https://MLBPP_DOMAIN` with the password of `deploy/secrets/bootstrap_admin_password`. Nothing is bootstrapped once a super admin exists, so later starts change nothing.
+
+   The super admin manages tenants through the API (`/api/v1/platform/tenants`, documented at `/api/v1/docs/`): create a tenant with its language, time zone, default capacity, overload tolerance and quotas, change them, or delete a tenant. A deletion is confirmed by typing the tenant's slug; the tenant stops resolving at once, then the worker removes all its data, and the accounts that belonged to it only, in the background.
+
+   Tenant admins then invite their members in Administration › Members (see "Members, invitations and groups" below). `api add-member` adds an internal member from the command line, for the first admin of a new tenant or scripts. It reads the password (12 characters or more) from standard input, so it never appears in the shell history or the process list:
 
    ```sh
-   docker compose -f deploy/compose.yaml exec postgres psql -U postgres -d mlbpp \
-     -c "INSERT INTO tenant (id, slug, name) VALUES (uuidv7(), 'default', 'My organization')"
+   docker compose -f deploy/compose.yaml exec -T api /usr/local/bin/api \
+     add-member default alice@example.org "Alice Martin" --role tenant_admin
    ```
 
+   Type the password, then Enter. An email that already has an account in another tenant is linked to it and keeps its password.
+
 Optional profiles: add `--profile sso` and/or `--profile observability` to every command.
+
+## Sign-in and sessions
+
+Members sign in with their email and password (Argon2id hashes). Sessions live in Valkey: any api instance serves them, and they survive a restart. A session ends after `SESSION_IDLE_MINUTES` without use (8 hours by default) and `SESSION_MAX_AGE_HOURS` after sign-in at the latest (7 days); signing out or resetting the password ends it at once. Its cookie is `HttpOnly`, `Secure` and `SameSite=Lax`, scoped to the tenant's host name.
+
+Members can turn on two-step verification with an authenticator app (TOTP), with 8 single-use backup codes. A tenant admin can require it for every member signing in with a password (`PUT /api/v1/tenant/auth-policy`); members without it then enroll at their next sign-in. The TOTP secrets are encrypted with `data_encryption_key`. After 5 wrong codes, the account's verification is blocked for 15 minutes.
+
+In My account, members set their language and time zone (the organization's time zone applies until they choose one), change their password (which ends their other sessions, in every organization) and see their open sessions with the device and the latest activity, ending any of them. Members who sign in through their organization's identity provider have no password to change.
+
+Members also export their personal data there as JSON (right of access): the worker collects it, and it can be downloaded for 15 minutes. They can erase their account (right to erasure), with their password, or for an account without one, after signing in through their organization less than 10 minutes before, and their email typed: their name, email, password and preferences are removed, they leave every organization, and they appear as "Deleted user #N" from then on, their content kept unless they ask to delete their comments. A tenant admin erases a member from their organization only; a platform super admin erases a global account (`POST /api/v1/platform/accounts/{id}/erasure`). Every erasure is logged with the `audit` target. Technical logs, which hold client IP addresses, are rotated (`LOG_MAX_SIZE`, `LOG_MAX_FILES`) and, with the observability profile, deleted by Loki after `LOG_RETENTION` (6 months by default).
+
+Tenant admins can add OIDC identity providers (Entra ID, Google, Okta, Keycloak…) in Administration › Authentication: issuer URL, client id and secret (stored encrypted with `data_encryption_key`). Register the redirect URI shown there at the provider: `https://<tenant host>/api/v1/auth/oidc/callback`. Members are matched by their email, which the provider must vouch for (`email_verified`), or by a directory claim chosen by the admin (`upn`…); nobody is created on the fly. The policy can then require SSO for internal members; members marked as local accounts (contractors outside the directory, and the bootstrapped administrator, so that a broken SSO locks nobody out) keep their password. Issuers must be HTTPS (`OIDC_ALLOW_HTTP=true` is for development only).
+
+An account can belong to several tenants; a session holds one. In multi-tenant mode, the organization selector of the navigation drawer lists the member's tenants with their role in each. Picking one opens a session in that tenant through a one-time link valid for 60 seconds, under that tenant's own policy. If the tenant requires SSO, the member goes through its provider. A member with two-step verification is asked for a code unless the session they came from checked one. External members (request portal) are not offered the internal application of a tenant. In single-tenant mode, the selector shows the only tenant.
+
+**Members, invitations and groups.** Tenant admins manage members in Administration › Members; configuration admins do not.
+- **Invite:** an admin invites an email as an internal member (the application) or an external one (the request portal only), with a tenant role. The worker emails a link valid for 7 days, which can be sent again or revoked.
+- **Accept:** opening the link creates the account with the name and password chosen there, or adds the tenant to an existing account, whose password stays. An internal member is then signed in under the tenant's policy.
+- **Change or remove:** a role change applies to the member's next request. Removing a member, or making them external, ends their sessions in that tenant at once. Their account and their other tenants stay. The last active tenant admin cannot be demoted or removed.
+- **Groups:** admins gather members in groups, to grant them roles together.
+- **Audit:** these changes are logged with the `audit` log target.
+
+**SAML and LDAP / Active Directory** go through Keycloak (profile `sso`): configure the SAML identity provider or the LDAP user federation in Keycloak, then add Keycloak to the tenant as an OIDC provider (issuer `https://<domain>/auth/realms/<realm>`).
+
+After 5 failed sign-ins on an email, or 30 from one client address, sign-in is refused for 15 minutes. The client address is the last entry of `X-Forwarded-For`, which Traefik sets: do not expose the api without it.
 
 ## Scaling
 
@@ -134,10 +168,12 @@ To send telemetry to another backend, point Alloy at it (`deploy/observability/c
 ## Running the stack locally
 
 ```sh
-just compose-up        # builds the images, starts the stack: https://localhost:18443
+just compose-up        # builds the images, starts the stack: https://localhost:18443 (or https://127.0.0.1:18443)
 just compose-test      # smoke, backup, scaling and profile tests
 just images-test       # image tests and SBOMs
 just compose-down      # stops it (data kept); just compose-reset deletes the data
 ```
+
+Emails are caught by Mailpit instead of being sent: read them on http://localhost:18026.
 
 The browser shows a certificate warning: Traefik's default certificate is self-signed.

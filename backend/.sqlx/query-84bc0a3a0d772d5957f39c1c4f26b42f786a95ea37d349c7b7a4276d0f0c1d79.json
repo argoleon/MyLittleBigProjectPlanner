@@ -1,0 +1,147 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT a.id AS account_id, a.email, a.display_name, m.account_type, m.tenant_role,\n               m.local_account, m.status, m.version, m.id AS membership_id, m.created_at,\n               EXISTS (SELECT 1 FROM account_mfa f WHERE f.account_id = a.id AND f.enabled_at IS NOT NULL)\n                   AS \"mfa_enabled!\"\n        FROM membership m\n        JOIN account a ON a.id = m.account_id\n        WHERE ($1::text IS NULL OR a.email LIKE $1 OR lower(a.display_name) LIKE $1)\n          AND ($2::text IS NULL OR m.account_type = $2)\n          AND ($3::timestamptz IS NULL OR (m.created_at, m.id) > ($3, $4::uuid))\n        ORDER BY m.created_at, m.id\n        LIMIT $5\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "account_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "account",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "email",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "account",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "display_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "account",
+            "name": "display_name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "account_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "membership",
+            "name": "account_type"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "tenant_role",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "membership",
+            "name": "tenant_role"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "local_account",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "membership",
+            "name": "local_account"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "membership",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "version",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "membership",
+            "name": "version"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "membership_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "membership",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "membership",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "mfa_enabled!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "84bc0a3a0d772d5957f39c1c4f26b42f786a95ea37d349c7b7a4276d0f0c1d79"
+}

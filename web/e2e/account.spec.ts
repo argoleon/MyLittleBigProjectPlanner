@@ -1,0 +1,210 @@
+import type { Page } from '@playwright/test';
+
+import { MEMBERSHIP, ME, accessibilityViolations, expect, test } from './fixtures';
+
+const THIS = {
+  id: 'a'.repeat(32),
+  current: true,
+  tenantId: MEMBERSHIP.tenantId,
+  tenantName: MEMBERSHIP.name,
+  browser: 'Firefox',
+  os: 'Linux',
+  createdAt: '2026-11-11T08:00:00Z',
+  lastSeenAt: '2026-11-11T10:00:00Z',
+  expiresAt: '2026-11-18T08:00:00Z',
+};
+
+const PHONE = {
+  ...THIS,
+  id: 'b'.repeat(32),
+  current: false,
+  browser: 'Safari',
+  os: 'iOS',
+  createdAt: '2026-11-10T07:00:00Z',
+  lastSeenAt: '2026-11-10T19:00:00Z',
+};
+
+/** The account's API, recording what the page sends. */
+async function mockAccount(page: Page) {
+  const sent: { method: string; path: string; body: unknown }[] = [];
+  let sessions = [THIS, PHONE];
+  await page.route('**/api/v1/account/mfa', (route) =>
+    route.fulfill({ json: { enabled: true, backupCodesLeft: 8, requiredByPolicy: false } }),
+  );
+  await page.route('**/api/v1/me/sessions', (route) => route.fulfill({ json: sessions }));
+  await page.route('**/api/v1/me/sessions/*', (route) => {
+    sent.push({ method: route.request().method(), path: new URL(route.request().url()).pathname, body: null });
+    sessions = [THIS];
+    return route.fulfill({ status: 204 });
+  });
+  await page.route('**/api/v1/me/preferences', (route) => {
+    const body = route.request().postDataJSON() as object;
+    sent.push({ method: route.request().method(), path: '/api/v1/me/preferences', body });
+    return route.fulfill({ json: body });
+  });
+  await page.route('**/api/v1/me/password', (route) => {
+    sent.push({ method: 'POST', path: '/api/v1/me/password', body: route.request().postDataJSON() });
+    sessions = [THIS];
+    return route.fulfill({ status: 204 });
+  });
+  return sent;
+}
+
+/** The GDPR endpoints: an export ready at the second look, an erasure that works. */
+async function mockPersonalData(page: Page) {
+  const sent: { method: string; path: string; body: unknown }[] = [];
+  const id = 'export-id-0123456789';
+  let looks = 0;
+  await page.route('**/api/v1/me/exports', (route) =>
+    route.fulfill({ status: 202, json: { id, status: 'pending', expiresAt: '2026-11-11T10:15:00Z' } }),
+  );
+  await page.route(`**/api/v1/me/exports/${id}`, (route) => {
+    looks += 1;
+    return route.fulfill({ json: { id, status: looks > 1 ? 'ready' : 'pending', expiresAt: '2026-11-11T10:15:00Z' } });
+  });
+  await page.route(`**/api/v1/me/exports/${id}/file`, (route) =>
+    route.fulfill({
+      headers: { 'content-type': 'application/json', 'content-disposition': 'attachment; filename="personal-data-2026-11-11.json"' },
+      body: JSON.stringify({ format: 'mlbpp.personal-data.v1', account: { email: ME.email } }),
+    }),
+  );
+  await page.route('**/api/v1/me/erasure', (route) => {
+    sent.push({ method: 'POST', path: '/api/v1/me/erasure', body: route.request().postDataJSON() });
+    return route.fulfill({ status: 204 });
+  });
+  return sent;
+}
+
+async function animationsDone(page: Page) {
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+}
+
+test('the account menu opens My account', async ({ page }) => {
+  await mockAccount(page);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Account: Lucas Bernard' }).click();
+  await page.getByRole('menuitem', { name: 'My account' }).click();
+  await expect(page).toHaveURL(/\/account$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('My account');
+  await expect(page.getByText(`Global account · ${ME.email}`)).toBeVisible();
+  await expect(page.getByRole('switch', { name: 'Two-step verification' })).toBeChecked();
+  await expect(page.getByText('Devices: 2')).toBeVisible();
+});
+
+test('the language is chosen with the keyboard, saved for the account and applied at once', async ({ page }) => {
+  const sent = await mockAccount(page);
+  await page.goto('/account');
+  const language = page.getByRole('combobox', { name: 'Language' });
+  await language.focus();
+  await page.keyboard.press('Enter');
+  // From "This device's language" to "Français".
+  await page.keyboard.press('ArrowDown');
+  await expect(page.getByRole('option', { name: 'Français' })).toHaveClass(/mat-mdc-option-active/);
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Mon compte');
+  await expect(page.getByRole('status')).toHaveText('Préférences enregistrées.');
+  expect(sent).toEqual([{ method: 'PUT', path: '/api/v1/me/preferences', body: { locale: 'fr', timeZone: null } }]);
+});
+
+test('the password is changed with the current one', async ({ page }) => {
+  const sent = await mockAccount(page);
+  await page.goto('/account');
+  await page.getByRole('button', { name: 'Change', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Change your password' });
+  await dialog.getByLabel('Current password').fill('correct horse battery staple');
+  await dialog.getByLabel('New password', { exact: true }).fill('a much longer passphrase');
+  await dialog.getByLabel('Confirm the new password').fill('a much longer passphrase');
+  await dialog.getByRole('button', { name: 'Change the password' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole('status')).toHaveText('Password changed. Your other sessions are signed out.');
+  expect(sent[0]).toEqual({
+    method: 'POST',
+    path: '/api/v1/me/password',
+    body: { currentPassword: 'correct horse battery staple', newPassword: 'a much longer passphrase' },
+  });
+});
+
+test('another device is signed out from the sessions', async ({ page }) => {
+  const sent = await mockAccount(page);
+  await page.goto('/account');
+  await page.getByRole('button', { name: 'Manage' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Active sessions' });
+  await expect(dialog.getByRole('listitem')).toHaveCount(2);
+  await expect(dialog.getByRole('listitem').first()).toContainText('This session');
+  await dialog.getByRole('button', { name: 'Sign out the session on Safari · iOS' }).click();
+  await expect(dialog.getByRole('status')).toHaveText('Session signed out.');
+  await expect(dialog.getByRole('listitem')).toHaveCount(1);
+  expect(sent).toEqual([{ method: 'DELETE', path: `/api/v1/me/sessions/${PHONE.id}`, body: null }]);
+});
+
+test('the personal data are exported as a JSON file, dated in the organization’s time zone', async ({ page }) => {
+  await mockAccount(page);
+  await mockPersonalData(page);
+  // Late on the 11th in UTC, already the 12th in Paris (the organization's
+  // time zone): the file is named after the day the user lives.
+  await page.clock.setFixedTime(new Date('2026-11-11T23:30:00Z'));
+  await page.goto('/account');
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export (JSON)' }).click();
+  expect((await download).suggestedFilename()).toBe('personal-data-2026-11-12.json');
+  await expect(page.getByRole('status')).toHaveText('Your export is downloaded.');
+});
+
+test('the account is erased with its password and email, then signed out', async ({ page }) => {
+  await mockAccount(page);
+  const sent = await mockPersonalData(page);
+  await page.goto('/account');
+  await page.getByRole('button', { name: 'Delete my account' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Delete your account?' });
+  await dialog.getByLabel('Your password').fill('correct horse battery staple');
+  await dialog.getByLabel(`Type ${ME.email} to confirm`).fill(ME.email);
+  // Signed out from now on.
+  await page.route('**/api/v1/auth/session', (route) =>
+    route.fulfill({ status: 401, contentType: 'application/problem+json', body: JSON.stringify({ code: 'unauthenticated', status: 401 }) }),
+  );
+  await dialog.getByRole('button', { name: 'Delete for good' }).click();
+  await expect(page).toHaveURL(/\/sign-in\?accountErased=true$/);
+  await expect(page.getByRole('status')).toHaveText('Your account was deleted.');
+  expect(sent).toEqual([
+    {
+      method: 'POST',
+      path: '/api/v1/me/erasure',
+      body: { confirmation: ME.email, purgeComments: false, password: 'correct horse battery staple' },
+    },
+  ]);
+});
+
+for (const theme of ['light', 'dark'] as const) {
+  for (const language of ['fr', 'en'] as const) {
+    test.describe(`accessibility of My account, ${theme} mode, ${language}`, () => {
+      test.use({ theme, language });
+
+      test('the page and its dialogs have no axe-core violation', async ({ page }) => {
+        await mockAccount(page);
+        await page.goto('/account');
+        await expect(page.getByRole('switch')).toBeChecked();
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'page').toEqual([]);
+
+        await page.locator('button.manage-sessions').click();
+        await expect(page.getByRole('dialog').getByRole('listitem')).toHaveCount(2);
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'sessions').toEqual([]);
+        await page.keyboard.press('Escape');
+        await expect(page.getByRole('dialog')).toHaveCount(0);
+
+        await page.locator('button.change-password').click();
+        await expect(page.getByRole('dialog')).toBeVisible();
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'password').toEqual([]);
+        await page.keyboard.press('Escape');
+        await expect(page.getByRole('dialog')).toHaveCount(0);
+
+        await page.locator('button.erase').click();
+        await expect(page.getByRole('dialog')).toBeVisible();
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'erasure').toEqual([]);
+      });
+    });
+  }
+}

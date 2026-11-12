@@ -1,0 +1,149 @@
+<div class="toolbar">
+  <mat-form-field appearance="outline" class="search" subscriptSizing="dynamic">
+    <mat-label>{{ 'admin.members.search' | transloco }}</mat-label>
+    <mat-icon matPrefix aria-hidden="true">search</mat-icon>
+    <input matInput type="search" [formControl]="searchControl" [placeholder]="'admin.members.searchPlaceholder' | transloco" />
+  </mat-form-field>
+  <mat-chip-listbox
+    multiple
+    class="filters"
+    [attr.aria-label]="'admin.members.filters' | transloco"
+    [value]="filters()"
+    (change)="setFilters($event.value)"
+  >
+    <mat-chip-option value="internal">{{ 'admin.members.internal' | transloco }}</mat-chip-option>
+    <mat-chip-option value="external">{{ 'admin.members.external' | transloco }}</mat-chip-option>
+    <mat-chip-option value="pending">{{ 'admin.members.pending' | transloco }}</mat-chip-option>
+  </mat-chip-listbox>
+  <button matButton="filled" type="button" class="invite" (click)="invite()">
+    <mat-icon aria-hidden="true">person_add</mat-icon>
+    {{ 'admin.members.invite' | transloco }}
+  </button>
+</div>
+
+@if (notice(); as notice) {
+  <p class="message" [class.info]="notice.ok" [class.error]="!notice.ok" [attr.role]="notice.ok ? 'status' : 'alert'">
+    {{ notice.key | transloco: notice.params }}
+  </p>
+}
+
+@if (loading() && rows().length === 0) {
+  <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+} @else if (error()) {
+  <ui-error-state [error]="error()" [headingLevel]="2" (retry)="reload()" />
+} @else if (rows().length === 0) {
+  <ui-empty-state icon="group" [title]="'admin.members.empty' | transloco" [message]="'admin.members.emptyHint' | transloco" />
+} @else {
+  <div class="table-card">
+    <table mat-table [dataSource]="rows()" [trackBy]="trackRow" class="table">
+      <caption class="cdk-visually-hidden">{{ 'admin.members.caption' | transloco }}</caption>
+
+      <ng-container matColumnDef="member">
+        <th mat-header-cell *matHeaderCellDef scope="col">{{ 'admin.members.columns.member' | transloco }}</th>
+        <td mat-cell *matCellDef="let row">
+          @if (row.kind === 'member') {
+            <span class="name">{{ row.member.displayName }}</span>
+            <span class="secondary">{{ row.member.email }}</span>
+          } @else {
+            <span class="name">{{ row.invitation.email }}</span>
+            <span class="secondary">{{ 'admin.members.invitedOn' | transloco: { date: (row.invitation.createdAt | instant: { dateStyle: 'medium' }) } }}</span>
+          }
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="type">
+        <th mat-header-cell *matHeaderCellDef scope="col">{{ 'admin.members.columns.type' | transloco }}</th>
+        <td mat-cell *matCellDef="let row">
+          <ui-account-type-chip [type]="row.kind === 'member' ? row.member.accountType : row.invitation.accountType" />
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="role">
+        <th mat-header-cell *matHeaderCellDef scope="col">{{ 'admin.members.columns.role' | transloco }}</th>
+        <td mat-cell *matCellDef="let row">
+          @let access = row.kind === 'member' ? row.member : row.invitation;
+          @if (access.accountType === 'external') {
+            {{ 'admin.members.externalRole' | transloco }}
+          } @else {
+            {{ 'shell.role.' + access.tenantRole | transloco }}
+            @if (row.kind === 'member' && row.member.localAccount) {
+              <span class="secondary">{{ 'admin.members.localAccount' | transloco }}</span>
+            }
+          }
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="groups">
+        <th mat-header-cell *matHeaderCellDef scope="col">{{ 'admin.members.columns.groups' | transloco }}</th>
+        <td mat-cell *matCellDef="let row" class="groups">
+          @if (row.kind === 'member') {
+            {{ groupNames(row.member) }}
+          }
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="mfa">
+        <th mat-header-cell *matHeaderCellDef scope="col">{{ 'admin.members.columns.mfa' | transloco }}</th>
+        <td mat-cell *matCellDef="let row">
+          @if (row.kind === 'member' && row.member.mfaEnabled) {
+            <mat-icon class="mfa-on" [attr.aria-label]="'admin.members.mfaOn' | transloco" role="img">verified_user</mat-icon>
+          } @else {
+            <span aria-hidden="true">–</span>
+            <span class="cdk-visually-hidden">{{ 'admin.members.mfaOff' | transloco }}</span>
+          }
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef scope="col">{{ 'admin.members.columns.status' | transloco }}</th>
+        <td mat-cell *matCellDef="let row"><ui-member-status-chip [state]="rowState(row)" /></td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef scope="col">
+          <span class="cdk-visually-hidden">{{ 'admin.members.columns.actions' | transloco }}</span>
+        </th>
+        <td mat-cell *matCellDef="let row" class="actions">
+          <button
+            matIconButton
+            type="button"
+            [matMenuTriggerFor]="menu"
+            [id]="actionsId(row.kind, row.id)"
+            [attr.aria-label]="'admin.members.actionsOf' | transloco: { name: row.kind === 'member' ? row.member.displayName : row.invitation.email }"
+          >
+            <mat-icon aria-hidden="true">more_vert</mat-icon>
+          </button>
+          <mat-menu #menu="matMenu">
+            @if (row.kind === 'member') {
+              <button mat-menu-item type="button" (click)="edit(row.member)">
+                <mat-icon aria-hidden="true">manage_accounts</mat-icon>
+                {{ 'admin.members.edit' | transloco }}
+              </button>
+              <button mat-menu-item type="button" (click)="remove(row.member)">
+                <mat-icon aria-hidden="true">person_remove</mat-icon>
+                {{ 'admin.members.remove' | transloco }}
+              </button>
+            } @else {
+              <button mat-menu-item type="button" (click)="resend(row.invitation)">
+                <mat-icon aria-hidden="true">send</mat-icon>
+                {{ 'admin.members.resend' | transloco }}
+              </button>
+              <button mat-menu-item type="button" (click)="revoke(row.invitation)">
+                <mat-icon aria-hidden="true">cancel</mat-icon>
+                {{ 'admin.members.revoke' | transloco }}
+              </button>
+            }
+          </mat-menu>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="columns"></tr>
+      <tr mat-row *matRowDef="let row; columns: columns"></tr>
+    </table>
+  </div>
+  @if (nextCursor()) {
+    <button matButton="outlined" type="button" class="more" [disabled]="loadingMore()" (click)="loadMore()">
+      {{ 'admin.members.loadMore' | transloco }}
+    </button>
+  }
+}

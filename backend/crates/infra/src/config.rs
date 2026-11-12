@@ -296,6 +296,99 @@ pub struct ApiConfig {
     pub tenancy: Tenancy,
     pub shared: SharedServices,
     pub telemetry: TelemetryConfig,
+    /// `VALKEY_URL`: sessions and rate limits.
+    pub valkey: Secret,
+    pub public_url: PublicUrl,
+    pub sessions: SessionSettings,
+    /// First tenant and super admin, created with the migrations.
+    pub bootstrap: Option<BootstrapConfig>,
+    /// `DATA_ENCRYPTION_KEY` (secret: prefer `_FILE`): 32 random bytes in
+    /// base64, encrypting the secrets stored in the database (TOTP, OIDC
+    /// client secrets).
+    pub data_key: Secret,
+    /// `OIDC_ALLOW_HTTP` (default false): accept plain-HTTP OIDC issuers.
+    /// Development and tests only.
+    pub oidc_allow_http: bool,
+}
+
+/// Public address of the front end, used to build the links of emails:
+/// `https://planner.example.org`, or with a `{tenant}` placeholder in
+/// multi-tenant mode (`https://{tenant}.example.org`). Never taken from the
+/// request's Host header, which a client controls.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PublicUrl(String);
+
+impl PublicUrl {
+    pub fn from_env(env: &Env, tenancy: &Tenancy) -> Result<Self, ConfigError> {
+        let url: String = env.required("PUBLIC_URL")?;
+        let url = url.trim_end_matches('/').to_owned();
+        if !(url.starts_with("https://") || url.starts_with("http://")) {
+            return Err(invalid("PUBLIC_URL", "must start with https:// or http://"));
+        }
+        if matches!(tenancy, Tenancy::Multi { .. }) && !url.contains("{tenant}") {
+            return Err(invalid(
+                "PUBLIC_URL",
+                "multi-tenant mode needs the {tenant} placeholder, e.g. https://{tenant}.example.org",
+            ));
+        }
+        Ok(Self(url))
+    }
+
+    /// The front end's address for the tenant `slug`, without trailing slash.
+    pub fn for_tenant(&self, slug: &str) -> String {
+        self.0.replace("{tenant}", slug)
+    }
+}
+
+/// Sessions of the web front end.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SessionSettings {
+    /// `SESSION_COOKIE_SECURE` (default true): cookies sent over HTTPS only.
+    /// Only a development front end served over plain HTTP turns it off.
+    pub cookie_secure: bool,
+    /// `SESSION_IDLE_MINUTES` (default 480): ends after this time unused.
+    pub idle: Duration,
+    /// `SESSION_MAX_AGE_HOURS` (default 168): ends this long after sign-in.
+    pub max_age: Duration,
+}
+
+impl SessionSettings {
+    pub fn from_env(env: &Env) -> Result<Self, ConfigError> {
+        let idle_minutes: u64 = env.optional("SESSION_IDLE_MINUTES", 480)?;
+        let max_age_hours: u64 = env.optional("SESSION_MAX_AGE_HOURS", 168)?;
+        if idle_minutes == 0 {
+            return Err(invalid("SESSION_IDLE_MINUTES", "must be greater than 0"));
+        }
+        if max_age_hours == 0 || max_age_hours * 60 < idle_minutes {
+            return Err(invalid(
+                "SESSION_MAX_AGE_HOURS",
+                "must be greater than 0 and not shorter than SESSION_IDLE_MINUTES",
+            ));
+        }
+        Ok(Self {
+            cookie_secure: env.optional("SESSION_COOKIE_SECURE", true)?,
+            idle: Duration::from_secs(idle_minutes * 60),
+            max_age: Duration::from_secs(max_age_hours * 3600),
+        })
+    }
+}
+
+/// SMTP sending of the worker.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MailConfig {
+    /// `SMTP_URL` (secret: it may hold credentials).
+    pub smtp_url: Secret,
+    /// `MAIL_FROM`, e.g. `Planner <noreply@example.org>`.
+    pub from: String,
+}
+
+impl MailConfig {
+    pub fn from_env(env: &Env) -> Result<Self, ConfigError> {
+        Ok(Self {
+            smtp_url: env.required("SMTP_URL")?,
+            from: env.required("MAIL_FROM")?,
+        })
+    }
 }
 
 impl ApiConfig {
@@ -304,6 +397,7 @@ impl ApiConfig {
         if body_limit_bytes == 0 {
             return Err(invalid("API_BODY_LIMIT_BYTES", "must be greater than 0"));
         }
+        let tenancy = tenancy_from_env(env)?;
         Ok(Self {
             common: CommonConfig::from_env(env)?,
             bind_addr: env.required("API_BIND_ADDR")?,
@@ -311,9 +405,15 @@ impl ApiConfig {
             body_limit_bytes,
             database: DatabaseConfig::from_env(env)?,
             migration_url: env.get("DATABASE_MIGRATION_URL")?.map(Secret),
-            tenancy: tenancy_from_env(env)?,
+            public_url: PublicUrl::from_env(env, &tenancy)?,
             shared: SharedServices::from_env(env)?,
             telemetry: TelemetryConfig::from_env(env)?,
+            valkey: env.required("VALKEY_URL")?,
+            sessions: SessionSettings::from_env(env)?,
+            bootstrap: BootstrapConfig::from_env(env, &tenancy)?,
+            tenancy,
+            data_key: env.required("DATA_ENCRYPTION_KEY")?,
+            oidc_allow_http: env.optional("OIDC_ALLOW_HTTP", false)?,
         })
     }
 }
@@ -323,13 +423,97 @@ impl ApiConfig {
 pub struct MigrateConfig {
     /// Owner-role URL (`mlbpp_owner`).
     pub migration_url: Secret,
+    /// First tenant and super admin, created after the migrations.
+    pub bootstrap: Option<BootstrapConfig>,
 }
 
 impl MigrateConfig {
     pub fn from_env(env: &Env) -> Result<Self, ConfigError> {
+        let migration_url = env.required("DATABASE_MIGRATION_URL")?;
+        let bootstrap = match env.get("BOOTSTRAP_ADMIN_EMAIL")? {
+            Some(_) => BootstrapConfig::from_env(env, &tenancy_from_env(env)?)?,
+            None => None,
+        };
         Ok(Self {
-            migration_url: env.required("DATABASE_MIGRATION_URL")?,
+            migration_url,
+            bootstrap,
         })
+    }
+}
+
+/// The first tenant and its platform super admin, created once, on the first
+/// start (`api migrate`, or `api serve` with `DATABASE_MIGRATION_URL`), when
+/// no super admin exists yet. Set by `BOOTSTRAP_ADMIN_EMAIL`; nothing is
+/// bootstrapped without it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BootstrapConfig {
+    /// `BOOTSTRAP_TENANT_SLUG`: in single-tenant mode, `TENANT_DEFAULT_SLUG`
+    /// (the only accepted value); required in multi-tenant mode.
+    pub tenant_slug: String,
+    /// `BOOTSTRAP_TENANT_NAME` (default `Default`).
+    pub tenant_name: String,
+    /// `BOOTSTRAP_ADMIN_EMAIL`, normalized.
+    pub admin_email: String,
+    /// `BOOTSTRAP_ADMIN_NAME` (default `Administrator`).
+    pub admin_name: String,
+    /// `BOOTSTRAP_ADMIN_PASSWORD` (secret: prefer `_FILE`), 12 characters or more.
+    pub admin_password: Secret,
+}
+
+impl BootstrapConfig {
+    pub fn from_env(env: &Env, tenancy: &Tenancy) -> Result<Option<Self>, ConfigError> {
+        let Some(raw_email) = env.get("BOOTSTRAP_ADMIN_EMAIL")? else {
+            return Ok(None);
+        };
+        let admin_email = domain::account::normalize_email(&raw_email)
+            .ok_or_else(|| invalid("BOOTSTRAP_ADMIN_EMAIL", "must be an email address"))?;
+        let tenant_slug = match (tenancy, env.get("BOOTSTRAP_TENANT_SLUG")?) {
+            (Tenancy::Single { default_slug }, None) => default_slug.clone(),
+            (Tenancy::Single { default_slug }, Some(slug)) if slug != *default_slug => {
+                return Err(invalid(
+                    "BOOTSTRAP_TENANT_SLUG",
+                    "must be TENANT_DEFAULT_SLUG in single-tenant mode (or unset)",
+                ));
+            }
+            (_, Some(slug)) => slug,
+            (Tenancy::Multi { .. }, None) => {
+                return Err(ConfigError::Missing {
+                    name: "BOOTSTRAP_TENANT_SLUG".to_owned(),
+                });
+            }
+        };
+        if !domain::tenancy::is_valid_slug(&tenant_slug) {
+            return Err(invalid(
+                "BOOTSTRAP_TENANT_SLUG",
+                "must be 1-63 characters among a-z, 0-9 and -, not starting or ending with -",
+            ));
+        }
+        let admin_password: Secret = env.required("BOOTSTRAP_ADMIN_PASSWORD")?;
+        if let Err(errors) =
+            domain::account::validate_password("password", admin_password.expose(), &admin_email)
+        {
+            let reason = match errors.first().map(|e| e.code) {
+                Some("too_short") => "must be at least 12 characters",
+                Some("too_long") => "must be at most 128 characters",
+                _ => "must differ from BOOTSTRAP_ADMIN_EMAIL",
+            };
+            return Err(invalid("BOOTSTRAP_ADMIN_PASSWORD", reason));
+        }
+        let tenant_name: String = env.optional("BOOTSTRAP_TENANT_NAME", "Default".to_owned())?;
+        let admin_name: String = env.optional("BOOTSTRAP_ADMIN_NAME", "Administrator".to_owned())?;
+        if tenant_name.trim().is_empty() || tenant_name.chars().count() > 200 {
+            return Err(invalid("BOOTSTRAP_TENANT_NAME", "must be 1 to 200 characters"));
+        }
+        if domain::account::validate_display_name("name", &admin_name).is_err() {
+            return Err(invalid("BOOTSTRAP_ADMIN_NAME", "must be 1 to 200 characters"));
+        }
+        Ok(Some(Self {
+            tenant_slug,
+            tenant_name: tenant_name.trim().to_owned(),
+            admin_email,
+            admin_name: admin_name.trim().to_owned(),
+            admin_password,
+        }))
     }
 }
 
@@ -341,11 +525,13 @@ pub struct WorkerConfig {
     pub poll_interval: Duration,
     /// Address of the health endpoint (the worker serves nothing else).
     pub health_addr: SocketAddr,
-    /// Optional until the job queue arrives (L02): when set, readiness
-    /// checks PostgreSQL.
-    pub database: Option<DatabaseConfig>,
+    /// The job queue lives in PostgreSQL.
+    pub database: DatabaseConfig,
+    pub mail: MailConfig,
     pub shared: SharedServices,
     pub telemetry: TelemetryConfig,
+    /// `VALKEY_URL`: exports of personal data.
+    pub valkey: Secret,
 }
 
 /// Default address of the worker's health endpoint.
@@ -353,17 +539,15 @@ pub const WORKER_HEALTH_ADDR: &str = "0.0.0.0:8081";
 
 impl WorkerConfig {
     pub fn from_env(env: &Env) -> Result<Self, ConfigError> {
-        let database = match env.get("DATABASE_URL")? {
-            Some(_) => Some(DatabaseConfig::from_env(env)?),
-            None => None,
-        };
         Ok(Self {
             common: CommonConfig::from_env(env)?,
             poll_interval: env.millis("WORKER_POLL_INTERVAL_MS", 1000)?,
             health_addr: worker_health_addr(env)?,
-            database,
+            database: DatabaseConfig::from_env(env)?,
+            mail: MailConfig::from_env(env)?,
             shared: SharedServices::from_env(env)?,
             telemetry: TelemetryConfig::from_env(env)?,
+            valkey: env.required("VALKEY_URL")?,
         })
     }
 }
@@ -479,11 +663,29 @@ mod tests {
 
     // Fake credentials, test only.
     const DB_URL: &str = "postgres://mlbpp_app:secret@db/mlbpp"; // gitleaks:allow
+    const VALKEY_URL: &str = "redis://valkey:6379";
+
+    /// `pairs` plus the other variables the api requires.
+    fn api_required<'a, const N: usize>(pairs: [(&'a str, &'a str); N]) -> Vec<(&'a str, &'a str)> {
+        let mut all = pairs.to_vec();
+        all.extend([
+            ("VALKEY_URL", VALKEY_URL),
+            ("PUBLIC_URL", "https://planner.example.org/"),
+            (
+                "DATA_ENCRYPTION_KEY",
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+            ),
+        ]);
+        all
+    }
     const OWNER_URL: &str = "postgres://mlbpp_owner:hunter2@db/mlbpp"; // gitleaks:allow
 
     #[test]
     fn defaults_apply_when_optional_values_are_absent() {
-        let env = Env::from_pairs([("API_BIND_ADDR", "0.0.0.0:8080"), ("DATABASE_URL", DB_URL)]);
+        let env = Env::from_pairs(api_required([
+            ("API_BIND_ADDR", "0.0.0.0:8080"),
+            ("DATABASE_URL", DB_URL),
+        ]));
         let cfg = ApiConfig::from_env(&env).unwrap();
         assert_eq!(cfg.bind_addr, "0.0.0.0:8080".parse().unwrap());
         assert_eq!(cfg.request_timeout, Duration::from_secs(30));
@@ -510,11 +712,11 @@ mod tests {
 
     #[test]
     fn secrets_are_redacted_in_debug_output() {
-        let env = Env::from_pairs([
+        let env = Env::from_pairs(api_required([
             ("API_BIND_ADDR", "0.0.0.0:8080"),
             ("DATABASE_URL", DB_URL),
             ("DATABASE_MIGRATION_URL", OWNER_URL),
-        ]);
+        ]));
         let debug = format!("{:?}", ApiConfig::from_env(&env).unwrap());
         assert!(!debug.contains("secret") && !debug.contains("hunter2"), "{debug}");
         assert!(debug.contains("Secret(***)"));
@@ -584,10 +786,10 @@ mod tests {
     fn value_can_come_from_a_mounted_file() {
         let mut file = tempfile::NamedTempFile::new().unwrap();
         writeln!(file, "127.0.0.1:9000").unwrap();
-        let env = Env::from_pairs([
+        let env = Env::from_pairs(api_required([
             ("API_BIND_ADDR_FILE", file.path().to_str().unwrap()),
             ("DATABASE_URL", DB_URL),
-        ]);
+        ]));
         let cfg = ApiConfig::from_env(&env).unwrap();
         assert_eq!(cfg.bind_addr, "127.0.0.1:9000".parse().unwrap());
     }
@@ -611,15 +813,15 @@ mod tests {
 
     #[test]
     fn worker_config_has_defaults_and_validates() {
-        let cfg = WorkerConfig::from_env(&Env::default()).unwrap();
+        let cfg = WorkerConfig::from_env(&Env::from_pairs(worker_required([]))).unwrap();
         assert_eq!(cfg.poll_interval, Duration::from_millis(1000));
         assert_eq!(cfg.health_addr, "0.0.0.0:8081".parse().unwrap());
-        let custom = Env::from_pairs([("WORKER_HEALTH_ADDR", "127.0.0.1:9100")]);
+        let custom = Env::from_pairs(worker_required([("WORKER_HEALTH_ADDR", "127.0.0.1:9100")]));
         assert_eq!(
             WorkerConfig::from_env(&custom).unwrap().health_addr,
             "127.0.0.1:9100".parse().unwrap()
         );
-        let bad = Env::from_pairs([("WORKER_HEALTH_ADDR", "nowhere")]);
+        let bad = Env::from_pairs(worker_required([("WORKER_HEALTH_ADDR", "nowhere")]));
         assert!(matches!(
             WorkerConfig::from_env(&bad),
             Err(ConfigError::Invalid { name, .. }) if name == "WORKER_HEALTH_ADDR"
@@ -694,10 +896,192 @@ mod tests {
     }
 
     #[test]
-    fn worker_database_is_optional() {
-        assert_eq!(WorkerConfig::from_env(&Env::default()).unwrap().database, None);
-        let env = Env::from_pairs([("DATABASE_URL", "postgres://app@postgres/mlbpp")]);
-        assert!(WorkerConfig::from_env(&env).unwrap().database.is_some());
+    fn worker_requires_its_database_and_mail_settings() {
+        let cfg = WorkerConfig::from_env(&Env::from_pairs(worker_required([]))).unwrap();
+        assert_eq!(cfg.database.url.expose(), DB_URL);
+        assert_eq!(cfg.mail.from, "Planner <noreply@example.org>");
+        for missing in ["DATABASE_URL", "SMTP_URL", "MAIL_FROM"] {
+            let pairs: Vec<_> = worker_required([])
+                .into_iter()
+                .filter(|(k, _)| *k != missing)
+                .collect();
+            assert!(
+                matches!(WorkerConfig::from_env(&Env::from_pairs(pairs)), Err(ConfigError::Missing { name }) if name == missing),
+                "{missing}"
+            );
+        }
+    }
+
+    /// `pairs` plus the variables the worker requires.
+    fn worker_required<'a, const N: usize>(pairs: [(&'a str, &'a str); N]) -> Vec<(&'a str, &'a str)> {
+        let mut all = pairs.to_vec();
+        all.extend([
+            ("DATABASE_URL", DB_URL),
+            ("SMTP_URL", "smtp://mailpit:1025"),
+            ("MAIL_FROM", "Planner <noreply@example.org>"),
+            ("VALKEY_URL", VALKEY_URL),
+        ]);
+        all
+    }
+
+    #[test]
+    fn bootstrap_is_off_without_an_admin_email() {
+        let single = Tenancy::Single {
+            default_slug: "default".to_owned(),
+        };
+        assert_eq!(BootstrapConfig::from_env(&Env::default(), &single).unwrap(), None);
+    }
+
+    #[test]
+    fn bootstrap_takes_the_default_tenant_in_single_mode() {
+        let single = Tenancy::Single {
+            default_slug: "default".to_owned(),
+        };
+        let env = Env::from_pairs([
+            ("BOOTSTRAP_ADMIN_EMAIL", " Root@Example.org "),
+            ("BOOTSTRAP_ADMIN_PASSWORD", "a long enough passphrase"),
+        ]);
+        let cfg = BootstrapConfig::from_env(&env, &single).unwrap().unwrap();
+        assert_eq!(cfg.tenant_slug, "default");
+        assert_eq!(cfg.tenant_name, "Default");
+        assert_eq!(cfg.admin_email, "root@example.org");
+        assert_eq!(cfg.admin_name, "Administrator");
+        assert_eq!(cfg.admin_password.expose(), "a long enough passphrase");
+
+        let other = Env::from_pairs([
+            ("BOOTSTRAP_ADMIN_EMAIL", "root@example.org"),
+            ("BOOTSTRAP_ADMIN_PASSWORD", "a long enough passphrase"),
+            ("BOOTSTRAP_TENANT_SLUG", "acme"),
+        ]);
+        assert!(matches!(
+            BootstrapConfig::from_env(&other, &single),
+            Err(ConfigError::Invalid { name, .. }) if name == "BOOTSTRAP_TENANT_SLUG"
+        ));
+    }
+
+    #[test]
+    fn bootstrap_needs_a_tenant_slug_in_multi_mode_and_a_strong_password() {
+        let multi = Tenancy::Multi {
+            base_domain: "example.org".to_owned(),
+        };
+        let base = [
+            ("BOOTSTRAP_ADMIN_EMAIL", "root@example.org"),
+            ("BOOTSTRAP_ADMIN_PASSWORD", "a long enough passphrase"),
+        ];
+        assert!(matches!(
+            BootstrapConfig::from_env(&Env::from_pairs(base), &multi),
+            Err(ConfigError::Missing { name }) if name == "BOOTSTRAP_TENANT_SLUG"
+        ));
+        let mut with_slug = base.to_vec();
+        with_slug.push(("BOOTSTRAP_TENANT_SLUG", "acme"));
+        with_slug.push(("BOOTSTRAP_TENANT_NAME", "Acme Industrie"));
+        let cfg = BootstrapConfig::from_env(&Env::from_pairs(with_slug), &multi)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            (cfg.tenant_slug.as_str(), cfg.tenant_name.as_str()),
+            ("acme", "Acme Industrie")
+        );
+
+        for (name, value) in [
+            ("BOOTSTRAP_ADMIN_PASSWORD", "short"),
+            ("BOOTSTRAP_ADMIN_PASSWORD", "root@example.org"),
+            ("BOOTSTRAP_ADMIN_EMAIL", "not an email"),
+            ("BOOTSTRAP_TENANT_SLUG", "Not A Slug"),
+        ] {
+            // The valid settings, with `name` replaced by `value`.
+            let mut env: Vec<(&str, &str)> = vec![
+                ("BOOTSTRAP_ADMIN_EMAIL", "root@example.org"),
+                ("BOOTSTRAP_ADMIN_PASSWORD", "a long enough passphrase"),
+                ("BOOTSTRAP_TENANT_SLUG", "acme"),
+            ];
+            env.retain(|(n, _)| *n != name);
+            env.push((name, value));
+            let result = BootstrapConfig::from_env(&Env::from_pairs(env), &multi);
+            assert!(
+                matches!(&result, Err(ConfigError::Invalid { name: n, .. }) if n == name),
+                "{name}={value}: {result:?}"
+            );
+        }
+        let no_password = Env::from_pairs([
+            ("BOOTSTRAP_ADMIN_EMAIL", "root@example.org"),
+            ("BOOTSTRAP_TENANT_SLUG", "acme"),
+        ]);
+        assert!(matches!(
+            BootstrapConfig::from_env(&no_password, &multi),
+            Err(ConfigError::Missing { name }) if name == "BOOTSTRAP_ADMIN_PASSWORD"
+        ));
+    }
+
+    #[test]
+    fn migrate_reads_the_bootstrap_with_the_tenancy() {
+        let env = Env::from_pairs([
+            ("DATABASE_MIGRATION_URL", OWNER_URL),
+            ("BOOTSTRAP_ADMIN_EMAIL", "root@example.org"),
+            ("BOOTSTRAP_ADMIN_PASSWORD", "a long enough passphrase"),
+            ("TENANT_DEFAULT_SLUG", "planner"),
+        ]);
+        let cfg = MigrateConfig::from_env(&env).unwrap();
+        assert_eq!(cfg.bootstrap.unwrap().tenant_slug, "planner");
+        let plain = Env::from_pairs([("DATABASE_MIGRATION_URL", OWNER_URL)]);
+        assert_eq!(MigrateConfig::from_env(&plain).unwrap().bootstrap, None);
+    }
+
+    #[test]
+    fn public_url_builds_tenant_addresses() {
+        let single = Tenancy::Single {
+            default_slug: "default".to_owned(),
+        };
+        let multi = Tenancy::Multi {
+            base_domain: "example.org".to_owned(),
+        };
+        let url = PublicUrl::from_env(
+            &Env::from_pairs([("PUBLIC_URL", "https://planner.example.org/")]),
+            &single,
+        )
+        .unwrap();
+        assert_eq!(url.for_tenant("default"), "https://planner.example.org");
+        let url = PublicUrl::from_env(
+            &Env::from_pairs([("PUBLIC_URL", "https://{tenant}.example.org")]),
+            &multi,
+        )
+        .unwrap();
+        assert_eq!(url.for_tenant("acme"), "https://acme.example.org");
+
+        let no_placeholder = Env::from_pairs([("PUBLIC_URL", "https://planner.example.org")]);
+        assert!(matches!(
+            PublicUrl::from_env(&no_placeholder, &multi),
+            Err(ConfigError::Invalid { .. })
+        ));
+        let no_scheme = Env::from_pairs([("PUBLIC_URL", "planner.example.org")]);
+        assert!(matches!(
+            PublicUrl::from_env(&no_scheme, &single),
+            Err(ConfigError::Invalid { .. })
+        ));
+        assert!(matches!(
+            PublicUrl::from_env(&Env::default(), &single),
+            Err(ConfigError::Missing { .. })
+        ));
+    }
+
+    #[test]
+    fn session_settings_have_defaults_and_are_validated() {
+        let cfg = SessionSettings::from_env(&Env::default()).unwrap();
+        assert!(cfg.cookie_secure);
+        assert_eq!(cfg.idle, Duration::from_secs(8 * 3600));
+        assert_eq!(cfg.max_age, Duration::from_secs(7 * 24 * 3600));
+        let dev = Env::from_pairs([("SESSION_COOKIE_SECURE", "false"), ("SESSION_IDLE_MINUTES", "30")]);
+        let cfg = SessionSettings::from_env(&dev).unwrap();
+        assert!(!cfg.cookie_secure);
+        assert_eq!(cfg.idle, Duration::from_secs(1800));
+        for (name, value) in [("SESSION_IDLE_MINUTES", "0"), ("SESSION_MAX_AGE_HOURS", "0")] {
+            assert!(
+                SessionSettings::from_env(&Env::from_pairs([(name, value)])).is_err(),
+                "{name}"
+            );
+        }
+        let shorter = Env::from_pairs([("SESSION_IDLE_MINUTES", "600"), ("SESSION_MAX_AGE_HOURS", "1")]);
+        assert!(SessionSettings::from_env(&shorter).is_err());
     }
 
     #[test]

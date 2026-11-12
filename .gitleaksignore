@@ -4,3 +4,7 @@
 
 # An Idempotency-Key (UUID) in a test, flagged as a generic API key.
 7ea1fb81467f9a264f8aa7488257a6ce0adc4906:backend/crates/api/tests/reference_items.rs:generic-api-key:324
+
+# The public RFC 6238 test vector (base32 of "12345678901234567890") in an
+# end-to-end test, flagged as a generic API key.
+44a65f562ad851ed6467450bf5741733f9d4e00b:web/e2e/mfa.spec.ts:generic-api-key:35

@@ -1,9 +1,8 @@
-//! Background job service.
-//!
-//! The job queue (PostgreSQL `SKIP LOCKED`) arrives in L02; for now the main
-//! loop polls a no-op batch. The shutdown contract is already final:
-//! cancellation is checked between batches only, so a batch that has started
-//! always finishes.
+//! Background job service: runs the jobs of the PostgreSQL queue
+//! ([`jobs`]). Cancellation is checked between batches only, so a batch that
+//! has started always finishes.
+
+pub mod jobs;
 
 use std::future::Future;
 use std::time::Duration;
@@ -36,12 +35,6 @@ where
         }
     }
     tracing::info!("worker loop stopped");
-}
-
-/// Placeholder batch until the job queue exists.
-pub async fn poll_jobs() -> Batch {
-    tokio::task::yield_now().await;
-    Batch::Idle
 }
 
 /// Serves the health endpoints on `listener` until `token` is cancelled:
@@ -174,7 +167,9 @@ mod tests {
     #[tokio::test]
     async fn idle_loop_stops_without_waiting_for_the_poll_interval() {
         let token = CancellationToken::new();
-        let worker = tokio::spawn(run_loop(token.clone(), Duration::from_secs(60), poll_jobs));
+        let worker = tokio::spawn(run_loop(token.clone(), Duration::from_secs(60), || async {
+            Batch::Idle
+        }));
         tokio::time::sleep(Duration::from_millis(20)).await;
         token.cancel();
         tokio::time::timeout(Duration::from_secs(1), worker)

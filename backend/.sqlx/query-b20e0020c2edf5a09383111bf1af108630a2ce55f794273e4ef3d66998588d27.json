@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE invitation SET status = 'accepted', accepted_at = now(), version = version + 1\n        WHERE id = $1 AND status = 'pending' AND expires_at > now()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b20e0020c2edf5a09383111bf1af108630a2ce55f794273e4ef3d66998588d27"
+}

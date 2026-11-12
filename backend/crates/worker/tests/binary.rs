@@ -15,6 +15,19 @@ fn free_port() -> u16 {
         .port()
 }
 
+/// The settings the worker requires. Nothing listens at these addresses:
+/// the worker starts anyway (it connects lazily) and logs that it cannot
+/// claim jobs.
+fn required_env(command: &mut Command) -> &mut Command {
+    command
+        .env("DATABASE_URL", "postgres://nobody@127.0.0.1:1/none")
+        .env("DATABASE_ACQUIRE_TIMEOUT_SECS", "1")
+        .env("SMTP_URL", "smtp://127.0.0.1:1")
+        .env("MAIL_FROM", "Planner <noreply@example.org>")
+        // Unreachable: the worker starts anyway, its readiness says so.
+        .env("VALKEY_URL", "redis://127.0.0.1:1")
+}
+
 fn healthcheck(port: u16) -> ExitStatus {
     Command::new(BIN)
         .env_clear()
@@ -40,8 +53,7 @@ fn exits_with_an_error_naming_a_malformed_variable() {
 #[cfg(unix)]
 #[test]
 fn stops_cleanly_on_sigterm() {
-    let mut child = Command::new(BIN)
-        .env_clear()
+    let mut child = required_env(Command::new(BIN).env_clear())
         .env("WORKER_POLL_INTERVAL_MS", "50")
         // A free port, so parallel tests never compete for the default one.
         .env("WORKER_HEALTH_ADDR", format!("127.0.0.1:{}", free_port()))
@@ -87,8 +99,7 @@ fn is_healthy_while_running_and_stops_cleanly_on_sigterm() {
     let port = free_port();
     assert!(!healthcheck(port).success(), "nothing listens yet");
 
-    let mut child = Command::new(BIN)
-        .env_clear()
+    let mut child = required_env(Command::new(BIN).env_clear())
         .env("WORKER_HEALTH_ADDR", format!("127.0.0.1:{port}"))
         .env("SHUTDOWN_GRACE_SECS", "5")
         .stdout(Stdio::null())

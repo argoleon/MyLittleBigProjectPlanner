@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE membership\n        SET account_type = $3, tenant_role = $4, local_account = $5, version = version + 1\n        WHERE account_id = $1 AND ($2::bigint[] IS NULL OR version = ANY($2))\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8Array",
+        "Text",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6594b86cfe272ccd4a0b1427d41c579a82d240494c062bc43d5d6784c2110c77"
+}

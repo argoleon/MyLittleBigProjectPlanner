@@ -1,5 +1,6 @@
 import { DOCUMENT, Injectable, inject, signal } from '@angular/core';
 import { TranslocoService } from '@jsverse/transloco';
+import { Observable, Subject } from 'rxjs';
 
 /** Languages of the interface. French is the original language. */
 export const LANGUAGES = ['fr', 'en'] as const;
@@ -39,12 +40,30 @@ export function formattingLocale(language: Language, preferred: readonly string[
   return preferred.find((tag) => tag.toLowerCase().split('-')[0] === language) ?? language;
 }
 
+/** Whether the browser knows the IANA time zone `name`. */
+export function isKnownTimeZone(name: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: name });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The IANA time zones the browser knows, `UTC` included, sorted. */
+export function knownTimeZones(): string[] {
+  const zones = new Set(Intl.supportedValuesOf('timeZone'));
+  zones.add('UTC');
+  return [...zones].sort();
+}
+
 /**
  * Language and time zone of the user.
  *
  * The language comes from the user's choice (kept in the browser), else from
- * the browser's preferences; it drives Transloco and `<html lang>`. The time
- * zone is the browser's until user profiles exist (L02).
+ * the browser's preferences; it drives Transloco and `<html lang>`. Once
+ * signed in, the account's preferences replace both (`use`, `useTimeZone`).
+ * The time zone is the browser's until then.
  */
 @Injectable({ providedIn: 'root' })
 export class LocaleService {
@@ -57,8 +76,16 @@ export class LocaleService {
   /** Current language of the interface. */
   readonly language = this.languageSignal.asReadonly();
 
+  private readonly browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  private readonly timeZoneSignal = signal(this.browserTimeZone);
+
   /** IANA time zone in which instants are shown. */
-  readonly timeZone = signal(Intl.DateTimeFormat().resolvedOptions().timeZone).asReadonly();
+  readonly timeZone = this.timeZoneSignal.asReadonly();
+
+  private readonly pickedSubject = new Subject<Language>();
+
+  /** Languages the user picks in the language menu, for the account to keep. */
+  readonly picked: Observable<Language> = this.pickedSubject.asObservable();
 
   constructor() {
     this.apply(this.languageSignal());
@@ -78,6 +105,20 @@ export class LocaleService {
     } catch {
       // Storage disabled: the choice lasts until the page is reloaded.
     }
+  }
+
+  /** Switches to `language` the user picked, and tells `picked`. */
+  pick(language: Language): void {
+    this.use(language);
+    this.pickedSubject.next(language);
+  }
+
+  /**
+   * Shows instants in `timeZone` (an IANA name); in the browser's when
+   * `null` or unknown to the browser.
+   */
+  useTimeZone(timeZone: string | null): void {
+    this.timeZoneSignal.set(timeZone && isKnownTimeZone(timeZone) ? timeZone : this.browserTimeZone);
   }
 
   private apply(language: Language): void {

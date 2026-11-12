@@ -1,0 +1,74 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT local_accounts_require_mfa, internal_accounts_require_sso,\n               portal_password_enabled, portal_magic_link_enabled, version\n        FROM tenant_auth_policy\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "local_accounts_require_mfa",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "tenant_auth_policy",
+            "name": "local_accounts_require_mfa"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "internal_accounts_require_sso",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "tenant_auth_policy",
+            "name": "internal_accounts_require_sso"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "portal_password_enabled",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "tenant_auth_policy",
+            "name": "portal_password_enabled"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "portal_magic_link_enabled",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "tenant_auth_policy",
+            "name": "portal_magic_link_enabled"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "version",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "tenant_auth_policy",
+            "name": "version"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "dbb261d4e61d2a11a617d543f848e65c860d9fc1b498fd41a857d93f281d6aff"
+}

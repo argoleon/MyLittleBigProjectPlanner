@@ -1,0 +1,68 @@
+<ui-auth-layout>
+  <h1 class="title">{{ 'auth.acceptInvitation.title' | transloco }}</h1>
+
+  @if (!token()) {
+    <p class="message error" role="alert">{{ 'auth.acceptInvitation.missingToken' | transloco }}</p>
+  } @else if (loading()) {
+    <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+  } @else if (outcome(); as outcome) {
+    <p class="message info" role="status">
+      {{ 'auth.acceptInvitation.' + outcome | transloco: { tenant: invitation()?.tenantName ?? '' } }}
+    </p>
+    @if (outcome === 'sso') {
+      <a class="link" routerLink="/sign-in">{{ 'auth.acceptInvitation.signIn' | transloco }}</a>
+    }
+  } @else if (invitation(); as invitation) {
+    <p class="subtitle">
+      @if (invitation.invitedBy) {
+        {{ 'auth.acceptInvitation.intro' | transloco: { inviter: invitation.invitedBy, tenant: invitation.tenantName } }}
+      } @else {
+        {{ 'auth.acceptInvitation.introNoInviter' | transloco: { tenant: invitation.tenantName } }}
+      }
+    </p>
+    @if (errorKey(); as key) {
+      <p class="message error" role="alert">{{ key | transloco }}</p>
+    }
+    <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <mat-form-field class="field" appearance="outline">
+        <mat-label>{{ 'auth.acceptInvitation.email' | transloco }}</mat-label>
+        <input matInput [value]="invitation.email" readonly />
+      </mat-form-field>
+      @if (invitation.newAccount) {
+        <mat-form-field class="field" appearance="outline">
+          <mat-label>{{ 'auth.acceptInvitation.displayName' | transloco }}</mat-label>
+          <input matInput formControlName="displayName" autocomplete="name" required />
+          @if (form.controls.displayName.getError('api'); as key) {
+            <mat-error>{{ key | transloco }}</mat-error>
+          } @else {
+            <mat-error>{{ 'errors.field.required' | transloco }}</mat-error>
+          }
+        </mat-form-field>
+        <mat-form-field class="field" appearance="outline">
+          <mat-label>{{ 'auth.acceptInvitation.password' | transloco }}</mat-label>
+          <input matInput type="password" formControlName="password" autocomplete="new-password" required />
+          @if (form.controls.password.hasError('required')) {
+            <mat-error>{{ 'errors.field.required' | transloco }}</mat-error>
+          } @else if (form.controls.password.hasError('minlength')) {
+            <mat-error>{{ 'errors.field.too_short' | transloco }}</mat-error>
+          } @else if (form.controls.password.getError('api'); as key) {
+            <mat-error>{{ key | transloco }}</mat-error>
+          }
+        </mat-form-field>
+        <mat-form-field class="field" appearance="outline">
+          <mat-label>{{ 'auth.resetPassword.confirmation' | transloco }}</mat-label>
+          <input matInput type="password" formControlName="confirmation" autocomplete="new-password" required />
+          <mat-error>{{ 'auth.resetPassword.mismatch' | transloco }}</mat-error>
+        </mat-form-field>
+      } @else {
+        <p class="hint">{{ 'auth.acceptInvitation.existingAccount' | transloco: { tenant: invitation.tenantName } }}</p>
+      }
+      <button class="submit" matButton="filled" type="submit" [disabled]="submitting()">
+        {{ 'auth.acceptInvitation.submit' | transloco }}
+      </button>
+    </form>
+  } @else if (errorKey(); as key) {
+    <p class="message error" role="alert">{{ key | transloco }}</p>
+    <a class="link" routerLink="/sign-in">{{ 'auth.acceptInvitation.signIn' | transloco }}</a>
+  }
+</ui-auth-layout>
