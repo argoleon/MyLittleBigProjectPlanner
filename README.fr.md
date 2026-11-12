@@ -4,7 +4,7 @@
 
 Un outil open source de gestion de projets et de tickets, sous licence MIT.
 
-- **Paramétrage à la Jira** : types de tickets, champs personnalisés, workflows et écrans, partagés entre projets.
+- **Paramétrage personalisable** : types de tickets, champs personnalisés, workflows et écrans, partagés entre projets.
 - **Portails de demande** pour les utilisateurs internes, les clients et les fournisseurs, avec dépôt anonyme possible.
 - **Portefeuilles, programmes et projets** dans une hiérarchie multi-parent, avec des agrégats qui ne comptent jamais deux fois le même projet.
 - **Planification** : Gantt multi-projets, boards Kanban et Scrum, sprints, versions.
