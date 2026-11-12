@@ -2,6 +2,55 @@
 
 All notable changes of My Little Big Project Planner. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/). Each release finishes a work package (lot) of the MVP (specification §20).
 
+## [0.2.0] - 2026-11-12
+
+Work package **L02 Identities, roles, permissions**: accounts and tenants, sign-in (password, two-step verification, the organization's identity provider), members and groups, node roles and the permission engine, My account, and the GDPR rights.
+
+### Added
+
+- **Tenants** (#34)
+  - Platform super admins create, change and delete tenants through `/api/v1/platform/tenants`. A deleted tenant stops resolving at once and is purged in the background.
+  - Settings per tenant: language, time zone, default capacity, overload tolerance and mode, quotas.
+  - The first tenant and its super admin are bootstrapped at the first start (`BOOTSTRAP_*`).
+- **Local sign-in** (#38)
+  - Global accounts with Argon2id passwords, and memberships per tenant (internal or external, tenant role).
+  - Sessions in Valkey, behind `HttpOnly` cookies with a CSRF token.
+  - Password reset by email, through the worker's job queue; sign-in and reset requests are rate-limited.
+- **Two-step verification** (#44): authenticator app (TOTP) with 8 single-use backup codes; a tenant can require it.
+- **Single sign-on** (#48)
+  - OIDC providers per tenant (Entra ID, Google, Keycloak…), with encrypted client secrets.
+  - Members are matched by their verified email or a directory claim.
+  - A tenant can require SSO for its internal members; local accounts (contractors, the bootstrapped admin) keep their password.
+- **Several tenants per account** (#52): the organization selector switches tenants through a one-time link, under the target tenant's policy. External accounts never reach the internal application.
+- **Members and groups** (#55)
+  - Administration › Members: search, filters, invitations by email (accepted on a page that creates or joins the account), access changes and removal. The last tenant admin always stays.
+  - Administration › Groups.
+- **Node roles and permissions** (#60)
+  - A fixed permission catalog, and roles as sets of permissions edited in Administration › Roles. Four default roles per tenant.
+  - The permission check answers 403 `permission.denied`; effective permissions are cached in Valkey and invalidated by changes. Grants on hierarchy nodes come with L03.
+- **My account** (#64)
+  - Language and time zone of the account, applied in every tenant.
+  - Password change, which ends the other sessions.
+  - Two-step verification, and the open sessions with their device and latest activity, ended one by one.
+- **GDPR** (#67)
+  - Export of one's personal data as JSON.
+  - Erasure by anonymization: the account itself (with its password, or a recent SSO sign-in, and its email typed) or a platform super admin erases a global account; a tenant admin erases a member from their tenant only. Erased members appear as "Deleted user #N"; every erasure is audited.
+  - Technical logs, which hold client IP addresses, are rotated and kept 6 months by Loki.
+- **Development** (#487, #489, #491): `just clean-cache` frees the build caches; the local stack also answers on https://127.0.0.1:18443.
+
+### Changed
+
+- Debug builds keep line tables only, and no debug information for dependencies: the build caches are about three times smaller.
+
+### Upgrading from 0.1.0
+
+- **New secrets**, created by `deploy/scripts/generate-secrets.sh`:
+  - `data_encryption_key`: encrypts the TOTP and OIDC client secrets; keep a copy with the backups;
+  - `bootstrap_admin_password`;
+  - `smtp_url`: a placeholder, to replace with your SMTP server.
+- **New variables:** `PUBLIC_URL` (links of the emails) and `MAIL_FROM`; `BOOTSTRAP_ADMIN_EMAIL` to bootstrap the first super admin. The worker now also needs `VALKEY_URL` (compose provides it).
+- **Migrations** run at start-up (`migrate` service). See `deploy/README.md` and `deploy/.env.example`.
+
 ## [0.1.0] - 2026-11-10
 
 Work package **L01 Technical foundation**: the base every later work package builds on. It ships no business feature yet: the screens are placeholders, and the only API resource is the reference resource that new endpoints copy.
@@ -28,4 +77,5 @@ Work package **L01 Technical foundation**: the base every later work package bui
   - License policy enforced on Rust crates and npm packages, RustSec and npm advisories, secret scan of the git history.
   - CI: every step a `just` recipe (`just ci` locally), GitHub Actions only calls them; release workflow publishing the images to GitHub Container Registry.
 
+[0.2.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.2.0
 [0.1.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.1.0
