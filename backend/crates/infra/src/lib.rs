@@ -18,6 +18,7 @@ pub mod id;
 pub mod idempotency;
 pub mod invitations;
 pub mod jobs;
+pub mod jwt_crypto;
 pub mod members;
 pub mod memberships;
 pub mod mfa;

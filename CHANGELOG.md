@@ -2,6 +2,13 @@
 
 All notable changes of My Little Big Project Planner. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/). Each release finishes a work package (lot) of the MVP (specification §20).
 
+## [Unreleased]
+
+### Security
+
+- OIDC sign-in: `jsonwebtoken` 10.4 (GHSA-h395-gr6q-cpjc, CVE-2026-25537: a time claim of the wrong type skipped its check). Its signatures are checked with `ring` through the application's own provider, keeping the `rsa` crate and `aws-lc` out; ID tokens not valid yet (`nbf`) are refused too.
+- Development tools: `minimatch` 11 forced under eslint and typescript-eslint (denial of service through glob patterns); nothing of it ships.
+
 ## [0.2.0] - 2026-11-12
 
 Work package **L02 Identities, roles, permissions**: accounts and tenants, sign-in (password, two-step verification, the organization's identity provider), members and groups, node roles and the permission engine, My account, and the GDPR rights.
