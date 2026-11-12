@@ -55,6 +55,14 @@ export type { RevokeMySession$Params as RevokeMySession$Params } from './fn/me/r
 export { revokeMySession as revokeMySession } from './fn/me/revoke-my-session';
 export type { SwitchTenant$Params as SwitchTenant$Params } from './fn/me/switch-tenant';
 export { switchTenant as switchTenant } from './fn/me/switch-tenant';
+export type { ListNodes$Params as ListNodes$Params } from './fn/hierarchy/list-nodes';
+export { listNodes as listNodes } from './fn/hierarchy/list-nodes';
+export type { CreateNode$Params as CreateNode$Params } from './fn/hierarchy/create-node';
+export { createNode as createNode } from './fn/hierarchy/create-node';
+export type { GetNode$Params as GetNode$Params } from './fn/hierarchy/get-node';
+export { getNode as getNode } from './fn/hierarchy/get-node';
+export type { UpdateNode$Params as UpdateNode$Params } from './fn/hierarchy/update-node';
+export { updateNode as updateNode } from './fn/hierarchy/update-node';
 export type { Ping$Params as Ping$Params } from './fn/system/ping';
 export { ping as ping } from './fn/system/ping';
 export type { GetCurrentTenant$Params as GetCurrentTenant$Params } from './fn/system/get-current-tenant';

@@ -7,6 +7,7 @@ pub mod account;
 pub mod auth_policy;
 pub mod devices;
 pub mod erasure;
+pub mod hierarchy;
 pub mod i18n;
 pub mod idempotency;
 pub mod jobs;

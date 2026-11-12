@@ -58,5 +58,7 @@ export const ERROR_CODE: ErrorCode[] = [
   'session.current',
   'account.reauthentication_required',
   'account.platform_admin',
-  'export.pending'
+  'export.pending',
+  'node.key_taken',
+  'node.cycle'
 ];

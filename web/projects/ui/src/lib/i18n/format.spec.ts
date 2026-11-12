@@ -1,4 +1,4 @@
-import { formatInstant, formatLocalDate, formatNumber, parseLocalDate } from './format';
+import { formatInstant, formatLocalDate, formatNumber, fromLocalDate, parseLocalDate, toLocalDate } from './format';
 
 // Time zones on both sides of UTC, with and without daylight saving time.
 const ZONES = ['Europe/Paris', 'America/Los_Angeles', 'Pacific/Kiritimati', 'Pacific/Pago_Pago', 'UTC'];
@@ -68,5 +68,22 @@ describe('formatNumber', () => {
     expect(formatNumber(1234.5, 'fr')).toBe('1 234,5');
     expect(formatNumber(1234.5, 'en-GB')).toBe('1,234.5');
     expect(formatNumber(0.875, 'fr', { style: 'percent', maximumFractionDigits: 1 })).toBe('87,5 %');
+  });
+});
+
+describe('toLocalDate and fromLocalDate', () => {
+  it('go between the date picker and local dates without converting through UTC', () => {
+    // Midnight local time: in UTC, still the day before east of Greenwich.
+    expect(toLocalDate(new Date(2026, 2, 29))).toBe('2026-03-29');
+    expect(toLocalDate(new Date(2026, 0, 5, 23, 59))).toBe('2026-01-05');
+    const date = fromLocalDate('2026-03-29')!;
+    expect([date.getFullYear(), date.getMonth(), date.getDate()]).toEqual([2026, 2, 29]);
+    expect(toLocalDate(date)).toBe('2026-03-29');
+  });
+
+  it('give nothing for an empty or invalid date', () => {
+    expect(fromLocalDate(null)).toBeNull();
+    expect(fromLocalDate('')).toBeNull();
+    expect(fromLocalDate('2026-02-30')).toBeNull();
   });
 });

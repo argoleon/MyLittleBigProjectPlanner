@@ -1,0 +1,19 @@
+[data-node-type] {
+  --chip-container: var(--app-node-type-container);
+  --chip-on: var(--app-node-type-on);
+}
+
+[data-health='on_track'] {
+  --chip-container: var(--app-health-ok-container);
+  --chip-on: var(--app-health-ok-on);
+}
+
+[data-health='at_risk'] {
+  --chip-container: var(--app-health-risk-container);
+  --chip-on: var(--app-health-risk-on);
+}
+
+[data-health='off_track'] {
+  --chip-container: var(--app-health-off-container);
+  --chip-on: var(--app-health-off-on);
+}

@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE node\n        SET name = $3, description = $4, objectives = $5, start_date = $6, end_date = $7,\n            health = $8, version = version + 1\n        WHERE id = $1 AND ($2::bigint[] IS NULL OR version = ANY($2))\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8Array",
+        "Text",
+        "Text",
+        "Text",
+        "Date",
+        "Date",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "bf5bc1e30669a34a540b62a0fe348787a342ed7491398f7432e50e026cff91bf"
+}

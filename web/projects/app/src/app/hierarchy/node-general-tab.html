@@ -1,0 +1,67 @@
+@if (node(); as node) {
+  <form class="card" [formGroup]="form" (ngSubmit)="save(node)" novalidate>
+    @if (notice(); as notice) {
+      <p class="message" [class.info]="notice.ok" [class.error]="!notice.ok" [attr.role]="notice.ok ? 'status' : 'alert'">
+        {{ notice.key | transloco }}
+      </p>
+    }
+    <div class="row">
+      <mat-form-field appearance="outline" class="grow">
+        <mat-label>{{ 'hierarchy.general.name' | transloco }}</mat-label>
+        <input matInput formControlName="name" maxlength="200" required />
+        @if (form.controls.name.getError('api'); as key) {
+          <mat-error>{{ key | transloco }}</mat-error>
+        } @else {
+          <mat-error>{{ 'errors.field.required' | transloco }}</mat-error>
+        }
+      </mat-form-field>
+      @if (node.key) {
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'hierarchy.general.key' | transloco }}</mat-label>
+          <input matInput [value]="node.key" readonly />
+          <mat-hint>{{ 'hierarchy.general.keyHint' | transloco }}</mat-hint>
+        </mat-form-field>
+      }
+    </div>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'hierarchy.general.description' | transloco }}</mat-label>
+      <textarea matInput formControlName="description" rows="4" maxlength="10000"></textarea>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'hierarchy.general.objectives' | transloco }}</mat-label>
+      <textarea matInput formControlName="objectives" rows="3" maxlength="10000"></textarea>
+    </mat-form-field>
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'hierarchy.general.startDate' | transloco }}</mat-label>
+        <input matInput [matDatepicker]="start" formControlName="startDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="start" />
+        <mat-datepicker #start />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'hierarchy.general.endDate' | transloco }}</mat-label>
+        <input matInput [matDatepicker]="end" formControlName="endDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="end" />
+        <mat-datepicker #end />
+        <mat-error>{{ 'errors.field.before_start' | transloco }}</mat-error>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'hierarchy.general.health' | transloco }}</mat-label>
+        <mat-select formControlName="health">
+          @for (health of healths; track health) {
+            <mat-option [value]="health">{{ 'hierarchy.health.' + health | transloco }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+    <app-owner-picker [(owners)]="owners" />
+    <div class="actions">
+      @if (dirty()) {
+        <span class="unsaved">{{ 'hierarchy.general.unsaved' | transloco }}</span>
+      }
+      <button matButton="filled" type="submit" class="save" [disabled]="saving()">
+        {{ 'hierarchy.general.save' | transloco }}
+      </button>
+    </div>
+  </form>
+}

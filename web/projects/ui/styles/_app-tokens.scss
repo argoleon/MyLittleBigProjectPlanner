@@ -42,11 +42,17 @@
   --app-status-done-container: var(--app-success-container);
   --app-status-done-on: var(--app-on-success-container);
 
-  // Health of a portfolio node
+  // Health of a portfolio, program or project: on track, at risk, off track
   --app-health-ok-container: var(--app-success-container);
   --app-health-ok-on: var(--app-on-success-container);
   --app-health-risk-container: var(--mat-sys-error-container);
   --app-health-risk-on: var(--mat-sys-on-error-container);
+  --app-health-off-container: var(--mat-sys-error);
+  --app-health-off-on: var(--mat-sys-on-error);
+
+  // Kind of node (portfolio, program, project)
+  --app-node-type-container: var(--mat-sys-surface-container-highest);
+  --app-node-type-on: var(--mat-sys-on-surface-variant);
 
   // ---------------------------------------------------------------------------
   // Issue types and special badges
