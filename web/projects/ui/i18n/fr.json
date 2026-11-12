@@ -438,7 +438,8 @@
     "node": {
       "key_taken": "Un autre projet de l’organisation a déjà cette clé.",
       "cycle": "Ce rattachement ferait du nœud son propre ancêtre.",
-      "parent_not_allowed": "Ce type de nœud ne peut pas être rattaché sous ce parent."
+      "parent_not_allowed": "Ce type de nœud ne peut pas être rattaché sous ce parent.",
+      "grant_exists": "Ce rôle est déjà attribué à cette personne ou à ce groupe sur ce nœud."
     }
   },
   "dialog": {
@@ -573,7 +574,7 @@
       "general": "Général",
       "addChild": "Ajouter un enfant",
       "breadcrumb": "Fil d’Ariane",
-      "links": "Rattachements"
+      "links": "Rattachements et droits"
     },
     "general": {
       "name": "Nom",
@@ -646,6 +647,41 @@
       "noChild": "Aucun enfant pour l’instant.",
       "open": "Ouvrir",
       "openOf": "Ouvrir {{ name }}"
+    },
+    "access": {
+      "title": "Accès effectifs",
+      "add": "Ajouter",
+      "addLabel": "Ajouter un rôle",
+      "roleLabel": "Rôle :",
+      "kind": {
+        "member": "Membre",
+        "group": "Groupe"
+      },
+      "empty": "Personne n’a encore de rôle ici. Les administrateurs de l’organisation voient tous les nœuds.",
+      "note": "Les droits sont l’union des rôles directs et des rôles hérités de chaque parent.",
+      "direct": {
+        "portfolio": "Rôle direct sur ce portefeuille",
+        "program": "Rôle direct sur ce programme",
+        "project": "Rôle direct sur ce projet"
+      },
+      "inherited": {
+        "portfolio": "Hérité du portefeuille {{ name }}",
+        "program": "Hérité du programme {{ name }}",
+        "project": "Hérité du projet {{ name }}"
+      },
+      "revokeOf": "Retirer le rôle {{ role }} à {{ name }}",
+      "revoked": "Rôle {{ role }} retiré à {{ name }}.",
+      "granted": "Rôle {{ role }} attribué à {{ name }}.",
+      "dialog": {
+        "title": "Attribuer un rôle sur {{ name }}",
+        "holder": "Membre ou groupe",
+        "holderHint": "Recherchez par nom ou par e-mail.",
+        "noMatch": "Aucun membre ni groupe trouvé.",
+        "chooseHolder": "Choisissez un membre ou un groupe dans la liste.",
+        "role": "Rôle",
+        "inherit": "Le rôle s’applique aussi à tout ce qui se trouve sous ce nœud.",
+        "grant": "Attribuer"
+      }
     }
   }
 }

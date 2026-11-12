@@ -1,0 +1,16 @@
+@use './node-cards';
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+// Rows without a "revoke" button keep the height of the others.
+.row {
+  min-height: 40px;
+}
+
+// The role stays on the holder's line as long as the name has room.
+.text {
+  flex-basis: 110px;
+}

@@ -61,5 +61,6 @@ export const ERROR_CODE: ErrorCode[] = [
   'export.pending',
   'node.key_taken',
   'node.cycle',
-  'node.parent_not_allowed'
+  'node.parent_not_allowed',
+  'node.grant_exists'
 ];

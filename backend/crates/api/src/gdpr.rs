@@ -19,6 +19,7 @@ use axum::response::{AppendHeaders, IntoResponse, Response};
 use chrono::{DateTime, Utc};
 use domain::account::{MAX_FAILED_SIGN_INS_PER_EMAIL, SIGN_IN_WINDOW};
 use domain::erasure::{Reauthentication, confirms, reauthentication};
+use domain::permissions::PermissionChange;
 use domain::validation::FieldError;
 use infra::accounts;
 use infra::credentials;
@@ -362,7 +363,7 @@ pub async fn erase_member(
     // Before the commit: if it fails, the member is merely signed out.
     let ended = state.auth.sessions.delete_in_tenant(account_id, tenant).await?;
     tx.commit().await?;
-    crate::permissions::invalidate(&state, tenant).await;
+    crate::permissions::changed(&state, tenant, PermissionChange::MemberRemoved).await;
     tracing::info!(
         target: "audit",
         actor = %actor,

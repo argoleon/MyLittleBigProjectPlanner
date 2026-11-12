@@ -1,109 +1,144 @@
 @if (node(); as node) {
-  @if (notice(); as notice) {
-    <p class="message" [class.info]="notice.ok" [class.error]="!notice.ok" [attr.role]="notice.ok ? 'status' : 'alert'">
-      {{ notice.key | transloco: notice.params }}
-    </p>
-  }
-
-  <section class="card" aria-labelledby="parents-title">
-    <div class="card-header">
-      <div>
-        <h2 id="parents-title" class="card-title">{{ 'hierarchy.links.parents' | transloco }}</h2>
-        <p class="hint">{{ 'hierarchy.links.parentsHint.' + node.type | transloco }}</p>
-      </div>
-      <button
-        #addButton
-        matButton="tonal"
-        type="button"
-        class="add-parent"
-        aria-controls="parent-search"
-        [attr.aria-expanded]="searching()"
-        (click)="openSearch()"
-      >
-        <mat-icon aria-hidden="true">add_link</mat-icon>
-        {{ 'hierarchy.links.addParent' | transloco }}
-      </button>
-    </div>
-    @if (parents.error()) {
-      <ui-error-state [error]="parents.error()" [headingLevel]="3" (retry)="parents.reload()" />
-    } @else if (parents.hasValue()) {
-      @if (parents.value().length === 0) {
-        <p class="empty">{{ 'hierarchy.links.noParent' | transloco }}</p>
-      } @else {
-        <ul class="links parents">
-          @for (link of parents.value(); track link.id) {
-            <li class="link">
-              <mat-icon aria-hidden="true" class="type-icon">{{ icons[link.type] }}</mat-icon>
-              <div class="text">
-                <a class="name" [routerLink]="['/nodes', link.id]">{{ link.name }}</a>
-                <span class="meta">
-                  {{ 'hierarchy.type.' + link.type | transloco }}
-                  @if (parentNames(link); as above) {
-                    · {{ above }}
-                  }
-                </span>
-              </div>
-              <app-weight-field [weight]="link.weightPercent" [parentName]="link.name" (weightChange)="setWeight(node, link, $event)" />
-              <button
-                matIconButton
-                type="button"
-                class="unlink"
-                [disabled]="busy()"
-                [attr.aria-label]="'hierarchy.links.unlinkOf' | transloco: { name: link.name }"
-                (click)="unlink(node, link)"
-              >
-                <mat-icon aria-hidden="true">link_off</mat-icon>
-              </button>
-            </li>
-          }
-        </ul>
-        <p class="note">{{ 'hierarchy.links.weightNote' | transloco }}</p>
-      }
-    } @else {
-      <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+  <div class="links">
+    @if (notice(); as notice) {
+      <p class="message" [class.info]="notice.ok" [class.error]="!notice.ok" [attr.role]="notice.ok ? 'status' : 'alert'">
+        {{ notice.key | transloco: notice.params }}
+      </p>
     }
-  </section>
 
-  @if (searching()) {
-    <section id="parent-search" class="card search" aria-labelledby="search-title">
+    <section class="card" aria-labelledby="parents-title">
       <div class="card-header">
-        <h2 id="search-title" class="card-title">{{ 'hierarchy.links.addParent' | transloco }}</h2>
-        <button matIconButton type="button" [attr.aria-label]="'hierarchy.links.closeSearch' | transloco" (click)="closeSearch()">
-          <mat-icon aria-hidden="true">close</mat-icon>
+        <div class="card-heading">
+          <h2 id="parents-title" class="card-title">{{ 'hierarchy.links.parents' | transloco }}</h2>
+          <p class="hint">{{ 'hierarchy.links.parentsHint.' + node.type | transloco }}</p>
+        </div>
+        <button
+          #addButton
+          matButton="tonal"
+          type="button"
+          class="add-parent"
+          aria-controls="parent-search"
+          [attr.aria-expanded]="searching()"
+          (click)="openSearch()"
+        >
+          <mat-icon aria-hidden="true">add_link</mat-icon>
+          {{ 'hierarchy.links.addParent' | transloco }}
         </button>
       </div>
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>{{ 'hierarchy.links.search' | transloco }}</mat-label>
-        <input #searchInput matInput type="search" autocomplete="off" [value]="query()" (input)="query.set(searchInput.value)" />
-      </mat-form-field>
-      @if (candidates.error()) {
-        <ui-error-state [error]="candidates.error()" [headingLevel]="3" (retry)="candidates.reload()" />
-      } @else if (candidates.hasValue()) {
-        @if (candidates.value().length === 0) {
-          <p class="empty">{{ 'hierarchy.links.noCandidate' | transloco }}</p>
+      @if (parents.error()) {
+        <ui-error-state [error]="parents.error()" [headingLevel]="3" (retry)="parents.reload()" />
+      } @else if (parents.hasValue()) {
+        @if (parents.value().length === 0) {
+          <p class="empty">{{ 'hierarchy.links.noParent' | transloco }}</p>
         } @else {
-          <ul class="candidates" [attr.aria-label]="'hierarchy.links.candidates' | transloco">
-            @for (candidate of candidates.value(); track candidate.id) {
-              <li>
-                @if (candidate.refusal; as refusal) {
-                  <div class="candidate refused">
-                    <mat-icon aria-hidden="true" class="type-icon">{{ icons[candidate.type] }}</mat-icon>
-                    <span class="text">
-                      <span class="name">{{ candidate.name }}</span>&ngsp;
-                      <span class="reason">{{ 'hierarchy.links.refusal.' + refusal | transloco }}</span>
-                    </span>
-                  </div>
-                } @else {
-                  <button type="button" class="candidate" [disabled]="busy()" (click)="link(node, candidate)">
-                    <mat-icon aria-hidden="true" class="type-icon">{{ icons[candidate.type] }}</mat-icon>
-                    <span class="text">
-                      <span class="name">{{ candidate.name }}</span>&ngsp;
-                      <span class="meta">
-                        {{ 'hierarchy.type.' + candidate.type | transloco }} · {{ 'hierarchy.links.allowed' | transloco }}
+          <ul class="rows parents">
+            @for (link of parents.value(); track link.id) {
+              <li class="row">
+                <mat-icon aria-hidden="true" class="row-icon">{{ icons[link.type] }}</mat-icon>
+                <div class="text">
+                  <a class="name" [routerLink]="['/nodes', link.id]">{{ link.name }}</a>
+                  <span class="meta">
+                    {{ 'hierarchy.type.' + link.type | transloco }}
+                    @if (parentNames(link); as above) {
+                      · {{ above }}
+                    }
+                  </span>
+                </div>
+                <app-weight-field [weight]="link.weightPercent" [parentName]="link.name" (weightChange)="setWeight(node, link, $event)" />
+                <button
+                  matIconButton
+                  type="button"
+                  class="unlink"
+                  [disabled]="busy()"
+                  [attr.aria-label]="'hierarchy.links.unlinkOf' | transloco: { name: link.name }"
+                  (click)="unlink(node, link)"
+                >
+                  <mat-icon aria-hidden="true">link_off</mat-icon>
+                </button>
+              </li>
+            }
+          </ul>
+          <p class="note">{{ 'hierarchy.links.weightNote' | transloco }}</p>
+        }
+      } @else {
+        <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+      }
+    </section>
+
+    @if (searching()) {
+      <section id="parent-search" class="card search" aria-labelledby="search-title">
+        <div class="card-header">
+          <h2 id="search-title" class="card-title">{{ 'hierarchy.links.addParent' | transloco }}</h2>
+          <button matIconButton type="button" [attr.aria-label]="'hierarchy.links.closeSearch' | transloco" (click)="closeSearch()">
+            <mat-icon aria-hidden="true">close</mat-icon>
+          </button>
+        </div>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>{{ 'hierarchy.links.search' | transloco }}</mat-label>
+          <input #searchInput matInput type="search" autocomplete="off" [value]="query()" (input)="query.set(searchInput.value)" />
+        </mat-form-field>
+        @if (candidates.error()) {
+          <ui-error-state [error]="candidates.error()" [headingLevel]="3" (retry)="candidates.reload()" />
+        } @else if (candidates.hasValue()) {
+          @if (candidates.value().length === 0) {
+            <p class="empty">{{ 'hierarchy.links.noCandidate' | transloco }}</p>
+          } @else {
+            <ul class="candidates" [attr.aria-label]="'hierarchy.links.candidates' | transloco">
+              @for (candidate of candidates.value(); track candidate.id) {
+                <li>
+                  @if (candidate.refusal; as refusal) {
+                    <div class="candidate refused">
+                      <mat-icon aria-hidden="true" class="row-icon">{{ icons[candidate.type] }}</mat-icon>
+                      <span class="text">
+                        <span class="name">{{ candidate.name }}</span>&ngsp;
+                        <span class="reason">{{ 'hierarchy.links.refusal.' + refusal | transloco }}</span>
                       </span>
-                    </span>
-                  </button>
-                }
+                    </div>
+                  } @else {
+                    <button type="button" class="candidate" [disabled]="busy()" (click)="link(node, candidate)">
+                      <mat-icon aria-hidden="true" class="row-icon">{{ icons[candidate.type] }}</mat-icon>
+                      <span class="text">
+                        <span class="name">{{ candidate.name }}</span>&ngsp;
+                        <span class="meta">
+                          {{ 'hierarchy.type.' + candidate.type | transloco }} · {{ 'hierarchy.links.allowed' | transloco }}
+                        </span>
+                      </span>
+                    </button>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        } @else {
+          <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+        }
+      </section>
+    }
+
+    <section class="card" aria-labelledby="children-title">
+      <h2 id="children-title" class="card-title">{{ 'hierarchy.links.children' | transloco }}</h2>
+      @if (children.error()) {
+        <ui-error-state [error]="children.error()" [headingLevel]="3" (retry)="children.reload()" />
+      } @else if (children.hasValue()) {
+        @if (children.value().length === 0) {
+          <p class="empty">{{ 'hierarchy.links.noChild' | transloco }}</p>
+        } @else {
+          <ul class="rows children">
+            @for (child of children.value(); track child.id) {
+              <li class="row">
+                <mat-icon aria-hidden="true" class="row-icon">{{ icons[child.type] }}</mat-icon>
+                <div class="text">
+                  <span class="name">{{ child.name }}</span>
+                  <span class="meta">
+                    {{ 'hierarchy.type.' + child.type | transloco }}
+                    @if (child.key) {
+                      · {{ child.key }}
+                    }
+                  </span>
+                </div>
+                <a matButton [routerLink]="['/nodes', child.id]" [attr.aria-label]="'hierarchy.links.openOf' | transloco: { name: child.name }">
+                  {{ 'hierarchy.links.open' | transloco }}
+                </a>
               </li>
             }
           </ul>
@@ -112,38 +147,8 @@
         <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
       }
     </section>
+  </div>
+  @if (managesMembers()) {
+    <app-node-access-card [node]="node" />
   }
-
-  <section class="card" aria-labelledby="children-title">
-    <h2 id="children-title" class="card-title">{{ 'hierarchy.links.children' | transloco }}</h2>
-    @if (children.error()) {
-      <ui-error-state [error]="children.error()" [headingLevel]="3" (retry)="children.reload()" />
-    } @else if (children.hasValue()) {
-      @if (children.value().length === 0) {
-        <p class="empty">{{ 'hierarchy.links.noChild' | transloco }}</p>
-      } @else {
-        <ul class="links children">
-          @for (child of children.value(); track child.id) {
-            <li class="link">
-              <mat-icon aria-hidden="true" class="type-icon">{{ icons[child.type] }}</mat-icon>
-              <div class="text">
-                <span class="name">{{ child.name }}</span>
-                <span class="meta">
-                  {{ 'hierarchy.type.' + child.type | transloco }}
-                  @if (child.key) {
-                    · {{ child.key }}
-                  }
-                </span>
-              </div>
-              <a matButton [routerLink]="['/nodes', child.id]" [attr.aria-label]="'hierarchy.links.openOf' | transloco: { name: child.name }">
-                {{ 'hierarchy.links.open' | transloco }}
-              </a>
-            </li>
-          }
-        </ul>
-      }
-    } @else {
-      <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
-    }
-  </section>
 }

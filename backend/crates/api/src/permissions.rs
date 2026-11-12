@@ -8,12 +8,12 @@
 //! ```
 //!
 //! A member's effective permissions on a node are the union of the roles
-//! that reach them there ([`infra::permissions::GrantSource`]; grants arrive
-//! with L03). They are cached in Valkey per tenant epoch: any change that can
-//! alter them calls [`invalidate`] once committed, and applies to the next
-//! request.
+//! that reach them there ([`infra::permissions::GrantSource`]: the grants of
+//! `node_role_grant`, inherited through the hierarchy). They are cached in
+//! Valkey per tenant epoch: any change that can alter them calls [`changed`]
+//! once committed, and applies to the next request.
 
-use domain::permissions::{Permission, PermissionSet};
+use domain::permissions::{Permission, PermissionChange, PermissionSet};
 use infra::uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -126,13 +126,17 @@ pub fn check(permissions: PermissionSet, permission: Permission) -> Result<(), P
     }
 }
 
-/// Forgets the cached permissions of the tenant: call it once a change that
-/// can alter them (role, group, grant, hierarchy) is committed. A cache
-/// failure is logged, not reported: the change itself is done, and entries
-/// expire on their own.
-pub async fn invalidate(state: &AppState, tenant_id: Uuid) {
+/// Tells the engine that `change` is committed in the tenant: the cached
+/// permissions are forgotten if it can alter them
+/// ([`PermissionChange::alters_permissions`]), and apply to the next request.
+/// A cache failure is logged, not reported: the change itself is done, and
+/// entries expire on their own.
+pub async fn changed(state: &AppState, tenant_id: Uuid, change: PermissionChange) {
+    if !change.alters_permissions() {
+        return;
+    }
     if let Err(err) = state.auth.permissions.invalidate(tenant_id).await {
-        tracing::warn!(error = %err, "cannot invalidate the permission cache");
+        tracing::warn!(error = %err, ?change, "cannot invalidate the permission cache");
     }
 }
 

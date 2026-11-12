@@ -1,20 +1,41 @@
 /**
- * Several parents and the cycle check on the production stack, nothing
- * mocked (L03-US02): the tenant admin builds a portfolio, two programs, a
- * project and its sub-project, attaches the project to both programs with
- * weightings, then sees that its sub-project cannot become its parent.
+ * The hierarchy on the production stack, nothing mocked.
+ *
+ * - Several parents and the cycle check (L03-US02): the tenant admin builds
+ *   a portfolio, two programs, a project and its sub-project, attaches the
+ *   project to both programs with weightings, then sees that its
+ *   sub-project cannot become its parent.
+ * - Roles granted on nodes (L03-US03): a member without any role sees no
+ *   node; the admin grants them a role on a portfolio, and they see it with
+ *   the project below, until the role is revoked.
  *
  * Runs with `just compose-e2e` only: deploy/tests/e2e.sh creates the admin
- * and passes E2E_ADMIN_EMAIL and E2E_ADMIN_SECRET.
+ * and the member, and passes E2E_ADMIN_EMAIL, E2E_ADMIN_SECRET,
+ * E2E_VIEWER_EMAIL and E2E_VIEWER_SECRET.
  */
-import { type Page, expect, test } from '@playwright/test';
+import { type Browser, type Page, expect, test } from '@playwright/test';
 
 import { accessibilityViolations } from './fixtures';
 
 const adminEmail = process.env['E2E_ADMIN_EMAIL'];
 const adminSecret = process.env['E2E_ADMIN_SECRET'];
+const viewerEmail = process.env['E2E_VIEWER_EMAIL'];
+const viewerSecret = process.env['E2E_VIEWER_SECRET'];
 
-test.skip(!adminEmail || !adminSecret, 'needs the compose stack (just compose-e2e)');
+test.skip(!adminEmail || !adminSecret || !viewerEmail || !viewerSecret, 'needs the compose stack (just compose-e2e)');
+
+/** A browser of their own for the member `email`, signed in, in English. */
+async function signIn(browser: Browser, email: string, secret: string): Promise<Page> {
+  const context = await browser.newContext();
+  await context.addInitScript(() => localStorage.setItem('mlbpp.language', 'en'));
+  const page = await context.newPage();
+  await page.goto('/sign-in');
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill(secret);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Home');
+  return page;
+}
 
 /** Creates a node from the open dialog, then waits for its settings. */
 async function createIn(page: Page, type: string, name: string, key?: string) {
@@ -39,14 +60,7 @@ test('a project under two weighted programs, never under its own sub-project', a
   const [digital, modernization, compliance] = [`Digital ${run}`, `Modernization ${run}`, `Compliance ${run}`];
   const [platform, permissions] = [`Platform ${run}`, `Permissions ${run}`];
 
-  const context = await browser.newContext();
-  await context.addInitScript(() => localStorage.setItem('mlbpp.language', 'en'));
-  const page = await context.newPage();
-  await page.goto('/sign-in');
-  await page.getByLabel('Email').fill(adminEmail!);
-  await page.getByLabel('Password').fill(adminSecret!);
-  await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Home');
+  const page = await signIn(browser, adminEmail!, adminSecret!);
 
   // A portfolio, a program, a project and its sub-project, each under the last.
   await page.goto('/portfolios');
@@ -94,5 +108,72 @@ test('a project under two weighted programs, never under its own sub-project', a
   await expect(refused.getByRole('button')).toHaveCount(0);
   expect(await accessibilityViolations(page), 'attachments tab').toEqual([]);
   await expect(page.getByRole('region', { name: 'Children' })).toContainText(permissions);
-  await context.close();
+  await page.context().close();
+});
+
+test('a role granted on a portfolio opens the project below, until it is revoked', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const run = Date.now().toString(36).toUpperCase().slice(-6);
+  const [portfolio, project] = [`Access ${run}`, `Vault ${run}`];
+
+  // The admin builds a portfolio and a project under it.
+  const admin = await signIn(browser, adminEmail!, adminSecret!);
+  await admin.goto('/portfolios');
+  await admin.getByRole('button', { name: 'New node' }).click();
+  await createIn(admin, 'Portfolio', portfolio);
+  const portfolioUrl = admin.url();
+  await addChild(admin, 'Project', project, `V${run}`);
+  const projectUrl = admin.url();
+
+  // Without any role, the member sees no node, not even by its address.
+  const viewer = await signIn(browser, viewerEmail!, viewerSecret!);
+  await viewer.goto('/portfolios');
+  await expect(viewer.getByText('No portfolio, program or project yet')).toBeVisible();
+  await viewer.goto(projectUrl);
+  await expect(viewer.getByRole('alert')).toContainText('This item does not exist or is no longer available.');
+
+  // The admin grants them "Reader" on the portfolio.
+  await admin.goto(portfolioUrl);
+  await admin.getByRole('tab', { name: 'Attachments and permissions' }).click();
+  const access = admin.getByRole('region', { name: 'Effective access' });
+  await expect(access).toContainText('Nobody has a role here yet.');
+  await access.getByRole('button', { name: 'Add a role' }).click();
+  const dialog = admin.getByRole('dialog', { name: `Grant a role on ${portfolio}` });
+  await dialog.getByLabel('Member or group').fill(viewerEmail!);
+  await admin.getByRole('option', { name: viewerEmail! }).click();
+  await dialog.getByRole('combobox', { name: 'Role' }).click();
+  await admin.getByRole('option', { name: 'Reader', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Grant' }).click();
+  await expect(access.getByRole('status')).toHaveText('Role Reader granted to E2E Viewer.');
+  await expect(access.getByRole('listitem')).toContainText(['E2E Viewer']);
+  await expect(access.getByRole('listitem')).toContainText(['Direct role on this portfolio']);
+  expect(await accessibilityViolations(admin), 'effective access').toEqual([]);
+  // On the project below, the role shows as inherited from the portfolio.
+  await admin.goto(projectUrl);
+  await admin.getByRole('tab', { name: 'Attachments and permissions' }).click();
+  await expect(admin.getByRole('region', { name: 'Effective access' }).getByRole('listitem')).toContainText([
+    `Inherited from the portfolio ${portfolio}`,
+  ]);
+
+  // The member now sees the portfolio and the project below it, as a reader.
+  await viewer.goto('/portfolios');
+  await expect(viewer.getByRole('link', { name: portfolio })).toBeVisible();
+  await viewer.getByRole('link', { name: project }).click();
+  await expect(viewer.getByRole('heading', { level: 1 })).toHaveText(`${project} · Settings`);
+  await viewer.getByRole('tab', { name: 'Attachments and permissions' }).click();
+  await expect(viewer.getByRole('region', { name: 'Parents' })).toBeVisible();
+  await expect(viewer.getByRole('region', { name: 'Effective access' })).toHaveCount(0);
+
+  // The role revoked on the portfolio: gone at their next visit.
+  await admin.goto(portfolioUrl);
+  await admin.getByRole('tab', { name: 'Attachments and permissions' }).click();
+  await access.getByRole('button', { name: 'Revoke the role Reader of E2E Viewer' }).click();
+  await expect(access.getByRole('status')).toHaveText('Role Reader revoked from E2E Viewer.');
+  await viewer.goto('/portfolios');
+  await expect(viewer.getByText('No portfolio, program or project yet')).toBeVisible();
+  await viewer.goto(projectUrl);
+  await expect(viewer.getByRole('alert')).toContainText('This item does not exist or is no longer available.');
+
+  await admin.context().close();
+  await viewer.context().close();
 });
