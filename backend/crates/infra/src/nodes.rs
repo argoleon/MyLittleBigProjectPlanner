@@ -299,6 +299,9 @@ pub struct NodeFilter {
     pub ancestor_of: Option<Uuid>,
     /// Only the descendants of this node (not the node itself).
     pub descendant_of: Option<Uuid>,
+    /// Only the nodes this member sees: those where a role with "view"
+    /// reaches them (`None`: all, for tenant admins).
+    pub visible_to: Option<Uuid>,
 }
 
 /// One page of the nodes of `filter`, in creation order.
@@ -323,6 +326,24 @@ pub async fn list(
           AND ($6::uuid IS NULL OR EXISTS (
               SELECT 1 FROM node_closure c
               WHERE c.ancestor_id = $6 AND c.descendant_id = node.id AND c.descendant_id <> $6))
+          -- The rule of domain::grants, downwards: a grant covers its node,
+          -- then the children that do not block inheritance, and so on.
+          AND ($7::uuid IS NULL OR node.id IN (
+              WITH RECURSIVE visible (id) AS (
+                  SELECT g.node_id
+                  FROM node_role_grant g
+                  JOIN role r ON r.id = g.role_id
+                  WHERE 'view' = ANY (r.permissions)
+                    AND (g.account_id = $7
+                         OR g.group_id IN (SELECT gm.group_id FROM group_member gm WHERE gm.account_id = $7))
+                  UNION
+                  SELECT e.child_id
+                  FROM visible v
+                  JOIN node_edge e ON e.parent_id = v.id
+                  JOIN node child ON child.id = e.child_id
+                  WHERE NOT child.confidential
+              )
+              SELECT id FROM visible))
         ORDER BY created_at, id
         LIMIT $4
         "#,
@@ -331,7 +352,8 @@ pub async fn list(
         after.map(|k| k.id),
         fetch,
         filter.ancestor_of,
-        filter.descendant_of
+        filter.descendant_of,
+        filter.visible_to
     )
     .fetch_all(&mut *conn)
     .await?;

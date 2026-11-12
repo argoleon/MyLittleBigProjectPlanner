@@ -1,0 +1,136 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT g.id, g.role_id, r.label AS \"label: Json<BTreeMap<String, String>>\",\n               g.node_id, o.node_type, o.name AS node_name,\n               g.account_id, a.display_name AS \"display_name?\",\n               g.group_id, gr.name AS \"group_name?\"\n        FROM node_role_grant g\n        JOIN node_closure c ON c.ancestor_id = g.node_id AND c.descendant_id = $1\n        JOIN node o ON o.id = g.node_id\n        JOIN role r ON r.id = g.role_id\n        LEFT JOIN account a ON a.id = g.account_id\n        LEFT JOIN \"group\" gr ON gr.id = g.group_id\n        ORDER BY (g.node_id <> $1), lower(COALESCE(a.display_name, gr.name)), g.id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "node_role_grant",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "role_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "node_role_grant",
+            "name": "role_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "label: Json<BTreeMap<String, String>>",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "role",
+            "name": "label"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "node_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "node_role_grant",
+            "name": "node_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "node_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "node_type"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "node_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "account_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "node_role_grant",
+            "name": "account_id"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "display_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "account",
+            "name": "display_name"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "group_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "node_role_grant",
+            "name": "group_id"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "group_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"group\"",
+            "name": "name"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "ed8d88bb45067e278a3dfb523fc00fe2ea1529391d2738c4600e0915dc1e21e0"
+}

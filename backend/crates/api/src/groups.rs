@@ -6,6 +6,7 @@ use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use domain::members::{GroupInput, validate_group};
+use domain::permissions::PermissionChange;
 use domain::validation::FieldError;
 use infra::groups::{self as repo, Group, GroupMember, MemberChange, WriteConflict};
 use infra::uuid::Uuid;
@@ -344,6 +345,7 @@ pub async fn update(
     )
 )]
 pub async fn delete(
+    State(state): State<AppState>,
     mut tx: TenantTx,
     headers: HeaderMap,
     ApiPath(id): ApiPath<Uuid>,
@@ -354,7 +356,10 @@ pub async fn delete(
         .await?
         .map_err(conflict_problem)?;
     tracing::info!(target: "audit", actor = %tx.account_id(), group = %id, "group deleted");
+    let tenant = tx.tenant_id();
     tx.commit().await?;
+    // Its grants went with it.
+    permissions::changed(&state, tenant, PermissionChange::GroupDeleted).await;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -393,8 +398,8 @@ pub async fn add_member(
     }
     let tenant = tx.tenant_id();
     tx.commit().await?;
-    // Groups carry grants (L03).
-    permissions::invalidate(&state, tenant).await;
+    // Groups carry grants.
+    permissions::changed(&state, tenant, PermissionChange::GroupMemberAdded).await;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -434,7 +439,7 @@ pub async fn remove_member(
     }
     let tenant = tx.tenant_id();
     tx.commit().await?;
-    // Groups carry grants (L03).
-    permissions::invalidate(&state, tenant).await;
+    // Groups carry grants.
+    permissions::changed(&state, tenant, PermissionChange::GroupMemberRemoved).await;
     Ok(StatusCode::NO_CONTENT)
 }

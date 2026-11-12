@@ -12,6 +12,7 @@ pub mod etag;
 pub mod extract;
 pub mod fields;
 pub mod gdpr;
+pub mod grants;
 pub mod groups;
 pub mod idempotency;
 pub mod invitations;

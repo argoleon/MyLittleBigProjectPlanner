@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO node_role_grant (id, tenant_id, node_id, role_id, account_id, group_id, created_by)\n        VALUES ($1, app_current_tenant(), $2, $3, $4, $5, $6)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c6c99a0b95492a6f015a70a9f687eeec9f4ecfa44b18973bbf5c654653f2c443"
+}

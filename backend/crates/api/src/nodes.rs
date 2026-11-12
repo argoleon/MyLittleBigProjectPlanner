@@ -3,7 +3,7 @@
 //!
 //! - Tenant admins create nodes anywhere; the administrators of a node
 //!   ("administer node", directly or inherited) create children under it and
-//!   change it. Grants on nodes come with L03-US03.
+//!   change it. Roles are granted on nodes in `crate::grants`.
 //! - A node is visible to tenant admins and to the members with "view" on
 //!   it; to anyone else it does not exist (404).
 //! - The attachment matrix is checked here and by the database.
@@ -20,7 +20,7 @@ use domain::hierarchy::{
     DEFAULT_WEIGHT_PERCENT, Health, NodeInput, NodeType, ParentCandidate, ParentRefusal, Rights,
     is_weight_percent, may_attach, may_change, may_create, may_link, parent_refusal, validate_node,
 };
-use domain::permissions::Permission;
+use domain::permissions::{Permission, PermissionChange};
 use domain::validation::FieldError;
 use infra::nodes::{
     self as repo, Candidate, Link, LinkChange, NewNode, Node, NodeFields, NodeFilter, NodeRef, WriteConflict,
@@ -430,7 +430,7 @@ fn conflict_problem(conflict: WriteConflict) -> Problem {
     }
 }
 
-fn is_tenant_admin(tx: &TenantTx) -> bool {
+pub(crate) fn is_tenant_admin(tx: &TenantTx) -> bool {
     tx.member().tenant_role == TenantRole::TenantAdmin
 }
 
@@ -468,7 +468,8 @@ fn with_etag(mut response: Response, version: i64) -> Response {
     operation_id = "listNodes",
     summary = "List the portfolios, programs and projects",
     description = "In creation order; follow `nextCursor` until it is `null`. Only the nodes the \
-                   member sees: a page may hold fewer items than `limit` without being the last.",
+                   member sees: all of them for tenant admins; for the others, those where a role \
+                   with `view` reaches them, directly, through a group, or inherited.",
     params(NodeListParams),
     responses(
         (status = 200, description = "A page of nodes", body = NodePage),
@@ -477,7 +478,6 @@ fn with_etag(mut response: Response, version: i64) -> Response {
     )
 )]
 pub async fn list(
-    State(state): State<AppState>,
     mut tx: TenantTx,
     ApiQuery(params): ApiQuery<NodeListParams>,
 ) -> Result<ApiJson<NodePage>, Problem> {
@@ -490,17 +490,14 @@ pub async fn list(
         node_type: params.node_type.map(NodeType::from),
         ancestor_of: params.ancestor_of,
         descendant_of: params.descendant_of,
+        // Tenant admins see every node; the others, those where a role with
+        // "view" reaches them.
+        visible_to: (!is_tenant_admin(&tx)).then(|| tx.account_id()),
     };
     let page = repo::list(&mut tx, &filter, after, limit).await?;
-    let mut items = Vec::with_capacity(page.items.len());
-    for node in page.items {
-        if sees(&state, &mut tx, node.id).await? {
-            items.push(NodeView::from(node));
-        }
-    }
     tx.commit().await?;
     Ok(ApiJson(NodePage {
-        items,
+        items: page.items.into_iter().map(NodeView::from).collect(),
         next_cursor: page.next.map(encode_cursor),
     }))
 }
@@ -614,10 +611,9 @@ pub async fn create(
         version,
     )
     .await?;
-    let tenant = tx.tenant_id();
+    // Nothing is cached for a new node: what it inherits is computed when
+    // it is first read.
     tx.commit().await?;
-    // A new node under a parent inherits its grants (L03-US03).
-    permissions::invalidate(&state, tenant).await;
     Ok(response)
 }
 
@@ -725,7 +721,7 @@ pub async fn update(
 
 /// The node `id` if the signed-in member sees it, else 404 (`what` names it
 /// in the problem's detail).
-async fn visible_node(
+pub(crate) async fn visible_node(
     state: &AppState,
     tx: &mut TenantTx,
     id: Uuid,
@@ -889,13 +885,15 @@ pub async fn link_parent(
     };
     let tenant = tx.tenant_id();
     tx.commit().await?;
-    let status = if change == LinkChange::Created {
-        // The node now inherits the parent's grants (L03-US03).
-        permissions::invalidate(&state, tenant).await;
-        StatusCode::CREATED
-    } else {
-        StatusCode::OK
+    // A new link: the node now inherits the parent's grants.
+    let (status, changed) = match change {
+        LinkChange::Created => (StatusCode::CREATED, Some(PermissionChange::ParentLinked)),
+        LinkChange::Updated => (StatusCode::OK, Some(PermissionChange::LinkWeightChanged)),
+        LinkChange::Unchanged => (StatusCode::OK, None),
     };
+    if let Some(changed) = changed {
+        permissions::changed(&state, tenant, changed).await;
+    }
     Ok((status, ApiJson(view)).into_response())
 }
 
@@ -937,8 +935,8 @@ pub async fn unlink_parent(
     tracing::info!(target: "audit", actor = %tx.account_id(), node = %id, parent = %parent_id, "node parent unlinked");
     let tenant = tx.tenant_id();
     tx.commit().await?;
-    // The node no longer inherits the parent's grants (L03-US03).
-    permissions::invalidate(&state, tenant).await;
+    // The node no longer inherits the parent's grants.
+    permissions::changed(&state, tenant, PermissionChange::ParentUnlinked).await;
     Ok(StatusCode::NO_CONTENT)
 }
 

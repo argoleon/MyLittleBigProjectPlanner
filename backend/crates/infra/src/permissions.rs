@@ -1,9 +1,10 @@
 //! Pieces of the permission engine (specification §14, L02-US07): where
 //! grants come from, and the Valkey cache of effective permissions.
 //!
-//! - [`GrantSource`] tells which roles reach a member on a node. L03 brings
-//!   the grants (`node_role_grant`, groups, inheritance through the closure
-//!   table); until then [`NoGrants`] grants nothing.
+//! - [`GrantSource`] tells which roles reach a member on a node. The
+//!   application reads them from `node_role_grant`, with groups and
+//!   inheritance through the hierarchy ([`crate::grants::NodeGrants`]);
+//!   tests of the engine may plug their own.
 //! - [`PermissionCache`] keeps each member's effective permissions, keyed by
 //!   a per-tenant *epoch*. Any change that can alter permissions (a role,
 //!   a group, a grant, the hierarchy) bumps the epoch once committed: every
@@ -38,25 +39,6 @@ pub trait GrantSource: Send + Sync + fmt::Debug {
 
     /// How many grants use `role_id`.
     fn grants_of_role<'a>(&'a self, conn: &'a mut PgConnection, role_id: Uuid) -> GrantFuture<'a, u64>;
-}
-
-/// No grant at all: the source until L03 brings `node_role_grant`.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct NoGrants;
-
-impl GrantSource for NoGrants {
-    fn roles_of<'a>(
-        &'a self,
-        _: &'a mut PgConnection,
-        _: Uuid,
-        _: Option<Uuid>,
-    ) -> GrantFuture<'a, Vec<Uuid>> {
-        Box::pin(async { Ok(Vec::new()) })
-    }
-
-    fn grants_of_role<'a>(&'a self, _: &'a mut PgConnection, _: Uuid) -> GrantFuture<'a, u64> {
-        Box::pin(async { Ok(0) })
-    }
 }
 
 /// How long an entry stays cached when nothing changes.

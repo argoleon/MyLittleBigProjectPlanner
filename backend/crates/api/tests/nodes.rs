@@ -2,63 +2,21 @@
 //! PostgreSQL and Valkey: creation at the root or under a parent, project
 //! keys, the attachment matrix, changes with `If-Match`, who sees and who
 //! changes; several weighted parents, cycles, candidate parents.
-//! Grants on nodes come with L03-US03: a test grant source stands for them.
+//! Roles are granted through the API (L03-US03), as an admin would.
 
 #![allow(clippy::unwrap_used)]
 
 mod common;
 
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-
-use common::{TestApi, json, multi, start_with};
+use common::{TestApi, json, multi};
 use infra::accounts::TenantRole;
-use infra::permissions::{GrantFuture, GrantSource};
-use infra::sqlx::PgConnection;
 use infra::uuid::Uuid;
 use reqwest::Method;
 use serde_json::{Value, json};
 use testkit::{SeedTenant, TestDb};
 
-/// Grants of roles on given nodes, without inheritance: enough to stand for
-/// the grants of L03-US03.
-#[derive(Debug, Default)]
-struct TestGrants(Mutex<HashMap<(Uuid, Uuid), Vec<Uuid>>>);
-
-impl TestGrants {
-    fn grant(&self, account_id: Uuid, node: Uuid, role_id: Uuid) {
-        self.0
-            .lock()
-            .unwrap()
-            .entry((account_id, node))
-            .or_default()
-            .push(role_id);
-    }
-}
-
-impl GrantSource for TestGrants {
-    fn roles_of<'a>(
-        &'a self,
-        _: &'a mut PgConnection,
-        account_id: Uuid,
-        node: Option<Uuid>,
-    ) -> GrantFuture<'a, Vec<Uuid>> {
-        let roles = node
-            .and_then(|node| self.0.lock().unwrap().get(&(account_id, node)).cloned())
-            .unwrap_or_default();
-        Box::pin(async move { Ok(roles) })
-    }
-
-    fn grants_of_role<'a>(&'a self, _: &'a mut PgConnection, _: Uuid) -> GrantFuture<'a, u64> {
-        Box::pin(async { Ok(0) })
-    }
-}
-
-async fn start(db: &TestDb, grants: Arc<TestGrants>) -> TestApi {
-    start_with(db, multi(), move |state, settings| {
-        api::app(state.with_grants(grants), settings)
-    })
-    .await
+async fn start(db: &TestDb) -> TestApi {
+    common::start(db, multi()).await
 }
 
 fn assert_problem(status: u16, body: &Value, expected_status: u16, code: &str) {
@@ -133,12 +91,14 @@ async fn node_admin_role(db: &TestDb, tenant: &SeedTenant) -> Uuid {
     role(db, tenant, "Node admin").await
 }
 
-/// Forgets the cached permissions of `tenant`, as a change of grants does.
-async fn forget_permissions(api: &TestApi, tenant: &SeedTenant) {
-    infra::permissions::PermissionCache::new(api.valkey.clone(), api.key_prefix.clone())
-        .invalidate(tenant.id)
-        .await
-        .unwrap();
+/// Grants `role` to the member `account` on `node`, as the tenant admin.
+async fn grant(api: &TestApi, tenant: &SeedTenant, node: impl std::fmt::Display, role: Uuid, account: Uuid) {
+    let (status, granted) = send(
+        admin(api, tenant, Method::POST, &format!("/api/v1/nodes/{node}/grants"))
+            .json(&json!({"roleId": role, "accountId": account})),
+    )
+    .await;
+    assert_eq!(status, 201, "{granted}");
 }
 
 /// Creates a node as the tenant admin; its id.
@@ -164,7 +124,7 @@ async fn create(api: &TestApi, tenant: &SeedTenant, body: Value) -> (u16, Value)
 #[tokio::test]
 async fn a_tenant_admin_creates_a_project_whose_key_is_unique_in_the_tenant() {
     let db = TestDb::new().await;
-    let api = start(&db, Arc::default()).await;
+    let api = start(&db).await;
     let body = json!({"type": "project", "name": "Identity platform", "key": "PLAT", "startDate": "2026-01-05", "endDate": "2026-12-18"});
 
     let res = admin(&api, &db.tenant_a, Method::POST, "/api/v1/nodes")
@@ -228,7 +188,7 @@ async fn a_tenant_admin_creates_a_project_whose_key_is_unique_in_the_tenant() {
 #[tokio::test]
 async fn nodes_are_checked_field_by_field_and_against_the_matrix() {
     let db = TestDb::new().await;
-    let api = start(&db, Arc::default()).await;
+    let api = start(&db).await;
     let stranger = db.add_member(&db.tenant_b, TenantRole::Member).await.account_id;
     let (_, program) = create(
         &api,
@@ -320,8 +280,7 @@ async fn nodes_are_checked_field_by_field_and_against_the_matrix() {
 #[tokio::test]
 async fn node_admins_create_children_under_their_nodes_only() {
     let db = TestDb::new().await;
-    let grants = Arc::new(TestGrants::default());
-    let api = start(&db, grants.clone()).await;
+    let api = start(&db).await;
     let (_, program) = create(
         &api,
         &db.tenant_a,
@@ -354,10 +313,9 @@ async fn node_admins_create_children_under_their_nodes_only() {
     .await;
     assert_eq!(status, 404, "nor does the member see it");
 
-    // Node admin of the program; a grant invalidates the cached permissions,
-    // as L03-US03's grants will.
-    grants.grant(member, program_id, node_admin_role(&db, &db.tenant_a).await);
-    forget_permissions(&api, &db.tenant_a).await;
+    // Node admin of the program: it applies to their next request.
+    let node_admin = node_admin_role(&db, &db.tenant_a).await;
+    grant(&api, &db.tenant_a, program_id, node_admin, member).await;
     let (status, created) = send(create_as(child(&program))).await;
     assert_eq!(status, 201, "{created}");
     assert_eq!(
@@ -420,7 +378,7 @@ async fn node_admins_create_children_under_their_nodes_only() {
 #[tokio::test]
 async fn a_portfolio_is_changed_with_the_version_it_was_read_at() {
     let db = TestDb::new().await;
-    let api = start(&db, Arc::default()).await;
+    let api = start(&db).await;
     let marion = db.add_member(&db.tenant_a, TenantRole::Member).await.account_id;
     let (_, portfolio) = create(
         &api,
@@ -508,7 +466,7 @@ async fn a_portfolio_is_changed_with_the_version_it_was_read_at() {
 #[tokio::test]
 async fn a_project_gets_a_second_weighted_parent_but_never_a_cycle() {
     let db = TestDb::new().await;
-    let api = start(&db, Arc::default()).await;
+    let api = start(&db).await;
     let t = &db.tenant_a;
     let digital = node(&api, t, json!({"type": "portfolio", "name": "Digital"})).await;
     let modernization = node(
@@ -696,8 +654,7 @@ async fn a_project_gets_a_second_weighted_parent_but_never_a_cycle() {
 #[tokio::test]
 async fn linking_needs_both_nodes_administered() {
     let db = TestDb::new().await;
-    let grants = Arc::new(TestGrants::default());
-    let api = start(&db, grants.clone()).await;
+    let api = start(&db).await;
     let t = &db.tenant_a;
     let modernization = node(&api, t, json!({"type": "program", "name": "IT Modernization"})).await;
     let compliance = node(&api, t, json!({"type": "program", "name": "Compliance"})).await;
@@ -713,9 +670,8 @@ async fn linking_needs_both_nodes_administered() {
     let link_path = format!("/api/v1/nodes/{plat}/parents/{compliance}");
 
     // Node admin of the project, reader of Compliance.
-    grants.grant(member, plat.parse().unwrap(), node_admin_role(&db, t).await);
-    grants.grant(member, compliance.parse().unwrap(), role(&db, t, "Reader").await);
-    forget_permissions(&api, t).await;
+    grant(&api, t, &plat, node_admin_role(&db, t).await, member).await;
+    grant(&api, t, &compliance, role(&db, t, "Reader").await, member).await;
     let (_, found) = send(as_lucas(
         Method::GET,
         format!("/api/v1/nodes/{plat}/parent-candidates?search=compliance"),
@@ -729,8 +685,7 @@ async fn linking_needs_both_nodes_administered() {
     assert_eq!(parents, json!([]));
 
     // Node admin of Compliance too: linked, then unlinked.
-    grants.grant(member, compliance.parse().unwrap(), node_admin_role(&db, t).await);
-    forget_permissions(&api, t).await;
+    grant(&api, t, &compliance, node_admin_role(&db, t).await, member).await;
     let (_, found) = send(as_lucas(
         Method::GET,
         format!("/api/v1/nodes/{plat}/parent-candidates?search=compliance"),
