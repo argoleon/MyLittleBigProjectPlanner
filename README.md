@@ -4,7 +4,7 @@
 
 An open source project and ticket management tool, licensed under MIT.
 
-- **Jira-like configuration**: issue types, custom fields, workflows and screens, shared between projects.
+- **custom configuration**: issue types, custom fields, workflows and screens, shared between projects.
 - **Request portals** for internal users, customers and suppliers, with optional anonymous submission.
 - **Portfolios, programs and projects** in a multi-parent hierarchy, with aggregates that never count a project twice.
 - **Planning**: Gantt charts across projects, Kanban and Scrum boards, sprints, versions.
