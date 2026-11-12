@@ -154,6 +154,11 @@ pass "PostgreSQL kept the reference item"
 pass "SeaweedFS kept the file"
 expect_status 200 "the session and the item survive the restart (Valkey, PostgreSQL)" \
     -H "cookie: mlbpp_session=$sid" "https://localhost$location"
+# The tests recreate containers too: the stack must stay as `just compose-up`
+# starts it.
+curl_edge -H 'host: 127.0.0.1' https://localhost/ | grep -q '<app-root>' \
+    || fail "127.0.0.1 no longer serves the application once the tests restart the stack"
+pass "the restarted stack still answers on 127.0.0.1"
 
 section "sign-out"
 expect_status 204 "sign-out" -X POST -H "cookie: mlbpp_session=$sid" -H "x-csrf-token: $xsrf" \

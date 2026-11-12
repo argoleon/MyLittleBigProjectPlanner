@@ -8,12 +8,14 @@
 # - emails caught by Mailpit (http://localhost:18026) instead of an SMTP
 #   server.
 #
-# The justfile sets MLBPP_DOMAIN=localhost, MLBPP_REGISTRY=mlbpp-local,
-# MLBPP_VERSION=local, MLBPP_PUBLIC_PORT=:18443 and MLBPP_HOST_RULE (localhost
-# and 127.0.0.1) for it.
+# The justfile and deploy/tests/lib.sh set MLBPP_DOMAIN=localhost,
+# MLBPP_REGISTRY=mlbpp-local, MLBPP_VERSION=local and MLBPP_PUBLIC_PORT=:18443
+# for it. The routes below accept 127.0.0.1 besides localhost here, whatever
+# starts or restarts the stack.
 
 x-build: &build
   context: ..
+
 
 services:
   traefik:
@@ -41,12 +43,18 @@ services:
     build:
       <<: *build
       dockerfile: deploy/docker/web.Dockerfile
+    # The routes accept localhost, its subdomains (one per tenant) and
+    # 127.0.0.1; parenthesized, since the API and MCP routes add a path prefix.
+    labels:
+      - traefik.http.routers.mlbpp-web.rule=(Host(`localhost`) || Host(`127.0.0.1`) || HostRegexp(`^[a-z0-9-]+[.]localhost$$`))
 
   api:
     build:
       <<: *build
       dockerfile: deploy/docker/backend.Dockerfile
       target: api
+    labels:
+      - traefik.http.routers.mlbpp-api.rule=(Host(`localhost`) || Host(`127.0.0.1`) || HostRegexp(`^[a-z0-9-]+[.]localhost$$`)) && PathPrefix(`/api`)
 
   worker:
     build:
@@ -77,6 +85,8 @@ services:
       <<: *build
       dockerfile: deploy/docker/backend.Dockerfile
       target: mcp
+    labels:
+      - traefik.http.routers.mlbpp-mcp.rule=(Host(`localhost`) || Host(`127.0.0.1`) || HostRegexp(`^[a-z0-9-]+[.]localhost$$`)) && PathPrefix(`/mcp`)
 
   postgres:
     build:

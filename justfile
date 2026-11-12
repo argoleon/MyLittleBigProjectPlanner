@@ -204,10 +204,7 @@ web-check: web-lint web-i18n client-check web-licenses web-test e2e
 # Run locally with compose.local.yaml: images built from the sources,
 # https://localhost:18443 with a self-signed certificate. See deploy/README.md.
 
-# The local stack also answers on https://127.0.0.1:18443. Parenthesized:
-# the API and MCP routes add `&& PathPrefix(…)` to it.
-local_host_rule := "(Host(`localhost`) || Host(`127.0.0.1`) || HostRegexp(`^[a-z0-9-]+[.]localhost$`))"
-stack := "MLBPP_DOMAIN=localhost MLBPP_HOST_RULE='" + local_host_rule + "' MLBPP_REGISTRY=mlbpp-local MLBPP_VERSION=local MLBPP_PUBLIC_PORT=:18443 BOOTSTRAP_ADMIN_EMAIL=root@example.test docker compose -f deploy/compose.yaml -f deploy/compose.local.yaml"
+stack := "MLBPP_DOMAIN=localhost MLBPP_REGISTRY=mlbpp-local MLBPP_VERSION=local MLBPP_PUBLIC_PORT=:18443 BOOTSTRAP_ADMIN_EMAIL=root@example.test docker compose -f deploy/compose.yaml -f deploy/compose.local.yaml"
 
 # Lint the scripts (shellcheck) and the CI workflows (actionlint), validate the compose files
 deploy-lint: compose-secrets
