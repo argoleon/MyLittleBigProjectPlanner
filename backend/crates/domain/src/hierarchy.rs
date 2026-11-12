@@ -152,6 +152,75 @@ pub const fn may_change(rights: Rights) -> bool {
     rights.tenant_admin || rights.administers_node
 }
 
+/// Whether a member links a node and a parent, changes that link's
+/// weighting or removes it: tenant admins, and the members who administer
+/// both nodes (a parent's aggregates and inherited grants change with it).
+pub const fn may_link(child: Rights, parent: Rights) -> bool {
+    child.tenant_admin || (child.administers_node && parent.administers_node)
+}
+
+/// Default weighting of a link, in percent.
+pub const DEFAULT_WEIGHT_PERCENT: i16 = 100;
+
+/// Whether `percent` is a link weighting: 0 to 100.
+pub const fn is_weight_percent(percent: i16) -> bool {
+    0 <= percent && percent <= 100
+}
+
+/// Why a node cannot become another one's parent.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParentRefusal {
+    /// It already is.
+    AlreadyParent,
+    /// The attachment matrix does not allow the child's type under it.
+    NotAllowed,
+    /// It is the child or one of its descendants: the link would make a
+    /// cycle.
+    Cycle,
+    /// The member may not link these two nodes.
+    Forbidden,
+}
+
+impl ParentRefusal {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::AlreadyParent => "already_parent",
+            Self::NotAllowed => "not_allowed",
+            Self::Cycle => "cycle",
+            Self::Forbidden => "forbidden",
+        }
+    }
+}
+
+/// A node considered as a new parent of `child_type`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ParentCandidate {
+    pub candidate_type: NodeType,
+    pub child_type: NodeType,
+    /// The candidate is the child or one of its descendants.
+    pub descends_from_child: bool,
+    /// The candidate already is a parent of the child.
+    pub already_parent: bool,
+    /// The member may link the two ([`may_link`]).
+    pub may_link: bool,
+}
+
+/// Why `candidate` cannot become the parent, if it cannot: the first of
+/// already a parent, the matrix, a cycle, the member's rights.
+pub const fn parent_refusal(candidate: ParentCandidate) -> Option<ParentRefusal> {
+    if candidate.already_parent {
+        Some(ParentRefusal::AlreadyParent)
+    } else if !may_attach(candidate.candidate_type, candidate.child_type) {
+        Some(ParentRefusal::NotAllowed)
+    } else if candidate.descends_from_child {
+        Some(ParentRefusal::Cycle)
+    } else if !candidate.may_link {
+        Some(ParentRefusal::Forbidden)
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -298,5 +367,95 @@ mod tests {
         assert!(may_create(node_admin, true));
         assert!(!may_create(member, true) && !may_create(member, false));
         assert!(may_change(tenant_admin) && may_change(node_admin) && !may_change(member));
+    }
+
+    #[test]
+    fn linking_needs_both_nodes_administered() {
+        let tenant_admin = Rights {
+            tenant_admin: true,
+            administers_node: false,
+        };
+        let admin = Rights {
+            tenant_admin: false,
+            administers_node: true,
+        };
+        let member = Rights {
+            tenant_admin: false,
+            administers_node: false,
+        };
+        assert!(may_link(tenant_admin, tenant_admin));
+        assert!(may_link(admin, admin));
+        assert!(!may_link(admin, member), "not the parent's administrator");
+        assert!(!may_link(member, admin), "not the child's administrator");
+    }
+
+    #[test]
+    fn weightings_are_percentages() {
+        assert!(is_weight_percent(0) && is_weight_percent(40) && is_weight_percent(100));
+        assert!(!is_weight_percent(-1) && !is_weight_percent(101));
+        assert!(is_weight_percent(DEFAULT_WEIGHT_PERCENT));
+    }
+
+    #[test]
+    fn refusals_come_in_order() {
+        use NodeType::{Program, Project};
+        let allowed = ParentCandidate {
+            candidate_type: Program,
+            child_type: Project,
+            descends_from_child: false,
+            already_parent: false,
+            may_link: true,
+        };
+        assert_eq!(parent_refusal(allowed), None);
+        let cases = [
+            (
+                ParentCandidate {
+                    already_parent: true,
+                    may_link: false,
+                    ..allowed
+                },
+                ParentRefusal::AlreadyParent,
+            ),
+            // A program under a project: the matrix speaks first.
+            (
+                ParentCandidate {
+                    candidate_type: Project,
+                    child_type: Program,
+                    descends_from_child: true,
+                    ..allowed
+                },
+                ParentRefusal::NotAllowed,
+            ),
+            // A sub-project of the project: a cycle.
+            (
+                ParentCandidate {
+                    candidate_type: Project,
+                    descends_from_child: true,
+                    may_link: false,
+                    ..allowed
+                },
+                ParentRefusal::Cycle,
+            ),
+            (
+                ParentCandidate {
+                    may_link: false,
+                    ..allowed
+                },
+                ParentRefusal::Forbidden,
+            ),
+        ];
+        for (candidate, refusal) in cases {
+            assert_eq!(parent_refusal(candidate), Some(refusal), "{candidate:?}");
+        }
+        assert_eq!(
+            [
+                ParentRefusal::AlreadyParent,
+                ParentRefusal::NotAllowed,
+                ParentRefusal::Cycle,
+                ParentRefusal::Forbidden
+            ]
+            .map(ParentRefusal::as_str),
+            ["already_parent", "not_allowed", "cycle", "forbidden"]
+        );
     }
 }

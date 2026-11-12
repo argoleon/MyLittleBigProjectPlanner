@@ -93,11 +93,12 @@ pub enum ErrorCode {
     ExportPending,
     NodeKeyTaken,
     NodeCycle,
+    NodeParentNotAllowed,
 }
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 54] = [
+    pub const ALL: [Self; 55] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -152,6 +153,7 @@ impl ErrorCode {
         Self::ExportPending,
         Self::NodeKeyTaken,
         Self::NodeCycle,
+        Self::NodeParentNotAllowed,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -210,6 +212,7 @@ impl ErrorCode {
             Self::ExportPending => "export.pending",
             Self::NodeKeyTaken => "node.key_taken",
             Self::NodeCycle => "node.cycle",
+            Self::NodeParentNotAllowed => "node.parent_not_allowed",
         }
     }
 
@@ -261,7 +264,8 @@ impl ErrorCode {
             | Self::AccountPlatformAdmin
             | Self::ExportPending
             | Self::NodeKeyTaken
-            | Self::NodeCycle => StatusCode::CONFLICT,
+            | Self::NodeCycle
+            | Self::NodeParentNotAllowed => StatusCode::CONFLICT,
             Self::PreconditionFailed => StatusCode::PRECONDITION_FAILED,
             Self::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -332,6 +336,7 @@ impl ErrorCode {
             Self::ExportPending => "The export is not ready yet",
             Self::NodeKeyTaken => "Another project of the organization has this key",
             Self::NodeCycle => "This link would make the node its own ancestor",
+            Self::NodeParentNotAllowed => "This type of node cannot be attached under that parent",
         }
     }
 
@@ -575,7 +580,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 54] = [
+        let expected: [(ErrorCode, u16); 55] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -630,6 +635,7 @@ mod tests {
             (ErrorCode::ExportPending, 409),
             (ErrorCode::NodeKeyTaken, 409),
             (ErrorCode::NodeCycle, 409),
+            (ErrorCode::NodeParentNotAllowed, 409),
         ];
         for (code, status) in expected {
             assert_eq!(code.status().as_u16(), status, "{}", code.as_str());

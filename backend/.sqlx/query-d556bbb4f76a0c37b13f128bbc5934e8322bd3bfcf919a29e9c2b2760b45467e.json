@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO node_edge (id, tenant_id, parent_id, child_id, weight_percent)\n            VALUES ($1, app_current_tenant(), $2, $3, $4)\n            ON CONFLICT (tenant_id, parent_id, child_id) DO UPDATE\n                SET weight_percent = EXCLUDED.weight_percent, version = node_edge.version + 1\n                WHERE node_edge.weight_percent <> EXCLUDED.weight_percent\n            RETURNING (xmax = 0) AS \"created!\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "created!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Int2"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "d556bbb4f76a0c37b13f128bbc5934e8322bd3bfcf919a29e9c2b2760b45467e"
+}

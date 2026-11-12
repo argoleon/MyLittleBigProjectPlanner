@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, node_type, name, key, description, objectives, start_date, end_date, health,\n               archived_at IS NOT NULL AS \"archived!\", confidential, version, created_at\n        FROM node\n        WHERE ($1::text IS NULL OR node_type = $1)\n          AND ($2::timestamptz IS NULL OR (created_at, id) > ($2, $3::uuid))\n        ORDER BY created_at, id\n        LIMIT $4\n        ",
+  "query": "\n        SELECT id, node_type, name, key, description, objectives, start_date, end_date, health,\n               archived_at IS NOT NULL AS \"archived!\", confidential, version, created_at\n        FROM node\n        WHERE ($1::text IS NULL OR node_type = $1)\n          AND ($2::timestamptz IS NULL OR (created_at, id) > ($2, $3::uuid))\n          AND ($5::uuid IS NULL OR EXISTS (\n              SELECT 1 FROM node_closure c\n              WHERE c.ancestor_id = node.id AND c.descendant_id = $5 AND c.ancestor_id <> $5))\n          AND ($6::uuid IS NULL OR EXISTS (\n              SELECT 1 FROM node_closure c\n              WHERE c.ancestor_id = $6 AND c.descendant_id = node.id AND c.descendant_id <> $6))\n        ORDER BY created_at, id\n        LIMIT $4\n        ",
   "describe": {
     "columns": [
       {
@@ -147,7 +147,9 @@
         "Text",
         "Timestamptz",
         "Uuid",
-        "Int8"
+        "Int8",
+        "Uuid",
+        "Uuid"
       ]
     },
     "nullable": [
@@ -166,5 +168,5 @@
       false
     ]
   },
-  "hash": "ce2b8496aee668580fa540b12f7ca4ed691097be58e1867117edee6954868061"
+  "hash": "eb1f4f7f98a32a78355a3bb4cbe8446f8fadaa782974de192f8793f53b827bd8"
 }
