@@ -137,13 +137,16 @@ test('another device is signed out from the sessions', async ({ page }) => {
   expect(sent).toEqual([{ method: 'DELETE', path: `/api/v1/me/sessions/${PHONE.id}`, body: null }]);
 });
 
-test('the personal data are exported as a JSON file', async ({ page }) => {
+test('the personal data are exported as a JSON file, dated in the organization’s time zone', async ({ page }) => {
   await mockAccount(page);
   await mockPersonalData(page);
+  // Late on the 11th in UTC, already the 12th in Paris (the organization's
+  // time zone): the file is named after the day the user lives.
+  await page.clock.setFixedTime(new Date('2026-11-11T23:30:00Z'));
   await page.goto('/account');
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export (JSON)' }).click();
-  expect((await download).suggestedFilename()).toBe('personal-data-2026-11-11.json');
+  expect((await download).suggestedFilename()).toBe('personal-data-2026-11-12.json');
   await expect(page.getByRole('status')).toHaveText('Your export is downloaded.');
 });
 
