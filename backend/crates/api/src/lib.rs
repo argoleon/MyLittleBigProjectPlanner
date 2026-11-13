@@ -7,6 +7,7 @@
 pub mod account;
 pub mod auth;
 pub mod cli;
+pub mod configs;
 pub mod correlation;
 pub mod etag;
 pub mod extract;

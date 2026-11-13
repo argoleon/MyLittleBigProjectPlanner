@@ -2504,6 +2504,176 @@
         }
       }
     },
+    "/api/v1/nodes/{id}/configuration": {
+      "get": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "Read the configuration of a project",
+        "description": "Whoever sees the project.",
+        "operationId": "getNodeConfiguration",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the project",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `name`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Its configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodeConfiguration"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such project visible to the member, or a portfolio or program",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "Move a project to another configuration",
+        "description": "Tenant admins and configuration admins, on a project they see. It uses the published version of its new configuration at once.",
+        "operationId": "setNodeConfiguration",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the project",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `name`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NodeConfigurationChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Its configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodeConfiguration"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`: `configId` `not_found`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such project visible to the member, or a portfolio or program",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`node.archived`: an archived project is read-only",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/nodes/{id}/grant-candidates": {
       "get": {
         "tags": [
@@ -3836,6 +4006,1168 @@
           },
           "428": {
             "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/project-configs": {
+      "get": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "List the project configurations",
+        "description": "Tenant admins and configuration admins. In creation order, the default configuration first; follow `nextCursor` until it is `null`.",
+        "operationId": "listProjectConfigs",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, from 1 to 200 (default 50).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "`nextCursor` of the previous page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `name`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of configurations",
+            "headers": {
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Language of `name`"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectConfigPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid `limit` or `cursor`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: neither a tenant admin nor a configuration admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "Create a project configuration",
+        "description": "Tenant admins and configuration admins. It starts with a published version 1, and no project.",
+        "operationId": "createProjectConfig",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique key of this creation, 1 to 255 visible ASCII characters",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `name`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectConfigName"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the configuration"
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "URL of the configuration"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectConfig"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`config.name_taken`, or `idempotency_key.in_flight`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`Idempotency-Key` already used for another request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/project-configs/{id}": {
+      "get": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "Read a project configuration",
+        "description": "Tenant admins and configuration admins.",
+        "operationId": "getProjectConfig",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the configuration",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "description": "ETag already held: 304 if still current",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `name`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The configuration",
+            "headers": {
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Language of `name`"
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the configuration"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectConfig"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified since the `If-None-Match` ETag"
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such configuration in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "Rename a project configuration",
+        "description": "Tenant admins and configuration admins. The name applies at once: it is no content of the configuration, which goes through its draft.",
+        "operationId": "renameProjectConfig",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the configuration",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the version being changed, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `name`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectConfigName"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The configuration",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "New version of the configuration"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectConfig"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such configuration in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`config.name_taken`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The configuration changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "Delete a project configuration",
+        "description": "Tenant admins and configuration admins. Refused for the default configuration (`config.default`) and while projects use it (`config.in_use`).",
+        "operationId": "deleteProjectConfig",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the configuration",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the configuration, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such configuration in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`config.default` or `config.in_use`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The configuration changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/project-configs/{id}/draft": {
+      "post": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "Open the draft of a project configuration",
+        "description": "Tenant admins and configuration admins. The draft starts as a copy of the published version; its admins share it. If it is open already, it is returned as it is.",
+        "operationId": "openProjectConfigDraft",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the configuration",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `name`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The configuration, with its draft",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the configuration"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectConfig"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such configuration in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "Discard the draft of a project configuration",
+        "description": "Tenant admins and configuration admins. The published version stays as it is.",
+        "operationId": "discardProjectConfigDraft",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the configuration",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the configuration, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `name`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The configuration, without draft",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "New version of the configuration"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectConfig"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such configuration in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`config.no_draft`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The configuration changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/project-configs/{id}/duplicate": {
+      "post": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "Duplicate a project configuration, or detach a project from it",
+        "description": "Tenant admins and configuration admins. The copy starts from the published version of the original (its draft stays with it). With `projectId`, that project moves to the copy: further changes of the original no longer affect it.",
+        "operationId": "duplicateProjectConfig",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the configuration to copy",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique key of this creation, 1 to 255 visible ASCII characters",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `name`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectConfigCopy"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "The copy",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the copy"
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "URL of the copy"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectConfig"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`; `projectId` `not_using` when the project uses another configuration",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such configuration, or no such project visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`config.name_taken`, `node.archived`, or `idempotency_key.in_flight`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`Idempotency-Key` already used for another request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/project-configs/{id}/projects": {
+      "get": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "List the projects using a configuration",
+        "description": "Tenant admins and configuration admins. By name, archived projects included. A project the member does not see comes veiled (`veiled: true`).",
+        "operationId": "listProjectConfigProjects",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the configuration",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Its projects",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigProjectList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such configuration in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/project-configs/{id}/publish": {
+      "post": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "Publish the draft of a project configuration",
+        "description": "Tenant admins and configuration admins. The draft becomes the published version of every project of the configuration at once; the former one is retired. Send the `version` of the publish impact the user confirmed as `If-Match`: if the configuration changed since, 412.",
+        "operationId": "publishProjectConfig",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the configuration",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the configuration the impact was read on",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `name`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The configuration, published",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "New version of the configuration"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectConfig"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such configuration in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`config.no_draft`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The configuration changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/project-configs/{id}/publish-impact": {
+      "get": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "What publishing the draft of a configuration does",
+        "description": "Tenant admins and configuration admins. The projects that get the new version, to confirm before publishing, and whether their tickets must be migrated first. A project the member does not see comes veiled.",
+        "operationId": "getProjectConfigPublishImpact",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the configuration",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The impact",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectConfigPublishImpact"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such configuration in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`config.no_draft`",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -7398,6 +8730,60 @@
           "portalPasswordEnabled": true
         }
       },
+      "ConfigProject": {
+        "type": "object",
+        "description": "A project using a configuration.",
+        "required": [
+          "id",
+          "name",
+          "key",
+          "archived"
+        ],
+        "properties": {
+          "archived": {
+            "type": "boolean",
+            "description": "Read-only until restored; it still uses the configuration."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string",
+            "example": "PLAT"
+          },
+          "name": {
+            "type": "string",
+            "example": "Identity platform"
+          }
+        }
+      },
+      "ConfigProjectItem": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ConfigProject"
+          },
+          {
+            "$ref": "#/components/schemas/VeiledProject"
+          }
+        ],
+        "description": "A project of a configuration, seen or veiled."
+      },
+      "ConfigProjectList": {
+        "type": "object",
+        "description": "The projects using a configuration, by name.",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConfigProjectItem"
+            }
+          }
+        }
+      },
       "Erasure": {
         "type": "object",
         "description": "Erasure of another account, by an administrator.",
@@ -7411,7 +8797,7 @@
       },
       "ErrorCode": {
         "type": "string",
-        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n| `invitation.invalid` | 400 | This invitation link is invalid, expired or already used |\n| `invitation.pending` | 409 | This email already has an open invitation; send it again instead |\n| `invitation.already_member` | 409 | This email already belongs to a member of the tenant |\n| `invitation.closed` | 409 | This invitation was already accepted or revoked |\n| `member.last_admin` | 409 | The tenant needs at least one active tenant admin |\n| `group.name_taken` | 409 | Another group already has this name |\n| `permission.denied` | 403 | You do not have the permission this needs |\n| `role.label_taken` | 409 | Another role already has this label |\n| `role.in_use` | 409 | Grants use this role: remove them first |\n| `account.no_password` | 409 | This account signs in through its organization: it has no password |\n| `session.current` | 409 | This is the session of the request: sign out instead |\n| `account.reauthentication_required` | 403 | Sign in again through your organization, then erase your account within 10 minutes |\n| `account.platform_admin` | 409 | A platform super admin cannot be erased: another one removes the role first |\n| `export.pending` | 409 | The export is not ready yet |\n| `node.key_taken` | 409 | Another project of the organization has this key |\n| `node.cycle` | 409 | This link would make the node its own ancestor |\n| `node.parent_not_allowed` | 409 | This type of node cannot be attached under that parent |\n| `node.grant_exists` | 409 | They already have this role on this node |\n| `node.confidential_lockout` | 409 | You would lose your own access: get a role granted on the project itself first |\n| `node.archived` | 409 | This project is archived: it is read-only until it is restored |\n| `node.active_children` | 409 | This project still has active sub-projects: archive or detach them first |\n| `node.parent_archived` | 409 | This project is under an archived project: restore that one first |\n",
+        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n| `invitation.invalid` | 400 | This invitation link is invalid, expired or already used |\n| `invitation.pending` | 409 | This email already has an open invitation; send it again instead |\n| `invitation.already_member` | 409 | This email already belongs to a member of the tenant |\n| `invitation.closed` | 409 | This invitation was already accepted or revoked |\n| `member.last_admin` | 409 | The tenant needs at least one active tenant admin |\n| `group.name_taken` | 409 | Another group already has this name |\n| `permission.denied` | 403 | You do not have the permission this needs |\n| `role.label_taken` | 409 | Another role already has this label |\n| `role.in_use` | 409 | Grants use this role: remove them first |\n| `account.no_password` | 409 | This account signs in through its organization: it has no password |\n| `session.current` | 409 | This is the session of the request: sign out instead |\n| `account.reauthentication_required` | 403 | Sign in again through your organization, then erase your account within 10 minutes |\n| `account.platform_admin` | 409 | A platform super admin cannot be erased: another one removes the role first |\n| `export.pending` | 409 | The export is not ready yet |\n| `node.key_taken` | 409 | Another project of the organization has this key |\n| `node.cycle` | 409 | This link would make the node its own ancestor |\n| `node.parent_not_allowed` | 409 | This type of node cannot be attached under that parent |\n| `node.grant_exists` | 409 | They already have this role on this node |\n| `node.confidential_lockout` | 409 | You would lose your own access: get a role granted on the project itself first |\n| `node.archived` | 409 | This project is archived: it is read-only until it is restored |\n| `node.active_children` | 409 | This project still has active sub-projects: archive or detach them first |\n| `node.parent_archived` | 409 | This project is under an archived project: restore that one first |\n| `config.name_taken` | 409 | Another project configuration already has this name |\n| `config.no_draft` | 409 | This configuration has no draft: nothing to publish or discard |\n| `config.default` | 409 | The default configuration stays: new projects get it |\n| `config.in_use` | 409 | Projects use this configuration: move them to another one first |\n",
         "enum": [
           "bad_request",
           "validation_failed",
@@ -7472,7 +8858,11 @@
           "node.confidential_lockout",
           "node.archived",
           "node.active_children",
-          "node.parent_archived"
+          "node.parent_archived",
+          "config.name_taken",
+          "config.no_draft",
+          "config.default",
+          "config.in_use"
         ]
       },
       "ExportStatus": {
@@ -8812,6 +10202,54 @@
           "confidential": true
         }
       },
+      "NodeConfiguration": {
+        "type": "object",
+        "description": "The configuration of a project.",
+        "required": [
+          "id",
+          "projectCount",
+          "isDefault"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Software development"
+          },
+          "projectCount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Projects sharing it, this one included.",
+            "example": 6
+          }
+        }
+      },
+      "NodeConfigurationChange": {
+        "type": "object",
+        "description": "The configuration a project moves to.",
+        "required": [
+          "configId"
+        ],
+        "properties": {
+          "configId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "configId": "01933b2e-7c4a-7b9e-8f3d-2a6c5e1f0b9a"
+        }
+      },
       "NodeHealth": {
         "type": "string",
         "description": "How a node stands, as its owners see it.",
@@ -9395,6 +10833,233 @@
           "status": 400,
           "title": "The request contains invalid fields",
           "type": "urn:mlbpp:problem:validation_failed"
+        }
+      },
+      "ProjectConfig": {
+        "type": "object",
+        "description": "A project configuration.",
+        "required": [
+          "id",
+          "nameTranslations",
+          "isDefault",
+          "projectCount",
+          "published",
+          "draft",
+          "version"
+        ],
+        "properties": {
+          "draft": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ProjectConfigDraft",
+                "description": "The unpublished draft, `null` when there is none."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isDefault": {
+            "type": "boolean",
+            "description": "The configuration new projects get; it cannot be deleted."
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "In the language of the request (`Accept-Language`), else the\ntenant's default, else any.",
+            "example": "Software development"
+          },
+          "nameTranslations": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "example": {
+              "en": "Software development",
+              "fr": "Développement logiciel"
+            }
+          },
+          "projectCount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Projects using it, archived ones included.",
+            "example": 6
+          },
+          "published": {
+            "$ref": "#/components/schemas/ProjectConfigPublished"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "example": 3
+          }
+        }
+      },
+      "ProjectConfigCopy": {
+        "type": "object",
+        "description": "A copy of a configuration, which a project may move to.",
+        "required": [
+          "nameTranslations"
+        ],
+        "properties": {
+          "nameTranslations": {
+            "type": "object",
+            "description": "Name of the copy, as for a new configuration.",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "projectId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "A project using the configuration, which moves to the copy: further\nchanges of the original no longer affect it."
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "nameTranslations": {
+            "en": "Software development (PLAT)",
+            "fr": "Développement logiciel (PLAT)"
+          },
+          "projectId": "01933b2e-7c4a-7b9e-8f3d-2a6c5e1f0b9a"
+        }
+      },
+      "ProjectConfigDraft": {
+        "type": "object",
+        "description": "The draft of a configuration, shared by its admins.",
+        "required": [
+          "number",
+          "changeCount",
+          "createdAt"
+        ],
+        "properties": {
+          "changeCount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Items it changed, each once however many times it was edited.",
+            "example": 2
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32",
+            "example": 3
+          }
+        }
+      },
+      "ProjectConfigName": {
+        "type": "object",
+        "description": "The name of a configuration.",
+        "required": [
+          "nameTranslations"
+        ],
+        "properties": {
+          "nameTranslations": {
+            "type": "object",
+            "description": "One name per language (`fr`, `en`), at least one; 100 characters at\nmost, unique in the tenant whatever the case.",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "nameTranslations": {
+            "en": "Software development",
+            "fr": "Développement logiciel"
+          }
+        }
+      },
+      "ProjectConfigPage": {
+        "type": "object",
+        "description": "A page of configurations.",
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectConfig"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cursor of the next page, `null` on the last page."
+          }
+        }
+      },
+      "ProjectConfigPublishImpact": {
+        "type": "object",
+        "description": "What publishing the draft does.",
+        "required": [
+          "projects",
+          "needsMigration",
+          "version"
+        ],
+        "properties": {
+          "needsMigration": {
+            "type": "boolean",
+            "description": "Whether tickets must be mapped to other types or statuses first\n(the migration wizard of L04-US08)."
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConfigProjectItem"
+            },
+            "description": "Every project that gets the new version, archived ones included."
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Version of the configuration this impact was computed on: publish\nwith it as `If-Match`, so that nothing changed in between.",
+            "example": 3
+          }
+        }
+      },
+      "ProjectConfigPublished": {
+        "type": "object",
+        "description": "The published version of a configuration, used by its projects.",
+        "required": [
+          "number",
+          "publishedAt"
+        ],
+        "properties": {
+          "number": {
+            "type": "integer",
+            "format": "int32",
+            "description": "1, then one more per publication.",
+            "example": 2
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "ReferenceItem": {
@@ -10031,6 +11696,26 @@
             "example": true
           }
         }
+      },
+      "VeiledProject": {
+        "type": "object",
+        "description": "A project the member does not see: counted, without name or detail.",
+        "required": [
+          "veiled",
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "An opaque identifier: stable, but not the project's id."
+          },
+          "veiled": {
+            "type": "boolean",
+            "description": "Always `true`: tells a veiled project from a project.",
+            "example": true
+          }
+        }
       }
     },
     "securitySchemes": {
@@ -10071,6 +11756,10 @@
     {
       "name": "hierarchy",
       "description": "Portfolios, programs and projects of the hierarchy"
+    },
+    {
+      "name": "configurations",
+      "description": "Project configurations: types, fields, workflows, screens and notifications shared by projects"
     },
     {
       "name": "authentication-settings",

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO project_config (id, tenant_id, name) VALUES ($1, app_current_tenant(), $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6218c32150817edef8794ceb75c26bf0f135803c6b3d93c6b7603d7c4169d868"
+}

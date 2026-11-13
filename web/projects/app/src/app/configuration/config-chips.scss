@@ -1,0 +1,29 @@
+:host {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--app-space-2);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--app-space-1);
+  min-height: 28px;
+  padding: 0 var(--app-space-2);
+  border-radius: var(--mat-sys-corner-small);
+  background: var(--mat-sys-surface-container-high);
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-large);
+  white-space: nowrap;
+}
+
+.default {
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+}

@@ -61,6 +61,12 @@
     "errorTitle": "Une erreur est survenue",
     "retry": "Réessayer"
   },
+  "translatable": {
+    "field": "{{label}} ({{language}})",
+    "fallback": "Langue de repli : obligatoire",
+    "optional": "Facultatif",
+    "required": "Obligatoire en {{language}}, la langue de repli."
+  },
   "auth": {
     "languages": "Langue",
     "signIn": {
@@ -157,7 +163,8 @@
       "authentication": "Authentification",
       "members": "Membres",
       "groups": "Groupes",
-      "roles": "Rôles"
+      "roles": "Rôles",
+      "configurations": "Configurations de projet"
     },
     "auth": {
       "policyTitle": "Politique d’authentification",
@@ -403,7 +410,8 @@
       "not_allowed": "Pas autorisé ici.",
       "not_found": "Introuvable.",
       "unknown_member": "Ce n’est pas un membre de l’organisation.",
-      "too_many": "Trop d’éléments."
+      "too_many": "Trop d’éléments.",
+      "not_using": "Ce projet n’utilise pas cette configuration."
     },
     "invitation": {
       "invalid": "Ce lien d’invitation est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
@@ -444,6 +452,12 @@
       "archived": "Ce projet est archivé : il est en lecture seule tant qu’il n’est pas restauré.",
       "active_children": "Ce projet a encore des sous-projets actifs : archivez-les ou détachez-les d’abord.",
       "parent_archived": "Ce projet est sous un projet archivé : restaurez celui-ci d’abord."
+    },
+    "config": {
+      "name_taken": "Une autre configuration de projet porte déjà ce nom.",
+      "no_draft": "Cette configuration n’a pas de brouillon : rien à publier ni à abandonner.",
+      "default": "La configuration par défaut reste : les nouveaux projets la reçoivent.",
+      "in_use": "Des projets utilisent cette configuration : déplacez-les d’abord vers une autre."
     }
   },
   "dialog": {
@@ -578,7 +592,8 @@
       "addChild": "Ajouter un enfant",
       "breadcrumb": "Fil d’Ariane",
       "links": "Rattachements et droits",
-      "archiving": "Archivage"
+      "archiving": "Archivage",
+      "configuration": "Configuration"
     },
     "general": {
       "name": "Nom",
@@ -773,6 +788,140 @@
       "restored": "Le projet est restauré.",
       "banner": "Projet archivé.",
       "bannerHint": "Il est en lecture seule, hors des listes actives et des agrégats."
+    }
+  },
+  "config": {
+    "default": "Par défaut",
+    "unused": "Utilisée par aucun projet",
+    "shared": {
+      "one": "Utilisée par {{count}} projet",
+      "other": "Partagée par {{count}} projets"
+    },
+    "draft": {
+      "one": "Brouillon non publié · {{count}} modification",
+      "other": "Brouillon non publié · {{count}} modifications"
+    },
+    "intro": "Une configuration de projet regroupe les types de ticket, champs, workflows, écrans et notifications des projets qui la partagent. Les nouveaux projets reçoivent celle par défaut.",
+    "add": "Nouvelle configuration",
+    "empty": "Aucune configuration de projet",
+    "emptyHint": "Créez-en une pour partager une façon de travailler entre projets.",
+    "caption": "Configurations de projet",
+    "columns": {
+      "name": "Nom",
+      "state": "État",
+      "actions": "Actions"
+    },
+    "version": "Version {{number}}",
+    "name": "Nom",
+    "delete": {
+      "of": "Supprimer {{name}}",
+      "title": "Supprimer « {{name}} » ?",
+      "message": "Aucun projet ne l’utilise. Ses versions et son brouillon sont supprimés avec elle.",
+      "confirm": "Supprimer",
+      "done": "Configuration « {{name}} » supprimée."
+    },
+    "dialog": {
+      "create": {
+        "title": "Nouvelle configuration de projet",
+        "confirm": "Créer"
+      },
+      "duplicate": {
+        "title": "Dupliquer « {{name}} »",
+        "intro": "La copie part de la version publiée de « {{name}} », sans ses projets ni son brouillon.",
+        "confirm": "Dupliquer"
+      },
+      "detach": {
+        "title": "Détacher {{project}}",
+        "intro": "{{project}} reçoit sa propre copie de « {{name}} » : les modifications suivantes de l’original ne le concernent plus.",
+        "confirm": "Détacher"
+      }
+    },
+    "page": {
+      "breadcrumb": "Fil d’Ariane",
+      "tabs": "Sections de la configuration",
+      "duplicate": "Dupliquer",
+      "publish": "Publier les modifications",
+      "upToDate": "La version {{number}} est publiée. Les modifications vont dans un brouillon jusqu’à leur publication.",
+      "projects": {
+        "one": "Projet ({{count}})",
+        "other": "Projets ({{count}})"
+      },
+      "published": {
+        "one": "La version {{number}} est publiée sur son projet.",
+        "other": "La version {{number}} est publiée sur ses {{count}} projets."
+      },
+      "discard": {
+        "action": "Abandonner le brouillon",
+        "title": "Abandonner le brouillon de « {{name}} » ?",
+        "message": "Ses modifications sont perdues. La version publiée reste telle quelle.",
+        "confirm": "Abandonner",
+        "done": "Le brouillon est abandonné."
+      }
+    },
+    "sections": {
+      "types": {
+        "tab": "Types",
+        "title": "Les types de ticket arrivent bientôt",
+        "hint": "Les types de ticket et leur hiérarchie (Epic, Story, Tâche…) seront définis ici."
+      },
+      "fields": {
+        "tab": "Champs",
+        "title": "Les champs arrivent bientôt",
+        "hint": "Les champs système et personnalisés, avec leurs règles par type et par étape, seront définis ici."
+      },
+      "workflows": {
+        "tab": "Workflows",
+        "title": "Les workflows arrivent bientôt",
+        "hint": "Les statuts et transitions de chaque type de ticket seront définis ici."
+      },
+      "screens": {
+        "tab": "Écrans",
+        "title": "Les écrans arrivent bientôt",
+        "hint": "Les écrans de création, de consultation et de transition seront définis ici."
+      },
+      "notifications": {
+        "tab": "Notifications",
+        "title": "Les notifications arrivent bientôt",
+        "hint": "Quels événements notifient qui sera défini ici."
+      }
+    },
+    "projects": {
+      "tab": "Projets",
+      "caption": "Projets utilisant cette configuration",
+      "empty": "Aucun projet n’utilise cette configuration",
+      "emptyHint": "Déplacez-y un projet depuis l’onglet Configuration de ses paramètres.",
+      "columns": {
+        "name": "Projet",
+        "state": "État",
+        "actions": "Actions"
+      },
+      "archived": "Archivé",
+      "veiled": "Projet auquel vous n’avez pas accès",
+      "detach": "Détacher",
+      "detachOf": "Détacher {{name}}",
+      "detached": "{{project}} utilise désormais sa propre configuration « {{name}} »."
+    },
+    "publishDialog": {
+      "title": "Publier « {{name}} » ?",
+      "none": "Aucun projet n’utilise encore cette configuration : la nouvelle version s’appliquera aux projets qui y seront déplacés.",
+      "intro": {
+        "one": "La nouvelle version s’applique immédiatement à ce projet :",
+        "other": "La nouvelle version s’applique immédiatement à ces {{count}} projets :"
+      },
+      "projects": "Projets concernés",
+      "migration": "Des tickets utilisent un type ou un statut que cette version retire : ils doivent d’abord être migrés.",
+      "stale": "La configuration a changé entre-temps : vérifiez à nouveau les projets, puis publiez.",
+      "confirm": "Publier"
+    },
+    "node": {
+      "title": "Configuration du projet",
+      "uses": "Ce projet utilise",
+      "hint": "Ses types de ticket, champs, workflows, écrans et notifications viennent de cette configuration.",
+      "choose": "Configuration",
+      "archived": "Un projet archivé garde sa configuration jusqu’à sa restauration.",
+      "move": "Déplacer le projet",
+      "moved": "Le projet utilise désormais « {{name}} ».",
+      "readOnly": "Les administrateurs d’organisation et de configuration la modifient."
     }
   }
 }

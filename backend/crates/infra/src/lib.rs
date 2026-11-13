@@ -6,6 +6,7 @@ pub mod aggregates;
 pub mod auth_policy;
 pub mod bootstrap;
 pub mod config;
+pub mod configs;
 pub mod credentials;
 pub mod crypto;
 pub mod db;

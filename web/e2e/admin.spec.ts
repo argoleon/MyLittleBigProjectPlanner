@@ -1,6 +1,14 @@
 import type { Page } from '@playwright/test';
 
-import { accessibilityViolations, expect, test } from './fixtures';
+import { SESSION, accessibilityViolations, expect, test } from './fixtures';
+
+// The administration is the tenant admin's (configuration admins only see the
+// project configurations). Tests that sign out route the session again after.
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/v1/auth/session', (route) =>
+    route.fulfill({ json: { ...SESSION, account: { ...SESSION.account, tenantRole: 'tenant_admin' } } }),
+  );
+});
 
 const PROVIDER = {
   id: '0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7a8c',

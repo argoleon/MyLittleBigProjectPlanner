@@ -1113,7 +1113,7 @@ describe('archiving', () => {
   it('archives the project after a confirmation that says what follows, then restores it', async () => {
     const { reply, root, tab, text, click, dialog } = await openArchiving(PROJECT, ['view', 'administer_node']);
     const tabs = Array.from(root().querySelectorAll('a[mat-tab-link]')).map((a) => text(a));
-    expect(tabs).toEqual(['General', 'Attachments and permissions', 'Archiving']);
+    expect(tabs).toEqual(['General', 'Attachments and permissions', 'Configuration', 'Archiving']);
     expect(text(tab().querySelector('h2'))).toBe('Archiving');
     expect(text(tab().querySelector('.state'))).toBe('This project is active.');
     expect(tab().querySelectorAll('.consequences li').length).toBe(4);

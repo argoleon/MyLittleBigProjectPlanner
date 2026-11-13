@@ -66,5 +66,9 @@ export const ERROR_CODE: ErrorCode[] = [
   'node.confidential_lockout',
   'node.archived',
   'node.active_children',
-  'node.parent_archived'
+  'node.parent_archived',
+  'config.name_taken',
+  'config.no_draft',
+  'config.default',
+  'config.in_use'
 ];

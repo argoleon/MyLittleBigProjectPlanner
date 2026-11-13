@@ -6,6 +6,7 @@
 pub mod account;
 pub mod aggregates;
 pub mod auth_policy;
+pub mod configuration;
 pub mod devices;
 pub mod erasure;
 pub mod grants;
