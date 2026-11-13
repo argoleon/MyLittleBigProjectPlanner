@@ -61,6 +61,12 @@
     "errorTitle": "Something went wrong",
     "retry": "Try again"
   },
+  "translatable": {
+    "field": "{{label}} ({{language}})",
+    "fallback": "Fallback language: required",
+    "optional": "Optional",
+    "required": "Required in {{language}}, the fallback language."
+  },
   "auth": {
     "languages": "Language",
     "signIn": {
@@ -157,7 +163,8 @@
       "authentication": "Authentication",
       "members": "Members",
       "groups": "Groups",
-      "roles": "Roles"
+      "roles": "Roles",
+      "configurations": "Project configurations"
     },
     "auth": {
       "policyTitle": "Authentication policy",
@@ -403,7 +410,8 @@
       "not_allowed": "Not allowed here.",
       "not_found": "Not found.",
       "unknown_member": "Not a member of the organization.",
-      "too_many": "Too many items."
+      "too_many": "Too many items.",
+      "not_using": "This project does not use this configuration."
     },
     "invitation": {
       "invalid": "This invitation link is invalid, has expired or was already used. Ask for a new one.",
@@ -444,6 +452,12 @@
       "archived": "This project is archived: it is read-only until it is restored.",
       "active_children": "This project still has active sub-projects: archive or detach them first.",
       "parent_archived": "This project is under an archived project: restore that one first."
+    },
+    "config": {
+      "name_taken": "Another project configuration already has this name.",
+      "no_draft": "This configuration has no draft: nothing to publish or discard.",
+      "default": "The default configuration stays: new projects get it.",
+      "in_use": "Projects use this configuration: move them to another one first."
     }
   },
   "dialog": {
@@ -578,7 +592,8 @@
       "addChild": "Add a child",
       "breadcrumb": "Breadcrumb",
       "links": "Attachments and permissions",
-      "archiving": "Archiving"
+      "archiving": "Archiving",
+      "configuration": "Configuration"
     },
     "general": {
       "name": "Name",
@@ -773,6 +788,140 @@
       "restored": "The project is restored.",
       "banner": "Archived project.",
       "bannerHint": "It is read-only, out of the active lists and the aggregates."
+    }
+  },
+  "config": {
+    "default": "Default",
+    "unused": "Used by no project",
+    "shared": {
+      "one": "Used by {{count}} project",
+      "other": "Shared by {{count}} projects"
+    },
+    "draft": {
+      "one": "Unpublished draft · {{count}} change",
+      "other": "Unpublished draft · {{count}} changes"
+    },
+    "intro": "A project configuration gathers the issue types, fields, workflows, screens and notifications of the projects that share it. New projects get the default one.",
+    "add": "New configuration",
+    "empty": "No project configuration",
+    "emptyHint": "Create one to share a way of working between projects.",
+    "caption": "Project configurations",
+    "columns": {
+      "name": "Name",
+      "state": "State",
+      "actions": "Actions"
+    },
+    "version": "Version {{number}}",
+    "name": "Name",
+    "delete": {
+      "of": "Delete {{name}}",
+      "title": "Delete “{{name}}”?",
+      "message": "No project uses it. Its versions and its draft are deleted with it.",
+      "confirm": "Delete",
+      "done": "Configuration “{{name}}” deleted."
+    },
+    "dialog": {
+      "create": {
+        "title": "New project configuration",
+        "confirm": "Create"
+      },
+      "duplicate": {
+        "title": "Duplicate “{{name}}”",
+        "intro": "The copy starts from the published version of “{{name}}”, without its projects or its draft.",
+        "confirm": "Duplicate"
+      },
+      "detach": {
+        "title": "Detach {{project}}",
+        "intro": "{{project}} gets its own copy of “{{name}}”: further changes to the original no longer affect it.",
+        "confirm": "Detach"
+      }
+    },
+    "page": {
+      "breadcrumb": "Breadcrumb",
+      "tabs": "Configuration sections",
+      "duplicate": "Duplicate",
+      "publish": "Publish the changes",
+      "upToDate": "Version {{number}} is published. Changes go to a draft until they are published.",
+      "projects": {
+        "one": "Project ({{count}})",
+        "other": "Projects ({{count}})"
+      },
+      "published": {
+        "one": "Version {{number}} is published to its project.",
+        "other": "Version {{number}} is published to its {{count}} projects."
+      },
+      "discard": {
+        "action": "Discard the draft",
+        "title": "Discard the draft of “{{name}}”?",
+        "message": "Its changes are lost. The published version stays as it is.",
+        "confirm": "Discard",
+        "done": "The draft is discarded."
+      }
+    },
+    "sections": {
+      "types": {
+        "tab": "Types",
+        "title": "Issue types come next",
+        "hint": "Issue types and their hierarchy (Epic, Story, Task…) will be defined here."
+      },
+      "fields": {
+        "tab": "Fields",
+        "title": "Fields come next",
+        "hint": "System and custom fields, with their rules per type and per step, will be defined here."
+      },
+      "workflows": {
+        "tab": "Workflows",
+        "title": "Workflows come next",
+        "hint": "The statuses and transitions of each issue type will be defined here."
+      },
+      "screens": {
+        "tab": "Screens",
+        "title": "Screens come next",
+        "hint": "The creation, view and transition screens will be defined here."
+      },
+      "notifications": {
+        "tab": "Notifications",
+        "title": "Notifications come next",
+        "hint": "Which events notify whom will be defined here."
+      }
+    },
+    "projects": {
+      "tab": "Projects",
+      "caption": "Projects using this configuration",
+      "empty": "No project uses this configuration",
+      "emptyHint": "Move a project to it from the Configuration tab of the project's settings.",
+      "columns": {
+        "name": "Project",
+        "state": "State",
+        "actions": "Actions"
+      },
+      "archived": "Archived",
+      "veiled": "Project you do not have access to",
+      "detach": "Detach",
+      "detachOf": "Detach {{name}}",
+      "detached": "{{project}} now uses its own configuration “{{name}}”."
+    },
+    "publishDialog": {
+      "title": "Publish “{{name}}”?",
+      "none": "No project uses this configuration yet: the new version will apply to the projects moved to it.",
+      "intro": {
+        "one": "The new version applies at once to this project:",
+        "other": "The new version applies at once to these {{count}} projects:"
+      },
+      "projects": "Projects affected",
+      "migration": "Some tickets use a type or a status this version removes: they must be migrated first.",
+      "stale": "The configuration changed in the meantime: check the projects again, then publish.",
+      "confirm": "Publish"
+    },
+    "node": {
+      "title": "Project configuration",
+      "uses": "This project uses",
+      "hint": "Its issue types, fields, workflows, screens and notifications come from this configuration.",
+      "choose": "Configuration",
+      "archived": "An archived project keeps its configuration until it is restored.",
+      "move": "Move the project",
+      "moved": "The project now uses “{{name}}”.",
+      "readOnly": "Tenant admins and configuration admins change it."
     }
   }
 }

@@ -18,6 +18,7 @@ export * from './lib/auth/auth-layout';
 export * from './lib/i18n/format';
 export * from './lib/i18n/locale.service';
 export * from './lib/i18n/pipes';
+export * from './lib/i18n/translatable';
 export * from './lib/i18n/provide-i18n';
 export * from './lib/i18n/translated-title.strategy';
 
@@ -43,3 +44,4 @@ export * from './lib/components/confirm-dialog';
 export * from './lib/components/empty-state';
 export * from './lib/components/error-state';
 export * from './lib/components/loading-state';
+export * from './lib/components/translatable-input';

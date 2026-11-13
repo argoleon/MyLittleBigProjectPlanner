@@ -1,0 +1,46 @@
+@use '../admin/admin-shared';
+
+.intro {
+  margin: 0 0 var(--app-space-2);
+  font: var(--mat-sys-body-medium);
+}
+
+.projects {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-1);
+  margin: 0 0 var(--app-space-3);
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: var(--app-space-2);
+    padding: var(--app-space-2) var(--app-space-3);
+    border-radius: var(--mat-sys-corner-small);
+    background: var(--mat-sys-surface-container);
+  }
+}
+
+.name {
+  font: var(--mat-sys-title-small);
+}
+
+.key,
+.veiled,
+.archived {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.archived {
+  margin-inline-start: auto;
+}
+
+.lock {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  color: var(--mat-sys-on-surface-variant);
+}
