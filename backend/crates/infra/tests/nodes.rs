@@ -697,3 +697,132 @@ async fn confidentiality_is_set_with_the_version_it_was_read_at() {
     assert_ne!(nodes::opaque_id(plat.id), plat.id);
     assert_ne!(nodes::opaque_id(plat.id), nodes::opaque_id(new_id()));
 }
+
+#[tokio::test]
+async fn an_archived_project_leaves_the_active_lists_until_it_is_restored() {
+    let db = TestDb::new().await;
+    let admin = admin(&db, &db.tenant_a).await;
+    let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+    let program = create(&mut tx, NodeType::Program, "IT Modernization", None, None, admin)
+        .await
+        .unwrap();
+    let plat = create(
+        &mut tx,
+        NodeType::Project,
+        "Identity platform",
+        Some("PLAT"),
+        Some(program.id),
+        admin,
+    )
+    .await
+    .unwrap();
+    let cyber = create(
+        &mut tx,
+        NodeType::Project,
+        "Cyber permissions",
+        Some("CYBP"),
+        Some(plat.id),
+        admin,
+    )
+    .await
+    .unwrap();
+    let archived_only = NodeFilter {
+        archived: true,
+        ..NodeFilter::default()
+    };
+
+    // What the project stands between.
+    let around = nodes::surroundings(&mut tx, plat.id).await.unwrap();
+    assert!(around.has_active_children && !around.has_archived_parent);
+
+    // The sub-project first, with the version it was read at.
+    let archived = nodes::set_archived(&mut tx, cyber.id, Some(&[cyber.version]), true)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(archived.archived);
+    assert_eq!(archived.version, cyber.version + 1);
+    let archived_at: Option<chrono::DateTime<chrono::Utc>> =
+        sqlx::query_scalar("SELECT archived_at FROM node WHERE id = $1")
+            .bind(cyber.id)
+            .fetch_one(&mut *tx)
+            .await
+            .unwrap();
+    assert!(archived_at.is_some());
+    assert_eq!(
+        nodes::set_archived(&mut tx, cyber.id, Some(&[cyber.version]), false)
+            .await
+            .unwrap(),
+        Err(WriteConflict::VersionMismatch)
+    );
+    assert_eq!(
+        nodes::set_archived(&mut tx, new_id(), None, true).await.unwrap(),
+        Err(WriteConflict::NotFound)
+    );
+    // Archived again: it keeps the date it was archived at.
+    nodes::set_archived(&mut tx, cyber.id, None, true)
+        .await
+        .unwrap()
+        .unwrap();
+    let again: Option<chrono::DateTime<chrono::Utc>> =
+        sqlx::query_scalar("SELECT archived_at FROM node WHERE id = $1")
+            .bind(cyber.id)
+            .fetch_one(&mut *tx)
+            .await
+            .unwrap();
+    assert_eq!(again, archived_at);
+
+    // Out of the active lists, in the archived one; out of its parent's children.
+    assert_eq!(
+        names(&mut tx, NodeFilter::default()).await,
+        ["IT Modernization", "Identity platform"]
+    );
+    assert_eq!(names(&mut tx, archived_only).await, ["Cyber permissions"]);
+    assert!(nodes::child_links(&mut tx, plat.id).await.unwrap().is_empty());
+    let around = nodes::surroundings(&mut tx, plat.id).await.unwrap();
+    assert!(!around.has_active_children);
+    let around = nodes::surroundings(&mut tx, cyber.id).await.unwrap();
+    assert!(!around.has_archived_parent);
+
+    // Its parent archived too: it shows its sub-project, archived with it.
+    nodes::set_archived(&mut tx, plat.id, None, true)
+        .await
+        .unwrap()
+        .unwrap();
+    let children: Vec<String> = nodes::child_links(&mut tx, plat.id)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|link| link.name)
+        .collect();
+    assert_eq!(children, ["Cyber permissions"]);
+    assert!(nodes::child_links(&mut tx, program.id).await.unwrap().is_empty());
+    assert!(
+        nodes::surroundings(&mut tx, cyber.id)
+            .await
+            .unwrap()
+            .has_archived_parent
+    );
+    assert_eq!(
+        names(&mut tx, archived_only).await,
+        ["Cyber permissions", "Identity platform"]
+    );
+
+    // Restored: back in the lists and under its parent.
+    let restored = nodes::set_archived(&mut tx, plat.id, None, false)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(!restored.archived);
+    assert_eq!(
+        names(&mut tx, NodeFilter::default()).await,
+        ["IT Modernization", "Identity platform"]
+    );
+    let children: Vec<String> = nodes::child_links(&mut tx, program.id)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|link| link.name)
+        .collect();
+    assert_eq!(children, ["Identity platform"]);
+}

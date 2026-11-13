@@ -25,7 +25,7 @@ A portfolio, program or project shows its planned load, consumed capacity, progr
 
 ## Keeping aggregates up to date
 
-A change that may alter aggregates calls `infra::aggregates::mark_stale` **in its own transaction**: a link added or removed, a weighting, the confidentiality of a project, its figures. The repository functions of `infra::nodes` already do it; a new kind of change (archiving, tickets, workload) must do the same.
+A change that may alter aggregates calls `infra::aggregates::mark_stale` **in its own transaction**: a link added or removed, a weighting, the confidentiality of a project, its archiving or restoring, its figures. The repository functions of `infra::nodes` already do it; a new kind of change (tickets, workload) must do the same.
 
 `mark_stale` writes the changed nodes to `node_aggregate_stale` and makes sure a `node.aggregates` job is queued for the tenant:
 

@@ -96,11 +96,14 @@ pub enum ErrorCode {
     NodeParentNotAllowed,
     NodeGrantExists,
     NodeConfidentialLockout,
+    NodeArchived,
+    NodeActiveChildren,
+    NodeParentArchived,
 }
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 57] = [
+    pub const ALL: [Self; 60] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -158,6 +161,9 @@ impl ErrorCode {
         Self::NodeParentNotAllowed,
         Self::NodeGrantExists,
         Self::NodeConfidentialLockout,
+        Self::NodeArchived,
+        Self::NodeActiveChildren,
+        Self::NodeParentArchived,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -219,6 +225,9 @@ impl ErrorCode {
             Self::NodeParentNotAllowed => "node.parent_not_allowed",
             Self::NodeGrantExists => "node.grant_exists",
             Self::NodeConfidentialLockout => "node.confidential_lockout",
+            Self::NodeArchived => "node.archived",
+            Self::NodeActiveChildren => "node.active_children",
+            Self::NodeParentArchived => "node.parent_archived",
         }
     }
 
@@ -273,7 +282,10 @@ impl ErrorCode {
             | Self::NodeCycle
             | Self::NodeParentNotAllowed
             | Self::NodeGrantExists
-            | Self::NodeConfidentialLockout => StatusCode::CONFLICT,
+            | Self::NodeConfidentialLockout
+            | Self::NodeArchived
+            | Self::NodeActiveChildren
+            | Self::NodeParentArchived => StatusCode::CONFLICT,
             Self::PreconditionFailed => StatusCode::PRECONDITION_FAILED,
             Self::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -349,6 +361,11 @@ impl ErrorCode {
             Self::NodeConfidentialLockout => {
                 "You would lose your own access: get a role granted on the project itself first"
             }
+            Self::NodeArchived => "This project is archived: it is read-only until it is restored",
+            Self::NodeActiveChildren => {
+                "This project still has active sub-projects: archive or detach them first"
+            }
+            Self::NodeParentArchived => "This project is under an archived project: restore that one first",
         }
     }
 
@@ -592,7 +609,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 57] = [
+        let expected: [(ErrorCode, u16); 60] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -650,6 +667,9 @@ mod tests {
             (ErrorCode::NodeParentNotAllowed, 409),
             (ErrorCode::NodeGrantExists, 409),
             (ErrorCode::NodeConfidentialLockout, 409),
+            (ErrorCode::NodeArchived, 409),
+            (ErrorCode::NodeActiveChildren, 409),
+            (ErrorCode::NodeParentArchived, 409),
         ];
         for (code, status) in expected {
             assert_eq!(code.status().as_u16(), status, "{}", code.as_str());

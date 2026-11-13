@@ -1,6 +1,6 @@
 //! Integration test: every erasure (L02-US09) is logged with the `audit`
-//! target, its actor and the pseudonym; so is a change of a project's
-//! confidentiality (L03-US04). One test, alone in its test binary: `tracing`
+//! target, its actor and the pseudonym; so are a change of a project's
+//! confidentiality (L03-US04), and its archiving and restoring (L03-US06). One test, alone in its test binary: `tracing`
 //! caches per process which events a subscriber wants (see `logs.rs`).
 
 #![allow(clippy::unwrap_used)]
@@ -46,7 +46,7 @@ impl Captured {
 // Current-thread runtime: the server tasks run on this thread, where the
 // capturing subscriber is installed.
 #[tokio::test(flavor = "current_thread")]
-async fn erasures_and_confidentiality_changes_are_audited_with_their_actor() {
+async fn erasures_confidentiality_and_archiving_changes_are_audited_with_their_actor() {
     let captured = Captured::default();
     let writer = captured.clone();
     let subscriber = tracing_subscriber::registry()
@@ -126,6 +126,21 @@ async fn erasures_and_confidentiality_changes_are_audited_with_their_actor() {
             .unwrap();
         assert_eq!(res.status(), 200);
     }
+    // It is archived, then restored; archived twice, audited once.
+    for archived in [true, true, false] {
+        let res = api
+            .request(
+                Method::PUT,
+                &db.tenant_a,
+                &format!("/api/v1/nodes/{project_id}/archiving"),
+            )
+            .header("if-match", "*")
+            .json(&json!({"archived": archived}))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(res.status(), 200);
+    }
 
     let audit = captured.audit();
     let event = |message: &str| {
@@ -151,6 +166,17 @@ async fn erasures_and_confidentiality_changes_are_audited_with_their_actor() {
     assert_eq!(changes[0]["actor"], admin.to_string());
     assert_eq!(changes[0]["node"], project_id);
     assert_eq!(changes[0]["confidential"], true);
+    let archiving: Vec<(&Value, &Value, &Value)> = audit
+        .iter()
+        .filter(|event| event["message"] == "node archiving changed")
+        .map(|event| (&event["actor"], &event["node"], &event["archived"]))
+        .collect();
+    let (actor, node) = (json!(admin.to_string()), json!(project_id));
+    assert_eq!(
+        archiving,
+        [(&actor, &node, &json!(true)), (&actor, &node, &json!(false))],
+        "{audit:#?}"
+    );
     // No personal data in the audit trail.
     let trail = serde_json::to_string(&audit).unwrap();
     assert!(!trail.contains(&member.email) && !trail.contains(&leaving.email));

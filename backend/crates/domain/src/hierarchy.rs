@@ -158,6 +158,50 @@ pub const fn may_be_confidential(node_type: NodeType) -> bool {
     matches!(node_type, NodeType::Project)
 }
 
+/// Whether a node of this type can be archived (specification §4): projects
+/// only.
+pub const fn may_be_archived(node_type: NodeType) -> bool {
+    matches!(node_type, NodeType::Project)
+}
+
+/// Whether a node accepts changes: an archived project is read-only. Its
+/// fields, its confidentiality, its links, its children and its tickets
+/// stay as they are until it is restored.
+pub const fn accepts_changes(archived: bool) -> bool {
+    !archived
+}
+
+/// Why a project cannot be archived or restored.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ArchivingRefusal {
+    /// It still has active sub-projects: they would stay in the active
+    /// lists without their parent.
+    ActiveChildren,
+    /// It is under an archived project: that one is restored first.
+    ArchivedParent,
+}
+
+/// What a project to archive or restore stands between.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Surroundings {
+    /// One of its children is not archived.
+    pub has_active_children: bool,
+    /// One of its parents is archived.
+    pub has_archived_parent: bool,
+}
+
+/// Why a project is not archived (`archive` true) or restored (false), if
+/// it is not: an active project is never under an archived one.
+pub const fn archiving_refusal(archive: bool, around: Surroundings) -> Option<ArchivingRefusal> {
+    if archive && around.has_active_children {
+        Some(ArchivingRefusal::ActiveChildren)
+    } else if !archive && around.has_archived_parent {
+        Some(ArchivingRefusal::ArchivedParent)
+    } else {
+        None
+    }
+}
+
 /// Whether a member links a node and a parent, changes that link's
 /// weighting or removes it: tenant admins, and the members who administer
 /// both nodes (a parent's aggregates and inherited grants change with it).
@@ -250,6 +294,37 @@ mod tests {
             .into_iter()
             .map(|e| (e.field, e.code))
             .collect()
+    }
+
+    #[test]
+    fn only_projects_are_archived_and_archived_ones_are_read_only() {
+        assert!(may_be_archived(NodeType::Project));
+        assert!(!may_be_archived(NodeType::Program) && !may_be_archived(NodeType::Portfolio));
+        assert!(accepts_changes(false));
+        assert!(!accepts_changes(true));
+    }
+
+    #[test]
+    fn an_active_project_is_never_left_under_an_archived_one() {
+        let around = |has_active_children, has_archived_parent| Surroundings {
+            has_active_children,
+            has_archived_parent,
+        };
+        // Archiving: its sub-projects first.
+        assert_eq!(archiving_refusal(true, around(false, false)), None);
+        assert_eq!(
+            archiving_refusal(true, around(true, false)),
+            Some(ArchivingRefusal::ActiveChildren)
+        );
+        // An archived sub-project is archived whatever its parent.
+        assert_eq!(archiving_refusal(true, around(false, true)), None);
+        // Restoring: its parent project first.
+        assert_eq!(archiving_refusal(false, around(false, false)), None);
+        assert_eq!(
+            archiving_refusal(false, around(false, true)),
+            Some(ArchivingRefusal::ArchivedParent)
+        );
+        assert_eq!(archiving_refusal(false, around(true, false)), None);
     }
 
     #[test]

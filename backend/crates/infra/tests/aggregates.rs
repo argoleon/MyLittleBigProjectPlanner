@@ -630,3 +630,33 @@ async fn a_tenant_of_a_thousand_projects_is_recomputed_in_well_under_a_second() 
         120_600
     );
 }
+
+#[tokio::test]
+async fn archiving_takes_a_project_out_of_its_ancestors_aggregates_and_restoring_brings_it_back() {
+    let db = TestDb::new().await;
+    let creator = admin(&db, &db.tenant_a).await;
+    let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+    let p = portfolio(&mut tx, creator).await;
+    aggregates::recompute(&mut tx).await.unwrap();
+    assert_eq!(aggregate(&mut tx, p.portfolio).await.projects, 4);
+
+    // Archived: marked stale, it leaves the aggregates of every ancestor;
+    // recomputed: the portal, Modernization and Digital.
+    nodes::set_archived(&mut tx, p.portal, None, true)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(aggregates::recompute(&mut tx).await.unwrap(), 3);
+    let top = aggregate(&mut tx, p.portfolio).await;
+    assert_eq!((top.projects, top.figures.planned_minutes), (3, 1400));
+    assert_eq!(aggregate(&mut tx, p.program_a).await.figures.open(), 42 + 37 + 18);
+
+    // Restored: counted again.
+    nodes::set_archived(&mut tx, p.portal, None, false)
+        .await
+        .unwrap()
+        .unwrap();
+    aggregates::recompute(&mut tx).await.unwrap();
+    let top = aggregate(&mut tx, p.portfolio).await;
+    assert_eq!((top.projects, top.figures.planned_minutes), (4, 2300));
+}

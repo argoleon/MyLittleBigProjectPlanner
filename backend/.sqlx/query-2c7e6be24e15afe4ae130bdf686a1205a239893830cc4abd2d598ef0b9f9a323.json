@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT c.id, c.node_type, c.name, c.key, e.weight_percent, c.confidential\n        FROM node_edge e JOIN node c ON c.id = e.child_id\n        WHERE e.parent_id = $1\n        ORDER BY c.name, c.id\n        ",
+  "query": "\n        SELECT c.id, c.node_type, c.name, c.key, e.weight_percent, c.confidential\n        FROM node_edge e JOIN node c ON c.id = e.child_id\n        WHERE e.parent_id = $1\n          AND (c.archived_at IS NULL\n               OR EXISTS (SELECT 1 FROM node p WHERE p.id = $1 AND p.archived_at IS NOT NULL))\n        ORDER BY c.name, c.id\n        ",
   "describe": {
     "columns": [
       {
@@ -84,5 +84,5 @@
       false
     ]
   },
-  "hash": "af932263540b845fd85623c8f6e5199026a2428ecf26dada7766d1565dca1299"
+  "hash": "2c7e6be24e15afe4ae130bdf686a1205a239893830cc4abd2d598ef0b9f9a323"
 }
