@@ -372,7 +372,7 @@ async fn owners_are_members_and_changes_check_the_version() {
 }
 
 /// Names of the nodes of `filter`, by name.
-async fn names(conn: &mut PgConnection, filter: NodeFilter) -> Vec<String> {
+async fn names(conn: &mut PgConnection, filter: NodeFilter<'_>) -> Vec<String> {
     let mut names: Vec<String> = nodes::list(conn, &filter, None, 200)
         .await
         .unwrap()
@@ -650,4 +650,50 @@ async fn two_links_made_at_once_cannot_close_a_cycle() {
     assert!(waiting, "the second link should wait for the first");
     first.commit().await.unwrap();
     assert_eq!(second.await.unwrap(), Err(WriteConflict::Cycle));
+}
+
+#[tokio::test]
+async fn confidentiality_is_set_with_the_version_it_was_read_at() {
+    let db = TestDb::new().await;
+    let admin = admin(&db, &db.tenant_a).await;
+    let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+    let plat = create(
+        &mut tx,
+        NodeType::Project,
+        "Identity platform",
+        Some("PLAT"),
+        None,
+        admin,
+    )
+    .await
+    .unwrap();
+    assert!(!plat.confidential);
+
+    let confidential = nodes::set_confidential(&mut tx, plat.id, Some(&[1]), true)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!((confidential.confidential, confidential.version), (true, 2));
+    assert_eq!(
+        nodes::set_confidential(&mut tx, plat.id, Some(&[1]), false)
+            .await
+            .unwrap(),
+        Err(WriteConflict::VersionMismatch)
+    );
+    assert_eq!(
+        nodes::set_confidential(&mut tx, new_id(), None, true)
+            .await
+            .unwrap(),
+        Err(WriteConflict::NotFound)
+    );
+    let open = nodes::set_confidential(&mut tx, plat.id, None, false)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!((open.confidential, open.version), (false, 3));
+
+    // The opaque id of a veiled node: stable, and not the node's.
+    assert_eq!(nodes::opaque_id(plat.id), nodes::opaque_id(plat.id));
+    assert_ne!(nodes::opaque_id(plat.id), plat.id);
+    assert_ne!(nodes::opaque_id(plat.id), nodes::opaque_id(new_id()));
 }

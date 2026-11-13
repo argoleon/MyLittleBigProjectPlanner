@@ -155,13 +155,16 @@ pub enum PermissionChange {
     /// A node got another parent, or lost one: what it inherits changed.
     ParentLinked,
     ParentUnlinked,
+    /// A node became confidential, or stopped being so: what it inherits
+    /// changed, and so did what its descendants inherit through it.
+    ConfidentialityChanged,
     /// Only the weighting of an existing link changed: aggregates, not
     /// access. (A new node needs nothing either: nothing is cached for it.)
     LinkWeightChanged,
 }
 
 impl PermissionChange {
-    pub const ALL: [Self; 12] = [
+    pub const ALL: [Self; 13] = [
         Self::GrantAdded,
         Self::GrantRemoved,
         Self::RoleChanged,
@@ -173,6 +176,7 @@ impl PermissionChange {
         Self::MemberRemoved,
         Self::ParentLinked,
         Self::ParentUnlinked,
+        Self::ConfidentialityChanged,
         Self::LinkWeightChanged,
     ];
 
@@ -270,8 +274,9 @@ mod tests {
     #[test]
     fn every_change_of_access_forgets_the_cache_a_weighting_does_not() {
         use PermissionChange::{
-            GrantAdded, GrantRemoved, GroupDeleted, GroupMemberAdded, GroupMemberRemoved, LinkWeightChanged,
-            MemberAccessChanged, MemberRemoved, ParentLinked, ParentUnlinked, RoleChanged, RoleDeleted,
+            ConfidentialityChanged, GrantAdded, GrantRemoved, GroupDeleted, GroupMemberAdded,
+            GroupMemberRemoved, LinkWeightChanged, MemberAccessChanged, MemberRemoved, ParentLinked,
+            ParentUnlinked, RoleChanged, RoleDeleted,
         };
         let expected = [
             (GrantAdded, true),
@@ -285,6 +290,7 @@ mod tests {
             (MemberRemoved, true),
             (ParentLinked, true),
             (ParentUnlinked, true),
+            (ConfidentialityChanged, true),
             (LinkWeightChanged, false),
         ];
         assert_eq!(expected.map(|(change, _)| change), PermissionChange::ALL);

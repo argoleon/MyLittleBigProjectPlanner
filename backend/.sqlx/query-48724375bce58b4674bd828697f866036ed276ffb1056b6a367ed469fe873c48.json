@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT p.id, p.node_type, p.name, p.key, e.weight_percent\n        FROM node_edge e JOIN node p ON p.id = e.parent_id\n        WHERE e.child_id = $1\n        ORDER BY p.name, p.id\n        ",
+  "query": "\n        SELECT p.id, p.node_type, p.name, p.key, e.weight_percent, p.confidential\n        FROM node_edge e JOIN node p ON p.id = e.parent_id\n        WHERE e.child_id = $1\n        ORDER BY p.name, p.id\n        ",
   "describe": {
     "columns": [
       {
@@ -57,6 +57,17 @@
             "name": "weight_percent"
           }
         }
+      },
+      {
+        "ordinal": 5,
+        "name": "confidential",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "confidential"
+          }
+        }
       }
     ],
     "parameters": {
@@ -69,8 +80,9 @@
       false,
       false,
       true,
+      false,
       false
     ]
   },
-  "hash": "666f3c8b359f3a73323c9ca7c241125edd1198c85a4edcdf73205d26ebec7892"
+  "hash": "48724375bce58b4674bd828697f866036ed276ffb1056b6a367ed469fe873c48"
 }

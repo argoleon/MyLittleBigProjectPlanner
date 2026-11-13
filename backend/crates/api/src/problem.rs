@@ -95,11 +95,12 @@ pub enum ErrorCode {
     NodeCycle,
     NodeParentNotAllowed,
     NodeGrantExists,
+    NodeConfidentialLockout,
 }
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 56] = [
+    pub const ALL: [Self; 57] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -156,6 +157,7 @@ impl ErrorCode {
         Self::NodeCycle,
         Self::NodeParentNotAllowed,
         Self::NodeGrantExists,
+        Self::NodeConfidentialLockout,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -216,6 +218,7 @@ impl ErrorCode {
             Self::NodeCycle => "node.cycle",
             Self::NodeParentNotAllowed => "node.parent_not_allowed",
             Self::NodeGrantExists => "node.grant_exists",
+            Self::NodeConfidentialLockout => "node.confidential_lockout",
         }
     }
 
@@ -269,7 +272,8 @@ impl ErrorCode {
             | Self::NodeKeyTaken
             | Self::NodeCycle
             | Self::NodeParentNotAllowed
-            | Self::NodeGrantExists => StatusCode::CONFLICT,
+            | Self::NodeGrantExists
+            | Self::NodeConfidentialLockout => StatusCode::CONFLICT,
             Self::PreconditionFailed => StatusCode::PRECONDITION_FAILED,
             Self::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -342,6 +346,9 @@ impl ErrorCode {
             Self::NodeCycle => "This link would make the node its own ancestor",
             Self::NodeParentNotAllowed => "This type of node cannot be attached under that parent",
             Self::NodeGrantExists => "They already have this role on this node",
+            Self::NodeConfidentialLockout => {
+                "You would lose your own access: get a role granted on the project itself first"
+            }
         }
     }
 
@@ -585,7 +592,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 56] = [
+        let expected: [(ErrorCode, u16); 57] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -642,6 +649,7 @@ mod tests {
             (ErrorCode::NodeCycle, 409),
             (ErrorCode::NodeParentNotAllowed, 409),
             (ErrorCode::NodeGrantExists, 409),
+            (ErrorCode::NodeConfidentialLockout, 409),
         ];
         for (code, status) in expected {
             assert_eq!(code.status().as_u16(), status, "{}", code.as_str());

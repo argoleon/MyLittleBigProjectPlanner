@@ -105,6 +105,7 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(roles::list, roles::create))
         .routes(routes!(nodes::list, nodes::create))
         .routes(routes!(nodes::read, nodes::update))
+        .routes(routes!(nodes::set_confidentiality))
         .routes(routes!(nodes::parents))
         .routes(routes!(nodes::children))
         .routes(routes!(nodes::link_parent, nodes::unlink_parent))

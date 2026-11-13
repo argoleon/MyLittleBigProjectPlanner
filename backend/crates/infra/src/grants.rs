@@ -6,7 +6,7 @@
 //! node's ancestry (through the closure table) and the grants made on it,
 //! and lets the domain decide which ones apply.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 use domain::grants::{AncestryNode, Grant, Principal, Subject, granting_nodes};
 use domain::hierarchy::NodeType;
@@ -128,6 +128,61 @@ pub async fn roles_reaching(
             .map(Uuid::from_u128)
             .collect(),
     )
+}
+
+/// The nodes a member finds in the lists of the hierarchy.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Sight {
+    /// Those they see: a role with "view" reaches them there.
+    pub visible: HashSet<Uuid>,
+    /// Confidential nodes they have no access to, under a node they see:
+    /// shown veiled (`domain::grants::Projection`).
+    pub veiled: HashSet<Uuid>,
+}
+
+/// What `account_id` sees of the hierarchy. The rule of `domain::grants`,
+/// downwards: a grant covers its node, then the children that do not block
+/// inheritance, and so on.
+pub async fn sight(conn: &mut PgConnection, account_id: Uuid) -> Result<Sight, sqlx::Error> {
+    let rows = sqlx::query!(
+        r#"
+        WITH RECURSIVE visible (id) AS (
+            SELECT g.node_id
+            FROM node_role_grant g
+            JOIN role r ON r.id = g.role_id
+            WHERE 'view' = ANY (r.permissions)
+              AND (g.account_id = $1
+                   OR g.group_id IN (SELECT gm.group_id FROM group_member gm WHERE gm.account_id = $1))
+            UNION
+            SELECT e.child_id
+            FROM visible v
+            JOIN node_edge e ON e.parent_id = v.id
+            JOIN node child ON child.id = e.child_id
+            WHERE NOT child.confidential
+        )
+        SELECT v.id AS "id!", false AS "veiled!" FROM visible v
+        UNION ALL
+        SELECT n.id, true
+        FROM node n
+        WHERE n.confidential
+          AND n.id NOT IN (SELECT id FROM visible)
+          AND EXISTS (
+              SELECT 1 FROM node_edge e
+              WHERE e.child_id = n.id AND e.parent_id IN (SELECT id FROM visible))
+        "#,
+        account_id
+    )
+    .fetch_all(conn)
+    .await?;
+    let mut sight = Sight::default();
+    for row in rows {
+        if row.veiled {
+            sight.veiled.insert(row.id);
+        } else {
+            sight.visible.insert(row.id);
+        }
+    }
+    Ok(sight)
 }
 
 /// Who a role is granted to.

@@ -16,9 +16,11 @@ use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use chrono::{Datelike, NaiveDate};
 use domain::account::TenantRole;
+use domain::grants::{Projection, locks_out, projection};
 use domain::hierarchy::{
     DEFAULT_WEIGHT_PERCENT, Health, NodeInput, NodeType, ParentCandidate, ParentRefusal, Rights,
-    is_weight_percent, may_attach, may_change, may_create, may_link, parent_refusal, validate_node,
+    is_weight_percent, may_attach, may_be_confidential, may_change, may_create, may_link, parent_refusal,
+    validate_node,
 };
 use domain::permissions::{Permission, PermissionChange};
 use domain::validation::FieldError;
@@ -187,16 +189,138 @@ pub struct LinkView {
     parents: Vec<ParentView>,
 }
 
-impl From<Link> for LinkView {
-    fn from(link: Link) -> Self {
-        Self {
-            id: link.id,
-            node_type: link.node_type.into(),
-            name: link.name,
-            key: link.key,
-            weight_percent: link.weight_percent,
-            parents: link.parents.into_iter().map(ParentView::from).collect(),
+/// The link to a node the member sees, with those of its parents they see.
+fn link_view(link: Link, sight: &Sight) -> LinkView {
+    LinkView {
+        id: link.id,
+        node_type: link.node_type.into(),
+        name: link.name,
+        key: link.key,
+        weight_percent: link.weight_percent,
+        parents: sight.refs(link.parents),
+    }
+}
+
+/// A confidential node the member has no access to, listed because they see
+/// one of its parents: its type only, without name or detail.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(as = VeiledNode)]
+pub struct VeiledView {
+    /// Always `true`: tells a veiled node from a node or a link.
+    #[schema(example = true)]
+    veiled: bool,
+    /// An opaque identifier: stable, but not the node's id, and of no use
+    /// to read it.
+    id: Uuid,
+    #[serde(rename = "type")]
+    node_type: NodeTypeView,
+    /// Those of its parents the member sees.
+    parents: Vec<ParentView>,
+}
+
+fn veiled_view(id: Uuid, node_type: NodeType, parents: Vec<NodeRef>, sight: &Sight) -> VeiledView {
+    VeiledView {
+        veiled: true,
+        id: repo::opaque_id(id),
+        node_type: node_type.into(),
+        parents: sight.refs(parents),
+    }
+}
+
+/// An item of the nodes list: a node the member sees, or a veiled one.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(untagged)]
+#[schema(as = NodeItem)]
+pub enum NodeItemView {
+    Node(Box<NodeView>),
+    Veiled(VeiledView),
+}
+
+/// A child of a node: a link to a node the member sees, or a veiled node.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(untagged)]
+#[schema(as = NodeChild)]
+pub enum ChildView {
+    Link(LinkView),
+    Veiled(VeiledView),
+}
+
+/// What the signed-in member finds of the hierarchy in lists and in the
+/// references to other nodes: everything for tenant admins; for the others,
+/// the nodes a role with "view" reaches them on, and veiled confidential
+/// ones (`infra::grants::sight`).
+#[derive(Debug)]
+pub(crate) enum Sight {
+    All,
+    Limited(infra::grants::Sight),
+}
+
+impl Sight {
+    pub(crate) async fn of(tx: &mut TenantTx) -> Result<Self, Problem> {
+        if is_tenant_admin(tx) {
+            return Ok(Self::All);
         }
+        let account = tx.account_id();
+        Ok(Self::Limited(infra::grants::sight(tx, account).await?))
+    }
+
+    pub(crate) fn sees(&self, id: Uuid) -> bool {
+        match self {
+            Self::All => true,
+            Self::Limited(sight) => sight.visible.contains(&id),
+        }
+    }
+
+    /// The nodes a list may hold, seen or veiled (`None`: all).
+    fn listed(&self) -> Option<Vec<Uuid>> {
+        match self {
+            Self::All => None,
+            Self::Limited(sight) => Some(sight.visible.union(&sight.veiled).copied().collect()),
+        }
+    }
+
+    /// Those of `refs` the member sees: no name of another node leaves.
+    pub(crate) fn refs(&self, refs: Vec<NodeRef>) -> Vec<ParentView> {
+        refs.into_iter()
+            .filter(|node| self.sees(node.id))
+            .map(ParentView::from)
+            .collect()
+    }
+
+    /// How a node of `parents` shows to the member.
+    fn projection(&self, id: Uuid, confidential: bool, parents: &[NodeRef]) -> Projection {
+        let sees_a_parent = parents.iter().any(|parent| self.sees(parent.id));
+        projection(self.sees(id), confidential, sees_a_parent)
+    }
+}
+
+/// `node` as it shows in the list: whole, veiled, or not at all.
+fn node_item(node: Node, sight: &Sight) -> Option<NodeItemView> {
+    match sight.projection(node.id, node.confidential, &node.parents) {
+        Projection::Full => Some(NodeItemView::Node(Box::new(node_view(node, sight)))),
+        Projection::Veiled => Some(NodeItemView::Veiled(veiled_view(
+            node.id,
+            node.node_type,
+            node.parents,
+            sight,
+        ))),
+        Projection::Hidden => None,
+    }
+}
+
+/// `link`, a child of a node the member sees, as it shows to them.
+fn child_view(link: Link, sight: &Sight) -> Option<ChildView> {
+    // They see the parent whose children these are.
+    match projection(sight.sees(link.id), link.confidential, true) {
+        Projection::Full => Some(ChildView::Link(link_view(link, sight))),
+        Projection::Veiled => Some(ChildView::Veiled(veiled_view(
+            link.id,
+            link.node_type,
+            link.parents,
+            sight,
+        ))),
+        Projection::Hidden => None,
     }
 }
 
@@ -270,39 +394,48 @@ pub struct CandidateParams {
     pub limit: Option<usize>,
 }
 
-impl From<Node> for NodeView {
-    fn from(node: Node) -> Self {
-        Self {
-            id: node.id,
-            node_type: node.node_type.into(),
-            name: node.name,
-            key: node.key,
-            description: node.description,
-            objectives: node.objectives,
-            start_date: node.start_date,
-            end_date: node.end_date,
-            health: node.health.into(),
-            archived: node.archived,
-            confidential: node.confidential,
-            owners: node
-                .owners
-                .into_iter()
-                .map(|o| OwnerView {
-                    account_id: o.account_id,
-                    display_name: o.display_name,
-                })
-                .collect(),
-            parents: node.parents.into_iter().map(ParentView::from).collect(),
-            version: node.version,
-        }
+/// A node the member sees, with those of its parents they see.
+pub(crate) fn node_view(node: Node, sight: &Sight) -> NodeView {
+    NodeView {
+        id: node.id,
+        node_type: node.node_type.into(),
+        name: node.name,
+        key: node.key,
+        description: node.description,
+        objectives: node.objectives,
+        start_date: node.start_date,
+        end_date: node.end_date,
+        health: node.health.into(),
+        archived: node.archived,
+        confidential: node.confidential,
+        owners: node
+            .owners
+            .into_iter()
+            .map(|o| OwnerView {
+                account_id: o.account_id,
+                display_name: o.display_name,
+            })
+            .collect(),
+        parents: sight.refs(node.parents),
+        version: node.version,
     }
+}
+
+/// Whether a node is confidential.
+#[derive(Debug, Clone, Copy, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[schema(as = NodeConfidentiality, example = json!({"confidential": true}))]
+pub struct ConfidentialityBody {
+    /// `true`: only the roles granted on the node itself give access to it.
+    confidential: bool,
 }
 
 /// A page of nodes.
 #[derive(Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct NodePage {
-    items: Vec<NodeView>,
+    /// The nodes the member sees, and the veiled ones (`veiled: true`).
+    items: Vec<NodeItemView>,
     /// Cursor of the next page, `null` on the last page.
     #[schema(required = true)]
     next_cursor: Option<String>,
@@ -469,7 +602,9 @@ fn with_etag(mut response: Response, version: i64) -> Response {
     summary = "List the portfolios, programs and projects",
     description = "In creation order; follow `nextCursor` until it is `null`. Only the nodes the \
                    member sees: all of them for tenant admins; for the others, those where a role \
-                   with `view` reaches them, directly, through a group, or inherited.",
+                   with `view` reaches them, directly, through a group, or inherited. A \
+                   confidential node they have no access to, under a node they see, comes \
+                   veiled (`veiled: true`): its type only, without name or detail.",
     params(NodeListParams),
     responses(
         (status = 200, description = "A page of nodes", body = NodePage),
@@ -486,18 +621,24 @@ pub async fn list(
         cursor: params.cursor,
     }
     .resolve()?;
+    // Tenant admins see every node; the others, those where a role with
+    // "view" reaches them, and the confidential ones under them, veiled.
+    let sight = Sight::of(&mut tx).await?;
+    let listed = sight.listed();
     let filter = NodeFilter {
         node_type: params.node_type.map(NodeType::from),
         ancestor_of: params.ancestor_of,
         descendant_of: params.descendant_of,
-        // Tenant admins see every node; the others, those where a role with
-        // "view" reaches them.
-        visible_to: (!is_tenant_admin(&tx)).then(|| tx.account_id()),
+        within: listed.as_deref(),
     };
     let page = repo::list(&mut tx, &filter, after, limit).await?;
     tx.commit().await?;
     Ok(ApiJson(NodePage {
-        items: page.items.into_iter().map(NodeView::from).collect(),
+        items: page
+            .items
+            .into_iter()
+            .filter_map(|node| node_item(node, &sight))
+            .collect(),
         next_cursor: page.next.map(encode_cursor),
     }))
 }
@@ -603,10 +744,11 @@ pub async fn create(
         "node created"
     );
     let (id, version) = (node.id, node.version);
+    let sight = Sight::of(&mut tx).await?;
     let response = idempotency::created(
         &mut tx,
         key.as_deref(),
-        &NodeView::from(node),
+        &node_view(node, &sight),
         format!("{PATH}/{id}"),
         version,
     )
@@ -651,12 +793,13 @@ pub async fn read(
     let node = node
         .filter(|_| visible)
         .ok_or(Problem::new(ErrorCode::NotFound))?;
+    let sight = Sight::of(&mut tx).await?;
     tx.commit().await?;
     let version = node.version;
     let response = if if_none_match(&headers, version) {
         StatusCode::NOT_MODIFIED.into_response()
     } else {
-        ApiJson(NodeView::from(node)).into_response()
+        ApiJson(node_view(node, &sight)).into_response()
     };
     Ok(with_etag(response, version))
 }
@@ -714,9 +857,98 @@ pub async fn update(
         .await?
         .map_err(conflict_problem)?;
     tracing::info!(target: "audit", actor = %tx.account_id(), node = %id, "node changed");
+    let sight = Sight::of(&mut tx).await?;
     tx.commit().await?;
     let version = node.version;
-    Ok(with_etag(ApiJson(NodeView::from(node)).into_response(), version))
+    Ok(with_etag(
+        ApiJson(node_view(node, &sight)).into_response(),
+        version,
+    ))
+}
+
+/// `PUT /api/v1/nodes/{id}/confidentiality`: requires `If-Match`.
+#[utoipa::path(
+    put,
+    path = "/nodes/{id}/confidentiality",
+    tag = TAG,
+    operation_id = "setNodeConfidentiality",
+    summary = "Make a project confidential, or open it again",
+    description = "A confidential project blocks inherited access: only the roles granted on the \
+                   project itself reach it, and they still apply below it. Those who see one of \
+                   its parents find it veiled in the lists. Projects only. Tenant admins, and the \
+                   members who administer the project; the latter must keep that role from a \
+                   grant made on the project itself, so that they do not shut themselves out. \
+                   Applies from the next request.",
+    params(
+        ("id" = Uuid, Path, description = "Id of the node"),
+        ("If-Match" = String, Header, description = "ETag of the version being changed, or `*`"),
+    ),
+    request_body = ConfidentialityBody,
+    responses(
+        (status = 200, description = "The node", body = NodeView, headers(
+            ("ETag" = String, description = "New version of the node"),
+        )),
+        (status = 400, description = "`validation_failed`: `confidential` `not_allowed` on a portfolio or a program", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 403, description = "`forbidden`: may not change it, or `csrf.invalid`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 404, description = "No such node in this tenant, or not visible to the member", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 409, description = "`node.confidential_lockout`: the member would lose their own access", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 412, description = "The node changed since this ETag", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 428, description = "`If-Match` is missing", body = ProblemBody, content_type = PROBLEM_JSON),
+    )
+)]
+pub async fn set_confidentiality(
+    State(state): State<AppState>,
+    mut tx: TenantTx,
+    headers: HeaderMap,
+    ApiPath(id): ApiPath<Uuid>,
+    ApiJson(body): ApiJson<ConfidentialityBody>,
+) -> Result<Response, Problem> {
+    let if_match = require_if_match(&headers)?;
+    let current = visible_node(&state, &mut tx, id, "no such node").await?;
+    if !may_change(rights(&state, &mut tx, id).await?) {
+        return Err(Problem::new(ErrorCode::Forbidden));
+    }
+    if body.confidential && !may_be_confidential(current.node_type) {
+        return Err(Problem::validation(vec![FieldError::new(
+            "confidential",
+            "not_allowed",
+        )]));
+    }
+    let node = repo::set_confidential(&mut tx, id, if_match.versions(), body.confidential)
+        .await?
+        .map_err(conflict_problem)?;
+    if body.confidential && !is_tenant_admin(&tx) {
+        // Inherited roles stop at the node from now on: what is left to the
+        // member comes from the grants made on it.
+        let account = tx.account_id();
+        let roles = infra::grants::roles_reaching(&mut tx, account, id).await?;
+        let direct = infra::roles::permissions_of(&mut tx, &roles).await?;
+        if locks_out(false, direct) {
+            return Err(Problem::new(ErrorCode::NodeConfidentialLockout));
+        }
+    }
+    let changed = current.confidential != body.confidential;
+    if changed {
+        tracing::info!(
+            target: "audit",
+            actor = %tx.account_id(),
+            node = %id,
+            confidential = body.confidential,
+            "node confidentiality changed"
+        );
+    }
+    let sight = Sight::of(&mut tx).await?;
+    let tenant = tx.tenant_id();
+    tx.commit().await?;
+    if changed {
+        permissions::changed(&state, tenant, PermissionChange::ConfidentialityChanged).await;
+    }
+    let version = node.version;
+    Ok(with_etag(
+        ApiJson(node_view(node, &sight)).into_response(),
+        version,
+    ))
 }
 
 /// The node `id` if the signed-in member sees it, else 404 (`what` names it
@@ -734,21 +966,6 @@ pub(crate) async fn visible_node(
     } else {
         Err(not_found())
     }
-}
-
-/// Only the links to nodes the signed-in member sees.
-async fn visible_links(
-    state: &AppState,
-    tx: &mut TenantTx,
-    links: Vec<Link>,
-) -> Result<Vec<LinkView>, Problem> {
-    let mut views = Vec::with_capacity(links.len());
-    for link in links {
-        if sees(state, tx, link.id).await? {
-            views.push(LinkView::from(link));
-        }
-    }
-    Ok(views)
 }
 
 fn link_problem(conflict: WriteConflict) -> Problem {
@@ -782,9 +999,15 @@ pub async fn parents(
 ) -> Result<ApiJson<Vec<LinkView>>, Problem> {
     visible_node(&state, &mut tx, id, "no such node").await?;
     let links = repo::parent_links(&mut tx, id).await?;
-    let views = visible_links(&state, &mut tx, links).await?;
+    let sight = Sight::of(&mut tx).await?;
     tx.commit().await?;
-    Ok(ApiJson(views))
+    Ok(ApiJson(
+        links
+            .into_iter()
+            .filter(|link| sight.sees(link.id))
+            .map(|link| link_view(link, &sight))
+            .collect(),
+    ))
 }
 
 /// `GET /api/v1/nodes/{id}/children`.
@@ -794,11 +1017,12 @@ pub async fn parents(
     tag = TAG,
     operation_id = "listNodeChildren",
     summary = "List the children of a node",
-    description = "By name, each with the weighting of its link; only the children the member sees. \
-                   Deeper descendants: `GET /nodes?descendantOf=`.",
+    description = "By name, each with the weighting of its link. A confidential child the member \
+                   has no access to comes veiled (`veiled: true`): its type only, without name or \
+                   detail. Deeper descendants: `GET /nodes?descendantOf=`.",
     params(("id" = Uuid, Path, description = "Id of the node")),
     responses(
-        (status = 200, description = "The children", body = Vec<LinkView>),
+        (status = 200, description = "The children", body = Vec<ChildView>),
         (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 404, description = "No such node in this tenant, or not visible to the member", body = ProblemBody, content_type = PROBLEM_JSON),
     )
@@ -807,12 +1031,17 @@ pub async fn children(
     State(state): State<AppState>,
     mut tx: TenantTx,
     ApiPath(id): ApiPath<Uuid>,
-) -> Result<ApiJson<Vec<LinkView>>, Problem> {
+) -> Result<ApiJson<Vec<ChildView>>, Problem> {
     visible_node(&state, &mut tx, id, "no such node").await?;
     let links = repo::child_links(&mut tx, id).await?;
-    let views = visible_links(&state, &mut tx, links).await?;
+    let sight = Sight::of(&mut tx).await?;
     tx.commit().await?;
-    Ok(ApiJson(views))
+    Ok(ApiJson(
+        links
+            .into_iter()
+            .filter_map(|link| child_view(link, &sight))
+            .collect(),
+    ))
 }
 
 /// `PUT /api/v1/nodes/{id}/parents/{parentId}`.
@@ -875,13 +1104,14 @@ pub async fn link_parent(
             "node parent linked"
         );
     }
+    let sight = Sight::of(&mut tx).await?;
     let view = LinkView {
         id: parent.id,
         node_type: parent.node_type.into(),
         name: parent.name,
         key: parent.key,
         weight_percent: body.weight_percent,
-        parents: parent.parents.into_iter().map(ParentView::from).collect(),
+        parents: sight.refs(parent.parents),
     };
     let tenant = tx.tenant_id();
     tx.commit().await?;
@@ -972,9 +1202,12 @@ pub async fn parent_candidates(
     let child_rights = rights(&state, &mut tx, id).await?;
     let search = params.search.as_deref().map(str::trim).filter(|s| !s.is_empty());
     let candidates = repo::parent_candidates(&mut tx, id, search, limit).await?;
+    let sight = Sight::of(&mut tx).await?;
     let mut views = Vec::with_capacity(candidates.len());
     for candidate in candidates {
-        if !sees(&state, &mut tx, candidate.id).await? {
+        // Only the nodes they see: a confidential one out of reach is no
+        // candidate, and is not named.
+        if !sight.sees(candidate.id) {
             continue;
         }
         let parent_rights = rights(&state, &mut tx, candidate.id).await?;
@@ -982,13 +1215,19 @@ pub async fn parent_candidates(
             candidate,
             child.node_type,
             may_link(child_rights, parent_rights),
+            &sight,
         ));
     }
     tx.commit().await?;
     Ok(ApiJson(views))
 }
 
-fn candidate_view(candidate: Candidate, child_type: NodeType, may_link: bool) -> CandidateView {
+fn candidate_view(
+    candidate: Candidate,
+    child_type: NodeType,
+    may_link: bool,
+    sight: &Sight,
+) -> CandidateView {
     let refusal = parent_refusal(ParentCandidate {
         candidate_type: candidate.node_type,
         child_type,
@@ -1001,7 +1240,7 @@ fn candidate_view(candidate: Candidate, child_type: NodeType, may_link: bool) ->
         node_type: candidate.node_type.into(),
         name: candidate.name,
         key: candidate.key,
-        parents: candidate.parents.into_iter().map(ParentView::from).collect(),
+        parents: sight.refs(candidate.parents),
         refusal: refusal.map(RefusalView::from),
     }
 }
@@ -1039,7 +1278,7 @@ mod tests {
             descends_from_child: true,
             already_parent: false,
         };
-        let view = candidate_view(candidate.clone(), NodeType::Project, true);
+        let view = candidate_view(candidate.clone(), NodeType::Project, true, &Sight::All);
         assert_eq!(view.refusal, Some(RefusalView::Cycle));
         let json = serde_json::to_value(&view).unwrap_or_default();
         assert_eq!(json["refusal"], "cycle");
@@ -1047,9 +1286,149 @@ mod tests {
             descends_from_child: false,
             ..candidate
         };
-        let view = candidate_view(free, NodeType::Project, true);
+        let view = candidate_view(free, NodeType::Project, true, &Sight::All);
         let json = serde_json::to_value(&view).unwrap_or_default();
         assert_eq!(json["refusal"], serde_json::Value::Null);
+    }
+
+    const PORTFOLIO: Uuid = Uuid::from_u128(1);
+    const PROGRAM: Uuid = Uuid::from_u128(2);
+    const PLAT: Uuid = Uuid::from_u128(3);
+
+    fn node_ref(id: Uuid, node_type: NodeType, name: &str) -> NodeRef {
+        NodeRef {
+            id,
+            node_type,
+            name: name.to_owned(),
+        }
+    }
+
+    /// The confidential project PLAT, under a portfolio and a program.
+    fn plat() -> Node {
+        Node {
+            id: PLAT,
+            node_type: NodeType::Project,
+            name: "Identity platform".to_owned(),
+            key: Some("PLAT".to_owned()),
+            description: "The secret plan".to_owned(),
+            objectives: "Ship in March".to_owned(),
+            start_date: NaiveDate::from_ymd_opt(2026, 1, 5),
+            end_date: None,
+            health: Health::AtRisk,
+            archived: false,
+            confidential: true,
+            owners: vec![infra::nodes::Owner {
+                account_id: Uuid::from_u128(9),
+                display_name: "Camille Martin".to_owned(),
+            }],
+            parents: vec![
+                node_ref(PORTFOLIO, NodeType::Portfolio, "Digital"),
+                node_ref(PROGRAM, NodeType::Program, "Classified program"),
+            ],
+            version: 4,
+            created_at: chrono::DateTime::UNIX_EPOCH,
+        }
+    }
+
+    /// A member who sees `visible`.
+    fn sight(visible: &[Uuid]) -> Sight {
+        Sight::Limited(infra::grants::Sight {
+            visible: visible.iter().copied().collect(),
+            veiled: [PLAT].into_iter().collect(),
+        })
+    }
+
+    #[test]
+    fn a_veiled_node_shows_its_type_and_nothing_else() {
+        // The member sees the portfolio, neither the project nor the program.
+        let item = node_item(plat(), &sight(&[PORTFOLIO]));
+        let json = serde_json::to_value(&item).unwrap_or_default();
+        assert_eq!(
+            json,
+            serde_json::json!({
+                "veiled": true,
+                "id": repo::opaque_id(PLAT),
+                "type": "project",
+                "parents": [{"id": PORTFOLIO, "type": "portfolio", "name": "Digital"}],
+            })
+        );
+        // No name, key, text, owner, date nor id of the project or of the
+        // parent they do not see leaves.
+        let text = json.to_string();
+        for secret in [
+            "Identity platform",
+            "PLAT",
+            "secret plan",
+            "March",
+            "Camille",
+            "Classified",
+            "2026",
+            &PLAT.to_string(),
+            &PROGRAM.to_string(),
+        ] {
+            assert!(!text.contains(secret), "{secret} in {text}");
+        }
+        // The opaque id is stable, and another node has another one.
+        assert_eq!(repo::opaque_id(PLAT), repo::opaque_id(PLAT));
+        assert_ne!(repo::opaque_id(PLAT), repo::opaque_id(PROGRAM));
+    }
+
+    #[test]
+    fn a_node_shows_whole_to_those_who_see_it_and_not_at_all_without_a_parent_in_sight() {
+        // A direct member: the whole node, with the parents they see only.
+        let item = node_item(plat(), &sight(&[PLAT, PORTFOLIO]));
+        let json = serde_json::to_value(&item).unwrap_or_default();
+        assert_eq!(
+            (&json["name"], &json["confidential"], &json["id"]),
+            (
+                &"Identity platform".into(),
+                &true.into(),
+                &PLAT.to_string().into()
+            )
+        );
+        assert_eq!(
+            json["parents"],
+            serde_json::json!([{"id": PORTFOLIO, "type": "portfolio", "name": "Digital"}])
+        );
+        assert!(json.get("veiled").is_none());
+        // Tenant admins see everything.
+        let json = serde_json::to_value(node_item(plat(), &Sight::All)).unwrap_or_default();
+        assert_eq!(json["parents"].as_array().map(Vec::len), Some(2));
+        // No parent in sight: not even veiled.
+        assert!(node_item(plat(), &sight(&[])).is_none());
+        // Not confidential and out of reach: simply not theirs.
+        let open = Node {
+            confidential: false,
+            ..plat()
+        };
+        assert!(node_item(open, &sight(&[PORTFOLIO])).is_none());
+    }
+
+    #[test]
+    fn a_confidential_child_out_of_reach_comes_veiled() {
+        let link = Link {
+            id: PLAT,
+            node_type: NodeType::Project,
+            name: "Identity platform".to_owned(),
+            key: Some("PLAT".to_owned()),
+            weight_percent: 40,
+            confidential: true,
+            parents: vec![node_ref(PORTFOLIO, NodeType::Portfolio, "Digital")],
+        };
+        let veiled = serde_json::to_value(child_view(link.clone(), &sight(&[PORTFOLIO]))).unwrap_or_default();
+        assert_eq!(
+            (&veiled["veiled"], &veiled["type"]),
+            (&true.into(), &"project".into())
+        );
+        let text = veiled.to_string();
+        assert!(!text.contains("Identity") && !text.contains("PLAT"), "{text}");
+        assert!(veiled.get("weightPercent").is_none() && veiled.get("name").is_none());
+        // To a member of the project: the link, with its weighting.
+        let seen = serde_json::to_value(child_view(link, &sight(&[PORTFOLIO, PLAT]))).unwrap_or_default();
+        assert_eq!(
+            (&seen["name"], &seen["weightPercent"]),
+            (&"Identity platform".into(), &40.into())
+        );
     }
 
     #[test]
