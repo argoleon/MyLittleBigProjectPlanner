@@ -309,6 +309,8 @@ pub struct NodeFilter<'a> {
     /// Only these nodes: those a member sees or sees veiled
     /// (`crate::grants::sight`; `None`: all, for tenant admins).
     pub within: Option<&'a [Uuid]>,
+    /// Archived nodes only; otherwise, active ones only.
+    pub archived: bool,
 }
 
 /// One page of the nodes of `filter`, in creation order.
@@ -334,6 +336,7 @@ pub async fn list(
               SELECT 1 FROM node_closure c
               WHERE c.ancestor_id = $6 AND c.descendant_id = node.id AND c.descendant_id <> $6))
           AND ($7::uuid[] IS NULL OR node.id = ANY($7))
+          AND (archived_at IS NOT NULL) = $8
         ORDER BY created_at, id
         LIMIT $4
         "#,
@@ -343,7 +346,8 @@ pub async fn list(
         fetch,
         filter.ancestor_of,
         filter.descendant_of,
-        filter.within
+        filter.within,
+        filter.archived
     )
     .fetch_all(&mut *conn)
     .await?;
@@ -437,6 +441,70 @@ pub async fn set_confidential(
     find(conn, id)
         .await
         .map(|node| node.ok_or(WriteConflict::NotFound))
+}
+
+/// Archives the node or restores it, if its version is one of
+/// `expected_versions` (`None`: any), then reads it. Archiving an archived
+/// node keeps the date it was archived at.
+pub async fn set_archived(
+    conn: &mut PgConnection,
+    id: Uuid,
+    expected_versions: Option<&[i64]>,
+    archived: bool,
+) -> WriteResult<Node> {
+    let updated = sqlx::query_scalar!(
+        r#"
+        UPDATE node
+        SET archived_at = CASE WHEN $3 THEN coalesce(archived_at, now()) END, version = version + 1
+        WHERE id = $1 AND ($2::bigint[] IS NULL OR version = ANY($2))
+        RETURNING id
+        "#,
+        id,
+        expected_versions,
+        archived
+    )
+    .fetch_optional(&mut *conn)
+    .await?;
+    if updated.is_none() {
+        return Ok(Err(if exists(conn, id).await? {
+            WriteConflict::VersionMismatch
+        } else {
+            WriteConflict::NotFound
+        }));
+    }
+    // It leaves the aggregates of its ancestors, or comes back to them.
+    crate::aggregates::mark_stale(conn, &[id]).await?;
+    find(conn, id)
+        .await
+        .map(|node| node.ok_or(WriteConflict::NotFound))
+}
+
+/// What the node `id` stands between, for its archiving: whether one of its
+/// children is active, and whether one of its parents is archived.
+pub async fn surroundings(
+    conn: &mut PgConnection,
+    id: Uuid,
+) -> Result<domain::hierarchy::Surroundings, sqlx::Error> {
+    let row = sqlx::query!(
+        r#"
+        SELECT
+            EXISTS (
+                SELECT 1 FROM node_edge e JOIN node c ON c.id = e.child_id
+                WHERE e.parent_id = $1 AND c.archived_at IS NULL
+            ) AS "has_active_children!",
+            EXISTS (
+                SELECT 1 FROM node_edge e JOIN node p ON p.id = e.parent_id
+                WHERE e.child_id = $1 AND p.archived_at IS NOT NULL
+            ) AS "has_archived_parent!"
+        "#,
+        id
+    )
+    .fetch_one(conn)
+    .await?;
+    Ok(domain::hierarchy::Surroundings {
+        has_active_children: row.has_active_children,
+        has_archived_parent: row.has_archived_parent,
+    })
 }
 
 /// An identifier standing for the node `id` where it shows veiled: stable,
@@ -657,7 +725,8 @@ pub async fn parent_links(conn: &mut PgConnection, id: Uuid) -> Result<Vec<Link>
     links_with_parents(conn, rows).await
 }
 
-/// The children of `id`, by name, with the weighting of each link.
+/// The active children of `id`, by name, with the weighting of each link.
+/// An archived project keeps showing its sub-projects, archived with it.
 pub async fn child_links(conn: &mut PgConnection, id: Uuid) -> Result<Vec<Link>, sqlx::Error> {
     let rows = sqlx::query_as!(
         LinkRow,
@@ -665,6 +734,8 @@ pub async fn child_links(conn: &mut PgConnection, id: Uuid) -> Result<Vec<Link>,
         SELECT c.id, c.node_type, c.name, c.key, e.weight_percent, c.confidential
         FROM node_edge e JOIN node c ON c.id = e.child_id
         WHERE e.parent_id = $1
+          AND (c.archived_at IS NULL
+               OR EXISTS (SELECT 1 FROM node p WHERE p.id = $1 AND p.archived_at IS NOT NULL))
         ORDER BY c.name, c.id
         "#,
         id

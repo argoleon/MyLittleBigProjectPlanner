@@ -15,6 +15,9 @@
  *   worker computes the indicators within seconds: a project under two
  *   programs counts once at the portfolio; a confidential project still
  *   counts for those who do not see it.
+ * - Archiving (L03-US06): an archived project leaves the tree and the
+ *   portfolio's indicators, shows in the archived list, read-only, and
+ *   comes back once restored.
  *
  * The tests share the member: they run one after the other.
  *
@@ -307,4 +310,57 @@ test('a confidential project closes to those above it, who find it veiled', asyn
 
   await admin.context().close();
   await viewer.context().close();
+});
+
+test('an archived project leaves the tree and the indicators, read-only, until it is restored', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const run = Date.now().toString(36).toUpperCase().slice(-6);
+  const [portfolio, project] = [`Archive ${run}`, `Done ${run}`];
+
+  const admin = await signIn(browser, adminEmail!, adminSecret!);
+  await admin.goto('/portfolios');
+  await admin.getByRole('button', { name: 'New node' }).click();
+  await createIn(admin, 'Portfolio', portfolio);
+  await addChild(admin, 'Project', project, `D${run}`);
+  const projectUrl = admin.url().replace(/\/general$/, '');
+  await admin.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('link', { name: portfolio }).click();
+  // On the portfolio's view before its address is read.
+  await expect(admin.getByRole('heading', { level: 1 })).toHaveText(portfolio);
+  const portfolioUrl = admin.url();
+  await expectIndicator(admin, '1 distinct project');
+
+  // Archived after the confirmation.
+  await admin.goto(`${projectUrl}/archiving`);
+  await admin.getByRole('button', { name: 'Archive the project' }).click();
+  const dialog = admin.getByRole('dialog', { name: `Archive ${project}?` });
+  await dialog.getByRole('button', { name: 'Archive the project' }).click();
+  await expect(admin.getByRole('status')).toHaveText('The project is archived.');
+  await expect(admin.getByText('Archived project.')).toBeVisible();
+  expect(await accessibilityViolations(admin), 'archived project').toEqual([]);
+  // Read-only.
+  await admin.getByRole('tab', { name: 'General' }).click();
+  await expect(admin.getByLabel('Name')).toBeDisabled();
+  await expect(admin.getByRole('button', { name: 'Save' })).toHaveCount(0);
+
+  // Out of the tree and of the indicators; in the archived list.
+  await admin.goto(portfolioUrl);
+  await expectIndicator(admin, '0 distinct projects');
+  await expect(admin.getByRole('link', { name: project })).toHaveCount(0);
+  await admin.goto('/portfolios');
+  await admin.getByRole('radio', { name: 'Archived' }).click();
+  await expect(admin.getByRole('link', { name: project })).toBeVisible();
+
+  // Restored: back in the tree and counted again.
+  await admin.getByRole('link', { name: project }).click();
+  await admin.getByRole('link', { name: 'Settings', exact: true }).click();
+  await admin.getByRole('tab', { name: 'Archiving' }).click();
+  await admin.getByRole('button', { name: 'Restore the project' }).click();
+  await admin.getByRole('dialog').getByRole('button', { name: 'Restore the project' }).click();
+  await expect(admin.getByRole('status')).toHaveText('The project is restored.');
+  await expect(admin.getByText('Archived project.')).toHaveCount(0);
+  await admin.goto(portfolioUrl);
+  await expectIndicator(admin, '1 distinct project');
+  await expect(admin.getByRole('link', { name: project })).toBeVisible();
+
+  await admin.context().close();
 });

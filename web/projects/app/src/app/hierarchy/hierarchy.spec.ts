@@ -1,9 +1,10 @@
 /**
- * Integration tests of the hierarchy screens (L03-US01 to US05): the
+ * Integration tests of the hierarchy screens (L03-US01 to US06): the
  * portfolios list and the view of a node with their tree and aggregated
  * indicators, the creation dialog, a node's settings with its General and
  * Attachments tabs, the effective access card, the grant dialog, the
- * confidentiality card and the veiled rows of confidential projects, with
+ * confidentiality card, the veiled rows of confidential projects, and the
+ * Archiving tab with the read-only pages of an archived project, with
  * the API mocked at the HTTP level and the real translations.
  */
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -26,6 +27,7 @@ import {
 } from 'ui';
 import { axeViolations, provideI18nTesting } from 'ui/testing';
 
+import { NodeArchivingTab } from './node-archiving-tab';
 import { NodeGeneralTab } from './node-general-tab';
 import { NodeLinksTab } from './node-links-tab';
 import { NodePage } from './node-page';
@@ -88,6 +90,7 @@ async function setUp(tenantRole = 'tenant_admin') {
             children: [
               { path: 'general', component: NodeGeneralTab },
               { path: 'links', component: NodeLinksTab },
+              { path: 'archiving', component: NodeArchivingTab },
             ],
           },
         ],
@@ -1083,5 +1086,187 @@ describe('NodeLinksTab', () => {
       expect(card().querySelectorAll('.row').length).toBe(2);
       expect(document.activeElement).toBe(card().querySelector('button.add-grant'));
     });
+  });
+});
+
+describe('archiving', () => {
+  afterEach(() => {
+    TestBed.inject(MatDialog).closeAll();
+    TestBed.inject(HttpTestingController).verify();
+  });
+
+  const ARCHIVED: Node = { ...PROJECT, archived: true, version: 2 };
+  const nodeRead = (url: string, method: string) => url === `/api/v1/nodes/${PROJECT.id}` && method === 'GET';
+  const permissionsOf = (url: string) => url === `/api/v1/nodes/${PROJECT.id}/my-permissions`;
+  const archivingOf = (url: string, method: string) => url === `/api/v1/nodes/${PROJECT.id}/archiving` && method === 'PUT';
+
+  /** Opens the Archiving tab of the project as a member with `permissions` on it. */
+  async function openArchiving(node: Node, permissions: string[]) {
+    const context = await setUp('member');
+    await context.harness.navigateByUrl(`/nodes/${PROJECT.id}/archiving`);
+    await context.reply(nodeRead, node);
+    await context.reply(permissionsOf, permissions);
+    const tab = () => context.root().querySelector('app-node-archiving-tab')!;
+    return { ...context, tab };
+  }
+
+  it('archives the project after a confirmation that says what follows, then restores it', async () => {
+    const { reply, root, tab, text, click, dialog } = await openArchiving(PROJECT, ['view', 'administer_node']);
+    const tabs = Array.from(root().querySelectorAll('a[mat-tab-link]')).map((a) => text(a));
+    expect(tabs).toEqual(['General', 'Attachments and permissions', 'Archiving']);
+    expect(text(tab().querySelector('h2'))).toBe('Archiving');
+    expect(text(tab().querySelector('.state'))).toBe('This project is active.');
+    expect(tab().querySelectorAll('.consequences li').length).toBe(4);
+    expect(root().querySelector('app-archived-banner')).toBeNull();
+    expect(await axeViolations(root().querySelector('app-node-settings-page')!)).toEqual([]);
+
+    // Cancelled: nothing is sent.
+    await click(tab().querySelector('button.archive'));
+    expect(text(dialog().querySelector('h2'))).toBe('Archive Identity platform?');
+    expect(text(dialog().querySelector('mat-dialog-content'))).toContain('You can restore it.');
+    expect(await axeViolations(dialog())).toEqual([]);
+    await click(Array.from(dialog().querySelectorAll('button')).find((b) => text(b) === 'Cancel')!);
+    TestBed.inject(HttpTestingController).expectNone((r) => archivingOf(r.urlWithParams, r.method));
+
+    // Confirmed: archived with the version it was read at.
+    await click(tab().querySelector('button.archive'));
+    await click(Array.from(dialog().querySelectorAll('button')).find((b) => text(b) === 'Archive the project')!);
+    const archived = await reply(archivingOf, ARCHIVED);
+    expect(archived.request.headers.get('If-Match')).toBe('"1"');
+    expect(archived.request.body).toEqual({ archived: true });
+    expect(text(tab().querySelector('[role="status"]'))).toBe('The project is archived.');
+    expect(text(tab().querySelector('.state'))).toBe('This project is archived.');
+    expect(text(root().querySelector('app-archived-banner p'))).toBe(
+      'Archived project. It is read-only, out of the active lists and the aggregates.',
+    );
+    expect(root().querySelector('button.add-child')).toBeNull();
+    expect(await axeViolations(root().querySelector('app-node-settings-page')!)).toEqual([]);
+
+    await click(tab().querySelector('button.restore'));
+    expect(text(dialog().querySelector('h2'))).toBe('Restore Identity platform?');
+    await click(Array.from(dialog().querySelectorAll('button')).find((b) => text(b) === 'Restore the project')!);
+    const restored = await reply(archivingOf, { ...PROJECT, version: 3 });
+    expect(restored.request.headers.get('If-Match')).toBe('"2"');
+    expect(restored.request.body).toEqual({ archived: false });
+    expect(text(tab().querySelector('[role="status"]'))).toBe('The project is restored.');
+    expect(root().querySelector('app-archived-banner')).toBeNull();
+  });
+
+  it('says why a project cannot be archived', async () => {
+    const { reply, tab, text, click, dialog } = await openArchiving(PROJECT, ['view', 'administer_node']);
+    await click(tab().querySelector('button.archive'));
+    await click(Array.from(dialog().querySelectorAll('button')).find((b) => text(b) === 'Archive the project')!);
+    await reply(archivingOf, problem(409, 'node.active_children'), 409);
+    expect(text(tab().querySelector('[role="alert"]'))).toBe(
+      'This project still has active sub-projects: archive or detach them first.',
+    );
+    expect(text(tab().querySelector('.state'))).toBe('This project is active.');
+  });
+
+  it('leaves archiving to those who administer the project', async () => {
+    const { tab, text } = await openArchiving(ARCHIVED, ['view']);
+    expect(text(tab().querySelector('.state'))).toBe('This project is archived.');
+    expect(tab().querySelector('button')).toBeNull();
+    expect(text(tab().querySelector('.hint:last-child'))).toBe('Only the administrators of the project archive or restore it.');
+  });
+
+  it('is a tab of projects only', async () => {
+    const { harness, reply, root, text } = await setUp();
+    await harness.navigateByUrl(`/nodes/${PROGRAM.id}/general`);
+    await reply((url) => url === `/api/v1/nodes/${PROGRAM.id}`, PROGRAM);
+    const tabs = Array.from(root().querySelectorAll('a[mat-tab-link]')).map((a) => text(a));
+    expect(tabs).toEqual(['General', 'Attachments and permissions']);
+  });
+
+  it('makes the General tab of an archived project read-only', async () => {
+    const { harness, reply, root } = await setUp();
+    await harness.navigateByUrl(`/nodes/${PROJECT.id}/general`);
+    await reply(nodeRead, { ...ARCHIVED, owners: [{ accountId: 'a1', displayName: 'Lucas Bernard' }] });
+    const tab = root().querySelector('app-node-general-tab')!;
+    expect((tab.querySelector('[formcontrolname="name"]') as HTMLInputElement).disabled).toBe(true);
+    expect((tab.querySelector('[formcontrolname="description"]') as HTMLTextAreaElement).disabled).toBe(true);
+    expect(tab.querySelector('button.save')).toBeNull();
+    expect(tab.querySelector('button[aria-label="Remove Lucas Bernard"]')).toBeNull();
+    expect(root().querySelector('app-archived-banner')).not.toBeNull();
+    expect(await axeViolations(root().querySelector('app-node-settings-page')!)).toEqual([]);
+  });
+
+  it('freezes the attachments of an archived project', async () => {
+    const { harness, reply, root } = await setUp();
+    await harness.navigateByUrl(`/nodes/${PROJECT.id}/links`);
+    await reply(nodeRead, ARCHIVED);
+    await reply((url) => url === `/api/v1/nodes/${PROJECT.id}/parents`, [
+      { id: PROGRAM.id, type: 'program', name: 'IT Modernization', key: null, weightPercent: 40, parents: [] },
+    ]);
+    await reply((url) => url === `/api/v1/nodes/${PROJECT.id}/children`, []);
+    await reply(permissionsOf, ['view', 'administer_node']);
+    const tab = root().querySelector('app-node-links-tab')!;
+    expect(tab.querySelector('button.add-parent')).toBeNull();
+    expect(tab.querySelector('button.unlink')).toBeNull();
+    expect((tab.querySelector('app-weight-field input') as HTMLInputElement).disabled).toBe(true);
+    const toggle = tab.querySelector('app-node-confidentiality-card button[role="switch"]') as HTMLButtonElement;
+    expect(toggle.disabled).toBe(true);
+  });
+
+  it('shows the banner on the view of an archived project, which adds no child', async () => {
+    const { harness, reply, root } = await setUp();
+    await harness.navigateByUrl(`/nodes/${PROJECT.id}`);
+    await reply(nodeRead, ARCHIVED);
+    await reply((url) => url === `/api/v1/nodes/${PROJECT.id}/aggregate`, NOTHING);
+    await reply(permissionsOf, ['view', 'administer_node']);
+    await reply(isUnder(PROJECT.id), []);
+    const page = root().querySelector('app-node-page')!;
+    expect(page.querySelector('app-archived-banner')).not.toBeNull();
+    expect(page.querySelector('button.add-child, button.add-first-child')).toBeNull();
+  });
+
+  it('lists the archived projects on the Portfolios page', async () => {
+    const { harness, reply, root, text, click } = await setUp('member');
+    await harness.navigateByUrl('/portfolios');
+    await reply(isTop, [PROGRAM_ROW]);
+    const toggles = Array.from(root().querySelectorAll('mat-button-toggle button'));
+    expect(toggles.map((t) => text(t))).toEqual(['Active', 'Archived']);
+    await click(toggles[1]);
+    const archived = await reply((url) => url.startsWith('/api/v1/nodes?'), {
+      items: [
+        { ...ARCHIVED, owners: [{ accountId: 'a2', displayName: 'Camille Martin' }] },
+        { veiled: true, id: 'opaque-1', type: 'project', parents: [{ id: PROGRAM.id, type: 'program', name: 'IT Modernization' }] },
+      ],
+      nextCursor: null,
+    });
+    expect(archived.request.params.get('archived')).toBe('true');
+    expect(text(root().querySelector('.intro'))).toContain('The archived projects');
+    expect(root().querySelector('app-hierarchy-tree')).toBeNull();
+    const rows = Array.from(root().querySelectorAll('table.archived tr[mat-row]'));
+    // The name (or what stands for it), its key, the parents, the owners.
+    expect(
+      rows.map((row) => {
+        const [name, parents, owners] = Array.from(row.querySelectorAll('td'));
+        return [text(name.querySelector('.name')), text(name.querySelector('.secondary')), text(parents), text(owners)];
+      }),
+    ).toEqual([
+      ['Identity platform', 'PLAT', 'IT Modernization', 'Camille Martin'],
+      ['Confidential project', undefined, 'IT Modernization', ''],
+    ]);
+    expect(rows[1].querySelector('mat-icon.lock')?.getAttribute('aria-label')).toBeTruthy();
+    expect(rows[0].querySelector('a')?.getAttribute('href')).toBe(`/nodes/${PROJECT.id}`);
+    expect(rows[1].querySelector('a')).toBeNull();
+    expect(await axeViolations(root().querySelector('app-portfolios-page')!)).toEqual([]);
+
+    // Back to the hierarchy.
+    await click(toggles[0]);
+    await reply(isTop, [PROGRAM_ROW]);
+    expect(root().querySelector('table.archived')).toBeNull();
+  });
+
+  it('says when no project is archived', async () => {
+    const { harness, reply, root, text, click } = await setUp();
+    await harness.navigateByUrl('/portfolios');
+    await reply(isTop, []);
+    await click(Array.from(root().querySelectorAll('mat-button-toggle button'))[1]);
+    await reply((url) => url.startsWith('/api/v1/nodes?'), { items: [], nextCursor: null });
+    expect(text(root().querySelector('ui-empty-state .title'))).toBe('No archived project');
+    // Nodes are created in the hierarchy, not among the archived projects.
+    expect(root().querySelector('button.create')).toBeNull();
   });
 });

@@ -25,7 +25,8 @@ import { OwnerPicker } from './owner-picker';
 
 /**
  * "General" tab of a node's settings: name, description, objectives, dates,
- * health and owners, saved with the version they were read at.
+ * health and owners, saved with the version they were read at. Read-only
+ * for an archived project.
  */
 @Component({
   selector: 'app-node-general-tab',
@@ -76,6 +77,11 @@ export class NodeGeneralTab {
     effect(() => {
       const node = this.node();
       if (node) untracked(() => this.load(node));
+    });
+    // An archived project is read-only.
+    effect(() => {
+      if (this.node()?.archived) this.form.disable({ emitEvent: false });
+      else this.form.enable({ emitEvent: false });
     });
   }
 

@@ -234,6 +234,45 @@ for (const theme of ['light', 'dark'] as const) {
         expect(await accessibilityViolations(page), 'settings').toEqual([]);
       });
 
+      test('the archiving, its confirmation, an archived project and the archived list have no axe-core violation', async ({
+        page,
+      }) => {
+        await mockHierarchy(page);
+        let archived = false;
+        await page.route(`**/api/v1/nodes/${PROJECT.id}`, (route) => route.fulfill({ json: { ...PROJECT, archived } }));
+        await page.route(`**/api/v1/nodes/${PROJECT.id}/my-permissions`, (route) =>
+          route.fulfill({ json: ['view', 'administer_node'] }),
+        );
+        await page.route(`**/api/v1/nodes/${PROJECT.id}/archiving`, (route) => {
+          archived = true;
+          return route.fulfill({ json: { ...PROJECT, archived, version: 2 } });
+        });
+        await page.route('**/api/v1/nodes?*', (route) =>
+          route.fulfill({ json: { items: [{ ...PROJECT, archived: true }, VEILED], nextCursor: null } }),
+        );
+        await page.goto(`/nodes/${PROJECT.id}/archiving`);
+        await expect(page.locator('button.archive')).toBeVisible();
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'archiving tab').toEqual([]);
+
+        await page.locator('button.archive').click();
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'confirmation').toEqual([]);
+        await dialog.getByRole('button', { name: language === 'fr' ? 'Archiver le projet' : 'Archive the project' }).click();
+        await expect(page.locator('app-archived-banner')).toBeVisible();
+        await expect(page.locator('button.restore')).toBeVisible();
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'archived project').toEqual([]);
+
+        await page.goto('/portfolios');
+        await page.locator('mat-button-toggle').last().locator('button').click();
+        await expect(page.locator('table.archived tr[mat-row]')).toHaveCount(2);
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'archived list').toEqual([]);
+      });
+
       test('the attachments, the confidentiality, the access and the grant dialog have no axe-core violation', async ({
         page,
       }) => {

@@ -17,3 +17,33 @@
   font: var(--mat-sys-body-medium);
   color: var(--mat-sys-on-surface-variant);
 }
+
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--app-space-3);
+}
+
+.table-card {
+  overflow-x: auto;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface);
+}
+
+.table {
+  min-width: 640px;
+  background: transparent;
+}
+
+.name {
+  margin-inline-end: var(--app-space-2);
+  font: var(--mat-sys-title-small);
+  color: var(--mat-sys-on-surface);
+}
+
+.secondary {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}

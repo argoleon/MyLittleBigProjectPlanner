@@ -51,6 +51,7 @@ export type { NewTenant } from './models/new-tenant';
 export type { Node } from './models/node';
 export type { NodeAccess } from './models/node-access';
 export type { NodeAggregate } from './models/node-aggregate';
+export type { NodeArchiving } from './models/node-archiving';
 export type { NodeCandidate } from './models/node-candidate';
 export type { NodeChanges } from './models/node-changes';
 export type { NodeChild } from './models/node-child';
@@ -144,6 +145,8 @@ export type { ListNodeAccess$Params as ListNodeAccess$Params } from './fn/hierar
 export { listNodeAccess as listNodeAccess } from './fn/hierarchy/list-node-access';
 export type { GetNodeAggregate$Params as GetNodeAggregate$Params } from './fn/hierarchy/get-node-aggregate';
 export { getNodeAggregate as getNodeAggregate } from './fn/hierarchy/get-node-aggregate';
+export type { SetNodeArchiving$Params as SetNodeArchiving$Params } from './fn/hierarchy/set-node-archiving';
+export { setNodeArchiving as setNodeArchiving } from './fn/hierarchy/set-node-archiving';
 export type { ListNodeChildren$Params as ListNodeChildren$Params } from './fn/hierarchy/list-node-children';
 export { listNodeChildren as listNodeChildren } from './fn/hierarchy/list-node-children';
 export type { SetNodeConfidentiality$Params as SetNodeConfidentiality$Params } from './fn/hierarchy/set-node-confidentiality';

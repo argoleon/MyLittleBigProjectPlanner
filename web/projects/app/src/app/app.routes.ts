@@ -82,6 +82,11 @@ export const routes: Routes = [
             title: 'hierarchy.settings.links',
             loadComponent: () => import('./hierarchy/node-links-tab').then((m) => m.NodeLinksTab),
           },
+          {
+            path: 'archiving',
+            title: 'hierarchy.settings.archiving',
+            loadComponent: () => import('./hierarchy/node-archiving-tab').then((m) => m.NodeArchivingTab),
+          },
         ],
       },
       {

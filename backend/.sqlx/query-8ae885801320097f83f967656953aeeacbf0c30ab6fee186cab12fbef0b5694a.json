@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, node_type, name, key, description, objectives, start_date, end_date, health,\n               archived_at IS NOT NULL AS \"archived!\", confidential, version, created_at\n        FROM node\n        WHERE ($1::text IS NULL OR node_type = $1)\n          AND ($2::timestamptz IS NULL OR (created_at, id) > ($2, $3::uuid))\n          AND ($5::uuid IS NULL OR EXISTS (\n              SELECT 1 FROM node_closure c\n              WHERE c.ancestor_id = node.id AND c.descendant_id = $5 AND c.ancestor_id <> $5))\n          AND ($6::uuid IS NULL OR EXISTS (\n              SELECT 1 FROM node_closure c\n              WHERE c.ancestor_id = $6 AND c.descendant_id = node.id AND c.descendant_id <> $6))\n          AND ($7::uuid[] IS NULL OR node.id = ANY($7))\n        ORDER BY created_at, id\n        LIMIT $4\n        ",
+  "query": "\n        SELECT id, node_type, name, key, description, objectives, start_date, end_date, health,\n               archived_at IS NOT NULL AS \"archived!\", confidential, version, created_at\n        FROM node\n        WHERE ($1::text IS NULL OR node_type = $1)\n          AND ($2::timestamptz IS NULL OR (created_at, id) > ($2, $3::uuid))\n          AND ($5::uuid IS NULL OR EXISTS (\n              SELECT 1 FROM node_closure c\n              WHERE c.ancestor_id = node.id AND c.descendant_id = $5 AND c.ancestor_id <> $5))\n          AND ($6::uuid IS NULL OR EXISTS (\n              SELECT 1 FROM node_closure c\n              WHERE c.ancestor_id = $6 AND c.descendant_id = node.id AND c.descendant_id <> $6))\n          AND ($7::uuid[] IS NULL OR node.id = ANY($7))\n          AND (archived_at IS NOT NULL) = $8\n        ORDER BY created_at, id\n        LIMIT $4\n        ",
   "describe": {
     "columns": [
       {
@@ -150,7 +150,8 @@
         "Int8",
         "Uuid",
         "Uuid",
-        "UuidArray"
+        "UuidArray",
+        "Bool"
       ]
     },
     "nullable": [
@@ -169,5 +170,5 @@
       false
     ]
   },
-  "hash": "842d72793d7796bfc5db96c547040d8809e617ff840fb8a3f6334ee073e89a58"
+  "hash": "8ae885801320097f83f967656953aeeacbf0c30ab6fee186cab12fbef0b5694a"
 }

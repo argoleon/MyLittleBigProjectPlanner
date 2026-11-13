@@ -38,6 +38,8 @@ export class WeightField {
   readonly weight = input.required<number>();
   /** Name of the parent, for the field's accessible name. */
   readonly parentName = input.required<string>();
+  /** Read-only (the project is archived). */
+  readonly disabled = input(false);
   /** A new valid weighting to save. */
   readonly weightChange = output<number>();
 
@@ -47,6 +49,10 @@ export class WeightField {
     effect(() => {
       const weight = this.weight();
       untracked(() => this.control.reset(String(weight)));
+    });
+    effect(() => {
+      if (this.disabled()) this.control.disable();
+      else this.control.enable();
     });
   }
 

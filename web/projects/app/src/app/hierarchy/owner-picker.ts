@@ -1,4 +1,4 @@
-import { Component, inject, model, resource, signal } from '@angular/core';
+import { Component, ElementRef, inject, input, model, resource, signal, viewChild } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { MatChipsModule } from '@angular/material/chips';
@@ -21,24 +21,29 @@ const SUGGESTIONS = 8;
   template: `
     <mat-form-field appearance="outline" class="field">
       <mat-label>{{ 'hierarchy.owners.label' | transloco }}</mat-label>
-      <mat-chip-grid #grid [attr.aria-label]="'hierarchy.owners.label' | transloco">
+      <mat-chip-grid #grid [disabled]="disabled()" [attr.aria-label]="'hierarchy.owners.label' | transloco">
         @for (owner of owners(); track owner.accountId) {
           <mat-chip-row (removed)="remove(owner)">
             {{ owner.displayName }}
-            <button matChipRemove type="button" [attr.aria-label]="'hierarchy.owners.removeOf' | transloco: { name: owner.displayName }">
-              <mat-icon aria-hidden="true">cancel</mat-icon>
-            </button>
+            @if (!disabled()) {
+              <button matChipRemove type="button" [attr.aria-label]="'hierarchy.owners.removeOf' | transloco: { name: owner.displayName }">
+                <mat-icon aria-hidden="true">cancel</mat-icon>
+              </button>
+            }
           </mat-chip-row>
         }
-        <input
-          #search
-          [placeholder]="'hierarchy.owners.add' | transloco"
-          [matChipInputFor]="grid"
-          [matAutocomplete]="auto"
-          (input)="query.set(search.value)"
-        />
+        <!-- Read-only: nothing to search, and a grid holds only its rows. -->
+        @if (!disabled()) {
+          <input
+            #search
+            [placeholder]="'hierarchy.owners.add' | transloco"
+            [matChipInputFor]="grid"
+            [matAutocomplete]="auto"
+            (input)="query.set(search.value)"
+          />
+        }
       </mat-chip-grid>
-      <mat-autocomplete #auto="matAutocomplete" (optionSelected)="add($event); search.value = ''; query.set('')">
+      <mat-autocomplete #auto="matAutocomplete" (optionSelected)="add($event)">
         @for (member of suggestions(); track member.accountId) {
           <mat-option [value]="member">{{ member.displayName }} · {{ member.email }}</mat-option>
         } @empty {
@@ -56,7 +61,10 @@ export class OwnerPicker {
 
   /** The owners, in the order they were added. */
   readonly owners = model<readonly NodeOwner[]>([]);
+  /** Read-only (the project is archived). */
+  readonly disabled = input(false);
 
+  private readonly search = viewChild<ElementRef<HTMLInputElement>>('search');
   protected readonly query = signal('');
   private readonly debounced = toSignal(toObservable(this.query).pipe(debounceTime(250)), { initialValue: '' });
   private readonly found = resource({
@@ -74,6 +82,9 @@ export class OwnerPicker {
   protected add(event: MatAutocompleteSelectedEvent): void {
     const member = event.option.value as { accountId: string; displayName: string };
     this.owners.update((owners) => [...owners, { accountId: member.accountId, displayName: member.displayName }]);
+    const search = this.search()?.nativeElement;
+    if (search) search.value = '';
+    this.query.set('');
   }
 
   protected remove(owner: NodeOwner): void {

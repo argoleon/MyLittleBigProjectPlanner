@@ -10,6 +10,9 @@
 //! - A node has any number of parents (L03-US02), each link with a
 //!   weighting; tenant admins, and the members who administer both nodes,
 //!   link them.
+//! - An archived project (L03-US06) is read-only and out of the active
+//!   lists: whatever would change it answers `node.archived`
+//!   ([`ensure_changeable`]) until it is restored.
 
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode, header};
@@ -18,9 +21,9 @@ use chrono::{Datelike, NaiveDate};
 use domain::account::TenantRole;
 use domain::grants::{Projection, locks_out, projection};
 use domain::hierarchy::{
-    DEFAULT_WEIGHT_PERCENT, Health, NodeInput, NodeType, ParentCandidate, ParentRefusal, Rights,
-    is_weight_percent, may_attach, may_be_confidential, may_change, may_create, may_link, parent_refusal,
-    validate_node,
+    ArchivingRefusal, DEFAULT_WEIGHT_PERCENT, Health, NodeInput, NodeType, ParentCandidate, ParentRefusal,
+    Rights, accepts_changes, archiving_refusal, is_weight_percent, may_attach, may_be_archived,
+    may_be_confidential, may_change, may_create, may_link, parent_refusal, validate_node,
 };
 use domain::permissions::{Permission, PermissionChange};
 use domain::validation::FieldError;
@@ -451,7 +454,7 @@ pub struct NodePage {
     next_cursor: Option<String>,
 }
 
-/// `?type=&ancestorOf=&descendantOf=&limit=&cursor=` of the nodes list.
+/// `?type=&ancestorOf=&descendantOf=&archived=&limit=&cursor=` of the nodes list.
 #[derive(Debug, Default, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
 #[into_params(parameter_in = Query, rename_all = "camelCase")]
@@ -465,6 +468,8 @@ pub struct NodeListParams {
     /// Only the descendants of this node, at any depth; a node reached by
     /// several paths comes once.
     pub descendant_of: Option<Uuid>,
+    /// `true`: the archived projects, instead of the active nodes.
+    pub archived: Option<bool>,
     /// Page size, from 1 to 200 (default 50).
     #[param(minimum = 1, maximum = 200)]
     pub limit: Option<usize>,
@@ -598,6 +603,16 @@ async fn sees(state: &AppState, tx: &mut TenantTx, node: Uuid) -> Result<bool, P
             .contains(Permission::View))
 }
 
+/// Refuses to change an archived project: `node.archived`. Every write on
+/// a project, its links, its children and its tickets goes through it.
+pub(crate) fn ensure_changeable(node: &Node) -> Result<(), Problem> {
+    if accepts_changes(node.archived) {
+        Ok(())
+    } else {
+        Err(Problem::new(ErrorCode::NodeArchived))
+    }
+}
+
 fn with_etag(mut response: Response, version: i64) -> Response {
     response.headers_mut().insert(header::ETAG, etag(version));
     response
@@ -610,8 +625,8 @@ fn with_etag(mut response: Response, version: i64) -> Response {
     tag = TAG,
     operation_id = "listNodes",
     summary = "List the portfolios, programs and projects",
-    description = "In creation order; follow `nextCursor` until it is `null`. Only the nodes the \
-                   member sees: all of them for tenant admins; for the others, those where a role \
+    description = "In creation order; follow `nextCursor` until it is `null`. The active nodes, or \
+                   with `archived=true` the archived projects. Only the nodes the member sees: all of them for tenant admins; for the others, those where a role \
                    with `view` reaches them, directly, through a group, or inherited. A \
                    confidential node they have no access to, under a node they see, comes \
                    veiled (`veiled: true`): its type only, without name or detail.",
@@ -640,6 +655,7 @@ pub async fn list(
         ancestor_of: params.ancestor_of,
         descendant_of: params.descendant_of,
         within: listed.as_deref(),
+        archived: params.archived.unwrap_or(false),
     };
     let page = repo::list(&mut tx, &filter, after, limit).await?;
     tx.commit().await?;
@@ -676,7 +692,7 @@ pub async fn list(
                                       `parentId` (`not_found`, `not_allowed`)", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 403, description = "`forbidden`: may not create there, or `csrf.invalid`", body = ProblemBody, content_type = PROBLEM_JSON),
-        (status = 409, description = "`node.key_taken`, or `idempotency_key.in_flight`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 409, description = "`node.key_taken`, `node.archived` (the parent is an archived project), or `idempotency_key.in_flight`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 422, description = "`Idempotency-Key` already used for another request", body = ProblemBody, content_type = PROBLEM_JSON),
     )
 )]
@@ -710,6 +726,9 @@ pub async fn create(
     };
     if !allowed {
         return Err(Problem::new(ErrorCode::Forbidden));
+    }
+    if let Some(Some(parent)) = &parent {
+        ensure_changeable(parent)?;
     }
 
     let changes = ChangesBody {
@@ -836,6 +855,7 @@ pub async fn read(
         (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 403, description = "`forbidden`: may not change it, or `csrf.invalid`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 404, description = "No such node in this tenant, or not visible to the member", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 409, description = "`node.archived`: an archived project is read-only", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 412, description = "The node changed since this ETag", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 428, description = "`If-Match` is missing", body = ProblemBody, content_type = PROBLEM_JSON),
     )
@@ -858,6 +878,7 @@ pub async fn update(
     if !may_change(rights(&state, &mut tx, id).await?) {
         return Err(Problem::new(ErrorCode::Forbidden));
     }
+    ensure_changeable(&current)?;
     validate_node(
         current.node_type,
         &input(&body.name, current.key.as_deref(), &body),
@@ -902,7 +923,7 @@ pub async fn update(
         (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 403, description = "`forbidden`: may not change it, or `csrf.invalid`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 404, description = "No such node in this tenant, or not visible to the member", body = ProblemBody, content_type = PROBLEM_JSON),
-        (status = 409, description = "`node.confidential_lockout`: the member would lose their own access", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 409, description = "`node.confidential_lockout`: the member would lose their own access; `node.archived`: an archived project is read-only", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 412, description = "The node changed since this ETag", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 428, description = "`If-Match` is missing", body = ProblemBody, content_type = PROBLEM_JSON),
     )
@@ -919,6 +940,7 @@ pub async fn set_confidentiality(
     if !may_change(rights(&state, &mut tx, id).await?) {
         return Err(Problem::new(ErrorCode::Forbidden));
     }
+    ensure_changeable(&current)?;
     if body.confidential && !may_be_confidential(current.node_type) {
         return Err(Problem::validation(vec![FieldError::new(
             "confidential",
@@ -959,6 +981,99 @@ pub async fn set_confidentiality(
         ApiJson(node_view(node, &sight)).into_response(),
         version,
     ))
+}
+
+/// Whether a project is archived.
+#[derive(Debug, Clone, Copy, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[schema(as = NodeArchiving, example = json!({"archived": true}))]
+pub struct ArchivingBody {
+    /// `true`: read-only, out of the active lists and of the aggregates.
+    archived: bool,
+}
+
+/// `PUT /api/v1/nodes/{id}/archiving`: requires `If-Match`.
+#[utoipa::path(
+    put,
+    path = "/nodes/{id}/archiving",
+    tag = TAG,
+    operation_id = "setNodeArchiving",
+    summary = "Archive a project, or restore it",
+    description = "Tenant admins, and the members who administer the project. An archived project \
+                   is read-only: changing it, its links or its children answers `node.archived`. \
+                   It leaves the active lists (`GET /nodes?archived=true` lists the archived \
+                   projects) and the aggregates of its ancestors, and comes back to them when \
+                   restored. Its sub-projects are archived first, and restored after it. Only \
+                   projects are archived.",
+    params(
+        ("id" = Uuid, Path, description = "Id of the project"),
+        ("If-Match" = String, Header, description = "ETag of the version being changed, or `*`"),
+    ),
+    request_body = ArchivingBody,
+    responses(
+        (status = 200, description = "The node", body = NodeView, headers(
+            ("ETag" = String, description = "New version of the node"),
+        )),
+        (status = 400, description = "`validation_failed`: `archived` `not_allowed` on a portfolio or a program", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 403, description = "`forbidden`: may not change it, or `csrf.invalid`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 404, description = "No such node in this tenant, or not visible to the member", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 409, description = "`node.active_children`: it still has active sub-projects; `node.parent_archived`: it is under an archived project", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 412, description = "The node changed since this ETag", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 428, description = "`If-Match` is missing", body = ProblemBody, content_type = PROBLEM_JSON),
+    )
+)]
+pub async fn set_archiving(
+    State(state): State<AppState>,
+    mut tx: TenantTx,
+    headers: HeaderMap,
+    ApiPath(id): ApiPath<Uuid>,
+    ApiJson(body): ApiJson<ArchivingBody>,
+) -> Result<Response, Problem> {
+    let if_match = require_if_match(&headers)?;
+    let current = visible_node(&state, &mut tx, id, "no such node").await?;
+    if !may_change(rights(&state, &mut tx, id).await?) {
+        return Err(Problem::new(ErrorCode::Forbidden));
+    }
+    if body.archived && !may_be_archived(current.node_type) {
+        return Err(Problem::validation(vec![FieldError::new(
+            "archived",
+            "not_allowed",
+        )]));
+    }
+    let changed = current.archived != body.archived;
+    if changed {
+        let around = repo::surroundings(&mut tx, id).await?;
+        if let Some(refusal) = archiving_refusal(body.archived, around) {
+            return Err(archiving_problem(refusal));
+        }
+    }
+    let node = repo::set_archived(&mut tx, id, if_match.versions(), body.archived)
+        .await?
+        .map_err(conflict_problem)?;
+    if changed {
+        tracing::info!(
+            target: "audit",
+            actor = %tx.account_id(),
+            node = %id,
+            archived = body.archived,
+            "node archiving changed"
+        );
+    }
+    let sight = Sight::of(&mut tx).await?;
+    tx.commit().await?;
+    let version = node.version;
+    Ok(with_etag(
+        ApiJson(node_view(node, &sight)).into_response(),
+        version,
+    ))
+}
+
+fn archiving_problem(refusal: ArchivingRefusal) -> Problem {
+    Problem::new(match refusal {
+        ArchivingRefusal::ActiveChildren => ErrorCode::NodeActiveChildren,
+        ArchivingRefusal::ArchivedParent => ErrorCode::NodeParentArchived,
+    })
 }
 
 /// The node `id` if the signed-in member sees it, else 404 (`what` names it
@@ -1076,7 +1191,7 @@ pub async fn children(
         (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 403, description = "`forbidden`: may not link these nodes, or `csrf.invalid`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 404, description = "No such node or parent in this tenant, or not visible to the member", body = ProblemBody, content_type = PROBLEM_JSON),
-        (status = 409, description = "`node.parent_not_allowed` (attachment matrix) or `node.cycle`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 409, description = "`node.parent_not_allowed` (attachment matrix), `node.cycle`, or `node.archived` (the node or the parent is an archived project)", body = ProblemBody, content_type = PROBLEM_JSON),
     )
 )]
 pub async fn link_parent(
@@ -1092,6 +1207,8 @@ pub async fn link_parent(
     if !may_link(child_rights, parent_rights) {
         return Err(Problem::new(ErrorCode::Forbidden));
     }
+    ensure_changeable(&child)?;
+    ensure_changeable(&parent)?;
     if !is_weight_percent(body.weight_percent) {
         return Err(Problem::validation(vec![FieldError::new(
             "weightPercent",
@@ -1155,6 +1272,7 @@ pub async fn link_parent(
         (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 403, description = "`forbidden`: may not unlink these nodes, or `csrf.invalid`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 404, description = "No such node, parent or link in this tenant, or not visible to the member", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 409, description = "`node.archived`: the node or the parent is an archived project", body = ProblemBody, content_type = PROBLEM_JSON),
     )
 )]
 pub async fn unlink_parent(
@@ -1162,13 +1280,15 @@ pub async fn unlink_parent(
     mut tx: TenantTx,
     ApiPath((id, parent_id)): ApiPath<(Uuid, Uuid)>,
 ) -> Result<StatusCode, Problem> {
-    visible_node(&state, &mut tx, id, "no such node").await?;
-    visible_node(&state, &mut tx, parent_id, "no such parent").await?;
+    let child = visible_node(&state, &mut tx, id, "no such node").await?;
+    let parent = visible_node(&state, &mut tx, parent_id, "no such parent").await?;
     let child_rights = rights(&state, &mut tx, id).await?;
     let parent_rights = rights(&state, &mut tx, parent_id).await?;
     if !may_link(child_rights, parent_rights) {
         return Err(Problem::new(ErrorCode::Forbidden));
     }
+    ensure_changeable(&child)?;
+    ensure_changeable(&parent)?;
     if !repo::unlink(&mut tx, parent_id, id).await? {
         return Err(Problem::new(ErrorCode::NotFound).with_detail("not a parent of this node"));
     }
@@ -1258,6 +1378,49 @@ fn candidate_view(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_archived_project_refuses_changes() {
+        let node = |archived| Node {
+            id: PLAT,
+            node_type: NodeType::Project,
+            name: "Identity platform".to_owned(),
+            key: Some("PLAT".to_owned()),
+            description: String::new(),
+            objectives: String::new(),
+            start_date: None,
+            end_date: None,
+            health: Health::OnTrack,
+            archived,
+            confidential: false,
+            owners: vec![],
+            parents: vec![],
+            version: 1,
+            created_at: chrono::DateTime::UNIX_EPOCH,
+        };
+        assert!(ensure_changeable(&node(false)).is_ok());
+        let problem = ensure_changeable(&node(true)).err();
+        assert_eq!(
+            problem.map(|p| (p.code.status().as_u16(), p.code.as_str())),
+            Some((409, "node.archived"))
+        );
+    }
+
+    #[test]
+    fn archiving_refusals_have_their_own_codes() {
+        let cases = [
+            (ArchivingRefusal::ActiveChildren, "node.active_children"),
+            (ArchivingRefusal::ArchivedParent, "node.parent_archived"),
+        ];
+        for (refusal, code) in cases {
+            let problem = archiving_problem(refusal);
+            assert_eq!(
+                (problem.code.status().as_u16(), problem.code.as_str()),
+                (409, code),
+                "{refusal:?}"
+            );
+        }
+    }
 
     #[test]
     fn link_conflicts_have_their_own_codes() {

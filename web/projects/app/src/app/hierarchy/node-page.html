@@ -48,6 +48,9 @@
       }
     </div>
   </div>
+  @if (current.archived) {
+    <app-archived-banner />
+  }
 
   @if (aggregate.error()) {
     <ui-error-state [error]="aggregate.error()" [headingLevel]="2" (retry)="aggregate.reload()" />
