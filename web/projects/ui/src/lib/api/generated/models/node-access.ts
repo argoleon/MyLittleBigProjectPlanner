@@ -20,10 +20,6 @@ export interface NodeAccess {
    */
   grantId: string;
   holder: AccessHolder;
-
-  /**
-   * The node the role was granted on: this node, or an ancestor.
-   */
-  origin: NodeParent;
+  origin: (NodeParent | null);
   role: AccessRole;
 }

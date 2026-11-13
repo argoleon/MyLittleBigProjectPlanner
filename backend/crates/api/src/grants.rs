@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
 use crate::extract::{AcceptLanguage, ApiJson, ApiPath, ApiQuery};
-use crate::nodes::{ParentView, TAG, is_tenant_admin, visible_node};
+use crate::nodes::{ParentView, Sight, TAG, is_tenant_admin, visible_node};
 use crate::permissions::{self, PermissionView};
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
 use crate::roles::Language;
@@ -94,13 +94,15 @@ pub struct AccessView {
     grant_id: Uuid,
     holder: HolderView,
     role: RoleRefView,
-    /// The node the role was granted on: this node, or an ancestor.
-    origin: ParentView,
+    /// The node the role was granted on: this node, or an ancestor; `null`
+    /// for an ancestor the member does not see.
+    #[schema(required = true)]
+    origin: Option<ParentView>,
     /// Granted on this node; otherwise inherited from `origin`.
     direct: bool,
 }
 
-fn access_view(access: Access, language: &Language) -> AccessView {
+fn access_view(access: Access, language: &Language, sight: &Sight) -> AccessView {
     AccessView {
         grant_id: access.grant_id,
         holder: access.holder.into(),
@@ -109,7 +111,8 @@ fn access_view(access: Access, language: &Language) -> AccessView {
             label: language.label(&access.role_label),
             label_translations: access.role_label,
         },
-        origin: access.origin.into(),
+        // The name of a node they do not see does not leave.
+        origin: sight.sees(access.origin.id).then(|| access.origin.into()),
         direct: access.direct,
     }
 }
@@ -235,7 +238,8 @@ fn grant_problem(conflict: GrantConflict) -> Problem {
     summary = "List who has access to a node",
     description = "Every grant that applies on the node: those made on it (`direct`), then those \
                    inherited from an ancestor (`origin`), by holder name. A grant made above a \
-                   confidential node does not reach it. Tenant admins, and the members with \
+                   confidential node does not reach it; the origin of a grant inherited from a \
+                   node the member does not see is `null`. Tenant admins, and the members with \
                    `manage_members` on the node.",
     params(("id" = Uuid, Path, description = "Id of the node")),
     responses(
@@ -256,10 +260,11 @@ pub async fn access(
     manager(&state, &mut tx, id).await?;
     let language = Language::of(&tx, &accept);
     let entries = repo::access(&mut tx, id).await?;
+    let sight = Sight::of(&mut tx).await?;
     tx.commit().await?;
     let views: Vec<AccessView> = entries
         .into_iter()
-        .map(|entry| access_view(entry, &language))
+        .map(|entry| access_view(entry, &language, &sight))
         .collect();
     let mut response = ApiJson(views).into_response();
     language.headers(&mut response);
@@ -342,10 +347,12 @@ pub async fn grant(
         "node role granted"
     );
     let language = Language::of(&tx, &accept);
+    let sight = Sight::of(&mut tx).await?;
     let tenant = tx.tenant_id();
     tx.commit().await?;
     permissions::changed(&state, tenant, PermissionChange::GrantAdded).await;
-    let mut response = (StatusCode::CREATED, ApiJson(access_view(granted, &language))).into_response();
+    let view = access_view(granted, &language, &sight);
+    let mut response = (StatusCode::CREATED, ApiJson(view)).into_response();
     language.headers(&mut response);
     Ok(response)
 }

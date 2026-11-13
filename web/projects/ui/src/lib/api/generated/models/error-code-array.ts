@@ -62,5 +62,6 @@ export const ERROR_CODE: ErrorCode[] = [
   'node.key_taken',
   'node.cycle',
   'node.parent_not_allowed',
-  'node.grant_exists'
+  'node.grant_exists',
+  'node.confidential_lockout'
 ];

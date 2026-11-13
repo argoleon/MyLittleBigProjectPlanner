@@ -1,5 +1,6 @@
 //! Integration test: every erasure (L02-US09) is logged with the `audit`
-//! target, its actor and the pseudonym. Alone in its test binary: `tracing`
+//! target, its actor and the pseudonym; so is a change of a project's
+//! confidentiality (L03-US04). One test, alone in its test binary: `tracing`
 //! caches per process which events a subscriber wants (see `logs.rs`).
 
 #![allow(clippy::unwrap_used)]
@@ -45,7 +46,7 @@ impl Captured {
 // Current-thread runtime: the server tasks run on this thread, where the
 // capturing subscriber is installed.
 #[tokio::test(flavor = "current_thread")]
-async fn every_erasure_is_audited_with_its_actor_and_pseudonym() {
+async fn erasures_and_confidentiality_changes_are_audited_with_their_actor() {
     let captured = Captured::default();
     let writer = captured.clone();
     let subscriber = tracing_subscriber::registry()
@@ -99,6 +100,33 @@ async fn every_erasure_is_audited_with_its_actor_and_pseudonym() {
     .await;
     assert_eq!(status, 204, "{body}");
 
+    // A tenant admin makes a project confidential.
+    let (status, project) = json(
+        api.request(Method::POST, &db.tenant_a, "/api/v1/nodes")
+            .json(&json!({"type": "project", "name": "Identity platform", "key": "PLAT"}))
+            .send()
+            .await
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(status, 201, "{project}");
+    let project_id = project["id"].as_str().unwrap();
+    for confidential in [true, true] {
+        // Asked twice: changed, and audited, once.
+        let res = api
+            .request(
+                Method::PUT,
+                &db.tenant_a,
+                &format!("/api/v1/nodes/{project_id}/confidentiality"),
+            )
+            .header("if-match", "*")
+            .json(&json!({"confidential": confidential}))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(res.status(), 200);
+    }
+
     let audit = captured.audit();
     let event = |message: &str| {
         audit
@@ -115,6 +143,14 @@ async fn every_erasure_is_audited_with_its_actor_and_pseudonym() {
     assert_eq!(itself["actor"], leaving.account_id.to_string());
     assert_eq!(itself["scope"], "account");
     assert!(itself["pseudonym"].as_i64().unwrap() > 0);
+    let changes: Vec<&Value> = audit
+        .iter()
+        .filter(|event| event["message"] == "node confidentiality changed")
+        .collect();
+    assert_eq!(changes.len(), 1, "{audit:#?}");
+    assert_eq!(changes[0]["actor"], admin.to_string());
+    assert_eq!(changes[0]["node"], project_id);
+    assert_eq!(changes[0]["confidential"], true);
     // No personal data in the audit trail.
     let trail = serde_json::to_string(&audit).unwrap();
     assert!(!trail.contains(&member.email) && !trail.contains(&leaving.email));

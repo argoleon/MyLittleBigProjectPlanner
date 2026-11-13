@@ -439,7 +439,8 @@
       "key_taken": "Another project of the organization has this key.",
       "cycle": "This link would make the node its own ancestor.",
       "parent_not_allowed": "This type of node cannot be attached under that parent.",
-      "grant_exists": "They already have this role on this node."
+      "grant_exists": "They already have this role on this node.",
+      "confidential_lockout": "You would lose your own access: ask for a role granted on the project itself first."
     }
   },
   "dialog": {
@@ -681,7 +682,20 @@
         "role": "Role",
         "inherit": "The role also applies to everything under this node.",
         "grant": "Grant"
-      }
+      },
+      "inheritedHidden": "Inherited from a node you do not have access to"
+    },
+    "confidentiality": {
+      "title": "Confidentiality",
+      "toggle": "Confidential project",
+      "description": "Blocks inherited access: only the members with a role on the project itself reach it. In the lists of its parents, it stays counted anonymously, without name or detail.",
+      "on": "The project is now confidential.",
+      "off": "The project is no longer confidential."
+    },
+    "veiled": {
+      "name": "Confidential project",
+      "hint": "You do not have access.",
+      "lock": "Locked"
     }
   }
 }

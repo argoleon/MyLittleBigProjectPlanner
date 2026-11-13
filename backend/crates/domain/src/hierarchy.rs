@@ -152,6 +152,12 @@ pub const fn may_change(rights: Rights) -> bool {
     rights.tenant_admin || rights.administers_node
 }
 
+/// Whether a node of this type can be made confidential (specification §4):
+/// projects only. Portfolios and programs stay open to those above them.
+pub const fn may_be_confidential(node_type: NodeType) -> bool {
+    matches!(node_type, NodeType::Project)
+}
+
 /// Whether a member links a node and a parent, changes that link's
 /// weighting or removes it: tenant admins, and the members who administer
 /// both nodes (a parent's aggregates and inherited grants change with it).
@@ -367,6 +373,12 @@ mod tests {
         assert!(may_create(node_admin, true));
         assert!(!may_create(member, true) && !may_create(member, false));
         assert!(may_change(tenant_admin) && may_change(node_admin) && !may_change(member));
+    }
+
+    #[test]
+    fn only_projects_are_confidential() {
+        assert!(may_be_confidential(NodeType::Project));
+        assert!(!may_be_confidential(NodeType::Program) && !may_be_confidential(NodeType::Portfolio));
     }
 
     #[test]

@@ -5,6 +5,7 @@
 
 use chrono::{DateTime, NaiveDate, Utc};
 use domain::hierarchy::{Health, NodeType};
+use sha2::{Digest, Sha256};
 use sqlx::postgres::PgConnection;
 use uuid::Uuid;
 
@@ -88,6 +89,8 @@ pub struct Link {
     pub name: String,
     pub key: Option<String>,
     pub weight_percent: i16,
+    /// Blocks inheritance: those above it without a role on it see it veiled.
+    pub confidential: bool,
     pub parents: Vec<NodeRef>,
 }
 
@@ -292,22 +295,22 @@ pub async fn find(conn: &mut PgConnection, id: Uuid) -> Result<Option<Node>, sql
 
 /// Which nodes a list holds.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct NodeFilter {
+pub struct NodeFilter<'a> {
     /// Only nodes of this type.
     pub node_type: Option<NodeType>,
     /// Only the ancestors of this node (not the node itself).
     pub ancestor_of: Option<Uuid>,
     /// Only the descendants of this node (not the node itself).
     pub descendant_of: Option<Uuid>,
-    /// Only the nodes this member sees: those where a role with "view"
-    /// reaches them (`None`: all, for tenant admins).
-    pub visible_to: Option<Uuid>,
+    /// Only these nodes: those a member sees or sees veiled
+    /// (`crate::grants::sight`; `None`: all, for tenant admins).
+    pub within: Option<&'a [Uuid]>,
 }
 
 /// One page of the nodes of `filter`, in creation order.
 pub async fn list(
     conn: &mut PgConnection,
-    filter: &NodeFilter,
+    filter: &NodeFilter<'_>,
     after: Option<Keyset>,
     limit: usize,
 ) -> Result<Page<Node>, sqlx::Error> {
@@ -326,24 +329,7 @@ pub async fn list(
           AND ($6::uuid IS NULL OR EXISTS (
               SELECT 1 FROM node_closure c
               WHERE c.ancestor_id = $6 AND c.descendant_id = node.id AND c.descendant_id <> $6))
-          -- The rule of domain::grants, downwards: a grant covers its node,
-          -- then the children that do not block inheritance, and so on.
-          AND ($7::uuid IS NULL OR node.id IN (
-              WITH RECURSIVE visible (id) AS (
-                  SELECT g.node_id
-                  FROM node_role_grant g
-                  JOIN role r ON r.id = g.role_id
-                  WHERE 'view' = ANY (r.permissions)
-                    AND (g.account_id = $7
-                         OR g.group_id IN (SELECT gm.group_id FROM group_member gm WHERE gm.account_id = $7))
-                  UNION
-                  SELECT e.child_id
-                  FROM visible v
-                  JOIN node_edge e ON e.parent_id = v.id
-                  JOIN node child ON child.id = e.child_id
-                  WHERE NOT child.confidential
-              )
-              SELECT id FROM visible))
+          AND ($7::uuid[] IS NULL OR node.id = ANY($7))
         ORDER BY created_at, id
         LIMIT $4
         "#,
@@ -353,7 +339,7 @@ pub async fn list(
         fetch,
         filter.ancestor_of,
         filter.descendant_of,
-        filter.visible_to
+        filter.within
     )
     .fetch_all(&mut *conn)
     .await?;
@@ -413,6 +399,50 @@ pub async fn update(
     find(conn, id)
         .await
         .map(|node| node.ok_or(WriteConflict::NotFound))
+}
+
+/// Makes the node confidential or not, if its version is one of
+/// `expected_versions` (`None`: any), then reads it.
+pub async fn set_confidential(
+    conn: &mut PgConnection,
+    id: Uuid,
+    expected_versions: Option<&[i64]>,
+    confidential: bool,
+) -> WriteResult<Node> {
+    let updated = sqlx::query_scalar!(
+        r#"
+        UPDATE node SET confidential = $3, version = version + 1
+        WHERE id = $1 AND ($2::bigint[] IS NULL OR version = ANY($2))
+        RETURNING id
+        "#,
+        id,
+        expected_versions,
+        confidential
+    )
+    .fetch_optional(&mut *conn)
+    .await?;
+    if updated.is_none() {
+        return Ok(Err(if exists(conn, id).await? {
+            WriteConflict::VersionMismatch
+        } else {
+            WriteConflict::NotFound
+        }));
+    }
+    find(conn, id)
+        .await
+        .map(|node| node.ok_or(WriteConflict::NotFound))
+}
+
+/// An identifier standing for the node `id` where it shows veiled: stable,
+/// and of no use to find the node (a SHA-256 of its id, as a UUID).
+pub fn opaque_id(id: Uuid) -> Uuid {
+    let digest = Sha256::new()
+        .chain_update(b"mlbpp:veiled-node:")
+        .chain_update(id.as_bytes())
+        .finalize();
+    let mut bytes = [0_u8; 16];
+    bytes.copy_from_slice(&digest[..16]);
+    uuid::Builder::from_custom_bytes(bytes).into_uuid()
 }
 
 /// Replaces the owners of the node `id` with `owners`.
@@ -500,6 +530,7 @@ struct LinkRow {
     name: String,
     key: Option<String>,
     weight_percent: i16,
+    confidential: bool,
 }
 
 /// Adds their own parents to `rows`.
@@ -514,6 +545,7 @@ async fn links_with_parents(conn: &mut PgConnection, rows: Vec<LinkRow>) -> Resu
             name: row.name,
             key: row.key,
             weight_percent: row.weight_percent,
+            confidential: row.confidential,
             parents: parents.remove(&row.id).unwrap_or_default(),
         })
         .collect())
@@ -524,7 +556,7 @@ pub async fn parent_links(conn: &mut PgConnection, id: Uuid) -> Result<Vec<Link>
     let rows = sqlx::query_as!(
         LinkRow,
         r#"
-        SELECT p.id, p.node_type, p.name, p.key, e.weight_percent
+        SELECT p.id, p.node_type, p.name, p.key, e.weight_percent, p.confidential
         FROM node_edge e JOIN node p ON p.id = e.parent_id
         WHERE e.child_id = $1
         ORDER BY p.name, p.id
@@ -541,7 +573,7 @@ pub async fn child_links(conn: &mut PgConnection, id: Uuid) -> Result<Vec<Link>,
     let rows = sqlx::query_as!(
         LinkRow,
         r#"
-        SELECT c.id, c.node_type, c.name, c.key, e.weight_percent
+        SELECT c.id, c.node_type, c.name, c.key, e.weight_percent, c.confidential
         FROM node_edge e JOIN node c ON c.id = e.child_id
         WHERE e.parent_id = $1
         ORDER BY c.name, c.id

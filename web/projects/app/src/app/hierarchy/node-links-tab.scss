@@ -15,11 +15,17 @@
   }
 }
 
-.links {
+.links,
+.side {
   display: flex;
   flex-direction: column;
   gap: var(--app-space-4);
   min-width: 0;
+}
+
+// A veiled child: "Confidential project" stands for its name.
+.veiled .name {
+  color: var(--mat-sys-on-surface-variant);
 }
 
 .card.search {

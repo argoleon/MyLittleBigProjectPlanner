@@ -669,3 +669,258 @@ async fn grants_never_cross_tenants() {
     .await;
     assert_eq!(access, json!([]));
 }
+
+/// `PUT /nodes/{id}/confidentiality` as the member of `session`.
+fn confidentiality(
+    api: &TestApi,
+    tenant: &SeedTenant,
+    session: &Session,
+    node: &str,
+    confidential: bool,
+) -> reqwest::RequestBuilder {
+    let path = format!("/api/v1/nodes/{node}/confidentiality");
+    as_member(api, tenant, session, Method::PUT, &path).json(&json!({"confidential": confidential}))
+}
+
+#[tokio::test]
+async fn a_confidential_project_is_closed_to_those_above_it_and_veiled_in_their_lists() {
+    let db = TestDb::new().await;
+    let api = common::start(&db, multi()).await;
+    let t = &db.tenant_a;
+    let digital = node(&api, t, json!({"type": "portfolio", "name": "Digital"})).await;
+    let program = node(
+        &api,
+        t,
+        json!({"type": "program", "name": "Modernization", "parentId": digital}),
+    )
+    .await;
+    let plat = node(
+        &api,
+        t,
+        json!({"type": "project", "name": "Identity platform", "key": "PLAT",
+               "description": "Top secret plan", "parentId": program}),
+    )
+    .await;
+    let cyber = node(
+        &api,
+        t,
+        json!({"type": "project", "name": "Cyber permissions", "key": "CYBP", "parentId": plat}),
+    )
+    .await;
+    // Lucas reads the portfolio; Inès administers it; Camille administers
+    // the project itself.
+    let (lucas, lucas_session) = member(&db, &api, t).await;
+    let (ines, ines_session) = member(&db, &api, t).await;
+    let (camille, camille_session) = member(&db, &api, t).await;
+    let (reader, node_admin) = (role(&db, t, "Reader").await, role(&db, t, "Node admin").await);
+    grant(&api, t, &digital, json!({"roleId": reader, "accountId": lucas})).await;
+    grant(
+        &api,
+        t,
+        &digital,
+        json!({"roleId": node_admin, "accountId": ines}),
+    )
+    .await;
+    grant(
+        &api,
+        t,
+        &plat,
+        json!({"roleId": node_admin, "accountId": camille}),
+    )
+    .await;
+    let get = |session: &Session, path: String| as_member(&api, t, session, Method::GET, &path);
+    let plat_path = format!("/api/v1/nodes/{plat}");
+    let (status, _) = send(get(&lucas_session, plat_path.clone())).await;
+    assert_eq!(status, 200, "open so far: the role on the portfolio reaches it");
+
+    // Who makes it confidential, and what.
+    let (status, problem) =
+        send(confidentiality(&api, t, &lucas_session, &plat, true).header("if-match", "*")).await;
+    assert_problem(status, &problem, 403, "forbidden");
+    let (status, problem) =
+        send(confidentiality(&api, t, &ines_session, &plat, true).header("if-match", "*")).await;
+    assert_problem(status, &problem, 409, "node.confidential_lockout");
+    let (status, _) = send(get(&lucas_session, plat_path.clone())).await;
+    assert_eq!(status, 200, "refused: nothing changed");
+    let (status, problem) = send(
+        admin(
+            &api,
+            t,
+            Method::PUT,
+            &format!("/api/v1/nodes/{program}/confidentiality"),
+        )
+        .header("if-match", "*")
+        .json(&json!({"confidential": true})),
+    )
+    .await;
+    assert_problem(status, &problem, 400, "validation_failed");
+    assert_eq!(
+        field_codes(&problem),
+        [("confidential".to_owned(), "not_allowed".to_owned())]
+    );
+    let (status, _) = send(confidentiality(&api, t, &camille_session, &plat, true)).await;
+    assert_eq!(status, 428, "If-Match is required");
+    let (status, _) =
+        send(confidentiality(&api, t, &camille_session, &plat, true).header("if-match", "\"99\"")).await;
+    assert_eq!(status, 412);
+
+    // Camille holds her role on the project itself: she makes it confidential.
+    let res = confidentiality(&api, t, &camille_session, &plat, true)
+        .header("if-match", "\"1\"")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.headers()["etag"], "\"2\"");
+    let (status, changed) = json(res).await;
+    assert_eq!((status, &changed["confidential"]), (200, &json!(true)));
+
+    // At once, those with a role inherited from the portfolio get a 404,
+    // even its administrator; so do they below it.
+    for session in [&lucas_session, &ines_session] {
+        for path in [
+            plat_path.clone(),
+            format!("/api/v1/nodes/{plat}/my-permissions"),
+            format!("/api/v1/nodes/{plat}/children"),
+            format!("/api/v1/nodes/{cyber}"),
+        ] {
+            let (status, _) = send(get(session, path.clone())).await;
+            assert_eq!(status, 404, "{path}");
+        }
+    }
+    // A direct member keeps the permissions of their direct role, there and below.
+    let (status, seen) = send(get(&camille_session, plat_path.clone())).await;
+    assert_eq!((status, &seen["name"]), (200, &json!("Identity platform")));
+    assert_eq!(
+        permissions_of(&api, t, &camille_session, &plat)
+            .await
+            .unwrap()
+            .len(),
+        10
+    );
+    assert_eq!(
+        permissions_of(&api, t, &camille_session, &cyber)
+            .await
+            .unwrap()
+            .len(),
+        10
+    );
+
+    // To Lucas, the project shows veiled wherever its parent shows: its type
+    // only, under an opaque id.
+    let secrets = [
+        "Identity platform",
+        "PLAT",
+        "Top secret",
+        "Cyber permissions",
+        "CYBP",
+        plat.as_str(),
+        cyber.as_str(),
+    ];
+    let no_secret = |what: &str, body: &Value| {
+        let text = body.to_string();
+        for secret in secrets {
+            assert!(!text.contains(secret), "{what}: {secret} in {text}");
+        }
+    };
+    let (status, page) = send(get(&lucas_session, "/api/v1/nodes".to_owned())).await;
+    assert_eq!(status, 200, "{page}");
+    no_secret("list", &page);
+    let items = page["items"].as_array().unwrap();
+    assert_eq!(items.len(), 3, "{page}");
+    let veiled = items.iter().find(|n| n["veiled"] == true).unwrap();
+    assert_eq!(
+        (&veiled["type"], &veiled["parents"]),
+        (
+            &json!("project"),
+            &json!([{"id": program, "type": "program", "name": "Modernization"}])
+        )
+    );
+    assert!(veiled.get("name").is_none() && veiled.get("key").is_none());
+    let opaque = veiled["id"].as_str().unwrap();
+    let (status, _) = send(get(&lucas_session, format!("/api/v1/nodes/{opaque}"))).await;
+    assert_eq!(status, 404, "the opaque id reads nothing");
+
+    let (status, children) = send(get(&lucas_session, format!("/api/v1/nodes/{program}/children"))).await;
+    assert_eq!(status, 200, "{children}");
+    no_secret("children", &children);
+    assert_eq!(
+        children,
+        json!([{"veiled": true, "id": opaque, "type": "project", "parents": [
+            {"id": program, "type": "program", "name": "Modernization"}
+        ]}])
+    );
+    let (_, below) = send(get(
+        &lucas_session,
+        format!("/api/v1/nodes?descendantOf={digital}"),
+    ))
+    .await;
+    no_secret("descendants", &below);
+    assert_eq!(below["items"].as_array().unwrap().len(), 2, "{below}");
+    for search in ["identity", "plat", "cyber"] {
+        let (status, found) = send(get(
+            &lucas_session,
+            format!("/api/v1/nodes/{program}/parent-candidates?search={search}"),
+        ))
+        .await;
+        assert_eq!((status, &found), (200, &json!([])), "search {search}");
+    }
+
+    // Inès gets a role on the sub-project: she reads it, without the name of
+    // its confidential parent, in its parents or in the origin of its grants.
+    grant(&api, t, &cyber, json!({"roleId": node_admin, "accountId": ines})).await;
+    let (status, sub) = send(get(&ines_session, format!("/api/v1/nodes/{cyber}"))).await;
+    assert_eq!((status, &sub["parents"]), (200, &json!([])));
+    let (status, parents) = send(get(&ines_session, format!("/api/v1/nodes/{cyber}/parents"))).await;
+    assert_eq!((status, &parents), (200, &json!([])));
+    let (status, access) = send(get(&ines_session, format!("/api/v1/nodes/{cyber}/access"))).await;
+    assert_eq!(status, 200, "{access}");
+    assert!(!access.to_string().contains("Identity platform"), "{access}");
+    let inherited: Vec<&Value> = access
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|a| a["direct"] == false)
+        .collect();
+    assert_eq!(inherited.len(), 1, "{access}");
+    assert_eq!(
+        (&inherited[0]["holder"]["id"], &inherited[0]["origin"]),
+        (&json!(camille), &Value::Null)
+    );
+    // Camille, a member of the project, sees where her role comes from.
+    let (_, access) = send(get(&camille_session, format!("/api/v1/nodes/{cyber}/access"))).await;
+    assert!(access.to_string().contains("Identity platform"), "{access}");
+
+    // Another tenant knows nothing of the project.
+    let (status, _) = send(
+        admin(
+            &api,
+            &db.tenant_b,
+            Method::PUT,
+            &format!("{plat_path}/confidentiality"),
+        )
+        .header("if-match", "*")
+        .json(&json!({"confidential": false})),
+    )
+    .await;
+    assert_eq!(status, 404);
+
+    // Opened again by a tenant admin: the inherited roles are back at once.
+    let (status, opened) = send(
+        admin(&api, t, Method::PUT, &format!("{plat_path}/confidentiality"))
+            .header("if-match", "*")
+            .json(&json!({"confidential": false})),
+    )
+    .await;
+    assert_eq!((status, &opened["confidential"]), (200, &json!(false)));
+    let (status, _) = send(get(&lucas_session, plat_path.clone())).await;
+    assert_eq!(status, 200);
+    let (_, page) = send(get(&lucas_session, "/api/v1/nodes".to_owned())).await;
+    assert!(
+        page["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|n| n.get("veiled").is_none())
+    );
+    assert_eq!(page["items"].as_array().unwrap().len(), 4);
+}

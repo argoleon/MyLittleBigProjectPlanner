@@ -127,6 +127,39 @@ pub fn effective_permissions(
     )
 }
 
+/// How a node shows to a member in the lists of the hierarchy.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Projection {
+    /// They see it: the whole node.
+    Full,
+    /// A confidential node they have no access to, under a node they see:
+    /// it shows as "confidential", with its type only, so that its parents'
+    /// lists and figures stay whole.
+    Veiled,
+    /// Not shown at all.
+    Hidden,
+}
+
+/// How a node shows to a member: whole if they see it; veiled if it is
+/// confidential and they see one of its parents; hidden otherwise.
+pub const fn projection(sees: bool, confidential: bool, sees_a_parent: bool) -> Projection {
+    if sees {
+        Projection::Full
+    } else if confidential && sees_a_parent {
+        Projection::Veiled
+    } else {
+        Projection::Hidden
+    }
+}
+
+/// Whether making a node confidential would shut out the member who asks
+/// for it: its inherited roles stop there, so they must keep "administer
+/// node" from the roles granted on the node itself (`direct`). Tenant
+/// admins administer every node.
+pub const fn locks_out(tenant_admin: bool, direct: PermissionSet) -> bool {
+    !tenant_admin && !direct.contains(Permission::AdministerNode)
+}
+
 /// Whether a member sees who has access to a node: tenant admins, and the
 /// members with "manage members" there.
 pub const fn may_see_access(tenant_admin: bool, own: PermissionSet) -> bool {
@@ -378,6 +411,32 @@ mod tests {
         // Without it: nothing, even a narrower role.
         assert!(!may_grant(false, contributor, reader));
         assert!(!may_see_access(false, contributor));
+    }
+
+    #[test]
+    fn nodes_show_whole_veiled_or_not_at_all() {
+        // Seen: whole, confidential or not.
+        assert_eq!(projection(true, false, true), Projection::Full);
+        assert_eq!(projection(true, true, false), Projection::Full);
+        // Confidential and out of reach, under a node they see: veiled.
+        assert_eq!(projection(false, true, true), Projection::Veiled);
+        // Nothing of it otherwise: no parent in sight, or not confidential
+        // (then it is simply a node they have no role on).
+        assert_eq!(projection(false, true, false), Projection::Hidden);
+        assert_eq!(projection(false, false, true), Projection::Hidden);
+        assert_eq!(projection(false, false, false), Projection::Hidden);
+    }
+
+    #[test]
+    fn confidentiality_never_shuts_out_who_sets_it() {
+        let reader: PermissionSet = [Permission::View].into_iter().collect();
+        // A tenant admin keeps every node.
+        assert!(!locks_out(true, PermissionSet::EMPTY));
+        // A node admin by a role granted on the node itself keeps it.
+        assert!(!locks_out(false, PermissionSet::all()));
+        // One who only inherited the role, or holds a lesser direct one, would lose it.
+        assert!(locks_out(false, PermissionSet::EMPTY));
+        assert!(locks_out(false, reader));
     }
 
     /// A small deterministic generator (xorshift): the properties below run

@@ -104,8 +104,10 @@ async fn roles_on(conn: &mut PgConnection, account: Uuid, node: Uuid) -> Vec<Str
 
 /// Names of the nodes `account` sees in the list, sorted.
 async fn visible(conn: &mut PgConnection, account: Uuid) -> Vec<String> {
+    let sight = grants::sight(conn, account).await.unwrap();
+    let ids: Vec<Uuid> = sight.visible.into_iter().collect();
     let filter = NodeFilter {
-        visible_to: Some(account),
+        within: Some(&ids),
         ..NodeFilter::default()
     };
     let mut names: Vec<String> = nodes::list(conn, &filter, None, 200)
@@ -363,7 +365,13 @@ async fn a_confidential_node_only_hears_its_own_grants() {
         visible(&mut tx, lucas).await,
         ["Compliance", "Digital", "Modernization"]
     );
+    // Under the program he sees, the project shows veiled; what is below
+    // it does not show at all.
+    let sight = grants::sight(&mut tx, lucas).await.unwrap();
+    assert_eq!(sight.veiled, [h.plat].into_iter().collect());
+    assert!(!sight.visible.contains(&h.permissions) && !sight.veiled.contains(&h.permissions));
     // ... while its own grants apply on it and below.
+    assert!(grants::sight(&mut tx, ines).await.unwrap().veiled.is_empty());
     assert_eq!(roles_on(&mut tx, ines, h.plat).await, ["Contributor"]);
     assert_eq!(roles_on(&mut tx, ines, h.permissions).await, ["Contributor"]);
     assert_eq!(visible(&mut tx, ines).await, ["Identity platform", "Permissions"]);
@@ -444,6 +452,32 @@ async fn the_list_shows_exactly_the_nodes_the_engine_lets_see() {
                     seen,
                     "grant on {granted_on}, confidential {confidential}"
                 );
+                // And veils exactly what the rule of the domain veils.
+                let sight = grants::sight(&mut tx, lucas).await.unwrap();
+                let parents_of = |node: Uuid| -> Vec<Uuid> {
+                    if node == h.modernization || node == h.compliance {
+                        vec![h.digital]
+                    } else if node == h.plat {
+                        vec![h.modernization, h.compliance]
+                    } else if node == h.permissions {
+                        vec![h.plat]
+                    } else {
+                        vec![]
+                    }
+                };
+                for target in all {
+                    let sees_a_parent = parents_of(target).iter().any(|p| sight.visible.contains(p));
+                    let expected = domain::grants::projection(
+                        sight.visible.contains(&target),
+                        target == confidential,
+                        sees_a_parent,
+                    );
+                    assert_eq!(
+                        sight.veiled.contains(&target),
+                        expected == domain::grants::Projection::Veiled,
+                        "{target}: grant on {granted_on}, confidential {confidential}"
+                    );
+                }
                 sqlx::query("ROLLBACK TO SAVEPOINT s")
                     .execute(&mut *tx)
                     .await

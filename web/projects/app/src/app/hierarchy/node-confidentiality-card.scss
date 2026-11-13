@@ -1,0 +1,16 @@
+@use './node-cards';
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.setting {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-4);
+}
+
+.switch {
+  flex: none;
+}

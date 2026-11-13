@@ -43,7 +43,7 @@ export class NodeAccessCard {
   readonly node = input.required<Node>();
 
   protected readonly icons = HOLDER_ICONS;
-  protected readonly origin = originLabel;
+  protected readonly origin = (entry: NodeAccess): Label => originLabel(entry, this.node().type);
   /** The role's label in the language of the interface. */
   protected readonly roleName = (role: AccessRole): string => roleLabel(role, this.locale.language());
   protected readonly access = resource({

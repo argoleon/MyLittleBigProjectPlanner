@@ -1580,7 +1580,7 @@
           "hierarchy"
         ],
         "summary": "List the portfolios, programs and projects",
-        "description": "In creation order; follow `nextCursor` until it is `null`. Only the nodes the member sees: all of them for tenant admins; for the others, those where a role with `view` reaches them, directly, through a group, or inherited.",
+        "description": "In creation order; follow `nextCursor` until it is `null`. Only the nodes the member sees: all of them for tenant admins; for the others, those where a role with `view` reaches them, directly, through a group, or inherited. A confidential node they have no access to, under a node they see, comes veiled (`veiled: true`): its type only, without name or detail.",
         "operationId": "listNodes",
         "parameters": [
           {
@@ -1976,7 +1976,7 @@
           "hierarchy"
         ],
         "summary": "List who has access to a node",
-        "description": "Every grant that applies on the node: those made on it (`direct`), then those inherited from an ancestor (`origin`), by holder name. A grant made above a confidential node does not reach it. Tenant admins, and the members with `manage_members` on the node.",
+        "description": "Every grant that applies on the node: those made on it (`direct`), then those inherited from an ancestor (`origin`), by holder name. A grant made above a confidential node does not reach it; the origin of a grant inherited from a node the member does not see is `null`. Tenant admins, and the members with `manage_members` on the node.",
         "operationId": "listNodeAccess",
         "parameters": [
           {
@@ -2051,7 +2051,7 @@
           "hierarchy"
         ],
         "summary": "List the children of a node",
-        "description": "By name, each with the weighting of its link; only the children the member sees. Deeper descendants: `GET /nodes?descendantOf=`.",
+        "description": "By name, each with the weighting of its link. A confidential child the member has no access to comes veiled (`veiled: true`): its type only, without name or detail. Deeper descendants: `GET /nodes?descendantOf=`.",
         "operationId": "listNodeChildren",
         "parameters": [
           {
@@ -2073,7 +2073,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/NodeLink"
+                    "$ref": "#/components/schemas/NodeChild"
                   }
                 }
               }
@@ -2091,6 +2091,137 @@
           },
           "404": {
             "description": "No such node in this tenant, or not visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes/{id}/confidentiality": {
+      "put": {
+        "tags": [
+          "hierarchy"
+        ],
+        "summary": "Make a project confidential, or open it again",
+        "description": "A confidential project blocks inherited access: only the roles granted on the project itself reach it, and they still apply below it. Those who see one of its parents find it veiled in the lists. Projects only. Tenant admins, and the members who administer the project; the latter must keep that role from a grant made on the project itself, so that they do not shut themselves out. Applies from the next request.",
+        "operationId": "setNodeConfidentiality",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the node",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the version being changed, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NodeConfidentiality"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The node",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "New version of the node"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Node"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`: `confidential` `not_allowed` on a portfolio or a program",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: may not change it, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such node in this tenant, or not visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`node.confidential_lockout`: the member would lose their own access",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The node changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -6999,7 +7130,7 @@
       },
       "ErrorCode": {
         "type": "string",
-        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n| `invitation.invalid` | 400 | This invitation link is invalid, expired or already used |\n| `invitation.pending` | 409 | This email already has an open invitation; send it again instead |\n| `invitation.already_member` | 409 | This email already belongs to a member of the tenant |\n| `invitation.closed` | 409 | This invitation was already accepted or revoked |\n| `member.last_admin` | 409 | The tenant needs at least one active tenant admin |\n| `group.name_taken` | 409 | Another group already has this name |\n| `permission.denied` | 403 | You do not have the permission this needs |\n| `role.label_taken` | 409 | Another role already has this label |\n| `role.in_use` | 409 | Grants use this role: remove them first |\n| `account.no_password` | 409 | This account signs in through its organization: it has no password |\n| `session.current` | 409 | This is the session of the request: sign out instead |\n| `account.reauthentication_required` | 403 | Sign in again through your organization, then erase your account within 10 minutes |\n| `account.platform_admin` | 409 | A platform super admin cannot be erased: another one removes the role first |\n| `export.pending` | 409 | The export is not ready yet |\n| `node.key_taken` | 409 | Another project of the organization has this key |\n| `node.cycle` | 409 | This link would make the node its own ancestor |\n| `node.parent_not_allowed` | 409 | This type of node cannot be attached under that parent |\n| `node.grant_exists` | 409 | They already have this role on this node |\n",
+        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n| `invitation.invalid` | 400 | This invitation link is invalid, expired or already used |\n| `invitation.pending` | 409 | This email already has an open invitation; send it again instead |\n| `invitation.already_member` | 409 | This email already belongs to a member of the tenant |\n| `invitation.closed` | 409 | This invitation was already accepted or revoked |\n| `member.last_admin` | 409 | The tenant needs at least one active tenant admin |\n| `group.name_taken` | 409 | Another group already has this name |\n| `permission.denied` | 403 | You do not have the permission this needs |\n| `role.label_taken` | 409 | Another role already has this label |\n| `role.in_use` | 409 | Grants use this role: remove them first |\n| `account.no_password` | 409 | This account signs in through its organization: it has no password |\n| `session.current` | 409 | This is the session of the request: sign out instead |\n| `account.reauthentication_required` | 403 | Sign in again through your organization, then erase your account within 10 minutes |\n| `account.platform_admin` | 409 | A platform super admin cannot be erased: another one removes the role first |\n| `export.pending` | 409 | The export is not ready yet |\n| `node.key_taken` | 409 | Another project of the organization has this key |\n| `node.cycle` | 409 | This link would make the node its own ancestor |\n| `node.parent_not_allowed` | 409 | This type of node cannot be attached under that parent |\n| `node.grant_exists` | 409 | They already have this role on this node |\n| `node.confidential_lockout` | 409 | You would lose your own access: get a role granted on the project itself first |\n",
         "enum": [
           "bad_request",
           "validation_failed",
@@ -7056,7 +7187,8 @@
           "node.key_taken",
           "node.cycle",
           "node.parent_not_allowed",
-          "node.grant_exists"
+          "node.grant_exists",
+          "node.confidential_lockout"
         ]
       },
       "ExportStatus": {
@@ -8079,8 +8211,15 @@
             "$ref": "#/components/schemas/AccessHolder"
           },
           "origin": {
-            "$ref": "#/components/schemas/NodeParent",
-            "description": "The node the role was granted on: this node, or an ancestor."
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/NodeParent",
+                "description": "The node the role was granted on: this node, or an ancestor; `null`\nfor an ancestor the member does not see."
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "role": {
             "$ref": "#/components/schemas/AccessRole"
@@ -8182,6 +8321,34 @@
         },
         "additionalProperties": false
       },
+      "NodeChild": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/NodeLink"
+          },
+          {
+            "$ref": "#/components/schemas/VeiledNode"
+          }
+        ],
+        "description": "A child of a node: a link to a node the member sees, or a veiled node."
+      },
+      "NodeConfidentiality": {
+        "type": "object",
+        "description": "Whether a node is confidential.",
+        "required": [
+          "confidential"
+        ],
+        "properties": {
+          "confidential": {
+            "type": "boolean",
+            "description": "`true`: only the roles granted on the node itself give access to it."
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "confidential": true
+        }
+      },
       "NodeHealth": {
         "type": "string",
         "description": "How a node stands, as its owners see it.",
@@ -8190,6 +8357,17 @@
           "at_risk",
           "off_track"
         ]
+      },
+      "NodeItem": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/Node"
+          },
+          {
+            "$ref": "#/components/schemas/VeiledNode"
+          }
+        ],
+        "description": "An item of the nodes list: a node the member sees, or a veiled one."
       },
       "NodeLink": {
         "type": "object",
@@ -8283,8 +8461,9 @@
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Node"
-            }
+              "$ref": "#/components/schemas/NodeItem"
+            },
+            "description": "The nodes the member sees, and the veiled ones (`veiled: true`)."
           },
           "nextCursor": {
             "type": [
@@ -9314,6 +9493,38 @@
           "url": {
             "type": "string",
             "description": "To navigate to (not to fetch): it sets the target tenant's cookies.\nWorks once, within 60 seconds."
+          }
+        }
+      },
+      "VeiledNode": {
+        "type": "object",
+        "description": "A confidential node the member has no access to, listed because they see\none of its parents: its type only, without name or detail.",
+        "required": [
+          "veiled",
+          "id",
+          "type",
+          "parents"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "An opaque identifier: stable, but not the node's id, and of no use\nto read it."
+          },
+          "parents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NodeParent"
+            },
+            "description": "Those of its parents the member sees."
+          },
+          "type": {
+            "$ref": "#/components/schemas/NodeType"
+          },
+          "veiled": {
+            "type": "boolean",
+            "description": "Always `true`: tells a veiled node from a node or a link.",
+            "example": true
           }
         }
       }

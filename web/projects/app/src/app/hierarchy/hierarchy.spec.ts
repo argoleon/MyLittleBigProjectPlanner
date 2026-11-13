@@ -1,8 +1,9 @@
 /**
- * Integration tests of the hierarchy screens (L03-US01 to US03): the
+ * Integration tests of the hierarchy screens (L03-US01 to US04): the
  * portfolios list, the creation dialog, a node's settings with its General
- * and Attachments tabs, the effective access card and the grant dialog,
- * with the API mocked at the HTTP level and the real translations.
+ * and Attachments tabs, the effective access card, the grant dialog, the
+ * confidentiality card and the veiled rows of confidential projects, with
+ * the API mocked at the HTTP level and the real translations.
  */
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
@@ -156,6 +157,28 @@ describe('PortfoliosPage', () => {
     const project = Array.from(root().querySelectorAll('mat-chip-option')).find((c) => text(c) === 'Project')!;
     await click(project.querySelector('.mdc-evolution-chip__action'));
     expect(root().querySelectorAll('tr[mat-row]').length).toBe(1);
+  });
+
+  it('shows a confidential project out of reach as a veiled row, without name or link', async () => {
+    const { harness, reply, root, text } = await setUp('member');
+    await harness.navigateByUrl('/portfolios');
+    await reply(isList, {
+      items: [
+        PROGRAM,
+        { veiled: true, id: 'opaque-1', type: 'project', parents: [{ id: PROGRAM.id, type: 'program', name: 'IT Modernization' }] },
+      ],
+      nextCursor: null,
+    });
+    const veiled = root().querySelectorAll('tr[mat-row]')[1];
+    const cells = Array.from(veiled.querySelectorAll('td'));
+    expect(text(cells[0].querySelector('app-veiled-name .name'))).toBe('Confidential project');
+    expect(text(cells[0].querySelector('.meta'))).toBe('Type: Project You do not have access.');
+    expect(cells.slice(1).map((cell) => text(cell))).toEqual(['IT Modernization', '', '', '']);
+    const lock = veiled.querySelector('app-veiled-name mat-icon')!;
+    expect([lock.getAttribute('role'), lock.getAttribute('aria-label')]).toEqual(['img', 'Locked']);
+    expect(veiled.querySelector('a')).toBeNull();
+    expect(veiled.querySelector('ui-health-chip')).toBeNull();
+    expect(await axeViolations(root().querySelector('app-portfolios-page')!)).toEqual([]);
   });
 
   it('only offers creation at the root to tenant admins', async () => {
@@ -510,6 +533,81 @@ describe('NodeLinksTab', () => {
     expect(document.activeElement).toBe(tab().querySelector('button.add-parent'));
   });
 
+  it('shows a confidential child out of reach veiled, with nothing to open', async () => {
+    const { tab, text } = await openLinks(
+      [MODERNIZATION],
+      [SUB_PROJECT, { veiled: true, id: 'opaque-1', type: 'project', parents: [] } as unknown as NodeLink],
+    );
+    const rows = Array.from(tab().querySelectorAll('.children .row'));
+    expect(text(rows[0].querySelector('.text'))).toBe('Cyber permissions Project · CYBP');
+    expect(text(rows[1].querySelector('.name'))).toBe('Confidential project');
+    expect(text(rows[1].querySelector('.meta'))).toBe('You do not have access.');
+    expect(rows[1].querySelector('a')).toBeNull();
+    const lock = rows[1].querySelector('mat-icon')!;
+    expect([lock.textContent, lock.getAttribute('role'), lock.getAttribute('aria-label')]).toEqual(['lock', 'img', 'Locked']);
+    expect(await axeViolations(tab())).toEqual([]);
+  });
+
+  describe('confidentiality', () => {
+    const confidentiality = (url: string, method: string) =>
+      url === `/api/v1/nodes/${PROJECT.id}/confidentiality` && method === 'PUT';
+
+    it('makes the project confidential with the version it read, and says when it is refused', async () => {
+      const { reply, root, tab, text, click } = await openLinks([MODERNIZATION], [], ['view', 'administer_node']);
+      const card = () => tab().querySelector('app-node-confidentiality-card')!;
+      expect(text(card().querySelector('h2'))).toBe('Confidentiality');
+      const toggle = () => card().querySelector('button[role="switch"]') as HTMLButtonElement;
+      expect(toggle().getAttribute('aria-checked')).toBe('false');
+      expect(toggle().getAttribute('aria-labelledby')).toBe('confidentiality-label');
+      expect(text(card().querySelector('#confidentiality-label'))).toBe('Confidential project');
+      expect(toggle().getAttribute('aria-describedby')).toBe('confidentiality-description');
+      expect(await axeViolations(root().querySelector('app-node-settings-page')!)).toEqual([]);
+      // Only those who manage the members see who has access.
+      expect(tab().querySelector('app-node-access-card')).toBeNull();
+
+      await click(toggle());
+      const saved = await reply(confidentiality, { ...PROJECT, confidential: true, version: 2 });
+      expect(saved.request.headers.get('If-Match')).toBe('"1"');
+      expect(saved.request.body).toEqual({ confidential: true });
+      expect(toggle().getAttribute('aria-checked')).toBe('true');
+      expect(text(card().querySelector('[role="status"]'))).toBe('The project is now confidential.');
+
+      // Opening it again is refused: the switch stays on.
+      await click(toggle());
+      const refused = await reply(confidentiality, problem(409, 'node.confidential_lockout'), 409);
+      expect(refused.request.headers.get('If-Match')).toBe('"2"');
+      expect(refused.request.body).toEqual({ confidential: false });
+      expect(toggle().getAttribute('aria-checked')).toBe('true');
+      expect(text(card().querySelector('[role="alert"]'))).toBe(
+        'You would lose your own access: ask for a role granted on the project itself first.',
+      );
+    });
+
+    it('reads the access again once the project is confidential', async () => {
+      const { reply, tab, click } = await openLinks([MODERNIZATION], [], ['view', 'administer_node', 'manage_members']);
+      await reply(accessOf, []);
+      await click(tab().querySelector('app-node-confidentiality-card button[role="switch"]'));
+      await reply(confidentiality, { ...PROJECT, confidential: true, version: 2 });
+      // Inherited roles no longer reach it.
+      await reply(accessOf, []);
+    });
+
+    it('is for projects only, and for those who administer them', async () => {
+      const reader = await openLinks([MODERNIZATION], []);
+      expect(reader.tab().querySelector('app-node-confidentiality-card')).toBeNull();
+      TestBed.resetTestingModule();
+
+      const context = await setUp();
+      await context.harness.navigateByUrl(`/nodes/${PROGRAM.id}/links`);
+      await context.reply((url) => url === `/api/v1/nodes/${PROGRAM.id}`, PROGRAM);
+      await context.reply((url) => url === `/api/v1/nodes/${PROGRAM.id}/parents`, []);
+      await context.reply((url) => url === `/api/v1/nodes/${PROGRAM.id}/children`, []);
+      await context.reply((url) => url === `/api/v1/nodes/${PROGRAM.id}/my-permissions`, ['view', 'administer_node']);
+      expect(context.root().querySelector('app-node-links-tab')).not.toBeNull();
+      expect(context.root().querySelector('app-node-confidentiality-card')).toBeNull();
+    });
+  });
+
   describe('effective access', () => {
     const READER = { id: 'r1', label: 'Reader', labelTranslations: { fr: 'Lecteur', en: 'Reader' } };
     const MANAGER = { id: 'r3', label: 'Project manager', labelTranslations: { en: 'Project manager' } };
@@ -581,6 +679,13 @@ describe('NodeLinksTab', () => {
       ]);
       expect(card().querySelector('button.add-grant')?.getAttribute('aria-label')).toBe('Add a role');
       expect(await axeViolations(root().querySelector('app-node-settings-page')!)).toEqual([]);
+    });
+
+    it('does not name an ancestor the user has no access to', async () => {
+      const { card, text } = await openAccess([{ ...FROM_PROGRAM, origin: null }]);
+      expect(text(card().querySelector('.row .text'))).toBe(
+        'Group: Compliance team Inherited from a node you do not have access to',
+      );
     });
 
     it('says when nobody has a role, and stays hidden from those who do not manage the members', async () => {
