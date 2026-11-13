@@ -166,6 +166,7 @@ pub fn verify_id_token(
     nonce: &str,
 ) -> Result<Claims, OidcError> {
     let invalid = |reason: &str| OidcError::InvalidToken(reason.to_owned());
+    crate::jwt_crypto::install();
     let header = jsonwebtoken::decode_header(id_token).map_err(|e| OidcError::InvalidToken(e.to_string()))?;
     if !ALGORITHMS.contains(&header.alg) {
         return Err(invalid("signature algorithm not accepted"));
@@ -182,6 +183,8 @@ pub fn verify_id_token(
     validation.set_issuer(&[issuer]);
     validation.set_audience(&[audience]);
     validation.set_required_spec_claims(&["exp", "iss", "aud", "sub"]);
+    // A token that says it is not valid yet is refused too.
+    validation.validate_nbf = true;
     validation.leeway = 60;
     let claims = jsonwebtoken::decode::<Claims>(id_token, &decoding, &validation)
         .map_err(|e| OidcError::InvalidToken(e.to_string()))?
@@ -322,10 +325,20 @@ mod tests {
         (pkcs8.as_ref().to_vec(), jwks)
     }
 
+    /// An ES256 ID token signed with `pkcs8`, by `ring` itself: the
+    /// application's provider never signs.
     fn token(pkcs8: &[u8], kid: &str, claims: &serde_json::Value) -> String {
-        let mut header = jsonwebtoken::Header::new(Algorithm::ES256);
-        header.kid = Some(kid.to_owned());
-        jsonwebtoken::encode(&header, claims, &jsonwebtoken::EncodingKey::from_ec_der(pkcs8)).unwrap()
+        use ring::signature::{ECDSA_P256_SHA256_FIXED_SIGNING, EcdsaKeyPair};
+        let rng = ring::rand::SystemRandom::new();
+        let pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, pkcs8, &rng).unwrap();
+        let header = serde_json::json!({"alg": "ES256", "typ": "JWT", "kid": kid});
+        let signed = format!(
+            "{}.{}",
+            URL_SAFE_NO_PAD.encode(header.to_string()),
+            URL_SAFE_NO_PAD.encode(claims.to_string())
+        );
+        let signature = pair.sign(&rng, signed.as_bytes()).unwrap();
+        format!("{signed}.{}", URL_SAFE_NO_PAD.encode(signature.as_ref()))
     }
 
     fn claims(changes: &serde_json::Value) -> serde_json::Value {
@@ -377,6 +390,17 @@ mod tests {
             ("other nonce", serde_json::json!({"nonce": "replayed"})),
             ("no nonce", serde_json::json!({"nonce": null})),
             ("no subject", serde_json::json!({"sub": null})),
+            ("not valid yet", serde_json::json!({"nbf": past + 7200})),
+            // GHSA-h395-gr6q-cpjc: a time claim of the wrong type must not
+            // skip its check.
+            (
+                "expired, as a string",
+                serde_json::json!({"exp": past.to_string()}),
+            ),
+            (
+                "not valid yet, as a string",
+                serde_json::json!({"nbf": (past + 7200).to_string()}),
+            ),
         ] {
             let result = check(&token(&pkcs8, "k1", &claims(&changes)), &keys);
             assert!(result.is_err(), "{case} must be refused");

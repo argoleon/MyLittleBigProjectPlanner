@@ -90,6 +90,11 @@ impl PermissionSet {
         Self(self.0 | permission.bit())
     }
 
+    /// Whether every permission of `other` is in this set.
+    pub const fn contains_all(self, other: Self) -> bool {
+        self.0 & other.0 == other.0
+    }
+
     /// Permissions in either set.
     #[must_use]
     pub const fn union(self, other: Self) -> Self {
@@ -119,10 +124,66 @@ impl FromIterator<Permission> for PermissionSet {
 }
 
 /// Effective permissions of a member from the roles that reach them (direct
-/// grants, groups, inheritance: L03 decides which ones): their union. A grant
-/// only adds permissions.
+/// grants, groups, inheritance: `crate::grants` decides which ones): their
+/// union. A grant only adds permissions.
 pub fn effective(roles: impl IntoIterator<Item = PermissionSet>) -> PermissionSet {
     roles.into_iter().fold(PermissionSet::EMPTY, PermissionSet::union)
+}
+
+/// A committed change in a tenant, as far as permissions go. Effective
+/// permissions are cached (specification §14): every change that can alter
+/// them forgets the tenant's cache ([`PermissionChange::alters_permissions`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PermissionChange {
+    /// A role was granted to a member or a group on a node.
+    GrantAdded,
+    GrantRemoved,
+    /// A role's permissions changed (or only its labels: the caller does not
+    /// tell them apart).
+    RoleChanged,
+    RoleDeleted,
+    /// A member joined or left a group, which may hold grants.
+    GroupMemberAdded,
+    GroupMemberRemoved,
+    /// A group went, and its grants with it.
+    GroupDeleted,
+    /// A member's tenant role or account type changed.
+    MemberAccessChanged,
+    /// A member left the tenant or was erased: their grants went with them,
+    /// and their cached permissions must not outlive them.
+    MemberRemoved,
+    /// A node got another parent, or lost one: what it inherits changed.
+    ParentLinked,
+    ParentUnlinked,
+    /// A node became confidential, or stopped being so: what it inherits
+    /// changed, and so did what its descendants inherit through it.
+    ConfidentialityChanged,
+    /// Only the weighting of an existing link changed: aggregates, not
+    /// access. (A new node needs nothing either: nothing is cached for it.)
+    LinkWeightChanged,
+}
+
+impl PermissionChange {
+    pub const ALL: [Self; 13] = [
+        Self::GrantAdded,
+        Self::GrantRemoved,
+        Self::RoleChanged,
+        Self::RoleDeleted,
+        Self::GroupMemberAdded,
+        Self::GroupMemberRemoved,
+        Self::GroupDeleted,
+        Self::MemberAccessChanged,
+        Self::MemberRemoved,
+        Self::ParentLinked,
+        Self::ParentUnlinked,
+        Self::ConfidentialityChanged,
+        Self::LinkWeightChanged,
+    ];
+
+    /// Whether the cached permissions of the tenant must be forgotten.
+    pub const fn alters_permissions(self) -> bool {
+        !matches!(self, Self::LinkWeightChanged)
+    }
 }
 
 /// Longest role label, in characters.
@@ -209,6 +270,43 @@ pub const DEFAULT_ROLES: [DefaultRole; 4] = [
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_change_of_access_forgets_the_cache_a_weighting_does_not() {
+        use PermissionChange::{
+            ConfidentialityChanged, GrantAdded, GrantRemoved, GroupDeleted, GroupMemberAdded,
+            GroupMemberRemoved, LinkWeightChanged, MemberAccessChanged, MemberRemoved, ParentLinked,
+            ParentUnlinked, RoleChanged, RoleDeleted,
+        };
+        let expected = [
+            (GrantAdded, true),
+            (GrantRemoved, true),
+            (RoleChanged, true),
+            (RoleDeleted, true),
+            (GroupMemberAdded, true),
+            (GroupMemberRemoved, true),
+            (GroupDeleted, true),
+            (MemberAccessChanged, true),
+            (MemberRemoved, true),
+            (ParentLinked, true),
+            (ParentUnlinked, true),
+            (ConfidentialityChanged, true),
+            (LinkWeightChanged, false),
+        ];
+        assert_eq!(expected.map(|(change, _)| change), PermissionChange::ALL);
+        for (change, alters) in expected {
+            assert_eq!(change.alters_permissions(), alters, "{change:?}");
+        }
+    }
+
+    #[test]
+    fn a_set_contains_its_subsets() {
+        let reader: PermissionSet = [Permission::View].into_iter().collect();
+        let contributor = reader.with(Permission::Edit);
+        assert!(contributor.contains_all(reader) && contributor.contains_all(contributor));
+        assert!(!reader.contains_all(contributor));
+        assert!(reader.contains_all(PermissionSet::EMPTY) && PermissionSet::all().contains_all(contributor));
+    }
 
     #[test]
     fn identifiers_are_stable_and_parsed_back() {

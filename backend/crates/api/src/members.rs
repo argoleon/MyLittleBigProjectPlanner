@@ -14,6 +14,7 @@ use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use domain::members::{Access, keeps_an_admin, manages_members, validate_access};
+use domain::permissions::PermissionChange;
 use infra::groups::GroupRef;
 use infra::members::{self as repo, MemberFilter, TenantMember, WriteConflict};
 use infra::uuid::Uuid;
@@ -361,7 +362,7 @@ pub async fn update(
     );
     let tenant = tx.tenant_id();
     tx.commit().await?;
-    crate::permissions::invalidate(&state, tenant).await;
+    crate::permissions::changed(&state, tenant, PermissionChange::MemberAccessChanged).await;
     let version = member.version;
     Ok(with_etag(ApiJson(member).into_response(), version))
 }
@@ -441,6 +442,6 @@ pub async fn remove(
     );
     let tenant = tx.tenant_id();
     tx.commit().await?;
-    crate::permissions::invalidate(&state, tenant).await;
+    crate::permissions::changed(&state, tenant, PermissionChange::MemberRemoved).await;
     Ok(StatusCode::NO_CONTENT)
 }

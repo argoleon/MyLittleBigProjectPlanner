@@ -398,7 +398,12 @@
       "not_default_slug": "In single-organization mode, only the configured identifier is allowed.",
       "external_member_only": "An external account cannot administer the organization.",
       "incorrect": "Incorrect value.",
-      "mismatch": "The values do not match."
+      "mismatch": "The values do not match.",
+      "before_start": "The end is before the start.",
+      "not_allowed": "Not allowed here.",
+      "not_found": "Not found.",
+      "unknown_member": "Not a member of the organization.",
+      "too_many": "Too many items."
     },
     "invitation": {
       "invalid": "This invitation link is invalid, has expired or was already used. Ask for a new one.",
@@ -429,6 +434,16 @@
     },
     "export": {
       "pending": "The export is not ready yet."
+    },
+    "node": {
+      "key_taken": "Another project of the organization has this key.",
+      "cycle": "This link would make the node its own ancestor.",
+      "parent_not_allowed": "This type of node cannot be attached under that parent.",
+      "grant_exists": "They already have this role on this node.",
+      "confidential_lockout": "You would lose your own access: ask for a role granted on the project itself first.",
+      "archived": "This project is archived: it is read-only until it is restored.",
+      "active_children": "This project still has active sub-projects: archive or detach them first.",
+      "parent_archived": "This project is under an archived project: restore that one first."
     }
   },
   "dialog": {
@@ -537,6 +552,227 @@
       "mismatch": "This is not the email of your account.",
       "purgeComments": "Also delete my comments",
       "submit": "Delete for good"
+    }
+  },
+  "hierarchy": {
+    "intro": "The top of the hierarchy: portfolios, programs and projects, with their aggregated indicators.",
+    "add": "New node",
+    "caption": "Portfolios, programs and projects",
+    "columns": {
+      "name": "Name",
+      "health": "Health",
+      "owners": "Owners",
+      "progress": "Progress",
+      "planned": "Planned load",
+      "open": "Open",
+      "late": "Late",
+      "parents": "Under"
+    },
+    "dates": "{{ start }} – {{ end }}",
+    "empty": "No portfolio, program or project yet",
+    "emptyHint": "Create a portfolio, then its programs and projects.",
+    "settings": {
+      "title": "{{ name }} · Settings",
+      "tabs": "Settings sections",
+      "general": "General",
+      "addChild": "Add a child",
+      "breadcrumb": "Breadcrumb",
+      "links": "Attachments and permissions",
+      "archiving": "Archiving"
+    },
+    "general": {
+      "name": "Name",
+      "key": "Key",
+      "keyHint": "Set at creation: it prefixes the project’s tickets.",
+      "description": "Description",
+      "objectives": "Objectives",
+      "startDate": "Start",
+      "endDate": "End",
+      "dateHint": "MM/DD/YYYY",
+      "health": "Health",
+      "save": "Save",
+      "saved": "Changes saved.",
+      "unsaved": "Unsaved changes"
+    },
+    "dialog": {
+      "title": "New node",
+      "childTitle": "Add a child to {{ name }}",
+      "type": "Type",
+      "keyHint": "2 to 10 capital letters and digits, a letter first (PLAT).",
+      "create": "Create",
+      "created": "{{ name }} created."
+    },
+    "owners": {
+      "label": "Owners",
+      "add": "Add an owner",
+      "removeOf": "Remove {{ name }}",
+      "noMatch": "No member found."
+    },
+    "type": {
+      "label": "Type:",
+      "portfolio": "Portfolio",
+      "program": "Program",
+      "project": "Project"
+    },
+    "health": {
+      "label": "Health:",
+      "on_track": "On track",
+      "at_risk": "At risk",
+      "off_track": "Off track"
+    },
+    "links": {
+      "parents": "Parents",
+      "parentsHint": {
+        "portfolio": "A portfolio can be attached to other portfolios.",
+        "program": "A program can be attached to portfolios or other programs.",
+        "project": "A project can be attached to portfolios, programs or other projects."
+      },
+      "addParent": "Add a parent",
+      "noParent": "At the root: no parent.",
+      "weight": "Weighting",
+      "weightOf": "Weighting under {{ name }}",
+      "weightSaved": "Weighting under {{ name }} saved.",
+      "weightNote": "The weighting only applies to the aggregates of that parent. Higher up, the node is counted once.",
+      "unlinkOf": "Detach from {{ name }}",
+      "unlinked": "Detached from {{ name }}.",
+      "linked": "Attached under {{ name }}.",
+      "search": "Search a node",
+      "candidates": "Possible parents",
+      "allowed": "attachment allowed",
+      "refusal": {
+        "already_parent": "Already a parent",
+        "not_allowed": "Impossible: this type of node cannot be its parent",
+        "cycle": "Impossible: it is a descendant of this node, the link would create a cycle",
+        "forbidden": "You do not administer both nodes"
+      },
+      "noCandidate": "No matching node.",
+      "closeSearch": "Close the search",
+      "children": "Children",
+      "noChild": "No children yet.",
+      "open": "Open",
+      "openOf": "Open {{ name }}"
+    },
+    "access": {
+      "title": "Effective access",
+      "add": "Add",
+      "addLabel": "Add a role",
+      "roleLabel": "Role:",
+      "kind": {
+        "member": "Member",
+        "group": "Group"
+      },
+      "empty": "Nobody has a role here yet. Organization admins see every node.",
+      "note": "Access is the union of the direct roles and of the roles inherited from every parent.",
+      "direct": {
+        "portfolio": "Direct role on this portfolio",
+        "program": "Direct role on this program",
+        "project": "Direct role on this project"
+      },
+      "inherited": {
+        "portfolio": "Inherited from the portfolio {{ name }}",
+        "program": "Inherited from the program {{ name }}",
+        "project": "Inherited from the project {{ name }}"
+      },
+      "revokeOf": "Revoke the role {{ role }} of {{ name }}",
+      "revoked": "Role {{ role }} revoked from {{ name }}.",
+      "granted": "Role {{ role }} granted to {{ name }}.",
+      "dialog": {
+        "title": "Grant a role on {{ name }}",
+        "holder": "Member or group",
+        "holderHint": "Search by name or email.",
+        "noMatch": "No member or group found.",
+        "chooseHolder": "Choose a member or a group in the list.",
+        "role": "Role",
+        "inherit": "The role also applies to everything under this node.",
+        "grant": "Grant"
+      },
+      "inheritedHidden": "Inherited from a node you do not have access to"
+    },
+    "confidentiality": {
+      "title": "Confidentiality",
+      "toggle": "Confidential project",
+      "description": "Blocks inherited access: only the members with a role on the project itself reach it. In the lists of its parents, it stays counted anonymously, without name or detail.",
+      "on": "The project is now confidential.",
+      "off": "The project is no longer confidential."
+    },
+    "veiled": {
+      "name": "Confidential project",
+      "hint": "You do not have access.",
+      "lock": "Locked"
+    },
+    "tree": {
+      "expandOf": "Expand {{ name }}",
+      "collapseOf": "Collapse {{ name }}",
+      "level": "Level {{ level }}",
+      "alsoUnder": "Also under: {{ names }}",
+      "veiledHint": "You do not have access to this project. Its load is counted anonymously.",
+      "loadFailed": "Could not load. Try again.",
+      "progressOf": "Progress of {{ name }}",
+      "none": "No value"
+    },
+    "figures": {
+      "hours": "{{ hours }} h"
+    },
+    "view": {
+      "settings": "Settings",
+      "gantt": {
+        "portfolio": "Portfolio Gantt",
+        "program": "Program Gantt",
+        "project": "Project Gantt"
+      },
+      "workload": "Team workload",
+      "owners": "Owners: {{ names }}",
+      "planned": "Planned load",
+      "project": "{{ count }} distinct project",
+      "projects": "{{ count }} distinct projects",
+      "capacity": "Consumed capacity",
+      "capacityHint": "of the assigned teams",
+      "noCapacity": "No team assigned",
+      "open": "Open tickets",
+      "confidentialOpen": "including {{ count }} on a confidential project",
+      "confidentialOpenMany": "including {{ count }} on confidential projects",
+      "late": "Late tickets",
+      "note": "Aggregates cover distinct descendant projects: a project attached to several programs is counted only once.",
+      "caption": "What is attached to {{ name }}",
+      "empty": "No child yet",
+      "emptyHint": "Add a child to follow its load and progress here."
+    },
+    "archivedIntro": "The archived projects: read-only, out of the active lists and the aggregates. Open one to restore it.",
+    "viewLabel": "Show",
+    "views": {
+      "active": "Active",
+      "archived": "Archived"
+    },
+    "archivedCaption": "Archived projects",
+    "archivedEmpty": "No archived project",
+    "archivedEmptyHint": "A finished project is archived from the Archiving tab of its settings.",
+    "archiving": {
+      "title": "Archiving",
+      "isActive": "This project is active.",
+      "isArchived": "This project is archived.",
+      "consequences": {
+        "readOnly": "It becomes read-only: neither it, its attachments nor its tickets can be changed.",
+        "lists": "It leaves the active lists; the \"Archived\" filter finds it.",
+        "aggregates": "It leaves the aggregates of its portfolios and programs.",
+        "history": "Its history is kept, and it can be restored at any time."
+      },
+      "subProjectsHint": "Its sub-projects are archived first.",
+      "restoreHint": "Restored, it can be changed again and counts again in the aggregates. If its parent project is archived, restore that one first.",
+      "archive": "Archive the project",
+      "restore": "Restore the project",
+      "notAdmin": "Only the administrators of the project archive or restore it.",
+      "confirmArchive": {
+        "title": "Archive {{ name }}?",
+        "message": "The project will become read-only and leave the active lists and the aggregates. You can restore it."
+      },
+      "confirmRestore": {
+        "title": "Restore {{ name }}?",
+        "message": "The project will be editable again and count again in the aggregates."
+      },
+      "archived": "The project is archived.",
+      "restored": "The project is restored.",
+      "banner": "Archived project.",
+      "bannerHint": "It is read-only, out of the active lists and the aggregates."
     }
   }
 }

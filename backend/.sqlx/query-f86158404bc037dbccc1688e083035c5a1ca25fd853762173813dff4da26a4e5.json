@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH RECURSIVE visible (id) AS (\n            SELECT g.node_id\n            FROM node_role_grant g\n            JOIN role r ON r.id = g.role_id\n            WHERE 'view' = ANY (r.permissions)\n              AND (g.account_id = $1\n                   OR g.group_id IN (SELECT gm.group_id FROM group_member gm WHERE gm.account_id = $1))\n            UNION\n            SELECT e.child_id\n            FROM visible v\n            JOIN node_edge e ON e.parent_id = v.id\n            JOIN node child ON child.id = e.child_id\n            WHERE NOT child.confidential\n        )\n        SELECT v.id AS \"id!\", false AS \"veiled!\" FROM visible v\n        UNION ALL\n        SELECT n.id, true\n        FROM node n\n        WHERE n.confidential\n          AND n.id NOT IN (SELECT id FROM visible)\n          AND EXISTS (\n              SELECT 1 FROM node_edge e\n              WHERE e.child_id = n.id AND e.parent_id IN (SELECT id FROM visible))\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "veiled!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "f86158404bc037dbccc1688e083035c5a1ca25fd853762173813dff4da26a4e5"
+}

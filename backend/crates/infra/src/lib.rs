@@ -2,6 +2,7 @@
 //! S3 storage, email and Valkey.
 
 pub mod accounts;
+pub mod aggregates;
 pub mod auth_policy;
 pub mod bootstrap;
 pub mod config;
@@ -11,6 +12,7 @@ pub mod db;
 pub mod email;
 pub mod erasure;
 pub mod exports;
+pub mod grants;
 pub mod groups;
 pub mod health;
 pub mod http_client;
@@ -18,9 +20,11 @@ pub mod id;
 pub mod idempotency;
 pub mod invitations;
 pub mod jobs;
+pub mod jwt_crypto;
 pub mod members;
 pub mod memberships;
 pub mod mfa;
+pub mod nodes;
 pub mod oidc;
 pub mod oidc_providers;
 pub mod pagination;

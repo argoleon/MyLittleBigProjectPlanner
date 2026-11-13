@@ -33,9 +33,13 @@ sha2 = "0.11.1"
 aes-gcm = "0.11.1"
 totp-rs = { version = "6.0.0", default-features = false, features = ["std", "otpauth"] }
 qrcode = { version = "0.14.1", default-features = false, features = ["svg"] }
-# OIDC: ID tokens checked by jsonwebtoken (ring backend), HTTPS by hyper-rustls
-# with ring and the system's certificates (no aws-lc, no webpki-roots).
-jsonwebtoken = { version = "9.3.1", default-features = false }
+# OIDC: ID tokens checked by jsonwebtoken, its signatures by ring through our
+# own provider (crate::jwt_crypto: neither of its backends, see there); HTTPS
+# by hyper-rustls with ring and the system's certificates (no aws-lc, no
+# webpki-roots).
+jsonwebtoken = { version = "10.3.0", default-features = false }
+ring = "0.17"
+signature = "2"
 hyper = { version = "1", default-features = false, features = ["client", "http1"] }
 hyper-util = { version = "0.1", default-features = false, features = ["client-legacy", "http1", "tokio"] }
 hyper-rustls = { version = "0.27.10", default-features = false, features = ["native-tokio", "http1", "tls12", "ring"] }
@@ -44,8 +48,6 @@ rustls = { version = "0.23", default-features = false, features = ["ring", "std"
 url = "2"
 
 [dev-dependencies]
-# Signs test ID tokens (already in the tree through rustls).
-ring = "0.17"
 opentelemetry = { version = "0.33.1", default-features = false, features = ["metrics"] }
 tempfile = "3.27.0"
 testkit.workspace = true

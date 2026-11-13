@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO node_edge (id, tenant_id, parent_id, child_id)\n                VALUES ($1, app_current_tenant(), $2, $3)\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1a3f8a430d93174045f9e6335da74df244220eeaced11c84ea7ca2e7622c5c3d"
+}

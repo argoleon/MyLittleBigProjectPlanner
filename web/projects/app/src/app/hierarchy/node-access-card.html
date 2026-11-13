@@ -1,0 +1,61 @@
+<section class="card" aria-labelledby="access-title">
+  <div class="card-header">
+    <h2 id="access-title" class="card-title card-heading">{{ 'hierarchy.access.title' | transloco }}</h2>
+    <button
+      #addButton
+      matButton
+      type="button"
+      class="add-grant"
+      [attr.aria-label]="'hierarchy.access.addLabel' | transloco"
+      (click)="add()"
+    >
+      <mat-icon aria-hidden="true">add</mat-icon>
+      {{ 'hierarchy.access.add' | transloco }}
+    </button>
+  </div>
+  @if (notice(); as notice) {
+    <p class="message" [class.info]="notice.ok" [class.error]="!notice.ok" [attr.role]="notice.ok ? 'status' : 'alert'">
+      {{ notice.key | transloco: notice.params }}
+    </p>
+  }
+  @if (access.error()) {
+    <ui-error-state [error]="access.error()" [headingLevel]="3" (retry)="access.reload()" />
+  } @else if (access.hasValue()) {
+    @if (access.value().length === 0) {
+      <p class="empty">{{ 'hierarchy.access.empty' | transloco }}</p>
+    } @else {
+      <ul class="rows">
+        @for (entry of access.value(); track entry.grantId) {
+          <li class="row">
+            <mat-icon aria-hidden="true" class="row-icon">{{ icons[entry.holder.kind] }}</mat-icon>
+            <div class="text">
+              <span class="name">
+                <span class="cdk-visually-hidden">{{ 'hierarchy.access.kind.' + entry.holder.kind | transloco }}:</span>
+                {{ entry.holder.name }}
+              </span>
+              <span class="meta">{{ origin(entry).key | transloco: origin(entry).params }}</span>
+            </div>
+            <ui-role-chip [label]="roleName(entry.role)" [inherited]="!entry.direct" />
+            @if (entry.direct) {
+              <button
+                matIconButton
+                type="button"
+                class="revoke"
+                [disabled]="busy()"
+                [attr.aria-label]="
+                  'hierarchy.access.revokeOf' | transloco: { role: roleName(entry.role), name: entry.holder.name }
+                "
+                (click)="revoke(entry)"
+              >
+                <mat-icon aria-hidden="true">close</mat-icon>
+              </button>
+            }
+          </li>
+        }
+      </ul>
+      <p class="note">{{ 'hierarchy.access.note' | transloco }}</p>
+    }
+  } @else {
+    <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+  }
+</section>

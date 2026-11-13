@@ -27,6 +27,12 @@ printf '%s\n' "$admin_passphrase" \
     | compose exec -T api /usr/local/bin/api add-member default "$admin" "E2E Admin" --role tenant_admin > /dev/null \
     || fail "api add-member failed"
 pass "created $admin"
+# A member without any role, who receives one on a node (web/e2e/hierarchy-stack.spec.ts).
+viewer="e2e-viewer-$(date +%s)-$RANDOM@example.test"
+viewer_passphrase="e2e viewer passphrase $RANDOM$RANDOM"
+printf '%s\n' "$viewer_passphrase" | compose exec -T api /usr/local/bin/api add-member default "$viewer" "E2E Viewer" > /dev/null \
+    || fail "api add-member failed"
+pass "created $viewer"
 
 section "playwright"
 docker run --rm --network mlbpp_edge --ipc host --user "${DEV_UID:-$(id -u)}:${DEV_GID:-$(id -g)}" \
@@ -35,4 +41,5 @@ docker run --rm --network mlbpp_edge --ipc host --user "${DEV_UID:-$(id -u)}:${D
     -e "E2E_MEMBER_EMAIL=$member" -e "E2E_MEMBER_SECRET=$passphrase" -e E2E_MAILPIT_URL=http://mailpit:8025 \
     -e "E2E_MFA_EMAIL=$mfa_member" -e "E2E_MFA_SECRET=$mfa_passphrase" \
     -e "E2E_ADMIN_EMAIL=$admin" -e "E2E_ADMIN_SECRET=$admin_passphrase" \
+    -e "E2E_VIEWER_EMAIL=$viewer" -e "E2E_VIEWER_SECRET=$viewer_passphrase" \
     mlbpp-dev-e2e npx playwright test "$@"

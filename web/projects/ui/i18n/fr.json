@@ -398,7 +398,12 @@
       "not_default_slug": "En mode mono-organisation, seul l’identifiant configuré est accepté.",
       "external_member_only": "Un compte externe ne peut pas administrer l’organisation.",
       "incorrect": "Valeur incorrecte.",
-      "mismatch": "Les valeurs ne correspondent pas."
+      "mismatch": "Les valeurs ne correspondent pas.",
+      "before_start": "La fin précède le début.",
+      "not_allowed": "Pas autorisé ici.",
+      "not_found": "Introuvable.",
+      "unknown_member": "Ce n’est pas un membre de l’organisation.",
+      "too_many": "Trop d’éléments."
     },
     "invitation": {
       "invalid": "Ce lien d’invitation est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
@@ -429,6 +434,16 @@
     },
     "export": {
       "pending": "L’export n’est pas encore prêt."
+    },
+    "node": {
+      "key_taken": "Un autre projet de l’organisation a déjà cette clé.",
+      "cycle": "Ce rattachement ferait du nœud son propre ancêtre.",
+      "parent_not_allowed": "Ce type de nœud ne peut pas être rattaché sous ce parent.",
+      "grant_exists": "Ce rôle est déjà attribué à cette personne ou à ce groupe sur ce nœud.",
+      "confidential_lockout": "Vous perdriez votre propre accès : demandez d’abord un rôle attribué sur le projet lui-même.",
+      "archived": "Ce projet est archivé : il est en lecture seule tant qu’il n’est pas restauré.",
+      "active_children": "Ce projet a encore des sous-projets actifs : archivez-les ou détachez-les d’abord.",
+      "parent_archived": "Ce projet est sous un projet archivé : restaurez celui-ci d’abord."
     }
   },
   "dialog": {
@@ -537,6 +552,227 @@
       "mismatch": "Ce n’est pas l’e-mail de votre compte.",
       "purgeComments": "Supprimer aussi mes commentaires",
       "submit": "Supprimer définitivement"
+    }
+  },
+  "hierarchy": {
+    "intro": "Le haut de la hiérarchie : portefeuilles, programmes et projets, avec leurs indicateurs agrégés.",
+    "add": "Nouveau nœud",
+    "caption": "Portefeuilles, programmes et projets",
+    "columns": {
+      "name": "Nom",
+      "health": "Statut",
+      "owners": "Responsables",
+      "progress": "Avancement",
+      "planned": "Charge planifiée",
+      "open": "Ouverts",
+      "late": "En retard",
+      "parents": "Rattaché à"
+    },
+    "dates": "{{ start }} – {{ end }}",
+    "empty": "Aucun portefeuille, programme ni projet pour l’instant",
+    "emptyHint": "Créez un portefeuille, puis ses programmes et ses projets.",
+    "settings": {
+      "title": "{{ name }} · Paramètres",
+      "tabs": "Rubriques des paramètres",
+      "general": "Général",
+      "addChild": "Ajouter un enfant",
+      "breadcrumb": "Fil d’Ariane",
+      "links": "Rattachements et droits",
+      "archiving": "Archivage"
+    },
+    "general": {
+      "name": "Nom",
+      "key": "Clé",
+      "keyHint": "Fixée à la création : elle préfixe les tickets du projet.",
+      "description": "Description",
+      "objectives": "Objectifs",
+      "startDate": "Début",
+      "endDate": "Fin",
+      "dateHint": "JJ/MM/AAAA",
+      "health": "Statut",
+      "save": "Enregistrer",
+      "saved": "Modifications enregistrées.",
+      "unsaved": "Modifications non enregistrées"
+    },
+    "dialog": {
+      "title": "Nouveau nœud",
+      "childTitle": "Ajouter un enfant à {{ name }}",
+      "type": "Type",
+      "keyHint": "2 à 10 majuscules et chiffres, une lettre d’abord (PLAT).",
+      "create": "Créer",
+      "created": "{{ name }} créé."
+    },
+    "owners": {
+      "label": "Responsables",
+      "add": "Ajouter un responsable",
+      "removeOf": "Retirer {{ name }}",
+      "noMatch": "Aucun membre trouvé."
+    },
+    "type": {
+      "label": "Type :",
+      "portfolio": "Portefeuille",
+      "program": "Programme",
+      "project": "Projet"
+    },
+    "health": {
+      "label": "Statut :",
+      "on_track": "En bonne voie",
+      "at_risk": "À risque",
+      "off_track": "En difficulté"
+    },
+    "links": {
+      "parents": "Parents",
+      "parentsHint": {
+        "portfolio": "Un portefeuille peut être rattaché à d’autres portefeuilles.",
+        "program": "Un programme peut être rattaché à des portefeuilles ou à d’autres programmes.",
+        "project": "Un projet peut être rattaché à des portefeuilles, des programmes ou d’autres projets."
+      },
+      "addParent": "Ajouter un parent",
+      "noParent": "À la racine : aucun parent.",
+      "weight": "Pondération",
+      "weightOf": "Pondération sous {{ name }}",
+      "weightSaved": "Pondération sous {{ name }} enregistrée.",
+      "weightNote": "La pondération ne s’applique qu’aux agrégats du parent concerné. Plus haut, le nœud reste compté une seule fois.",
+      "unlinkOf": "Détacher de {{ name }}",
+      "unlinked": "Détaché de {{ name }}.",
+      "linked": "Rattaché sous {{ name }}.",
+      "search": "Rechercher un nœud",
+      "candidates": "Parents possibles",
+      "allowed": "rattachement autorisé",
+      "refusal": {
+        "already_parent": "Déjà parent",
+        "not_allowed": "Impossible : ce type de nœud ne peut pas en être le parent",
+        "cycle": "Impossible : c’est un descendant de ce nœud, le lien créerait un cycle",
+        "forbidden": "Vous n’administrez pas les deux nœuds"
+      },
+      "noCandidate": "Aucun nœud ne correspond.",
+      "closeSearch": "Fermer la recherche",
+      "children": "Enfants",
+      "noChild": "Aucun enfant pour l’instant.",
+      "open": "Ouvrir",
+      "openOf": "Ouvrir {{ name }}"
+    },
+    "access": {
+      "title": "Accès effectifs",
+      "add": "Ajouter",
+      "addLabel": "Ajouter un rôle",
+      "roleLabel": "Rôle :",
+      "kind": {
+        "member": "Membre",
+        "group": "Groupe"
+      },
+      "empty": "Personne n’a encore de rôle ici. Les administrateurs de l’organisation voient tous les nœuds.",
+      "note": "Les droits sont l’union des rôles directs et des rôles hérités de chaque parent.",
+      "direct": {
+        "portfolio": "Rôle direct sur ce portefeuille",
+        "program": "Rôle direct sur ce programme",
+        "project": "Rôle direct sur ce projet"
+      },
+      "inherited": {
+        "portfolio": "Hérité du portefeuille {{ name }}",
+        "program": "Hérité du programme {{ name }}",
+        "project": "Hérité du projet {{ name }}"
+      },
+      "revokeOf": "Retirer le rôle {{ role }} à {{ name }}",
+      "revoked": "Rôle {{ role }} retiré à {{ name }}.",
+      "granted": "Rôle {{ role }} attribué à {{ name }}.",
+      "dialog": {
+        "title": "Attribuer un rôle sur {{ name }}",
+        "holder": "Membre ou groupe",
+        "holderHint": "Recherchez par nom ou par e-mail.",
+        "noMatch": "Aucun membre ni groupe trouvé.",
+        "chooseHolder": "Choisissez un membre ou un groupe dans la liste.",
+        "role": "Rôle",
+        "inherit": "Le rôle s’applique aussi à tout ce qui se trouve sous ce nœud.",
+        "grant": "Attribuer"
+      },
+      "inheritedHidden": "Hérité d’un nœud auquel vous n’avez pas accès"
+    },
+    "confidentiality": {
+      "title": "Confidentialité",
+      "toggle": "Projet confidentiel",
+      "description": "Bloque l’héritage des droits : seuls les membres qui ont un rôle sur le projet lui-même y accèdent. Chez ses parents, il reste compté de façon anonyme, sans nom ni détail.",
+      "on": "Le projet est maintenant confidentiel.",
+      "off": "Le projet n’est plus confidentiel."
+    },
+    "veiled": {
+      "name": "Projet confidentiel",
+      "hint": "Vous n’y avez pas accès.",
+      "lock": "Verrouillé"
+    },
+    "tree": {
+      "expandOf": "Développer {{ name }}",
+      "collapseOf": "Réduire {{ name }}",
+      "level": "Niveau {{ level }}",
+      "alsoUnder": "Aussi rattaché à : {{ names }}",
+      "veiledHint": "Vous n’avez pas accès à ce projet. Sa charge est comptée de façon anonyme.",
+      "loadFailed": "Chargement impossible. Réessayez.",
+      "progressOf": "Avancement de {{ name }}",
+      "none": "Aucune valeur"
+    },
+    "figures": {
+      "hours": "{{ hours }} h"
+    },
+    "view": {
+      "settings": "Paramètres",
+      "gantt": {
+        "portfolio": "Gantt du portefeuille",
+        "program": "Gantt du programme",
+        "project": "Gantt du projet"
+      },
+      "workload": "Charge des équipes",
+      "owners": "Responsables : {{ names }}",
+      "planned": "Charge planifiée",
+      "project": "{{ count }} projet distinct",
+      "projects": "{{ count }} projets distincts",
+      "capacity": "Capacité consommée",
+      "capacityHint": "des équipes affectées",
+      "noCapacity": "Aucune équipe affectée",
+      "open": "Tickets ouverts",
+      "confidentialOpen": "dont {{ count }} sur un projet confidentiel",
+      "confidentialOpenMany": "dont {{ count }} sur des projets confidentiels",
+      "late": "Tickets en retard",
+      "note": "Les agrégats portent sur les projets descendants distincts : un projet rattaché à plusieurs programmes n’est compté qu’une fois.",
+      "caption": "Ce qui est rattaché à {{ name }}",
+      "empty": "Aucun enfant pour l’instant",
+      "emptyHint": "Ajoutez un enfant pour suivre ici sa charge et son avancement."
+    },
+    "archivedIntro": "Les projets archivés : en lecture seule, hors des listes actives et des agrégats. Ouvrez-en un pour le restaurer.",
+    "viewLabel": "Afficher",
+    "views": {
+      "active": "Actifs",
+      "archived": "Archivés"
+    },
+    "archivedCaption": "Projets archivés",
+    "archivedEmpty": "Aucun projet archivé",
+    "archivedEmptyHint": "Un projet terminé s’archive depuis l’onglet Archivage de ses paramètres.",
+    "archiving": {
+      "title": "Archivage",
+      "isActive": "Ce projet est actif.",
+      "isArchived": "Ce projet est archivé.",
+      "consequences": {
+        "readOnly": "Il passe en lecture seule : ni lui, ni ses rattachements, ni ses tickets ne peuvent plus être modifiés.",
+        "lists": "Il disparaît des listes actives ; le filtre « Archivés » le retrouve.",
+        "aggregates": "Il sort des agrégats de ses portefeuilles et programmes.",
+        "history": "Son historique est conservé, et il peut être restauré à tout moment."
+      },
+      "subProjectsHint": "Ses sous-projets s’archivent d’abord.",
+      "restoreHint": "Restauré, il redevient modifiable et compte de nouveau dans les agrégats. Si son projet parent est archivé, restaurez celui-ci d’abord.",
+      "archive": "Archiver le projet",
+      "restore": "Restaurer le projet",
+      "notAdmin": "Seuls les administrateurs du projet l’archivent ou le restaurent.",
+      "confirmArchive": {
+        "title": "Archiver {{ name }} ?",
+        "message": "Le projet passera en lecture seule et sortira des listes actives et des agrégats. Vous pourrez le restaurer."
+      },
+      "confirmRestore": {
+        "title": "Restaurer {{ name }} ?",
+        "message": "Le projet redeviendra modifiable et comptera de nouveau dans les agrégats."
+      },
+      "archived": "Le projet est archivé.",
+      "restored": "Le projet est restauré.",
+      "banner": "Projet archivé.",
+      "bannerHint": "Il est en lecture seule, hors des listes actives et des agrégats."
     }
   }
 }

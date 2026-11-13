@@ -1,0 +1,17 @@
+:host {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-2);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.lock {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+}
+
+.name {
+  font: var(--mat-sys-title-small);
+}

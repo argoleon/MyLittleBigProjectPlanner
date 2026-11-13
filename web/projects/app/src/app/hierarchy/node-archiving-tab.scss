@@ -1,0 +1,27 @@
+@use './node-cards';
+
+:host {
+  display: block;
+  max-width: 720px;
+}
+
+.state {
+  margin: 0;
+  font: var(--mat-sys-body-large);
+}
+
+.consequences {
+  margin: 0;
+  padding-inline-start: var(--app-space-6);
+  font: var(--mat-sys-body-medium);
+
+  li + li {
+    margin-top: var(--app-space-1);
+  }
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--app-space-2);
+}

@@ -1,0 +1,65 @@
+<h2 mat-dialog-title>
+  @if (data.parent; as parent) {
+    {{ 'hierarchy.dialog.childTitle' | transloco: { name: parent.name } }}
+  } @else {
+    {{ 'hierarchy.dialog.title' | transloco }}
+  }
+</h2>
+<form [formGroup]="form" (ngSubmit)="create()" novalidate>
+  <mat-dialog-content class="fields">
+    @if (errorKey(); as key) {
+      <p class="message error" role="alert">{{ key | transloco }}</p>
+    }
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'hierarchy.dialog.type' | transloco }}</mat-label>
+      <mat-select formControlName="type">
+        @for (type of types; track type) {
+          <mat-option [value]="type">{{ 'hierarchy.type.' + type | transloco }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'hierarchy.general.name' | transloco }}</mat-label>
+      <input matInput formControlName="name" maxlength="200" required />
+      @if (form.controls.name.getError('api'); as key) {
+        <mat-error>{{ key | transloco }}</mat-error>
+      } @else {
+        <mat-error>{{ 'errors.field.required' | transloco }}</mat-error>
+      }
+    </mat-form-field>
+    @if (isProject()) {
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'hierarchy.general.key' | transloco }}</mat-label>
+        <input matInput formControlName="key" maxlength="10" required class="project-key" (blur)="tidyKey()" />
+        <mat-hint>{{ 'hierarchy.dialog.keyHint' | transloco }}</mat-hint>
+        @if (form.controls.key.getError('api'); as key) {
+          <mat-error>{{ key | transloco }}</mat-error>
+        } @else if (form.controls.key.hasError('pattern')) {
+          <mat-error>{{ 'errors.field.format' | transloco }}</mat-error>
+        } @else {
+          <mat-error>{{ 'errors.field.required' | transloco }}</mat-error>
+        }
+      </mat-form-field>
+    }
+    <div class="dates">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'hierarchy.general.startDate' | transloco }}</mat-label>
+        <input matInput [matDatepicker]="start" formControlName="startDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="start" />
+        <mat-datepicker #start />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'hierarchy.general.endDate' | transloco }}</mat-label>
+        <input matInput [matDatepicker]="end" formControlName="endDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="end" />
+        <mat-datepicker #end />
+        <mat-error>{{ 'errors.field.before_start' | transloco }}</mat-error>
+      </mat-form-field>
+    </div>
+    <app-owner-picker [(owners)]="owners" />
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button matButton type="button" mat-dialog-close>{{ 'dialog.cancel' | transloco }}</button>
+    <button matButton="filled" type="submit" [disabled]="saving()">{{ 'hierarchy.dialog.create' | transloco }}</button>
+  </mat-dialog-actions>
+</form>

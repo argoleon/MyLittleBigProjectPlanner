@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT c.id, c.node_type, c.name, c.key, e.weight_percent, c.confidential\n        FROM node_edge e JOIN node c ON c.id = e.child_id\n        WHERE e.parent_id = $1\n          AND (c.archived_at IS NULL\n               OR EXISTS (SELECT 1 FROM node p WHERE p.id = $1 AND p.archived_at IS NOT NULL))\n        ORDER BY c.name, c.id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "node_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "node_type"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "key"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "weight_percent",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "node_edge",
+            "name": "weight_percent"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "confidential",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "confidential"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "2c7e6be24e15afe4ae130bdf686a1205a239893830cc4abd2d598ef0b9f9a323"
+}

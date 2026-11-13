@@ -2,6 +2,54 @@
 
 All notable changes of My Little Big Project Planner. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/). Each release finishes a work package (lot) of the MVP (specification §20).
 
+## [Unreleased]
+
+## [0.3.0] - 2026-11-13
+
+Work package **L03 Hierarchy**: portfolios, programs and projects, several weighted parents, roles granted on nodes and inherited, confidential projects, aggregated indicators, and archiving.
+
+### Added
+
+- **Portfolios, programs and projects** (#71)
+  - Nodes with a name, a project key unique per tenant, description, objectives, dates, health (on track, at risk, off track) and owners, under `/api/v1/nodes`.
+  - The attachment matrix and cycle prevention are enforced in the database; a closure table answers ancestors and descendants.
+  - Settings of a node at `/nodes/:id/general`, and "Add a child", which creates the node and its link.
+- **Several weighted parents** (#75)
+  - A node is linked to several parents, each link with a weighting (0 to 100 %, default 100).
+  - The "Attachments and permissions" tab: Parents card with the weighting and detach, a parent search that says why a candidate is refused, Children card.
+  - Errors `node.parent_not_allowed` and `node.cycle` (409); two concurrent links closing a cycle are serialized.
+- **Roles granted on nodes** (#80)
+  - A role granted to a member or a group on a node applies to it and to everything below; with several parents, access is the union of every path.
+  - Tenant admins, and members who manage the members of a node, grant roles within their own permissions only.
+  - The "Effective access" card says where each role comes from (direct, or inherited from which node), and grants or revokes roles.
+- **Confidential projects** (#84)
+  - A confidential project only hears the roles granted on it, which still apply below it; the switch is audited.
+  - A member who sees a parent without access to the project finds it veiled: "Confidential project", with no name, key, owner or real id. No name of a node a member cannot see leaves the API.
+  - `node.confidential_lockout` (409): an administrator whose role is only inherited cannot shut themselves out.
+- **Aggregated indicators** (#87)
+  - A node shows its planned load, consumed capacity, open and late tickets over its distinct descendant projects: a project reached through several paths counts once, the weighting applies at its parent only, archived projects are left out, confidential ones counted apart.
+  - Precomputed by the worker a couple of seconds after a change (`node.aggregates` job, changes in a burst share one job). See `docs/en/developer-guide/aggregates.md`.
+  - `/nodes/:id` is now the view of a node (indicator cards and the tree of what is under it); the Portfolios page shows the top of the hierarchy as the same tree. `GET /api/v1/hierarchy` browses it one level at a time.
+  - Tickets (L05) and workload (L08) will feed the figures; until then, indicators show the number of projects and zeros.
+- **Archiving** (#92)
+  - A project is archived or restored from the "Archiving" tab of its settings, after a confirmation; the change is audited.
+  - An archived project is read-only (`node.archived`, 409, on every write on it, its links and its children), leaves the active lists and its ancestors' indicators, and comes back once restored. Sub-projects are archived first and restored after.
+  - The Portfolios page switches between the hierarchy and the archived projects (`GET /api/v1/nodes?archived=true`).
+
+### Fixed
+
+- Deleting a group now forgets the cached permissions of its members at once (#498).
+
+### Security
+
+- OIDC sign-in: `jsonwebtoken` 10.4 (GHSA-h395-gr6q-cpjc, CVE-2026-25537: a time claim of the wrong type skipped its check). Its signatures are checked with `ring` through the application's own provider, keeping the `rsa` crate and `aws-lc` out; ID tokens not valid yet (`nbf`) are refused too.
+- Development tools: `minimatch` 11 forced under eslint and typescript-eslint (denial of service through glob patterns); nothing of it ships.
+
+### Upgrading from 0.2.0
+
+- **Migrations** run at start-up (`migrate` service): the hierarchy, node grants and aggregates tables, all protected by Row-Level Security.
+- No new secret nor variable. The worker runs the new `node.aggregates` job; nothing to configure.
+
 ## [0.2.0] - 2026-11-12
 
 Work package **L02 Identities, roles, permissions**: accounts and tenants, sign-in (password, two-step verification, the organization's identity provider), members and groups, node roles and the permission engine, My account, and the GDPR rights.
@@ -77,5 +125,6 @@ Work package **L01 Technical foundation**: the base every later work package bui
   - License policy enforced on Rust crates and npm packages, RustSec and npm advisories, secret scan of the git history.
   - CI: every step a `just` recipe (`just ci` locally), GitHub Actions only calls them; release workflow publishing the images to GitHub Container Registry.
 
+[0.3.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.3.0
 [0.2.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.2.0
 [0.1.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.1.0

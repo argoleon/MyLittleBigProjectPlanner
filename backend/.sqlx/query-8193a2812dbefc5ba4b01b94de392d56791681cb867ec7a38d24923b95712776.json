@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            EXISTS (\n                SELECT 1 FROM node_edge e JOIN node c ON c.id = e.child_id\n                WHERE e.parent_id = $1 AND c.archived_at IS NULL\n            ) AS \"has_active_children!\",\n            EXISTS (\n                SELECT 1 FROM node_edge e JOIN node p ON p.id = e.parent_id\n                WHERE e.child_id = $1 AND p.archived_at IS NOT NULL\n            ) AS \"has_archived_parent!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "has_active_children!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "has_archived_parent!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "8193a2812dbefc5ba4b01b94de392d56791681cb867ec7a38d24923b95712776"
+}

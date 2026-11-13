@@ -20,11 +20,14 @@ use utoipa_axum::routes;
 use crate::account;
 use crate::auth;
 use crate::gdpr;
+use crate::grants;
 use crate::groups;
+use crate::hierarchy;
 use crate::invitations;
 use crate::me;
 use crate::members;
 use crate::mfa;
+use crate::nodes;
 use crate::openapi;
 use crate::platform;
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
@@ -101,6 +104,22 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(groups::read, groups::update, groups::delete))
         .routes(routes!(groups::add_member, groups::remove_member))
         .routes(routes!(roles::list, roles::create))
+        .routes(routes!(nodes::list, nodes::create))
+        .routes(routes!(nodes::read, nodes::update))
+        .routes(routes!(nodes::set_confidentiality))
+        .routes(routes!(nodes::set_archiving))
+        .routes(routes!(nodes::parents))
+        .routes(routes!(nodes::children))
+        .routes(routes!(nodes::link_parent, nodes::unlink_parent))
+        .routes(routes!(nodes::parent_candidates))
+        .routes(routes!(hierarchy::browse))
+        .routes(routes!(hierarchy::aggregate))
+        .routes(routes!(grants::access))
+        .routes(routes!(grants::grant))
+        .routes(routes!(grants::revoke))
+        .routes(routes!(grants::candidates))
+        .routes(routes!(grants::grantable_roles))
+        .routes(routes!(grants::my_permissions))
         .routes(routes!(roles::read, roles::update, roles::delete))
         .routes(routes!(mfa::status))
         .routes(routes!(mfa::setup))

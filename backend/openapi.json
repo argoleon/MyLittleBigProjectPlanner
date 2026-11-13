@@ -7,7 +7,7 @@
       "name": "MIT",
       "identifier": "MIT"
     },
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "paths": {
     "/api/v1/account/mfa": {
@@ -931,6 +931,73 @@
         ]
       }
     },
+    "/api/v1/hierarchy": {
+      "get": {
+        "tags": [
+          "hierarchy"
+        ],
+        "summary": "Browse one level of the hierarchy, with aggregates",
+        "description": "Without `under`: the nodes at the top of what the member sees, that is without a parent, or without a parent they see (all root nodes for tenant admins). With `under`: the children of that node. Portfolios first, then programs and projects, each by name; archived nodes are left out. Every row carries the aggregate of its node over its distinct descendant projects. A confidential child the member has no access to comes veiled (`veiled: true`): its planned load, without name or detail.",
+        "operationId": "browseHierarchy",
+        "parameters": [
+          {
+            "name": "under",
+            "in": "query",
+            "description": "The node whose children are listed; without it, the top of the\nhierarchy.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The rows of the level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HierarchyRow"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid `under`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such node in this tenant, or not visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me": {
       "get": {
         "tags": [
@@ -1563,6 +1630,1592 @@
           },
           "404": {
             "description": "`not_found`: not a tenant of the account",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes": {
+      "get": {
+        "tags": [
+          "hierarchy"
+        ],
+        "summary": "List the portfolios, programs and projects",
+        "description": "In creation order; follow `nextCursor` until it is `null`. The active nodes, or with `archived=true` the archived projects. Only the nodes the member sees: all of them for tenant admins; for the others, those where a role with `view` reaches them, directly, through a group, or inherited. A confidential node they have no access to, under a node they see, comes veiled (`veiled: true`): its type only, without name or detail.",
+        "operationId": "listNodes",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Only nodes of this type.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/NodeType"
+            }
+          },
+          {
+            "name": "ancestorOf",
+            "in": "query",
+            "description": "Only the ancestors of this node, at any depth.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "descendantOf",
+            "in": "query",
+            "description": "Only the descendants of this node, at any depth; a node reached by\nseveral paths comes once.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "archived",
+            "in": "query",
+            "description": "`true`: the archived projects, instead of the active nodes.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, from 1 to 200 (default 50).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "`nextCursor` of the previous page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of nodes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid `type`, `limit` or `cursor`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "hierarchy"
+        ],
+        "summary": "Create a portfolio, program or project",
+        "description": "At the root: tenant admins only. Under `parentId`: tenant admins, and the members who administer that node. The type must be allowed under the parent: a portfolio under a portfolio, a program under a portfolio or a program, a project under any node.",
+        "operationId": "createNode",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique key of this creation, 1 to 255 visible ASCII characters",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewNode"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the node"
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "URL of the node"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Node"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`: `name`, `key` (`required`, `format`, `not_allowed`), `endDate` `before_start`, `ownerIds` (`too_many`, `unknown_member`), `parentId` (`not_found`, `not_allowed`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: may not create there, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`node.key_taken`, `node.archived` (the parent is an archived project), or `idempotency_key.in_flight`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`Idempotency-Key` already used for another request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes/{id}": {
+      "get": {
+        "tags": [
+          "hierarchy"
+        ],
+        "summary": "Read a portfolio, program or project",
+        "operationId": "getNode",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the node",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "description": "ETag already held: 304 if still current",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The node",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the node"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Node"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified since the `If-None-Match` ETag"
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such node in this tenant, or not visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "hierarchy"
+        ],
+        "summary": "Change a portfolio, program or project",
+        "description": "Tenant admins, and the members who administer the node. The type and the key do not change; the owners are replaced by `ownerIds`.",
+        "operationId": "updateNode",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the node",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the version being replaced, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NodeChanges"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The node",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "New version of the node"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Node"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: may not change it, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such node in this tenant, or not visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`node.archived`: an archived project is read-only",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The node changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes/{id}/access": {
+      "get": {
+        "tags": [
+          "hierarchy"
+        ],
+        "summary": "List who has access to a node",
+        "description": "Every grant that applies on the node: those made on it (`direct`), then those inherited from an ancestor (`origin`), by holder name. A grant made above a confidential node does not reach it; the origin of a grant inherited from a node the member does not see is `null`. Tenant admins, and the members with `manage_members` on the node.",
+        "operationId": "listNodeAccess",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the node",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The grants that apply",
+            "headers": {
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Language of the role labels"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NodeAccess"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`permission.denied`: `manage_members` is missing on this node",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such node in this tenant, or not visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes/{id}/aggregate": {
+      "get": {
+        "tags": [
+          "hierarchy"
+        ],
+        "summary": "Read the aggregate of a node",
+        "description": "Planned load, consumed capacity, progress, open and late tickets over the distinct descendant projects of the node, confidential ones included and archived ones left out. Precomputed: it follows a change within seconds.",
+        "operationId": "getNodeAggregate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the node",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The aggregate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodeAggregate"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such node in this tenant, or not visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes/{id}/archiving": {
+      "put": {
+        "tags": [
+          "hierarchy"
+        ],
+        "summary": "Archive a project, or restore it",
+        "description": "Tenant admins, and the members who administer the project. An archived project is read-only: changing it, its links or its children answers `node.archived`. It leaves the active lists (`GET /nodes?archived=true` lists the archived projects) and the aggregates of its ancestors, and comes back to them when restored. Its sub-projects are archived first, and restored after it. Only projects are archived.",
+        "operationId": "setNodeArchiving",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the project",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the version being changed, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NodeArchiving"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The node",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "New version of the node"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Node"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`: `archived` `not_allowed` on a portfolio or a program",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: may not change it, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such node in this tenant, or not visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`node.active_children`: it still has active sub-projects; `node.parent_archived`: it is under an archived project",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The node changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes/{id}/children": {
+      "get": {
+        "tags": [
+          "hierarchy"
+        ],
+        "summary": "List the children of a node",
+        "description": "By name, each with the weighting of its link. A confidential child the member has no access to comes veiled (`veiled: true`): its type only, without name or detail. Deeper descendants: `GET /nodes?descendantOf=`.",
+        "operationId": "listNodeChildren",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the node",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The children",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NodeChild"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such node in this tenant, or not visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes/{id}/confidentiality": {
+      "put": {
+        "tags": [
+          "hierarchy"
+        ],
+        "summary": "Make a project confidential, or open it again",
+        "description": "A confidential project blocks inherited access: only the roles granted on the project itself reach it, and they still apply below it. Those who see one of its parents find it veiled in the lists. Projects only. Tenant admins, and the members who administer the project; the latter must keep that role from a grant made on the project itself, so that they do not shut themselves out. Applies from the next request.",
+        "operationId": "setNodeConfidentiality",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the node",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the version being changed, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NodeConfidentiality"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The node",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "New version of the node"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Node"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`: `confidential` `not_allowed` on a portfolio or a program",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: may not change it, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such node in this tenant, or not visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`node.confidential_lockout`: the member would lose their own access; `node.archived`: an archived project is read-only",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The node changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes/{id}/grant-candidates": {
+      "get": {
+        "tags": [
+          "hierarchy"
+        ],
+        "summary": "Search the members and groups a role can be granted to",
+        "description": "The groups, then the active members of the tenant, whose name (or email) holds `search`, each by name. Tenant admins, and the members with `manage_members` on the node.",
+        "operationId": "listNodeGrantCandidates",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the node",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Part of the name (or of a member's email), any case.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "At most this many groups and this many members, from 1 to 50\n(default 10).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The candidates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GrantCandidate"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid `limit`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`permission.denied`: `manage_members` is missing on this node",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such node in this tenant, or not visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes/{id}/grantable-roles": {
+      "get": {
+        "tags": [
+          "hierarchy"
+        ],
+        "summary": "List the roles the member may grant on a node",
+        "description": "Every role of the tenant for tenant admins; for the members with `manage_members` on the node, the roles within their own permissions there. From the narrowest default role to the newest.",
+        "operationId": "listNodeGrantableRoles",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the node",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The roles",
+            "headers": {
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Language of the role labels"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccessRole"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`permission.denied`: `manage_members` is missing on this node",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such node in this tenant, or not visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes/{id}/grants": {
+      "post": {
+        "tags": [
+          "hierarchy"
+        ],
+        "summary": "Grant a role on a node to a member or a group",
+        "description": "The role applies on the node and on its descendants, from the next request. Tenant admins, and the members with `manage_members` on the node, for roles within their own permissions there.",
+        "operationId": "grantNodeRole",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the node",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewNodeGrant"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Granted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodeAccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`: `roleId` `not_found`; `accountId` (`required`, `unknown_member`); `groupId` (`not_found`, `not_allowed` with `accountId`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`permission.denied`: `manage_members` is missing on this node; `forbidden`: the role is beyond the member's own permissions; or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such node in this tenant, or not visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`node.grant_exists`: already granted to them on this node",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes/{id}/grants/{grantId}": {
+      "delete": {
+        "tags": [
+          "hierarchy"
+        ],
+        "summary": "Revoke a role granted on a node",
+        "description": "Only a grant made on this node: an inherited one is revoked on its `origin`. Applies from the next request, on the node and its descendants. Tenant admins, and the members with `manage_members` on the node, for roles within their own permissions there.",
+        "operationId": "revokeNodeRole",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the node",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "grantId",
+            "in": "path",
+            "description": "Id of the grant",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Revoked"
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`permission.denied`: `manage_members` is missing on this node; `forbidden`: the role is beyond the member's own permissions; or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such node in this tenant, not visible to the member, or no such grant on it",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes/{id}/my-permissions": {
+      "get": {
+        "tags": [
+          "hierarchy"
+        ],
+        "summary": "List the signed-in member's permissions on a node",
+        "description": "The union of the roles that reach them there: granted to them or to one of their groups, on the node or inherited from an ancestor. Tenant admins have every permission. In catalog order.",
+        "operationId": "listMyNodePermissions",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the node",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Their permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Permission"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such node in this tenant, or not visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes/{id}/parent-candidates": {
+      "get": {
+        "tags": [
+          "hierarchy"
+        ],
+        "summary": "Search the nodes that might become a parent",
+        "description": "Active nodes the member sees, other than the node, whose name or key holds `search`, by name. Each says why it cannot become the parent (`refusal`), or `null` when it can.",
+        "operationId": "listNodeParentCandidates",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the child node",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Part of the name or key, any case.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "At most this many, from 1 to 50 (default 20).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The candidates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NodeCandidate"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid `limit`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such node in this tenant, or not visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes/{id}/parents": {
+      "get": {
+        "tags": [
+          "hierarchy"
+        ],
+        "summary": "List the parents of a node",
+        "description": "By name, each with the weighting of its link; only the parents the member sees.",
+        "operationId": "listNodeParents",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the node",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The parents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NodeLink"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such node in this tenant, or not visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes/{id}/parents/{parentId}": {
+      "put": {
+        "tags": [
+          "hierarchy"
+        ],
+        "summary": "Attach a node under a parent, or change the link's weighting",
+        "description": "Tenant admins, and the members who administer both nodes. The node's type must be allowed under the parent, and the parent must not be one of its descendants. Putting an existing link again sets its weighting.",
+        "operationId": "linkNodeParent",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the child node",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "parentId",
+            "in": "path",
+            "description": "Id of the parent node",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NodeLinkChanges"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The link existed: its weighting is set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodeLink"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Linked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodeLink"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`: `weightPercent` `out_of_range`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: may not link these nodes, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such node or parent in this tenant, or not visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`node.parent_not_allowed` (attachment matrix), `node.cycle`, or `node.archived` (the node or the parent is an archived project)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "hierarchy"
+        ],
+        "summary": "Detach a node from one of its parents",
+        "description": "Tenant admins, and the members who administer both nodes. Without parents left, the node is at the root.",
+        "operationId": "unlinkNodeParent",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the child node",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "parentId",
+            "in": "path",
+            "description": "Id of the parent node",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Detached"
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: may not unlink these nodes, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such node, parent or link in this tenant, or not visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`node.archived`: the node or the parent is an archived project",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -5560,6 +7213,60 @@
           "token": "…"
         }
       },
+      "AccessHolder": {
+        "type": "object",
+        "description": "Who holds a role: a member or a group.",
+        "required": [
+          "kind",
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Account of the member, or id of the group."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/HolderKind"
+          },
+          "name": {
+            "type": "string",
+            "example": "Managers"
+          }
+        }
+      },
+      "AccessRole": {
+        "type": "object",
+        "description": "A role, by its label.",
+        "required": [
+          "id",
+          "labelTranslations"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "In the language of the request (`Accept-Language`), else the\ntenant's default, else any.",
+            "example": "Project manager"
+          },
+          "labelTranslations": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "AccountPreferences": {
         "type": "object",
         "description": "The account's preferences; `null` means the tenant's default.",
@@ -5704,7 +7411,7 @@
       },
       "ErrorCode": {
         "type": "string",
-        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n| `invitation.invalid` | 400 | This invitation link is invalid, expired or already used |\n| `invitation.pending` | 409 | This email already has an open invitation; send it again instead |\n| `invitation.already_member` | 409 | This email already belongs to a member of the tenant |\n| `invitation.closed` | 409 | This invitation was already accepted or revoked |\n| `member.last_admin` | 409 | The tenant needs at least one active tenant admin |\n| `group.name_taken` | 409 | Another group already has this name |\n| `permission.denied` | 403 | You do not have the permission this needs |\n| `role.label_taken` | 409 | Another role already has this label |\n| `role.in_use` | 409 | Grants use this role: remove them first |\n| `account.no_password` | 409 | This account signs in through its organization: it has no password |\n| `session.current` | 409 | This is the session of the request: sign out instead |\n| `account.reauthentication_required` | 403 | Sign in again through your organization, then erase your account within 10 minutes |\n| `account.platform_admin` | 409 | A platform super admin cannot be erased: another one removes the role first |\n| `export.pending` | 409 | The export is not ready yet |\n",
+        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n| `invitation.invalid` | 400 | This invitation link is invalid, expired or already used |\n| `invitation.pending` | 409 | This email already has an open invitation; send it again instead |\n| `invitation.already_member` | 409 | This email already belongs to a member of the tenant |\n| `invitation.closed` | 409 | This invitation was already accepted or revoked |\n| `member.last_admin` | 409 | The tenant needs at least one active tenant admin |\n| `group.name_taken` | 409 | Another group already has this name |\n| `permission.denied` | 403 | You do not have the permission this needs |\n| `role.label_taken` | 409 | Another role already has this label |\n| `role.in_use` | 409 | Grants use this role: remove them first |\n| `account.no_password` | 409 | This account signs in through its organization: it has no password |\n| `session.current` | 409 | This is the session of the request: sign out instead |\n| `account.reauthentication_required` | 403 | Sign in again through your organization, then erase your account within 10 minutes |\n| `account.platform_admin` | 409 | A platform super admin cannot be erased: another one removes the role first |\n| `export.pending` | 409 | The export is not ready yet |\n| `node.key_taken` | 409 | Another project of the organization has this key |\n| `node.cycle` | 409 | This link would make the node its own ancestor |\n| `node.parent_not_allowed` | 409 | This type of node cannot be attached under that parent |\n| `node.grant_exists` | 409 | They already have this role on this node |\n| `node.confidential_lockout` | 409 | You would lose your own access: get a role granted on the project itself first |\n| `node.archived` | 409 | This project is archived: it is read-only until it is restored |\n| `node.active_children` | 409 | This project still has active sub-projects: archive or detach them first |\n| `node.parent_archived` | 409 | This project is under an archived project: restore that one first |\n",
         "enum": [
           "bad_request",
           "validation_failed",
@@ -5757,7 +7464,15 @@
           "session.current",
           "account.reauthentication_required",
           "account.platform_admin",
-          "export.pending"
+          "export.pending",
+          "node.key_taken",
+          "node.cycle",
+          "node.parent_not_allowed",
+          "node.grant_exists",
+          "node.confidential_lockout",
+          "node.archived",
+          "node.active_children",
+          "node.parent_archived"
         ]
       },
       "ExportStatus": {
@@ -5785,6 +7500,35 @@
             "type": "string",
             "description": "Path of the field as sent, e.g. `code` or `labelTranslations.fr`.",
             "example": "code"
+          }
+        }
+      },
+      "GrantCandidate": {
+        "type": "object",
+        "description": "A member or a group a role can be granted to.",
+        "required": [
+          "kind",
+          "id",
+          "name"
+        ],
+        "properties": {
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Members only."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Account of the member, or id of the group."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/HolderKind"
+          },
+          "name": {
+            "type": "string"
           }
         }
       },
@@ -5936,6 +7680,92 @@
             "example": "Platform"
           }
         }
+      },
+      "HierarchyNode": {
+        "type": "object",
+        "description": "A node of the hierarchy as a row of its tree, with its aggregate.",
+        "required": [
+          "id",
+          "type",
+          "name",
+          "health",
+          "owners",
+          "otherParents",
+          "hasChildren",
+          "aggregate"
+        ],
+        "properties": {
+          "aggregate": {
+            "$ref": "#/components/schemas/NodeAggregate"
+          },
+          "hasChildren": {
+            "type": "boolean",
+            "description": "It has children: browse it (`?under=`) for the next level."
+          },
+          "health": {
+            "$ref": "#/components/schemas/NodeHealth"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Projects only.",
+            "example": "PLAT"
+          },
+          "name": {
+            "type": "string",
+            "example": "Identity platform"
+          },
+          "otherParents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NodeParent"
+            },
+            "description": "Its parents the member sees, other than the node browsed."
+          },
+          "owners": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NodeOwner"
+            }
+          },
+          "type": {
+            "$ref": "#/components/schemas/NodeType"
+          },
+          "weightPercent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Weighting of the link to the node browsed; `null` at the top.",
+            "example": 100
+          }
+        }
+      },
+      "HierarchyRow": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/HierarchyNode"
+          },
+          {
+            "$ref": "#/components/schemas/VeiledHierarchyNode"
+          }
+        ],
+        "description": "A row of the hierarchy: a node the member sees, or a veiled one."
+      },
+      "HolderKind": {
+        "type": "string",
+        "description": "Whether a role is held by a member or by a group.",
+        "enum": [
+          "member",
+          "group"
+        ]
       },
       "Invitation": {
         "type": "object",
@@ -6437,6 +8267,109 @@
           "tenantRole": "member"
         }
       },
+      "NewNode": {
+        "type": "object",
+        "description": "A node to create.",
+        "required": [
+          "type",
+          "name"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "endDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "health": {
+            "$ref": "#/components/schemas/NodeHealth"
+          },
+          "key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Projects only (required for them): 2 to 10 capital letters and\ndigits, a letter first; unique in the tenant."
+          },
+          "name": {
+            "type": "string",
+            "description": "1 to 200 characters."
+          },
+          "objectives": {
+            "type": "string"
+          },
+          "ownerIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "The parent to create it under; at the root when absent."
+          },
+          "startDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "type": {
+            "$ref": "#/components/schemas/NodeType"
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "key": "PLAT",
+          "name": "Identity platform",
+          "parentId": null,
+          "type": "project"
+        }
+      },
+      "NewNodeGrant": {
+        "type": "object",
+        "description": "A role to grant on a node, to a member or to a group.",
+        "required": [
+          "roleId"
+        ],
+        "properties": {
+          "accountId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "The member who receives the role; either this or `groupId`."
+          },
+          "groupId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "The group that receives the role; either this or `accountId`."
+          },
+          "roleId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "groupId": "0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7b02",
+          "roleId": "0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7a01"
+        }
+      },
       "NewTenant": {
         "type": "object",
         "description": "Body of `POST`: the tenant's host name label and its settings.",
@@ -6526,6 +8459,514 @@
           "slug": "acme",
           "timeZone": "Europe/Paris"
         }
+      },
+      "Node": {
+        "type": "object",
+        "description": "A portfolio, program or project.",
+        "required": [
+          "id",
+          "type",
+          "name",
+          "description",
+          "objectives",
+          "health",
+          "archived",
+          "confidential",
+          "owners",
+          "parents",
+          "version"
+        ],
+        "properties": {
+          "archived": {
+            "type": "boolean",
+            "description": "Read-only, out of the active lists (L03-US06)."
+          },
+          "confidential": {
+            "type": "boolean",
+            "description": "Blocks inherited access (L03-US04)."
+          },
+          "description": {
+            "type": "string"
+          },
+          "endDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "Local planning date, not before `startDate`."
+          },
+          "health": {
+            "$ref": "#/components/schemas/NodeHealth"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Projects only, unique in the tenant.",
+            "example": "PLAT"
+          },
+          "name": {
+            "type": "string",
+            "example": "Identity platform"
+          },
+          "objectives": {
+            "type": "string"
+          },
+          "owners": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NodeOwner"
+            }
+          },
+          "parents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NodeParent"
+            },
+            "description": "Empty at the root."
+          },
+          "startDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "Local planning date."
+          },
+          "type": {
+            "$ref": "#/components/schemas/NodeType"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          }
+        }
+      },
+      "NodeAccess": {
+        "type": "object",
+        "description": "A grant that applies on a node.",
+        "required": [
+          "grantId",
+          "holder",
+          "role",
+          "origin",
+          "direct"
+        ],
+        "properties": {
+          "direct": {
+            "type": "boolean",
+            "description": "Granted on this node; otherwise inherited from `origin`."
+          },
+          "grantId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Id of the grant, to revoke it on the node it was made on."
+          },
+          "holder": {
+            "$ref": "#/components/schemas/AccessHolder"
+          },
+          "origin": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/NodeParent",
+                "description": "The node the role was granted on: this node, or an ancestor; `null`\nfor an ancestor the member does not see."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "role": {
+            "$ref": "#/components/schemas/AccessRole"
+          }
+        }
+      },
+      "NodeAggregate": {
+        "type": "object",
+        "description": "What a node aggregates over its distinct descendant projects (itself\nincluded, for a project). Archived projects are left out.",
+        "required": [
+          "projects",
+          "confidentialProjects",
+          "plannedMinutes",
+          "capacityMinutes",
+          "openTickets",
+          "lateTickets",
+          "confidentialOpenTickets"
+        ],
+        "properties": {
+          "capacityMinutes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Capacity of the teams assigned, in minutes, weighted like the load.",
+            "example": 246900,
+            "minimum": 0
+          },
+          "capacityUsedPercent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Planned load over capacity, in percent; `null` without capacity.",
+            "example": 86,
+            "minimum": 0
+          },
+          "confidentialOpenTickets": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Open tickets of the confidential projects.",
+            "example": 38,
+            "minimum": 0
+          },
+          "confidentialProjects": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Those of them that are confidential.",
+            "example": 1,
+            "minimum": 0
+          },
+          "lateTickets": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Open tickets past their due date.",
+            "example": 17,
+            "minimum": 0
+          },
+          "openTickets": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tickets not done yet.",
+            "example": 276,
+            "minimum": 0
+          },
+          "plannedMinutes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Planned load, in minutes. The weighting of a link applies to the\nparent of that link only.",
+            "example": 212400,
+            "minimum": 0
+          },
+          "progressPercent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Share of the tickets done, in percent rounded down; `null` without\ntickets.",
+            "example": 46,
+            "minimum": 0
+          },
+          "projects": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Distinct projects counted: one reached through several paths counts\nonce.",
+            "example": 6,
+            "minimum": 0
+          }
+        }
+      },
+      "NodeArchiving": {
+        "type": "object",
+        "description": "Whether a project is archived.",
+        "required": [
+          "archived"
+        ],
+        "properties": {
+          "archived": {
+            "type": "boolean",
+            "description": "`true`: read-only, out of the active lists and of the aggregates."
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "archived": true
+        }
+      },
+      "NodeCandidate": {
+        "type": "object",
+        "description": "A node that might become a parent.",
+        "required": [
+          "id",
+          "type",
+          "name",
+          "parents",
+          "refusal"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "example": "Cyber resilience"
+          },
+          "parents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NodeParent"
+            },
+            "description": "Its own parents, for context."
+          },
+          "refusal": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ParentRefusal",
+                "description": "Why it cannot become the parent; `null` when it can."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "$ref": "#/components/schemas/NodeType"
+          }
+        }
+      },
+      "NodeChanges": {
+        "type": "object",
+        "description": "What can be changed on a node.",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "10,000 characters at most."
+          },
+          "endDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "health": {
+            "$ref": "#/components/schemas/NodeHealth"
+          },
+          "name": {
+            "type": "string",
+            "description": "1 to 200 characters."
+          },
+          "objectives": {
+            "type": "string",
+            "description": "10,000 characters at most."
+          },
+          "ownerIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Members of the tenant, 20 at most."
+          },
+          "startDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NodeChild": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/NodeLink"
+          },
+          {
+            "$ref": "#/components/schemas/VeiledNode"
+          }
+        ],
+        "description": "A child of a node: a link to a node the member sees, or a veiled node."
+      },
+      "NodeConfidentiality": {
+        "type": "object",
+        "description": "Whether a node is confidential.",
+        "required": [
+          "confidential"
+        ],
+        "properties": {
+          "confidential": {
+            "type": "boolean",
+            "description": "`true`: only the roles granted on the node itself give access to it."
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "confidential": true
+        }
+      },
+      "NodeHealth": {
+        "type": "string",
+        "description": "How a node stands, as its owners see it.",
+        "enum": [
+          "on_track",
+          "at_risk",
+          "off_track"
+        ]
+      },
+      "NodeItem": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/Node"
+          },
+          {
+            "$ref": "#/components/schemas/VeiledNode"
+          }
+        ],
+        "description": "An item of the nodes list: a node the member sees, or a veiled one."
+      },
+      "NodeLink": {
+        "type": "object",
+        "description": "A parent or a child of a node, with the weighting of their link.",
+        "required": [
+          "id",
+          "type",
+          "name",
+          "weightPercent",
+          "parents"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Id of the parent or child."
+          },
+          "key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Projects only."
+          },
+          "name": {
+            "type": "string",
+            "example": "Compliance"
+          },
+          "parents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NodeParent"
+            },
+            "description": "The parents of that parent or child, for context."
+          },
+          "type": {
+            "$ref": "#/components/schemas/NodeType"
+          },
+          "weightPercent": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Share of the child in the parent's aggregates, 0 to 100.",
+            "example": 40
+          }
+        }
+      },
+      "NodeLinkChanges": {
+        "type": "object",
+        "description": "The weighting of a parent link.",
+        "properties": {
+          "weightPercent": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Share of the child in the parent's aggregates, 0 to 100 (default 100).",
+            "default": 100,
+            "maximum": 100,
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "weightPercent": 40
+        }
+      },
+      "NodeOwner": {
+        "type": "object",
+        "description": "A member owning a node.",
+        "required": [
+          "accountId",
+          "displayName"
+        ],
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Marion Garnier"
+          }
+        }
+      },
+      "NodePage": {
+        "type": "object",
+        "description": "A page of nodes.",
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NodeItem"
+            },
+            "description": "The nodes the member sees, and the veiled ones (`veiled: true`)."
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cursor of the next page, `null` on the last page."
+          }
+        }
+      },
+      "NodeParent": {
+        "type": "object",
+        "description": "A parent of a node.",
+        "required": [
+          "id",
+          "type",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "IT Modernization"
+          },
+          "type": {
+            "$ref": "#/components/schemas/NodeType"
+          }
+        }
+      },
+      "NodeType": {
+        "type": "string",
+        "description": "Kind of node.",
+        "enum": [
+          "portfolio",
+          "program",
+          "project"
+        ]
       },
       "OidcProvider": {
         "type": "object",
@@ -6655,6 +9096,16 @@
         "enum": [
           "blocking",
           "warning"
+        ]
+      },
+      "ParentRefusal": {
+        "type": "string",
+        "description": "Why a node cannot become the parent.",
+        "enum": [
+          "already_parent",
+          "not_allowed",
+          "cycle",
+          "forbidden"
         ]
       },
       "PasswordChange": {
@@ -7507,6 +9958,79 @@
             "description": "To navigate to (not to fetch): it sets the target tenant's cookies.\nWorks once, within 60 seconds."
           }
         }
+      },
+      "VeiledHierarchyNode": {
+        "type": "object",
+        "description": "A confidential project the member has no access to, as a row of the\ntree: its planned load, without name or detail.",
+        "required": [
+          "veiled",
+          "id",
+          "type",
+          "plannedMinutes"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "An opaque identifier: stable, but not the node's id, and of no use\nto read it."
+          },
+          "plannedMinutes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Its planned load, in minutes.",
+            "example": 36000,
+            "minimum": 0
+          },
+          "type": {
+            "$ref": "#/components/schemas/NodeType"
+          },
+          "veiled": {
+            "type": "boolean",
+            "description": "Always `true`: tells a veiled row from a node's.",
+            "example": true
+          },
+          "weightPercent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Weighting of the link to the node browsed.",
+            "example": 100
+          }
+        }
+      },
+      "VeiledNode": {
+        "type": "object",
+        "description": "A confidential node the member has no access to, listed because they see\none of its parents: its type only, without name or detail.",
+        "required": [
+          "veiled",
+          "id",
+          "type",
+          "parents"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "An opaque identifier: stable, but not the node's id, and of no use\nto read it."
+          },
+          "parents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NodeParent"
+            },
+            "description": "Those of its parents the member sees."
+          },
+          "type": {
+            "$ref": "#/components/schemas/NodeType"
+          },
+          "veiled": {
+            "type": "boolean",
+            "description": "Always `true`: tells a veiled node from a node or a link.",
+            "example": true
+          }
+        }
       }
     },
     "securitySchemes": {
@@ -7543,6 +10067,10 @@
     {
       "name": "account",
       "description": "Two-step verification of the signed-in member"
+    },
+    {
+      "name": "hierarchy",
+      "description": "Portfolios, programs and projects of the hierarchy"
     },
     {
       "name": "authentication-settings",

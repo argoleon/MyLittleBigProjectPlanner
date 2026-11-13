@@ -4,9 +4,12 @@
 //! can be unit-tested in isolation. `just check-domain` enforces it.
 
 pub mod account;
+pub mod aggregates;
 pub mod auth_policy;
 pub mod devices;
 pub mod erasure;
+pub mod grants;
+pub mod hierarchy;
 pub mod i18n;
 pub mod idempotency;
 pub mod jobs;

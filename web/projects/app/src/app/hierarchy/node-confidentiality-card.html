@@ -1,0 +1,22 @@
+<section class="card" aria-labelledby="confidentiality-title">
+  <h2 id="confidentiality-title" class="card-title">{{ 'hierarchy.confidentiality.title' | transloco }}</h2>
+  @if (notice(); as notice) {
+    <p class="message" [class.info]="notice.ok" [class.error]="!notice.ok" [attr.role]="notice.ok ? 'status' : 'alert'">
+      {{ notice.key | transloco }}
+    </p>
+  }
+  <div class="setting">
+    <div class="text">
+      <span id="confidentiality-label" class="name">{{ 'hierarchy.confidentiality.toggle' | transloco }}</span>
+      <span id="confidentiality-description" class="meta">{{ 'hierarchy.confidentiality.description' | transloco }}</span>
+    </div>
+    <mat-slide-toggle
+      class="switch"
+      aria-labelledby="confidentiality-label"
+      aria-describedby="confidentiality-description"
+      [checked]="node().confidential"
+      [disabled]="saving() || node().archived"
+      (change)="set($event)"
+    />
+  </div>
+</section>

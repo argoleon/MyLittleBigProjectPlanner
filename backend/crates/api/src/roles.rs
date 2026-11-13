@@ -1,6 +1,6 @@
 //! Node roles of the tenant, as sets of permissions (specification §14,
-//! L02-US07). Tenant admins define them; L03 grants them to members and
-//! groups on hierarchy nodes. Every tenant starts with four default roles
+//! L02-US07). Tenant admins define them; they are granted to members and
+//! groups on hierarchy nodes (`crate::grants`). Every tenant starts with four default roles
 //! (`domain::permissions::DEFAULT_ROLES`).
 //!
 //! Changing or deleting a role invalidates the permission cache of the
@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 use axum::extract::State;
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
-use domain::permissions::{RoleInput, validate_role};
+use domain::permissions::{PermissionChange, RoleInput, validate_role};
 use domain::validation::FieldError;
 use infra::roles::{self as repo, Role, WriteConflict};
 use infra::uuid::Uuid;
@@ -100,21 +100,26 @@ impl From<RoleBody> for RoleInput {
 }
 
 /// Language of the labels for this request and tenant.
-struct Language {
+pub(crate) struct Language {
     locale: &'static str,
     fallback: String,
 }
 
 impl Language {
-    fn of(tx: &TenantTx, accept: &AcceptLanguage) -> Self {
+    pub(crate) fn of(tx: &TenantTx, accept: &AcceptLanguage) -> Self {
         let fallback = tx.default_locale().to_owned();
         let locale = domain::i18n::negotiate(accept.0.as_deref(), &fallback);
         Self { locale, fallback }
     }
 
+    /// The label of `translations` in this language, else the tenant's
+    /// default, else any.
+    pub(crate) fn label(&self, translations: &BTreeMap<String, String>) -> Option<String> {
+        domain::i18n::resolve(translations, self.locale, &self.fallback).map(str::to_owned)
+    }
+
     fn view(&self, role: Role, grant_count: u64) -> RoleView {
-        let label =
-            domain::i18n::resolve(&role.label_translations, self.locale, &self.fallback).map(str::to_owned);
+        let label = self.label(&role.label_translations);
         RoleView {
             id: role.id,
             label,
@@ -125,7 +130,7 @@ impl Language {
         }
     }
 
-    fn headers(&self, response: &mut Response) {
+    pub(crate) fn headers(&self, response: &mut Response) {
         let headers = response.headers_mut();
         headers.insert(header::CONTENT_LANGUAGE, HeaderValue::from_static(self.locale));
         headers.insert(header::VARY, HeaderValue::from_static("accept-language"));
@@ -355,7 +360,7 @@ pub async fn update(
     );
     let tenant = tx.tenant_id();
     tx.commit().await?;
-    permissions::invalidate(&state, tenant).await;
+    permissions::changed(&state, tenant, PermissionChange::RoleChanged).await;
     let version = role.version;
     let mut response = ApiJson(language.view(role, count)).into_response();
     response.headers_mut().insert(header::ETAG, etag(version));
@@ -407,6 +412,6 @@ pub async fn delete(
     tracing::info!(target: "audit", actor = %tx.account_id(), role = %id, "role deleted");
     let tenant = tx.tenant_id();
     tx.commit().await?;
-    permissions::invalidate(&state, tenant).await;
+    permissions::changed(&state, tenant, PermissionChange::RoleDeleted).await;
     Ok(StatusCode::NO_CONTENT)
 }

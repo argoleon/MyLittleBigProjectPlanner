@@ -91,11 +91,19 @@ pub enum ErrorCode {
     AccountReauthenticationRequired,
     AccountPlatformAdmin,
     ExportPending,
+    NodeKeyTaken,
+    NodeCycle,
+    NodeParentNotAllowed,
+    NodeGrantExists,
+    NodeConfidentialLockout,
+    NodeArchived,
+    NodeActiveChildren,
+    NodeParentArchived,
 }
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 52] = [
+    pub const ALL: [Self; 60] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -148,6 +156,14 @@ impl ErrorCode {
         Self::AccountReauthenticationRequired,
         Self::AccountPlatformAdmin,
         Self::ExportPending,
+        Self::NodeKeyTaken,
+        Self::NodeCycle,
+        Self::NodeParentNotAllowed,
+        Self::NodeGrantExists,
+        Self::NodeConfidentialLockout,
+        Self::NodeArchived,
+        Self::NodeActiveChildren,
+        Self::NodeParentArchived,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -204,6 +220,14 @@ impl ErrorCode {
             Self::AccountReauthenticationRequired => "account.reauthentication_required",
             Self::AccountPlatformAdmin => "account.platform_admin",
             Self::ExportPending => "export.pending",
+            Self::NodeKeyTaken => "node.key_taken",
+            Self::NodeCycle => "node.cycle",
+            Self::NodeParentNotAllowed => "node.parent_not_allowed",
+            Self::NodeGrantExists => "node.grant_exists",
+            Self::NodeConfidentialLockout => "node.confidential_lockout",
+            Self::NodeArchived => "node.archived",
+            Self::NodeActiveChildren => "node.active_children",
+            Self::NodeParentArchived => "node.parent_archived",
         }
     }
 
@@ -253,7 +277,15 @@ impl ErrorCode {
             | Self::AccountNoPassword
             | Self::SessionCurrent
             | Self::AccountPlatformAdmin
-            | Self::ExportPending => StatusCode::CONFLICT,
+            | Self::ExportPending
+            | Self::NodeKeyTaken
+            | Self::NodeCycle
+            | Self::NodeParentNotAllowed
+            | Self::NodeGrantExists
+            | Self::NodeConfidentialLockout
+            | Self::NodeArchived
+            | Self::NodeActiveChildren
+            | Self::NodeParentArchived => StatusCode::CONFLICT,
             Self::PreconditionFailed => StatusCode::PRECONDITION_FAILED,
             Self::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -322,6 +354,18 @@ impl ErrorCode {
                 "A platform super admin cannot be erased: another one removes the role first"
             }
             Self::ExportPending => "The export is not ready yet",
+            Self::NodeKeyTaken => "Another project of the organization has this key",
+            Self::NodeCycle => "This link would make the node its own ancestor",
+            Self::NodeParentNotAllowed => "This type of node cannot be attached under that parent",
+            Self::NodeGrantExists => "They already have this role on this node",
+            Self::NodeConfidentialLockout => {
+                "You would lose your own access: get a role granted on the project itself first"
+            }
+            Self::NodeArchived => "This project is archived: it is read-only until it is restored",
+            Self::NodeActiveChildren => {
+                "This project still has active sub-projects: archive or detach them first"
+            }
+            Self::NodeParentArchived => "This project is under an archived project: restore that one first",
         }
     }
 
@@ -565,7 +609,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 52] = [
+        let expected: [(ErrorCode, u16); 60] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -618,6 +662,14 @@ mod tests {
             (ErrorCode::AccountReauthenticationRequired, 403),
             (ErrorCode::AccountPlatformAdmin, 409),
             (ErrorCode::ExportPending, 409),
+            (ErrorCode::NodeKeyTaken, 409),
+            (ErrorCode::NodeCycle, 409),
+            (ErrorCode::NodeParentNotAllowed, 409),
+            (ErrorCode::NodeGrantExists, 409),
+            (ErrorCode::NodeConfidentialLockout, 409),
+            (ErrorCode::NodeArchived, 409),
+            (ErrorCode::NodeActiveChildren, 409),
+            (ErrorCode::NodeParentArchived, 409),
         ];
         for (code, status) in expected {
             assert_eq!(code.status().as_u16(), status, "{}", code.as_str());

@@ -1,0 +1,108 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT n.id, n.node_type, n.name, n.key, n.health, n.confidential,\n               e.weight_percent AS \"weight_percent?\",\n               EXISTS (\n                   SELECT 1 FROM node_edge ce JOIN node c ON c.id = ce.child_id\n                   WHERE ce.parent_id = n.id AND c.archived_at IS NULL\n               ) AS \"has_children!\"\n        FROM node n\n        LEFT JOIN node_edge e ON e.child_id = n.id AND e.parent_id = $1\n        WHERE n.archived_at IS NULL\n          AND CASE WHEN $1::uuid IS NOT NULL THEN e.id IS NOT NULL\n              ELSE ($2::uuid[] IS NULL OR n.id = ANY($2))\n                   AND NOT EXISTS (\n                       SELECT 1 FROM node_edge pe\n                       WHERE pe.child_id = n.id AND ($2::uuid[] IS NULL OR pe.parent_id = ANY($2)))\n              END\n        ORDER BY array_position(ARRAY['portfolio', 'program', 'project'], n.node_type), lower(n.name), n.id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "node_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "node_type"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "key"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "health",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "health"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "confidential",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "confidential"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "weight_percent?",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "node_edge",
+            "name": "weight_percent"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "has_children!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "334d95cfab01d052b3e85a3edb16bdaf86c3caf85edeb4789193e66576634b17"
+}
