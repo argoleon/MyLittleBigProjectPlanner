@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT GREATEST(EXTRACT(EPOCH FROM (run_at - now())), 0)::float8 AS \"seconds!\"\n        FROM job\n        WHERE kind = $1 AND status = 'queued'\n        ORDER BY run_at\n        LIMIT 1\n        FOR SHARE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "seconds!",
+        "type_info": "Float8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "d81f1d3d82415f45a00f2cd719614eed8bfce9ff4a9d2b9884598f81f2077a6f"
+}

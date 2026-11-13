@@ -7,53 +7,13 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: var(--app-space-3) var(--app-space-4);
   margin-bottom: var(--app-space-4);
 }
 
 .intro {
-  flex: 1 1 100%;
   margin: 0;
   font: var(--mat-sys-body-medium);
-  color: var(--mat-sys-on-surface-variant);
-}
-
-.create {
-  margin-inline-start: auto;
-}
-
-.table-card {
-  overflow-x: auto;
-  border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: var(--mat-sys-corner-large);
-  background: var(--mat-sys-surface);
-}
-
-.table {
-  min-width: 760px;
-  background: transparent;
-}
-
-.name {
-  display: block;
-  font: var(--mat-sys-title-small);
-  color: var(--mat-sys-on-surface);
-}
-
-.meta {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--app-space-2);
-  margin-top: var(--app-space-1);
-}
-
-.node-key {
-  font: var(--mat-sys-label-medium);
-  color: var(--mat-sys-on-surface-variant);
-}
-
-.secondary,
-.none {
-  font: var(--mat-sys-body-small);
   color: var(--mat-sys-on-surface-variant);
 }

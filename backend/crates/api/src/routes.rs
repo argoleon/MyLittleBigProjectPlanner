@@ -22,6 +22,7 @@ use crate::auth;
 use crate::gdpr;
 use crate::grants;
 use crate::groups;
+use crate::hierarchy;
 use crate::invitations;
 use crate::me;
 use crate::members;
@@ -110,6 +111,8 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(nodes::children))
         .routes(routes!(nodes::link_parent, nodes::unlink_parent))
         .routes(routes!(nodes::parent_candidates))
+        .routes(routes!(hierarchy::browse))
+        .routes(routes!(hierarchy::aggregate))
         .routes(routes!(grants::access))
         .routes(routes!(grants::grant))
         .routes(routes!(grants::revoke))

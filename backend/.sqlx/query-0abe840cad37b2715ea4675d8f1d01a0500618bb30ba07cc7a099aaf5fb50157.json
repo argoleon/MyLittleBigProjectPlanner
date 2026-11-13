@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO node_aggregate (tenant_id, node_id, projects, confidential_projects,\n                                    planned_minutes, capacity_minutes, tickets_todo, tickets_in_progress,\n                                    tickets_done, tickets_late, confidential_open_tickets)\n        SELECT app_current_tenant(), n.id, a.projects::integer, a.confidential_projects::integer,\n               a.planned_minutes, a.capacity_minutes, a.todo, a.in_progress, a.done, a.late,\n               a.confidential_open\n        FROM unnest($1::uuid[], $2::bigint[], $3::bigint[], $4::bigint[], $5::bigint[], $6::bigint[],\n                    $7::bigint[], $8::bigint[], $9::bigint[], $10::bigint[])\n            AS a (node_id, projects, confidential_projects, planned_minutes, capacity_minutes, todo,\n                  in_progress, done, late, confidential_open)\n        JOIN node n ON n.id = a.node_id\n        ON CONFLICT (tenant_id, node_id) DO UPDATE\n            SET projects = EXCLUDED.projects,\n                confidential_projects = EXCLUDED.confidential_projects,\n                planned_minutes = EXCLUDED.planned_minutes,\n                capacity_minutes = EXCLUDED.capacity_minutes,\n                tickets_todo = EXCLUDED.tickets_todo,\n                tickets_in_progress = EXCLUDED.tickets_in_progress,\n                tickets_done = EXCLUDED.tickets_done,\n                tickets_late = EXCLUDED.tickets_late,\n                confidential_open_tickets = EXCLUDED.confidential_open_tickets,\n                version = node_aggregate.version + 1\n            WHERE (node_aggregate.projects, node_aggregate.confidential_projects,\n                   node_aggregate.planned_minutes, node_aggregate.capacity_minutes,\n                   node_aggregate.tickets_todo, node_aggregate.tickets_in_progress,\n                   node_aggregate.tickets_done, node_aggregate.tickets_late,\n                   node_aggregate.confidential_open_tickets)\n                IS DISTINCT FROM\n                  (EXCLUDED.projects, EXCLUDED.confidential_projects,\n                   EXCLUDED.planned_minutes, EXCLUDED.capacity_minutes,\n                   EXCLUDED.tickets_todo, EXCLUDED.tickets_in_progress,\n                   EXCLUDED.tickets_done, EXCLUDED.tickets_late,\n                   EXCLUDED.confidential_open_tickets)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "Int8Array",
+        "Int8Array",
+        "Int8Array",
+        "Int8Array",
+        "Int8Array",
+        "Int8Array",
+        "Int8Array",
+        "Int8Array",
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0abe840cad37b2715ea4675d8f1d01a0500618bb30ba07cc7a099aaf5fb50157"
+}

@@ -1,0 +1,136 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT node_id, projects, confidential_projects, planned_minutes, capacity_minutes,\n               tickets_todo, tickets_in_progress, tickets_done, tickets_late, confidential_open_tickets\n        FROM node_aggregate WHERE node_id = ANY($1)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "node_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "node_aggregate",
+            "name": "node_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "projects",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "node_aggregate",
+            "name": "projects"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "confidential_projects",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "node_aggregate",
+            "name": "confidential_projects"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "planned_minutes",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "node_aggregate",
+            "name": "planned_minutes"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "capacity_minutes",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "node_aggregate",
+            "name": "capacity_minutes"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "tickets_todo",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "node_aggregate",
+            "name": "tickets_todo"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "tickets_in_progress",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "node_aggregate",
+            "name": "tickets_in_progress"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "tickets_done",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "node_aggregate",
+            "name": "tickets_done"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "tickets_late",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "node_aggregate",
+            "name": "tickets_late"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "confidential_open_tickets",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "node_aggregate",
+            "name": "confidential_open_tickets"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "1b8994d8a9104f3ba89e4849baccc00dd67135e3e7a5005d417f92f6e8c8834b"
+}

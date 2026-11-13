@@ -552,23 +552,21 @@
     }
   },
   "hierarchy": {
-    "intro": "The portfolios, programs and projects of the organization.",
+    "intro": "The top of the hierarchy: portfolios, programs and projects, with their aggregated indicators.",
     "add": "New node",
-    "filterLabel": "Filter by type",
-    "all": "All",
     "caption": "Portfolios, programs and projects",
     "columns": {
       "name": "Name",
       "health": "Health",
       "owners": "Owners",
-      "dates": "Dates",
-      "parents": "Under"
+      "progress": "Progress",
+      "planned": "Planned load",
+      "open": "Open",
+      "late": "Late"
     },
-    "root": "Root",
     "dates": "{{ start }} – {{ end }}",
     "empty": "No portfolio, program or project yet",
     "emptyHint": "Create a portfolio, then its programs and projects.",
-    "emptyFilter": "No node of this type.",
     "settings": {
       "title": "{{ name }} · Settings",
       "tabs": "Settings sections",
@@ -696,6 +694,43 @@
       "name": "Confidential project",
       "hint": "You do not have access.",
       "lock": "Locked"
+    },
+    "tree": {
+      "expandOf": "Expand {{ name }}",
+      "collapseOf": "Collapse {{ name }}",
+      "level": "Level {{ level }}",
+      "alsoUnder": "Also under: {{ names }}",
+      "veiledHint": "You do not have access to this project. Its load is counted anonymously.",
+      "loadFailed": "Could not load. Try again.",
+      "progressOf": "Progress of {{ name }}",
+      "none": "No value"
+    },
+    "figures": {
+      "hours": "{{ hours }} h"
+    },
+    "view": {
+      "settings": "Settings",
+      "gantt": {
+        "portfolio": "Portfolio Gantt",
+        "program": "Program Gantt",
+        "project": "Project Gantt"
+      },
+      "workload": "Team workload",
+      "owners": "Owners: {{ names }}",
+      "planned": "Planned load",
+      "project": "{{ count }} distinct project",
+      "projects": "{{ count }} distinct projects",
+      "capacity": "Consumed capacity",
+      "capacityHint": "of the assigned teams",
+      "noCapacity": "No team assigned",
+      "open": "Open tickets",
+      "confidentialOpen": "including {{ count }} on a confidential project",
+      "confidentialOpenMany": "including {{ count }} on confidential projects",
+      "late": "Late tickets",
+      "note": "Aggregates cover distinct descendant projects: a project attached to several programs is counted only once.",
+      "caption": "What is attached to {{ name }}",
+      "empty": "No child yet",
+      "emptyHint": "Add a child to follow its load and progress here."
     }
   }
 }

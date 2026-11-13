@@ -1,0 +1,124 @@
+@if (node.error()) {
+  <ui-error-state [error]="node.error()" [headingLevel]="1" (retry)="node.reload()" />
+} @else if (!node.hasValue()) {
+  <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+} @else {
+  @let current = node.value();
+  <nav class="eyebrow" [attr.aria-label]="'hierarchy.settings.breadcrumb' | transloco">
+    <a routerLink="/portfolios">{{ 'nav.portfolios' | transloco }}</a>
+    @for (parent of current.parents; track parent.id) {
+      › <a [routerLink]="['/nodes', parent.id]">{{ parent.name }}</a>
+    }
+  </nav>
+  <div class="header">
+    <div class="heading">
+      <h1 class="title">{{ current.name }}</h1>
+      <p class="subtitle">
+        {{ 'hierarchy.type.' + current.type | transloco }}
+        @if (current.key) {
+          · {{ current.key }}
+        }
+        @if (current.owners.length > 0) {
+          · {{ 'hierarchy.view.owners' | transloco: { names: ownersOf(current) } }}
+        }
+        @if (current.startDate || current.endDate) {
+          ·
+          {{ 'hierarchy.dates' | transloco: { start: (current.startDate | localDate) || '…', end: (current.endDate | localDate) || '…' } }}
+        }
+      </p>
+    </div>
+    <div class="actions">
+      <a matButton="outlined" routerLink="/gantt" [queryParams]="{ node: current.id }">
+        <mat-icon aria-hidden="true">view_timeline</mat-icon>
+        {{ 'hierarchy.view.gantt.' + current.type | transloco }}
+      </a>
+      <a matButton="outlined" routerLink="/workload" [queryParams]="{ node: current.id }">
+        <mat-icon aria-hidden="true">groups</mat-icon>
+        {{ 'hierarchy.view.workload' | transloco }}
+      </a>
+      <a matButton="outlined" class="settings" [routerLink]="['/nodes', current.id, 'general']">
+        <mat-icon aria-hidden="true">settings</mat-icon>
+        {{ 'hierarchy.view.settings' | transloco }}
+      </a>
+      @if (canAddChild()) {
+        <button matButton="filled" type="button" class="add-child" (click)="addChild(current)">
+          <mat-icon aria-hidden="true">add</mat-icon>
+          {{ 'hierarchy.settings.addChild' | transloco }}
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (aggregate.error()) {
+    <ui-error-state [error]="aggregate.error()" [headingLevel]="2" (retry)="aggregate.reload()" />
+  } @else if (aggregate.hasValue()) {
+    @let figures = aggregate.value();
+    <dl class="indicators">
+      <div class="indicator planned">
+        <dt>{{ 'hierarchy.view.planned' | transloco }}</dt>
+        <dd>
+          <span class="value">{{ 'hierarchy.figures.hours' | transloco: { hours: hoursOf(figures.plannedMinutes) | localNumber } }}</span>
+          <span class="hint">
+            {{
+              (figures.projects === 1 ? 'hierarchy.view.project' : 'hierarchy.view.projects')
+                | transloco: { count: figures.projects | localNumber }
+            }}
+          </span>
+        </dd>
+      </div>
+      <div class="indicator capacity">
+        <dt>{{ 'hierarchy.view.capacity' | transloco }}</dt>
+        <dd>
+          @let used = figures.capacityUsedPercent ?? null;
+          @if (used !== null) {
+            <span class="value">{{ used / 100 | localNumber: percent }}</span>
+            <span class="hint">{{ 'hierarchy.view.capacityHint' | transloco }}</span>
+          } @else {
+            <span class="value">
+              <span aria-hidden="true">—</span>
+              <span class="cdk-visually-hidden">{{ 'hierarchy.tree.none' | transloco }}</span>
+            </span>
+            <span class="hint">{{ 'hierarchy.view.noCapacity' | transloco }}</span>
+          }
+        </dd>
+      </div>
+      <div class="indicator open">
+        <dt>{{ 'hierarchy.view.open' | transloco }}</dt>
+        <dd>
+          <span class="value">{{ figures.openTickets | localNumber }}</span>
+          @if (figures.confidentialProjects > 0) {
+            <span class="hint">
+              {{
+                (figures.confidentialProjects === 1 ? 'hierarchy.view.confidentialOpen' : 'hierarchy.view.confidentialOpenMany')
+                  | transloco: { count: figures.confidentialOpenTickets | localNumber }
+              }}
+            </span>
+          }
+        </dd>
+      </div>
+      <div class="indicator late" [class.alert]="figures.lateTickets > 0">
+        <dt>{{ 'hierarchy.view.late' | transloco }}</dt>
+        <dd>
+          <span class="value">{{ figures.lateTickets | localNumber }}</span>
+        </dd>
+      </div>
+    </dl>
+    <p class="note">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      {{ 'hierarchy.view.note' | transloco }}
+    </p>
+  } @else {
+    <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+  }
+
+  <app-hierarchy-tree [under]="current.id" [caption]="'hierarchy.view.caption' | transloco: { name: current.name }">
+    <ui-empty-state icon="account_tree" [title]="'hierarchy.view.empty' | transloco" [message]="'hierarchy.view.emptyHint' | transloco">
+      @if (canAddChild()) {
+        <button matButton="filled" type="button" class="add-first-child" (click)="addChild(current)">
+          <mat-icon aria-hidden="true">add</mat-icon>
+          {{ 'hierarchy.settings.addChild' | transloco }}
+        </button>
+      }
+    </ui-empty-state>
+  </app-hierarchy-tree>
+}

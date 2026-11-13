@@ -4,6 +4,7 @@
 //! can be unit-tested in isolation. `just check-domain` enforces it.
 
 pub mod account;
+pub mod aggregates;
 pub mod auth_policy;
 pub mod devices;
 pub mod erasure;

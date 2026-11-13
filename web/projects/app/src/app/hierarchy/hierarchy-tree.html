@@ -1,0 +1,135 @@
+<ng-template #none>
+  <span aria-hidden="true">—</span>
+  <span class="cdk-visually-hidden">{{ 'hierarchy.tree.none' | transloco }}</span>
+</ng-template>
+
+@if (level.error()) {
+  <ui-error-state [error]="level.error()" [headingLevel]="2" (retry)="level.reload()" />
+} @else if (!level.hasValue()) {
+  <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+} @else if (rows().length === 0) {
+  <ng-content />
+} @else {
+  <div class="table-card">
+    <table mat-table [dataSource]="rows()" [trackBy]="track" class="table">
+      <caption class="cdk-visually-hidden">{{ caption() }}</caption>
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef scope="col">{{ 'hierarchy.columns.name' | transloco }}</th>
+        <td mat-cell *matCellDef="let row" class="name-cell" [style.--level]="row.level">
+          <div class="node">
+            @if (canExpand(row)) {
+              <button
+                matIconButton
+                type="button"
+                class="toggle"
+                [attr.aria-expanded]="row.state === 'expanded'"
+                [attr.aria-label]="
+                  (row.state === 'expanded' ? 'hierarchy.tree.collapseOf' : 'hierarchy.tree.expandOf') | transloco: { name: row.item.name }
+                "
+                [disabled]="row.state === 'loading'"
+                (click)="toggle(row)"
+              >
+                <mat-icon aria-hidden="true">{{ row.state === 'expanded' ? 'expand_more' : 'chevron_right' }}</mat-icon>
+              </button>
+            } @else {
+              <span class="toggle-space"></span>
+            }
+            <span class="cdk-visually-hidden">{{ 'hierarchy.tree.level' | transloco: { level: row.level + 1 } }}</span>
+            @if (isVeiled(row.item)) {
+              <div class="text">
+                <span class="line">
+                  <app-veiled-name />
+                  <ui-node-type-chip [type]="row.item.type" />
+                </span>
+                <span class="hint">{{ 'hierarchy.tree.veiledHint' | transloco }}</span>
+              </div>
+            } @else {
+              <mat-icon aria-hidden="true" class="node-icon">{{ iconOf(row.item.type) }}</mat-icon>
+              <div class="text">
+                <span class="line">
+                  <a class="name" [routerLink]="['/nodes', row.item.id]">{{ row.item.name }}</a>
+                  <ui-node-type-chip [type]="row.item.type" />
+                </span>
+                @if (row.item.otherParents.length > 0) {
+                  <span class="hint">{{ 'hierarchy.tree.alsoUnder' | transloco: { names: otherParentsOf(row.item) } }}</span>
+                }
+                @if (row.state === 'failed') {
+                  <span class="hint failed" role="alert">{{ 'hierarchy.tree.loadFailed' | transloco }}</span>
+                }
+              </div>
+            }
+          </div>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="owners">
+        <th mat-header-cell *matHeaderCellDef scope="col">{{ 'hierarchy.columns.owners' | transloco }}</th>
+        <td mat-cell *matCellDef="let row">
+          @if (!isVeiled(row.item) && row.item.owners.length > 0) {
+            {{ ownersOf(row.item) }}
+          } @else {
+            <ng-container [ngTemplateOutlet]="none" />
+          }
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="health">
+        <th mat-header-cell *matHeaderCellDef scope="col">{{ 'hierarchy.columns.health' | transloco }}</th>
+        <td mat-cell *matCellDef="let row">
+          @if (!isVeiled(row.item)) {
+            <ui-health-chip [health]="row.item.health" />
+          }
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="progress">
+        <th mat-header-cell *matHeaderCellDef scope="col">{{ 'hierarchy.columns.progress' | transloco }}</th>
+        <td mat-cell *matCellDef="let row">
+          @if (!isVeiled(row.item)) {
+            @let progress = row.item.aggregate.progressPercent ?? null;
+            @if (progress !== null) {
+              <div class="progress">
+                <mat-progress-bar
+                  mode="determinate"
+                  [value]="progress"
+                  [attr.aria-label]="'hierarchy.tree.progressOf' | transloco: { name: row.item.name }"
+                />
+                <span class="percent">{{ progress / 100 | localNumber: percent }}</span>
+              </div>
+            } @else {
+              <ng-container [ngTemplateOutlet]="none" />
+            }
+          }
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="planned">
+        <th mat-header-cell *matHeaderCellDef scope="col" class="numeric">{{ 'hierarchy.columns.planned' | transloco }}</th>
+        <td mat-cell *matCellDef="let row" class="numeric">
+          {{
+            'hierarchy.figures.hours'
+              | transloco: { hours: hoursOf(isVeiled(row.item) ? row.item.plannedMinutes : row.item.aggregate.plannedMinutes) | localNumber }
+          }}
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="open">
+        <th mat-header-cell *matHeaderCellDef scope="col" class="numeric">{{ 'hierarchy.columns.open' | transloco }}</th>
+        <td mat-cell *matCellDef="let row" class="numeric">
+          @if (isVeiled(row.item)) {
+            <ng-container [ngTemplateOutlet]="none" />
+          } @else {
+            {{ row.item.aggregate.openTickets | localNumber }}
+          }
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="late">
+        <th mat-header-cell *matHeaderCellDef scope="col" class="numeric">{{ 'hierarchy.columns.late' | transloco }}</th>
+        <td mat-cell *matCellDef="let row" class="numeric" [class.late]="!isVeiled(row.item) && row.item.aggregate.lateTickets > 0">
+          @if (isVeiled(row.item)) {
+            <ng-container [ngTemplateOutlet]="none" />
+          } @else {
+            {{ row.item.aggregate.lateTickets | localNumber }}
+          }
+        </td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="columns"></tr>
+      <tr mat-row *matRowDef="let row; columns: columns"></tr>
+    </table>
+  </div>
+}

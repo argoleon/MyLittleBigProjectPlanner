@@ -931,6 +931,73 @@
         ]
       }
     },
+    "/api/v1/hierarchy": {
+      "get": {
+        "tags": [
+          "hierarchy"
+        ],
+        "summary": "Browse one level of the hierarchy, with aggregates",
+        "description": "Without `under`: the nodes at the top of what the member sees, that is without a parent, or without a parent they see (all root nodes for tenant admins). With `under`: the children of that node. Portfolios first, then programs and projects, each by name; archived nodes are left out. Every row carries the aggregate of its node over its distinct descendant projects. A confidential child the member has no access to comes veiled (`veiled: true`): its planned load, without name or detail.",
+        "operationId": "browseHierarchy",
+        "parameters": [
+          {
+            "name": "under",
+            "in": "query",
+            "description": "The node whose children are listed; without it, the top of the\nhierarchy.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The rows of the level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HierarchyRow"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid `under`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such node in this tenant, or not visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me": {
       "get": {
         "tags": [
@@ -2024,6 +2091,60 @@
           },
           "403": {
             "description": "`permission.denied`: `manage_members` is missing on this node",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such node in this tenant, or not visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes/{id}/aggregate": {
+      "get": {
+        "tags": [
+          "hierarchy"
+        ],
+        "summary": "Read the aggregate of a node",
+        "description": "Planned load, consumed capacity, progress, open and late tickets over the distinct descendant projects of the node, confidential ones included and archived ones left out. Precomputed: it follows a change within seconds.",
+        "operationId": "getNodeAggregate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the node",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The aggregate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodeAggregate"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -7397,6 +7518,84 @@
           }
         }
       },
+      "HierarchyNode": {
+        "type": "object",
+        "description": "A node of the hierarchy as a row of its tree, with its aggregate.",
+        "required": [
+          "id",
+          "type",
+          "name",
+          "health",
+          "owners",
+          "otherParents",
+          "hasChildren",
+          "aggregate"
+        ],
+        "properties": {
+          "aggregate": {
+            "$ref": "#/components/schemas/NodeAggregate"
+          },
+          "hasChildren": {
+            "type": "boolean",
+            "description": "It has children: browse it (`?under=`) for the next level."
+          },
+          "health": {
+            "$ref": "#/components/schemas/NodeHealth"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Projects only.",
+            "example": "PLAT"
+          },
+          "name": {
+            "type": "string",
+            "example": "Identity platform"
+          },
+          "otherParents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NodeParent"
+            },
+            "description": "Its parents the member sees, other than the node browsed."
+          },
+          "owners": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NodeOwner"
+            }
+          },
+          "type": {
+            "$ref": "#/components/schemas/NodeType"
+          },
+          "weightPercent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Weighting of the link to the node browsed; `null` at the top.",
+            "example": 100
+          }
+        }
+      },
+      "HierarchyRow": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/HierarchyNode"
+          },
+          {
+            "$ref": "#/components/schemas/VeiledHierarchyNode"
+          }
+        ],
+        "description": "A row of the hierarchy: a node the member sees, or a veiled one."
+      },
       "HolderKind": {
         "type": "string",
         "description": "Whether a role is held by a member or by a group.",
@@ -8223,6 +8422,90 @@
           },
           "role": {
             "$ref": "#/components/schemas/AccessRole"
+          }
+        }
+      },
+      "NodeAggregate": {
+        "type": "object",
+        "description": "What a node aggregates over its distinct descendant projects (itself\nincluded, for a project). Archived projects are left out.",
+        "required": [
+          "projects",
+          "confidentialProjects",
+          "plannedMinutes",
+          "capacityMinutes",
+          "openTickets",
+          "lateTickets",
+          "confidentialOpenTickets"
+        ],
+        "properties": {
+          "capacityMinutes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Capacity of the teams assigned, in minutes, weighted like the load.",
+            "example": 246900,
+            "minimum": 0
+          },
+          "capacityUsedPercent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Planned load over capacity, in percent; `null` without capacity.",
+            "example": 86,
+            "minimum": 0
+          },
+          "confidentialOpenTickets": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Open tickets of the confidential projects.",
+            "example": 38,
+            "minimum": 0
+          },
+          "confidentialProjects": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Those of them that are confidential.",
+            "example": 1,
+            "minimum": 0
+          },
+          "lateTickets": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Open tickets past their due date.",
+            "example": 17,
+            "minimum": 0
+          },
+          "openTickets": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tickets not done yet.",
+            "example": 276,
+            "minimum": 0
+          },
+          "plannedMinutes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Planned load, in minutes. The weighting of a link applies to the\nparent of that link only.",
+            "example": 212400,
+            "minimum": 0
+          },
+          "progressPercent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Share of the tickets done, in percent rounded down; `null` without\ntickets.",
+            "example": 46,
+            "minimum": 0
+          },
+          "projects": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Distinct projects counted: one reached through several paths counts\nonce.",
+            "example": 6,
+            "minimum": 0
           }
         }
       },
@@ -9493,6 +9776,47 @@
           "url": {
             "type": "string",
             "description": "To navigate to (not to fetch): it sets the target tenant's cookies.\nWorks once, within 60 seconds."
+          }
+        }
+      },
+      "VeiledHierarchyNode": {
+        "type": "object",
+        "description": "A confidential project the member has no access to, as a row of the\ntree: its planned load, without name or detail.",
+        "required": [
+          "veiled",
+          "id",
+          "type",
+          "plannedMinutes"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "An opaque identifier: stable, but not the node's id, and of no use\nto read it."
+          },
+          "plannedMinutes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Its planned load, in minutes.",
+            "example": 36000,
+            "minimum": 0
+          },
+          "type": {
+            "$ref": "#/components/schemas/NodeType"
+          },
+          "veiled": {
+            "type": "boolean",
+            "description": "Always `true`: tells a veiled row from a node's.",
+            "example": true
+          },
+          "weightPercent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Weighting of the link to the node browsed.",
+            "example": 100
           }
         }
       },

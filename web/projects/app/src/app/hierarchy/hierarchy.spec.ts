@@ -1,7 +1,8 @@
 /**
- * Integration tests of the hierarchy screens (L03-US01 to US04): the
- * portfolios list, the creation dialog, a node's settings with its General
- * and Attachments tabs, the effective access card, the grant dialog, the
+ * Integration tests of the hierarchy screens (L03-US01 to US05): the
+ * portfolios list and the view of a node with their tree and aggregated
+ * indicators, the creation dialog, a node's settings with its General and
+ * Attachments tabs, the effective access card, the grant dialog, the
  * confidentiality card and the veiled rows of confidential projects, with
  * the API mocked at the HTTP level and the real translations.
  */
@@ -10,11 +11,24 @@ import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { Router, provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { AuthService, Node, NodeAccess, NodeCandidate, NodeLink, provideApi, provideMaterialDefaults } from 'ui';
+import {
+  AuthService,
+  HierarchyNode,
+  LocaleService,
+  Node,
+  NodeAccess,
+  NodeAggregate,
+  NodeCandidate,
+  NodeLink,
+  VeiledHierarchyNode,
+  provideApi,
+  provideMaterialDefaults,
+} from 'ui';
 import { axeViolations, provideI18nTesting } from 'ui/testing';
 
 import { NodeGeneralTab } from './node-general-tab';
 import { NodeLinksTab } from './node-links-tab';
+import { NodePage } from './node-page';
 import { NodeSettingsPage } from './node-settings-page';
 import { PortfoliosPage } from './portfolios-page';
 
@@ -67,11 +81,11 @@ async function setUp(tenantRole = 'tenant_admin') {
       provideRouter(
         [
           { path: 'portfolios', component: PortfoliosPage },
+          { path: 'nodes/:id', pathMatch: 'full', component: NodePage },
           {
             path: 'nodes/:id',
             component: NodeSettingsPage,
             children: [
-              { path: '', pathMatch: 'full', redirectTo: 'general' },
               { path: 'general', component: NodeGeneralTab },
               { path: 'links', component: NodeLinksTab },
             ],
@@ -130,69 +144,225 @@ async function setUp(tenantRole = 'tenant_admin') {
   return { http, harness, reply, settle, root, text, click, dialog, type, choose };
 }
 
-const isList = (url: string, method: string) => url.startsWith('/api/v1/nodes?') && method === 'GET';
+const isTop = (url: string, method: string) => url === '/api/v1/hierarchy' && method === 'GET';
+const isUnder = (id: string) => (url: string, method: string) => url === `/api/v1/hierarchy?under=${id}` && method === 'GET';
 
-describe('PortfoliosPage', () => {
+/** The aggregate of the portfolio of mockup 05. */
+const AGGREGATE: NodeAggregate = {
+  projects: 6,
+  confidentialProjects: 1,
+  plannedMinutes: 212_400,
+  capacityMinutes: 246_977,
+  capacityUsedPercent: 86,
+  openTickets: 1276,
+  lateTickets: 17,
+  progressPercent: 46,
+  confidentialOpenTickets: 38,
+};
+
+/** Nothing measured, or not computed yet. */
+const NOTHING: NodeAggregate = {
+  projects: 0,
+  confidentialProjects: 0,
+  plannedMinutes: 0,
+  capacityMinutes: 0,
+  capacityUsedPercent: null,
+  openTickets: 0,
+  lateTickets: 0,
+  progressPercent: null,
+  confidentialOpenTickets: 0,
+};
+
+const PROGRAM_ROW: HierarchyNode = {
+  id: PROGRAM.id,
+  type: 'program',
+  name: 'IT Modernization',
+  key: null,
+  health: 'at_risk',
+  owners: [{ accountId: 'a1', displayName: 'Lucas Bernard' }],
+  weightPercent: null,
+  otherParents: [],
+  hasChildren: true,
+  aggregate: { ...AGGREGATE, projects: 3, plannedMinutes: 142_800, openTickets: 168, lateTickets: 11 },
+};
+
+const PROJECT_ROW: HierarchyNode = {
+  id: PROJECT.id,
+  type: 'project',
+  name: 'Identity platform',
+  key: 'PLAT',
+  health: 'on_track',
+  owners: [],
+  weightPercent: 100,
+  otherParents: [{ id: 'p2', type: 'program', name: 'Compliance' }],
+  hasChildren: false,
+  aggregate: { ...NOTHING, projects: 1, plannedMinutes: 37_200, openTickets: 42, progressPercent: 0 },
+};
+
+/** A project at the root, with nothing measured yet. */
+const LONE_ROW: HierarchyNode = {
+  ...PROJECT_ROW,
+  id: 'lone',
+  name: 'Steering',
+  key: 'STEER',
+  weightPercent: null,
+  otherParents: [],
+  aggregate: { ...NOTHING, projects: 1 },
+};
+
+const VEILED_ROW: VeiledHierarchyNode = { veiled: true, id: 'opaque-1', type: 'project', weightPercent: 100, plannedMinutes: 36_000 };
+
+describe('PortfoliosPage and HierarchyTree', () => {
   afterEach(() => {
     TestBed.inject(MatDialog).closeAll();
     TestBed.inject(HttpTestingController).verify();
   });
 
-  it('lists the nodes with their kind, health, owners and dates, filtered by type', async () => {
-    const { harness, reply, root, text, click } = await setUp();
-    await harness.navigateByUrl('/portfolios');
-    await reply(isList, { items: [PROGRAM, PROJECT], nextCursor: null });
-    const rows = Array.from(root().querySelectorAll('tr[mat-row]'));
-    expect(rows.map((row) => text(row.querySelector('.name')))).toEqual(['IT Modernization', 'Identity platform']);
-    expect(text(rows[0].querySelector('ui-node-type-chip'))).toBe('Type: Program');
-    expect(text(rows[0].querySelector('ui-health-chip'))).toBe('Health: At risk');
-    expect(text(rows[0].querySelectorAll('td')[1])).toBe('Root');
-    expect(text(rows[0].querySelectorAll('td')[3])).toBe('Lucas Bernard');
-    expect(text(rows[0].querySelectorAll('td')[4])).toBe('Jan 5, 2026 – Dec 18, 2026');
-    expect(text(rows[1].querySelector('.node-key'))).toBe('PLAT');
-    expect(text(rows[1].querySelectorAll('td')[1])).toBe('IT Modernization');
-    expect(rows[1].querySelector('a')?.getAttribute('href')).toBe(`/nodes/${PROJECT.id}`);
-    expect(await axeViolations(root().querySelector('app-portfolios-page')!)).toEqual([]);
+  const rows = (root: Element) => Array.from(root.querySelectorAll('tr[mat-row]'));
+  const toggleOf = (row: Element) => row.querySelector('button.toggle') as HTMLButtonElement | null;
 
-    const project = Array.from(root().querySelectorAll('mat-chip-option')).find((c) => text(c) === 'Project')!;
-    await click(project.querySelector('.mdc-evolution-chip__action'));
-    expect(root().querySelectorAll('tr[mat-row]').length).toBe(1);
-  });
-
-  it('shows a confidential project out of reach as a veiled row, without name or link', async () => {
-    const { harness, reply, root, text } = await setUp('member');
+  it('lists the top of the hierarchy with its indicators, and loads a level when its row is expanded', async () => {
+    const { harness, reply, root, text, click, http } = await setUp();
     await harness.navigateByUrl('/portfolios');
-    await reply(isList, {
-      items: [
-        PROGRAM,
-        { veiled: true, id: 'opaque-1', type: 'project', parents: [{ id: PROGRAM.id, type: 'program', name: 'IT Modernization' }] },
-      ],
-      nextCursor: null,
-    });
-    const veiled = root().querySelectorAll('tr[mat-row]')[1];
-    const cells = Array.from(veiled.querySelectorAll('td'));
-    expect(text(cells[0].querySelector('app-veiled-name .name'))).toBe('Confidential project');
-    expect(text(cells[0].querySelector('.meta'))).toBe('Type: Project You do not have access.');
-    expect(cells.slice(1).map((cell) => text(cell))).toEqual(['IT Modernization', '', '', '']);
+    await reply(isTop, [PROGRAM_ROW, LONE_ROW]);
+    expect(text(root().querySelector('caption'))).toBe('Portfolios, programs and projects');
+    expect(Array.from(root().querySelectorAll('th')).map((th) => text(th))).toEqual([
+      'Name',
+      'Owners',
+      'Health',
+      'Progress',
+      'Planned load',
+      'Open',
+      'Late',
+    ]);
+    expect(rows(root()).map((row) => text(row.querySelector('.name')))).toEqual(['IT Modernization', 'Steering']);
+    const program = rows(root())[0];
+    const cells = Array.from(program.querySelectorAll('td'));
+    expect(text(program.querySelector('ui-node-type-chip'))).toBe('Type: Program');
+    expect(program.querySelector('a.name')?.getAttribute('href')).toBe(`/nodes/${PROGRAM.id}`);
+    expect(text(cells[1])).toBe('Lucas Bernard');
+    expect(text(cells[2])).toBe('Health: At risk');
+    expect(cells[3].querySelector('mat-progress-bar')?.getAttribute('aria-valuenow')).toBe('46');
+    expect(cells[3].querySelector('mat-progress-bar')?.getAttribute('aria-label')).toBe('Progress of IT Modernization');
+    expect(text(cells[3])).toBe('46%');
+    expect(cells.slice(4).map((cell) => text(cell))).toEqual(['2,380 h', '168', '11']);
+    expect(cells[6].classList.contains('late')).toBe(true);
+    // Nothing measured: no owner, no progress, zeros.
+    const lone = Array.from(rows(root())[1].querySelectorAll('td'));
+    expect(lone.slice(1).map((cell) => text(cell))).toEqual(['—No value', 'Health: On track', '—No value', '0 h', '0', '0']);
+    expect(lone[6].classList.contains('late')).toBe(false);
+    expect(toggleOf(rows(root())[1])).toBeNull();
+
+    // The program expands with the keyboard's button; its level is loaded then.
+    const toggle = toggleOf(program)!;
+    expect([toggle.getAttribute('aria-expanded'), toggle.getAttribute('aria-label')]).toEqual(['false', 'Expand IT Modernization']);
+    toggle.click();
+    await new Promise((resolve) => setTimeout(resolve));
+    TestBed.tick();
+    expect(toggleOf(rows(root())[0])!.disabled).toBe(true);
+    await reply(isUnder(PROGRAM.id), [PROJECT_ROW, VEILED_ROW]);
+    expect(rows(root()).map((row) => text(row.querySelector('.name')))).toEqual([
+      'IT Modernization',
+      'Identity platform',
+      'Confidential project',
+      'Steering',
+    ]);
+    const expandedToggle = toggleOf(rows(root())[0])!;
+    expect([expandedToggle.getAttribute('aria-expanded'), expandedToggle.getAttribute('aria-label')]).toEqual([
+      'true',
+      'Collapse IT Modernization',
+    ]);
+    const levels = rows(root()).map((row) => (row.querySelector('.name-cell') as HTMLElement).style.getPropertyValue('--level'));
+    expect(levels).toEqual(['0', '1', '1', '0']);
+    expect(rows(root()).map((row) => text(row.querySelector('.name-cell .cdk-visually-hidden')))).toEqual([
+      'Level 1',
+      'Level 2',
+      'Level 2',
+      'Level 1',
+    ]);
+    const project = rows(root())[1];
+    expect(text(project.querySelector('.hint'))).toBe('Also under: Compliance');
+    expect(project.querySelector('mat-progress-bar')?.getAttribute('aria-valuenow')).toBe('0');
+    expect(text(project.querySelectorAll('td')[3])).toBe('0%');
+
+    // The confidential project out of reach: its load, without name, link or detail.
+    const veiled = rows(root())[2];
+    const veiledCells = Array.from(veiled.querySelectorAll('td'));
+    expect(text(veiledCells[0].querySelector('.hint'))).toBe('You do not have access to this project. Its load is counted anonymously.');
     const lock = veiled.querySelector('app-veiled-name mat-icon')!;
     expect([lock.getAttribute('role'), lock.getAttribute('aria-label')]).toEqual(['img', 'Locked']);
+    expect(veiledCells.slice(1).map((cell) => text(cell))).toEqual(['—No value', '', '', '600 h', '—No value', '—No value']);
     expect(veiled.querySelector('a')).toBeNull();
     expect(veiled.querySelector('ui-health-chip')).toBeNull();
+    expect(toggleOf(veiled)).toBeNull();
     expect(await axeViolations(root().querySelector('app-portfolios-page')!)).toEqual([]);
+
+    // Folded, then expanded again: the level is read anew.
+    await click(toggleOf(rows(root())[0]));
+    expect(rows(root()).length).toBe(2);
+    expect(http.match((request) => isUnder(PROGRAM.id)(request.urlWithParams, request.method))).toEqual([]);
+    await click(toggleOf(rows(root())[0]));
+    await reply(isUnder(PROGRAM.id), [PROJECT_ROW]);
+    expect(rows(root()).length).toBe(3);
+  });
+
+  it('says when a level cannot be loaded, and loads it at the next try', async () => {
+    const { harness, reply, root, text, click } = await setUp();
+    await harness.navigateByUrl('/portfolios');
+    await reply(isTop, [PROGRAM_ROW]);
+    await click(toggleOf(rows(root())[0]));
+    await reply(isUnder(PROGRAM.id), problem(500, 'internal'), 500);
+    const failed = rows(root())[0].querySelector('.hint.failed')!;
+    expect([text(failed), failed.getAttribute('role')]).toEqual(['Could not load. Try again.', 'alert']);
+    expect(toggleOf(rows(root())[0])!.getAttribute('aria-expanded')).toBe('false');
+    expect(rows(root()).length).toBe(1);
+
+    await click(toggleOf(rows(root())[0]));
+    await reply(isUnder(PROGRAM.id), [PROJECT_ROW]);
+    expect(rows(root()).length).toBe(2);
+    expect(rows(root())[0].querySelector('.hint.failed')).toBeNull();
+  });
+
+  it('formats the figures in the language of the user', async () => {
+    const { harness, reply, root, text, settle } = await setUp();
+    await harness.navigateByUrl('/portfolios');
+    await reply(isTop, [PROGRAM_ROW]);
+    const figures = () =>
+      Array.from(rows(root())[0].querySelectorAll('td'))
+        .slice(3)
+        .map((cell) => text(cell));
+    expect(figures()).toEqual(['46%', '2,380 h', '168', '11']);
+
+    TestBed.inject(LocaleService).use('fr');
+    await settle();
+    expect(figures()).toEqual(['46 %', '2 380 h', '168', '11']);
+    expect(text(root().querySelectorAll('th')[4])).toBe('Charge planifiée');
+    expect(toggleOf(rows(root())[0])!.getAttribute('aria-label')).toBe('Développer IT Modernization');
+  });
+
+  it('says when the top cannot be loaded, and reads it again', async () => {
+    const { harness, reply, root, click } = await setUp();
+    await harness.navigateByUrl('/portfolios');
+    await reply(isTop, problem(500, 'internal'), 500);
+    expect(root().querySelector('ui-error-state')).not.toBeNull();
+    await click(root().querySelector('ui-error-state button'));
+    await reply(isTop, [PROGRAM_ROW]);
+    expect(rows(root()).length).toBe(1);
   });
 
   it('only offers creation at the root to tenant admins', async () => {
-    const { harness, reply, root } = await setUp('member');
+    const { harness, reply, root, text } = await setUp('member');
     await harness.navigateByUrl('/portfolios');
-    await reply(isList, { items: [], nextCursor: null });
+    await reply(isTop, []);
     expect(root().querySelector('button.create')).toBeNull();
-    expect(root().querySelector('ui-empty-state')).not.toBeNull();
+    expect(text(root().querySelector('ui-empty-state .title'))).toBe('No portfolio, program or project yet');
+    expect(root().querySelector('table')).toBeNull();
   });
 
-  it('creates a project at the root, its key in capitals, then opens it', async () => {
+  it('creates a project at the root, its key in capitals, then opens its settings', async () => {
     const { harness, reply, root, text, click, dialog, type, choose } = await setUp();
     await harness.navigateByUrl('/portfolios');
-    await reply(isList, { items: [], nextCursor: null });
+    await reply(isTop, []);
     await click(root().querySelector('button.create'));
     expect(text(dialog().querySelector('h2'))).toBe('New node');
     expect(dialog().querySelector('[formcontrolname="key"]')).toBeNull();
@@ -231,6 +401,124 @@ describe('PortfoliosPage', () => {
   });
 });
 
+describe('NodePage', () => {
+  afterEach(() => {
+    TestBed.inject(MatDialog).closeAll();
+    TestBed.inject(HttpTestingController).verify();
+  });
+
+  const nodeOf = (url: string, method: string) => url === `/api/v1/nodes/${PROGRAM.id}` && method === 'GET';
+  const aggregateOf = (url: string) => url === `/api/v1/nodes/${PROGRAM.id}/aggregate`;
+  const permissionsOf = (url: string) => url === `/api/v1/nodes/${PROGRAM.id}/my-permissions`;
+
+  /** Opens the view of the program as a member with `permissions` on it. */
+  async function openView(aggregate: NodeAggregate, children: object[], permissions: string[] = ['view'], tenantRole = 'member') {
+    const context = await setUp(tenantRole);
+    await context.harness.navigateByUrl(`/nodes/${PROGRAM.id}`);
+    await context.reply(nodeOf, { ...PROGRAM, parents: [{ id: 'p0', type: 'portfolio', name: 'Digital' }] });
+    await context.reply(aggregateOf, aggregate);
+    await context.reply(permissionsOf, permissions);
+    await context.reply(isUnder(PROGRAM.id), children);
+    const page = () => context.root().querySelector('app-node-page')!;
+    const indicator = (name: string) => {
+      const element = page().querySelector(`.indicator.${name}`)!;
+      return [context.text(element.querySelector('dt')), context.text(element.querySelector('.value')), context.text(element.querySelector('.hint'))];
+    };
+    return { ...context, page, indicator };
+  }
+
+  it('shows the indicators of the node over its distinct projects, then what is under it', async () => {
+    const { page, indicator, text } = await openView(AGGREGATE, [PROJECT_ROW, VEILED_ROW]);
+    expect(text(page().querySelector('h1'))).toBe('IT Modernization');
+    expect(text(page().querySelector('.subtitle'))).toBe('Program · Owners: Lucas Bernard · Jan 5, 2026 – Dec 18, 2026');
+    const crumbs = Array.from(page().querySelectorAll('nav.eyebrow a')).map((a) => [text(a), a.getAttribute('href')]);
+    expect(crumbs).toEqual([
+      ['Portfolios', '/portfolios'],
+      ['Digital', '/nodes/p0'],
+    ]);
+
+    expect(indicator('planned')).toEqual(['Planned load', '3,540 h', '6 distinct projects']);
+    expect(indicator('capacity')).toEqual(['Consumed capacity', '86%', 'of the assigned teams']);
+    expect(indicator('open')).toEqual(['Open tickets', '1,276', 'including 38 on a confidential project']);
+    expect(indicator('late')).toEqual(['Late tickets', '17', undefined]);
+    expect(page().querySelector('.indicator.late')?.classList.contains('alert')).toBe(true);
+    expect(text(page().querySelector('.note'))).toContain('a project attached to several programs is counted only once');
+
+    expect(text(page().querySelector('caption'))).toBe('What is attached to IT Modernization');
+    const names = Array.from(page().querySelectorAll('tr[mat-row]')).map((row) => text(row.querySelector('.name')));
+    expect(names).toEqual(['Identity platform', 'Confidential project']);
+
+    const links = Array.from(page().querySelectorAll('.actions a')).map((a) => [text(a), a.getAttribute('href')]);
+    expect(links).toEqual([
+      ['view_timeline Program Gantt', `/gantt?node=${PROGRAM.id}`],
+      ['groups Team workload', `/workload?node=${PROGRAM.id}`],
+      ['settings Settings', `/nodes/${PROGRAM.id}/general`],
+    ]);
+    // A reader adds no child.
+    expect(page().querySelector('button.add-child')).toBeNull();
+    expect(await axeViolations(page())).toEqual([]);
+  });
+
+  it('shows zeros and no percentage while nothing is measured', async () => {
+    const { page, indicator, text, settle } = await openView({ ...NOTHING, projects: 1, confidentialProjects: 2, confidentialOpenTickets: 3 }, [
+      LONE_ROW,
+    ]);
+    expect(indicator('planned')).toEqual(['Planned load', '0 h', '1 distinct project']);
+    expect(indicator('capacity')).toEqual(['Consumed capacity', '—No value', 'No team assigned']);
+    expect(indicator('open')).toEqual(['Open tickets', '0', 'including 3 on confidential projects']);
+    expect(page().querySelector('.indicator.late')?.classList.contains('alert')).toBe(false);
+
+    TestBed.inject(LocaleService).use('fr');
+    await settle();
+    expect(indicator('planned')).toEqual(['Charge planifiée', '0 h', '1 projet distinct']);
+    expect(text(page().querySelector('.subtitle'))).toBe('Programme · Responsables : Lucas Bernard · 5 janv. 2026 – 18 déc. 2026');
+  });
+
+  it('invites those who administer the node to add its first child, which then shows in the tree', async () => {
+    const { page, reply, root, text, click, dialog, type } = await openView(NOTHING, [], ['view', 'administer_node']);
+    expect(page().querySelector('table')).toBeNull();
+    expect(text(page().querySelector('ui-empty-state .title'))).toBe('No child yet');
+    expect(text(page().querySelector('ui-empty-state .message'))).toBe('Add a child to follow its load and progress here.');
+    expect(page().querySelector('button.add-child')).not.toBeNull();
+
+    await click(page().querySelector('ui-empty-state button.add-first-child'));
+    expect(text(dialog().querySelector('h2'))).toBe('Add a child to IT Modernization');
+    await click(dialog().querySelector('mat-select[formcontrolname="type"] .mat-mdc-select-trigger'));
+    await click(Array.from(root().querySelectorAll('mat-option')).find((o) => text(o) === 'Project')!);
+    await type(dialog(), 'name', 'Identity platform');
+    await type(dialog(), 'key', 'PLAT');
+    await click(dialog().querySelector('button[type="submit"]'));
+    const created = await reply((url) => url === '/api/v1/nodes', PROJECT, 201);
+    expect((created.request.body as { parentId: string }).parentId).toBe(PROGRAM.id);
+    // The view stays, and reads its tree again.
+    await reply(isUnder(PROGRAM.id), [PROJECT_ROW]);
+    expect(TestBed.inject(Router).url).toBe(`/nodes/${PROGRAM.id}`);
+    expect(page().querySelectorAll('tr[mat-row]').length).toBe(1);
+    expect(page().querySelector('ui-empty-state')).toBeNull();
+  });
+
+  it('offers no child to add to a reader, and every one to a tenant admin', async () => {
+    const reader = await openView(NOTHING, []);
+    expect(reader.page().querySelector('ui-empty-state')).not.toBeNull();
+    expect(reader.page().querySelector('button.add-child, button.add-first-child')).toBeNull();
+    TestBed.resetTestingModule();
+
+    const admin = await openView(NOTHING, [], [], 'tenant_admin');
+    expect(admin.page().querySelector('button.add-child')).not.toBeNull();
+    expect(admin.page().querySelector('button.add-first-child')).not.toBeNull();
+  });
+
+  it('says when the node cannot be read', async () => {
+    const { harness, reply, root } = await setUp('member');
+    await harness.navigateByUrl(`/nodes/${PROGRAM.id}`);
+    await reply(nodeOf, problem(404, 'not_found'), 404);
+    await reply(aggregateOf, problem(404, 'not_found'), 404);
+    await reply(permissionsOf, problem(404, 'not_found'), 404);
+    expect(root().querySelector('app-node-page ui-error-state')).not.toBeNull();
+    expect(root().querySelector('app-node-page h1.title')).toBeNull();
+  });
+});
+
 describe('NodeSettingsPage and NodeGeneralTab', () => {
   afterEach(() => {
     TestBed.inject(MatDialog).closeAll();
@@ -239,7 +527,7 @@ describe('NodeSettingsPage and NodeGeneralTab', () => {
 
   async function openSettings(node: Node = PROGRAM) {
     const context = await setUp();
-    await context.harness.navigateByUrl(`/nodes/${node.id}`);
+    await context.harness.navigateByUrl(`/nodes/${node.id}/general`);
     await context.reply((url) => url === `/api/v1/nodes/${node.id}`, node);
     return context;
   }
@@ -251,7 +539,9 @@ describe('NodeSettingsPage and NodeGeneralTab', () => {
     expect(crumbs).toEqual([
       ['Portfolios', '/portfolios'],
       ['IT Modernization', `/nodes/${PROGRAM.id}`],
+      ['Identity platform', `/nodes/${PROJECT.id}`],
     ]);
+    expect(text(root().querySelector('nav.eyebrow'))).toBe('Portfolios › IT Modernization › Identity platform › Settings');
     expect(text(root().querySelector('a[mat-tab-link][aria-selected="true"]'))).toBe('General');
     expect((root().querySelector('[formcontrolname="name"]') as HTMLInputElement).value).toBe('Identity platform');
     expect((root().querySelector('input[readonly]') as HTMLInputElement).value).toBe('PLAT');
