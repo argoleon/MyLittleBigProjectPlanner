@@ -355,3 +355,175 @@ async fn the_purge_job_removes_a_deleted_tenant_and_its_rows() {
         1
     );
 }
+
+/// A node of `node_type` named `name`, under `parent`, in the tenant of `conn`.
+async fn node(
+    conn: &mut PgConnection,
+    node_type: domain::hierarchy::NodeType,
+    name: &str,
+    code: Option<&str>,
+    parent: Option<Uuid>,
+    creator: Uuid,
+) -> Uuid {
+    let id = infra::id::new_id();
+    infra::nodes::insert(
+        conn,
+        &infra::nodes::NewNode {
+            id,
+            node_type,
+            key: code,
+            fields: infra::nodes::NodeFields {
+                name,
+                description: "",
+                objectives: "",
+                start_date: None,
+                end_date: None,
+                health: domain::hierarchy::Health::OnTrack,
+                owners: &[],
+            },
+            parent,
+            created_by: creator,
+        },
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    id
+}
+
+async fn aggregate_of(db: &TestDb, tenant: Uuid, node: Uuid) -> Option<domain::aggregates::Aggregate> {
+    let mut tx = infra::db::begin_tenant_tx(&db.app_pool, tenant).await.unwrap();
+    infra::aggregates::find(&mut tx, &[node])
+        .await
+        .unwrap()
+        .remove(&node)
+}
+
+#[tokio::test]
+async fn the_aggregates_of_every_ancestor_follow_a_change_within_seconds() {
+    use domain::aggregates::Figures;
+    use domain::hierarchy::NodeType;
+    use infra::accounts::TenantRole;
+
+    let db = TestDb::new().await;
+    let figures = |planned_minutes, todo| Figures {
+        planned_minutes,
+        todo,
+        ..Figures::default()
+    };
+
+    // A portfolio, a program and a project in one tenant; a project in
+    // another.
+    let creator = db
+        .add_member(&db.tenant_a, TenantRole::TenantAdmin)
+        .await
+        .account_id;
+    let mut tx = infra::db::begin_tenant_tx(&db.app_pool, db.tenant_a.id)
+        .await
+        .unwrap();
+    let portfolio = node(&mut tx, NodeType::Portfolio, "Digital", None, None, creator).await;
+    let program = node(
+        &mut tx,
+        NodeType::Program,
+        "Compliance",
+        None,
+        Some(portfolio),
+        creator,
+    )
+    .await;
+    let project = node(
+        &mut tx,
+        NodeType::Project,
+        "Archive",
+        Some("ARCH"),
+        Some(program),
+        creator,
+    )
+    .await;
+    infra::aggregates::set_figures(&mut tx, project, &figures(600, 12))
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    let other = db
+        .add_member(&db.tenant_b, TenantRole::TenantAdmin)
+        .await
+        .account_id;
+    let mut tx = infra::db::begin_tenant_tx(&db.app_pool, db.tenant_b.id)
+        .await
+        .unwrap();
+    let elsewhere = node(&mut tx, NodeType::Project, "Elsewhere", Some("ELSE"), None, other).await;
+    infra::aggregates::set_figures(&mut tx, elsewhere, &figures(90, 3))
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    assert_eq!(aggregate_of(&db, db.tenant_a.id, portfolio).await, None);
+
+    // The worker polls its queue, as `worker::run_loop` does.
+    let handler = jobs().await;
+    let runner = JobRunner::new(db.app_pool.clone());
+    let changed = std::time::Instant::now();
+    let wait_for = |expected_minutes: u64| {
+        let (db, runner, handler) = (&db, &runner, &handler);
+        async move {
+            loop {
+                runner.next_batch(handler).await;
+                let found = aggregate_of(db, db.tenant_a.id, portfolio).await;
+                if found.is_some_and(|a| a.figures.planned_minutes == expected_minutes) {
+                    return;
+                }
+                tokio::time::sleep(Duration::from_millis(100)).await;
+            }
+        }
+    };
+    tokio::time::timeout(Duration::from_secs(10), wait_for(600))
+        .await
+        .expect("the aggregates are computed");
+    let elapsed = changed.elapsed();
+    assert!(
+        elapsed < Duration::from_secs(5),
+        "within seconds, not {elapsed:?}"
+    );
+
+    let top = aggregate_of(&db, db.tenant_a.id, portfolio).await.unwrap();
+    assert_eq!((top.projects, top.figures.open()), (1, 12));
+    let middle = aggregate_of(&db, db.tenant_a.id, program).await.unwrap();
+    assert_eq!(middle.figures.planned_minutes, 600);
+    // Each tenant's job computed its own nodes.
+    let other_tenant = async {
+        loop {
+            runner.next_batch(&handler).await;
+            if let Some(found) = aggregate_of(&db, db.tenant_b.id, elsewhere).await {
+                return found;
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+    };
+    let apart = tokio::time::timeout(Duration::from_secs(10), other_tenant)
+        .await
+        .expect("the other tenant's aggregates are computed");
+    assert_eq!((apart.projects, apart.figures.planned_minutes), (1, 90));
+    assert_eq!(aggregate_of(&db, db.tenant_b.id, portfolio).await, None);
+    assert_eq!(aggregate_of(&db, db.tenant_a.id, elsewhere).await, None);
+
+    // A ticket closed in the project, later on: every ancestor follows.
+    let mut tx = infra::db::begin_tenant_tx(&db.app_pool, db.tenant_a.id)
+        .await
+        .unwrap();
+    infra::aggregates::set_figures(&mut tx, project, &figures(540, 11))
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    let changed = std::time::Instant::now();
+    tokio::time::timeout(Duration::from_secs(10), wait_for(540))
+        .await
+        .expect("the aggregates follow");
+    assert!(changed.elapsed() < Duration::from_secs(5));
+    let middle = aggregate_of(&db, db.tenant_a.id, program).await.unwrap();
+    assert_eq!((middle.figures.planned_minutes, middle.figures.open()), (540, 11));
+
+    let left: i64 = sqlx::query_scalar("SELECT count(*) FROM job")
+        .fetch_one(&db.owner_pool)
+        .await
+        .unwrap();
+    assert_eq!(left, 0, "no job left, none failed");
+}

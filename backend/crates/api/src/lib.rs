@@ -14,6 +14,7 @@ pub mod fields;
 pub mod gdpr;
 pub mod grants;
 pub mod groups;
+pub mod hierarchy;
 pub mod idempotency;
 pub mod invitations;
 pub mod me;

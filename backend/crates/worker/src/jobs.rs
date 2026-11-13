@@ -15,6 +15,7 @@ use std::time::Duration;
 
 use chrono::Utc;
 use domain::jobs::{AfterFailure, after_failure};
+use infra::aggregates::AGGREGATE_JOB;
 use infra::email::{EMAIL_JOB, EmailJob, MailError, Mailer, render};
 use infra::erasure::{ERASURE_JOB, ErasedMember};
 use infra::exports::{EXPORT_JOB, ExportJob, ExportStore};
@@ -113,6 +114,13 @@ impl JobHandler for Jobs {
                             "erased member's content anonymized"
                         );
                     }
+                    Ok(())
+                }
+                AGGREGATE_JOB => {
+                    let computed = infra::aggregates::recompute(conn)
+                        .await
+                        .map_err(|e| JobError::Retry(e.to_string()))?;
+                    tracing::info!(computed, "node aggregates recomputed");
                     Ok(())
                 }
                 other => Err(JobError::Permanent(format!("unknown job kind {other}"))),

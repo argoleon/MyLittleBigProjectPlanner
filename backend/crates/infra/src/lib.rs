@@ -2,6 +2,7 @@
 //! S3 storage, email and Valkey.
 
 pub mod accounts;
+pub mod aggregates;
 pub mod auth_policy;
 pub mod bootstrap;
 pub mod config;

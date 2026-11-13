@@ -1,7 +1,8 @@
 //! SQL of the hierarchy's nodes (L03-US01, US02): portfolios, programs and
 //! projects, their owners and their weighted parent links. Row-level security scopes
 //! every query to the current tenant; the database enforces the attachment
-//! matrix and refuses cycles (`node_edge` triggers).
+//! matrix and refuses cycles (`node_edge` triggers). Whatever changes the
+//! aggregates of a node marks them stale (`crate::aggregates`).
 
 use chrono::{DateTime, NaiveDate, Utc};
 use domain::hierarchy::{Health, NodeType};
@@ -215,6 +216,9 @@ pub async fn insert(conn: &mut PgConnection, new: &NewNode<'_>) -> WriteResult<N
             return Ok(Err(conflict));
         }
     }
+    // The node gets its aggregate, and its parent's counts one more.
+    let stale: Vec<Uuid> = std::iter::once(new.id).chain(new.parent).collect();
+    crate::aggregates::mark_stale(conn, &stale).await?;
     find(conn, new.id)
         .await
         .map(|node| node.ok_or(WriteConflict::NotFound))
@@ -428,6 +432,8 @@ pub async fn set_confidential(
             WriteConflict::NotFound
         }));
     }
+    // Its ancestors tell their confidential projects apart.
+    crate::aggregates::mark_stale(conn, &[id]).await?;
     find(conn, id)
         .await
         .map(|node| node.ok_or(WriteConflict::NotFound))
@@ -505,11 +511,16 @@ pub async fn link(
         .fetch_optional(&mut *conn),
     )
     .await?;
-    Ok(created.map(|created| match created {
+    let change = created.map(|created| match created {
         Some(true) => LinkChange::Created,
         Some(false) => LinkChange::Updated,
         None => LinkChange::Unchanged,
-    }))
+    });
+    if matches!(change, Ok(LinkChange::Created | LinkChange::Updated)) {
+        // The parent and those above it count the child, or weigh it anew.
+        crate::aggregates::mark_stale(conn, &[parent]).await?;
+    }
+    Ok(change)
 }
 
 /// Removes the link of `child` under `parent`; false if there was none.
@@ -519,9 +530,87 @@ pub async fn unlink(conn: &mut PgConnection, parent: Uuid, child: Uuid) -> Resul
         parent,
         child
     )
-    .fetch_optional(conn)
+    .fetch_optional(&mut *conn)
     .await?;
+    if removed.is_some() {
+        // The parent and those above it no longer count the child.
+        crate::aggregates::mark_stale(conn, &[parent]).await?;
+    }
     Ok(removed.is_some())
+}
+
+/// A node as the hierarchy shows it when browsed: at the top, or under a
+/// parent.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BrowseRow {
+    pub id: Uuid,
+    pub node_type: NodeType,
+    pub name: String,
+    pub key: Option<String>,
+    pub health: Health,
+    pub confidential: bool,
+    /// Weighting of its link under the browsed parent; `None` at the top.
+    pub weight_percent: Option<i16>,
+    /// It has active children of its own.
+    pub has_children: bool,
+    pub owners: Vec<Owner>,
+    pub parents: Vec<NodeRef>,
+}
+
+/// One level of the hierarchy, portfolios first, then programs and
+/// projects, each by name; archived nodes are left out.
+///
+/// - Under `under`: its children.
+/// - Without `under`: the nodes at the top of `within` (those a member
+///   sees; `None`: all), that is without a parent, or without a parent in
+///   `within`.
+pub async fn browse(
+    conn: &mut PgConnection,
+    under: Option<Uuid>,
+    within: Option<&[Uuid]>,
+) -> Result<Vec<BrowseRow>, sqlx::Error> {
+    let rows = sqlx::query!(
+        r#"
+        SELECT n.id, n.node_type, n.name, n.key, n.health, n.confidential,
+               e.weight_percent AS "weight_percent?",
+               EXISTS (
+                   SELECT 1 FROM node_edge ce JOIN node c ON c.id = ce.child_id
+                   WHERE ce.parent_id = n.id AND c.archived_at IS NULL
+               ) AS "has_children!"
+        FROM node n
+        LEFT JOIN node_edge e ON e.child_id = n.id AND e.parent_id = $1
+        WHERE n.archived_at IS NULL
+          AND CASE WHEN $1::uuid IS NOT NULL THEN e.id IS NOT NULL
+              ELSE ($2::uuid[] IS NULL OR n.id = ANY($2))
+                   AND NOT EXISTS (
+                       SELECT 1 FROM node_edge pe
+                       WHERE pe.child_id = n.id AND ($2::uuid[] IS NULL OR pe.parent_id = ANY($2)))
+              END
+        ORDER BY array_position(ARRAY['portfolio', 'program', 'project'], n.node_type), lower(n.name), n.id
+        "#,
+        under,
+        within
+    )
+    .fetch_all(&mut *conn)
+    .await?;
+    let ids: Vec<Uuid> = rows.iter().map(|row| row.id).collect();
+    let mut owners = owners_of(conn, &ids).await?;
+    let mut parents = parents_of(conn, &ids).await?;
+    Ok(rows
+        .into_iter()
+        .map(|row| BrowseRow {
+            id: row.id,
+            node_type: NodeType::parse(&row.node_type).unwrap_or(NodeType::Project),
+            name: row.name,
+            key: row.key,
+            health: Health::parse(&row.health).unwrap_or_default(),
+            confidential: row.confidential,
+            weight_percent: row.weight_percent,
+            has_children: row.has_children,
+            owners: owners.remove(&row.id).unwrap_or_default(),
+            parents: parents.remove(&row.id).unwrap_or_default(),
+        })
+        .collect())
 }
 
 struct LinkRow {

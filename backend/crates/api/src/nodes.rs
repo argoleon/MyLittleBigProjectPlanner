@@ -116,6 +116,15 @@ pub struct OwnerView {
     display_name: String,
 }
 
+impl From<repo::Owner> for OwnerView {
+    fn from(owner: repo::Owner) -> Self {
+        Self {
+            account_id: owner.account_id,
+            display_name: owner.display_name,
+        }
+    }
+}
+
 /// A parent of a node.
 #[derive(Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -272,6 +281,14 @@ impl Sight {
         }
     }
 
+    /// The nodes the member sees (`None`: all).
+    pub(crate) fn visible(&self) -> Option<Vec<Uuid>> {
+        match self {
+            Self::All => None,
+            Self::Limited(sight) => Some(sight.visible.iter().copied().collect()),
+        }
+    }
+
     /// The nodes a list may hold, seen or veiled (`None`: all).
     fn listed(&self) -> Option<Vec<Uuid>> {
         match self {
@@ -408,14 +425,7 @@ pub(crate) fn node_view(node: Node, sight: &Sight) -> NodeView {
         health: node.health.into(),
         archived: node.archived,
         confidential: node.confidential,
-        owners: node
-            .owners
-            .into_iter()
-            .map(|o| OwnerView {
-                account_id: o.account_id,
-                display_name: o.display_name,
-            })
-            .collect(),
+        owners: node.owners.into_iter().map(OwnerView::from).collect(),
         parents: sight.refs(node.parents),
         version: node.version,
     }

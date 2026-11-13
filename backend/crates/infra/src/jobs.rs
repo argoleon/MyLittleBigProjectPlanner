@@ -34,21 +34,53 @@ pub async fn enqueue(
     kind: &str,
     payload: &serde_json::Value,
 ) -> Result<Uuid, sqlx::Error> {
+    enqueue_in(conn, kind, payload, Duration::ZERO).await
+}
+
+/// Adds a job of `kind` to the current tenant's queue, due in `delay`.
+pub async fn enqueue_in(
+    conn: &mut PgConnection,
+    kind: &str,
+    payload: &serde_json::Value,
+    delay: Duration,
+) -> Result<Uuid, sqlx::Error> {
     let id = new_id();
     let max_attempts = i32::try_from(DEFAULT_MAX_ATTEMPTS).unwrap_or(5);
     sqlx::query!(
         r#"
-        INSERT INTO job (id, tenant_id, kind, payload, max_attempts)
-        VALUES ($1, app_current_tenant(), $2, $3, $4)
+        INSERT INTO job (id, tenant_id, kind, payload, max_attempts, run_at)
+        VALUES ($1, app_current_tenant(), $2, $3, $4, now() + make_interval(secs => $5))
         "#,
         id,
         kind,
         payload,
-        max_attempts
+        max_attempts,
+        delay.as_secs_f64()
     )
     .execute(conn)
     .await?;
     Ok(id)
+}
+
+/// In how long the next queued job of `kind` of the current tenant is due
+/// (zero if it already is), if there is one. The job is locked until the
+/// end of the transaction: no worker claims it before what this transaction
+/// wrote is there for it to read.
+pub async fn next_queued_in(conn: &mut PgConnection, kind: &str) -> Result<Option<Duration>, sqlx::Error> {
+    let seconds = sqlx::query_scalar!(
+        r#"
+        SELECT GREATEST(EXTRACT(EPOCH FROM (run_at - now())), 0)::float8 AS "seconds!"
+        FROM job
+        WHERE kind = $1 AND status = 'queued'
+        ORDER BY run_at
+        LIMIT 1
+        FOR SHARE
+        "#,
+        kind
+    )
+    .fetch_optional(conn)
+    .await?;
+    Ok(seconds.map(Duration::from_secs_f64))
 }
 
 /// Claims up to `limit` due jobs of any tenant for `worker`, for `lease`.
