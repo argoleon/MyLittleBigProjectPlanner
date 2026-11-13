@@ -35,13 +35,21 @@
       <ng-container matColumnDef="name">
         <th mat-header-cell *matHeaderCellDef scope="col">{{ 'hierarchy.columns.name' | transloco }}</th>
         <td mat-cell *matCellDef="let node">
-          <a class="name" [routerLink]="['/nodes', node.id]">{{ node.name }}</a>
-          <span class="meta">
-            <ui-node-type-chip [type]="node.type" />
-            @if (node.key) {
-              <span class="node-key">{{ node.key }}</span>
-            }
-          </span>
+          @if (isVeiled(node)) {
+            <app-veiled-name />
+            <span class="meta">
+              <ui-node-type-chip [type]="node.type" />
+              <span class="secondary">{{ 'hierarchy.veiled.hint' | transloco }}</span>
+            </span>
+          } @else {
+            <a class="name" [routerLink]="['/nodes', node.id]">{{ node.name }}</a>
+            <span class="meta">
+              <ui-node-type-chip [type]="node.type" />
+              @if (node.key) {
+                <span class="node-key">{{ node.key }}</span>
+              }
+            </span>
+          }
         </td>
       </ng-container>
       <ng-container matColumnDef="parents">
@@ -50,7 +58,11 @@
       </ng-container>
       <ng-container matColumnDef="health">
         <th mat-header-cell *matHeaderCellDef scope="col">{{ 'hierarchy.columns.health' | transloco }}</th>
-        <td mat-cell *matCellDef="let node"><ui-health-chip [health]="node.health" /></td>
+        <td mat-cell *matCellDef="let node">
+          @if (!isVeiled(node)) {
+            <ui-health-chip [health]="node.health" />
+          }
+        </td>
       </ng-container>
       <ng-container matColumnDef="owners">
         <th mat-header-cell *matHeaderCellDef scope="col">{{ 'hierarchy.columns.owners' | transloco }}</th>

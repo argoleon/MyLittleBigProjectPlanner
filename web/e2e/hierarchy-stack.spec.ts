@@ -8,6 +8,11 @@
  * - Roles granted on nodes (L03-US03): a member without any role sees no
  *   node; the admin grants them a role on a portfolio, and they see it with
  *   the project below, until the role is revoked.
+ * - Confidential projects (L03-US04): made confidential, the project closes
+ *   to the member, who finds it veiled under the portfolio, until they get
+ *   a role on the project itself.
+ *
+ * The tests share the member: they run one after the other.
  *
  * Runs with `just compose-e2e` only: deploy/tests/e2e.sh creates the admin
  * and the member, and passes E2E_ADMIN_EMAIL, E2E_ADMIN_SECRET,
@@ -23,6 +28,7 @@ const viewerEmail = process.env['E2E_VIEWER_EMAIL'];
 const viewerSecret = process.env['E2E_VIEWER_SECRET'];
 
 test.skip(!adminEmail || !adminSecret || !viewerEmail || !viewerSecret, 'needs the compose stack (just compose-e2e)');
+test.describe.configure({ mode: 'serial' });
 
 /** A browser of their own for the member `email`, signed in, in English. */
 async function signIn(browser: Browser, email: string, secret: string): Promise<Page> {
@@ -51,6 +57,20 @@ async function createIn(page: Page, type: string, name: string, key?: string) {
 async function addChild(page: Page, type: string, name: string, key?: string) {
   await page.getByRole('button', { name: 'Add a child' }).click();
   await createIn(page, type, name, key);
+}
+
+/** On the settings of `node`, grants "Reader" to the member, found by their email. */
+async function grantReader(admin: Page, node: string, email: string) {
+  await admin.getByRole('tab', { name: 'Attachments and permissions' }).click();
+  const access = admin.getByRole('region', { name: 'Effective access' });
+  await access.getByRole('button', { name: 'Add a role' }).click();
+  const dialog = admin.getByRole('dialog', { name: `Grant a role on ${node}` });
+  await dialog.getByLabel('Member or group').fill(email);
+  await admin.getByRole('option', { name: email }).click();
+  await dialog.getByRole('combobox', { name: 'Role' }).click();
+  await admin.getByRole('option', { name: 'Reader', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Grant' }).click();
+  await expect(access.getByRole('status')).toHaveText('Role Reader granted to E2E Viewer.');
 }
 
 test('a project under two weighted programs, never under its own sub-project', async ({ browser }) => {
@@ -137,14 +157,7 @@ test('a role granted on a portfolio opens the project below, until it is revoked
   await admin.getByRole('tab', { name: 'Attachments and permissions' }).click();
   const access = admin.getByRole('region', { name: 'Effective access' });
   await expect(access).toContainText('Nobody has a role here yet.');
-  await access.getByRole('button', { name: 'Add a role' }).click();
-  const dialog = admin.getByRole('dialog', { name: `Grant a role on ${portfolio}` });
-  await dialog.getByLabel('Member or group').fill(viewerEmail!);
-  await admin.getByRole('option', { name: viewerEmail! }).click();
-  await dialog.getByRole('combobox', { name: 'Role' }).click();
-  await admin.getByRole('option', { name: 'Reader', exact: true }).click();
-  await dialog.getByRole('button', { name: 'Grant' }).click();
-  await expect(access.getByRole('status')).toHaveText('Role Reader granted to E2E Viewer.');
+  await grantReader(admin, portfolio, viewerEmail!);
   await expect(access.getByRole('listitem')).toContainText(['E2E Viewer']);
   await expect(access.getByRole('listitem')).toContainText(['Direct role on this portfolio']);
   expect(await accessibilityViolations(admin), 'effective access').toEqual([]);
@@ -173,6 +186,61 @@ test('a role granted on a portfolio opens the project below, until it is revoked
   await expect(viewer.getByText('No portfolio, program or project yet')).toBeVisible();
   await viewer.goto(projectUrl);
   await expect(viewer.getByRole('alert')).toContainText('This item does not exist or is no longer available.');
+
+  await admin.context().close();
+  await viewer.context().close();
+});
+
+test('a confidential project closes to those above it, who find it veiled', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const run = Date.now().toString(36).toUpperCase().slice(-6);
+  const [portfolio, project] = [`Vaults ${run}`, `Secret ${run}`];
+
+  // A portfolio the member reads, and a project under it.
+  const admin = await signIn(browser, adminEmail!, adminSecret!);
+  await admin.goto('/portfolios');
+  await admin.getByRole('button', { name: 'New node' }).click();
+  await createIn(admin, 'Portfolio', portfolio);
+  await grantReader(admin, portfolio, viewerEmail!);
+  await addChild(admin, 'Project', project, `X${run}`);
+  const projectUrl = admin.url();
+  const viewer = await signIn(browser, viewerEmail!, viewerSecret!);
+  await viewer.goto('/portfolios');
+  await expect(viewer.getByRole('link', { name: project })).toBeVisible();
+
+  // The admin makes the project confidential: the inherited role stops there.
+  await admin.getByRole('tab', { name: 'Attachments and permissions' }).click();
+  const access = admin.getByRole('region', { name: 'Effective access' });
+  await expect(access.getByRole('listitem')).toContainText([`Inherited from the portfolio ${portfolio}`]);
+  const confidentiality = admin.getByRole('region', { name: 'Confidentiality' });
+  await confidentiality.getByRole('switch', { name: 'Confidential project' }).click();
+  await expect(confidentiality.getByRole('status')).toHaveText('The project is now confidential.');
+  await expect(confidentiality.getByRole('switch')).toBeChecked();
+  await expect(access).toContainText('Nobody has a role here yet.');
+  expect(await accessibilityViolations(admin), 'confidentiality').toEqual([]);
+
+  // The member no longer reads it: it shows veiled under the portfolio.
+  await viewer.goto('/portfolios');
+  const row = viewer.getByRole('row').filter({ hasText: portfolio }).filter({ hasText: 'Confidential project' });
+  await expect(row).toContainText('You do not have access.');
+  await expect(row.getByRole('img', { name: 'Locked' })).toBeVisible();
+  await expect(viewer.getByText(project)).toHaveCount(0);
+  expect(await accessibilityViolations(viewer), 'veiled row').toEqual([]);
+  await viewer.goto(projectUrl);
+  await expect(viewer.getByRole('alert')).toContainText('This item does not exist or is no longer available.');
+  await viewer.goto('/portfolios');
+  await viewer.getByRole('link', { name: portfolio }).click();
+  await viewer.getByRole('tab', { name: 'Attachments and permissions' }).click();
+  const children = viewer.getByRole('region', { name: 'Children' });
+  await expect(children).toContainText('Confidential project');
+  await expect(children.getByRole('link')).toHaveCount(0);
+
+  // A role on the project itself opens it to them again.
+  await grantReader(admin, project, viewerEmail!);
+  await expect(access.getByRole('listitem')).toContainText(['Direct role on this project']);
+  await viewer.goto('/portfolios');
+  await viewer.getByRole('link', { name: project }).click();
+  await expect(viewer.getByRole('heading', { level: 1 })).toHaveText(`${project} · Settings`);
 
   await admin.context().close();
   await viewer.context().close();

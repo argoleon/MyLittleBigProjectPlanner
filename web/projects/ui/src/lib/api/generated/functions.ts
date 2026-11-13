@@ -67,6 +67,8 @@ export type { ListNodeAccess$Params as ListNodeAccess$Params } from './fn/hierar
 export { listNodeAccess as listNodeAccess } from './fn/hierarchy/list-node-access';
 export type { ListNodeChildren$Params as ListNodeChildren$Params } from './fn/hierarchy/list-node-children';
 export { listNodeChildren as listNodeChildren } from './fn/hierarchy/list-node-children';
+export type { SetNodeConfidentiality$Params as SetNodeConfidentiality$Params } from './fn/hierarchy/set-node-confidentiality';
+export { setNodeConfidentiality as setNodeConfidentiality } from './fn/hierarchy/set-node-confidentiality';
 export type { ListNodeGrantCandidates$Params as ListNodeGrantCandidates$Params } from './fn/hierarchy/list-node-grant-candidates';
 export { listNodeGrantCandidates as listNodeGrantCandidates } from './fn/hierarchy/list-node-grant-candidates';
 export type { ListNodeGrantableRoles$Params as ListNodeGrantableRoles$Params } from './fn/hierarchy/list-node-grantable-roles';

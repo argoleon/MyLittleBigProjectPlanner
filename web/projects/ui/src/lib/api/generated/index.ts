@@ -50,7 +50,10 @@ export type { Node } from './models/node';
 export type { NodeAccess } from './models/node-access';
 export type { NodeCandidate } from './models/node-candidate';
 export type { NodeChanges } from './models/node-changes';
+export type { NodeChild } from './models/node-child';
+export type { NodeConfidentiality } from './models/node-confidentiality';
 export type { NodeHealth } from './models/node-health';
+export type { NodeItem } from './models/node-item';
 export type { NodeLink } from './models/node-link';
 export type { NodeLinkChanges } from './models/node-link-changes';
 export type { NodeOwner } from './models/node-owner';
@@ -89,6 +92,7 @@ export type { TenantRole } from './models/tenant-role';
 export type { TenantSettings } from './models/tenant-settings';
 export type { TenantStatus } from './models/tenant-status';
 export type { TenantSwitch } from './models/tenant-switch';
+export type { VeiledNode } from './models/veiled-node';
 
 export type { GetMfa$Params as GetMfa$Params } from './fn/account/get-mfa';
 export { getMfa as getMfa } from './fn/account/get-mfa';
@@ -156,6 +160,8 @@ export type { ListNodeAccess$Params as ListNodeAccess$Params } from './fn/hierar
 export { listNodeAccess as listNodeAccess } from './fn/hierarchy/list-node-access';
 export type { ListNodeChildren$Params as ListNodeChildren$Params } from './fn/hierarchy/list-node-children';
 export { listNodeChildren as listNodeChildren } from './fn/hierarchy/list-node-children';
+export type { SetNodeConfidentiality$Params as SetNodeConfidentiality$Params } from './fn/hierarchy/set-node-confidentiality';
+export { setNodeConfidentiality as setNodeConfidentiality } from './fn/hierarchy/set-node-confidentiality';
 export type { ListNodeGrantCandidates$Params as ListNodeGrantCandidates$Params } from './fn/hierarchy/list-node-grant-candidates';
 export { listNodeGrantCandidates as listNodeGrantCandidates } from './fn/hierarchy/list-node-grant-candidates';
 export type { ListNodeGrantableRoles$Params as ListNodeGrantableRoles$Params } from './fn/hierarchy/list-node-grantable-roles';

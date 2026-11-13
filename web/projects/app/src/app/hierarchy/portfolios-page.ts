@@ -15,6 +15,7 @@ import {
   HealthChip,
   LocalDatePipe,
   Node,
+  NodeItem,
   NodeType,
   NodeTypeChip,
   listNodes,
@@ -22,11 +23,14 @@ import {
 
 import { NodeDialog, NodeDialogData } from './node-dialog';
 import { NODE_TYPES } from './node-form';
+import { VeiledName, isVeiled } from './veiled';
 
 /**
  * The portfolios, programs and projects the member sees, in creation
- * order, with a filter by type. Tenant admins create nodes at the root
- * here. (The portfolio view with its aggregates comes with L03-US05.)
+ * order, with a filter by type. A confidential project they have no access
+ * to, under a node they see, shows veiled: a lock, without name or detail.
+ * Tenant admins create nodes at the root here. (The portfolio view with its
+ * aggregates comes with L03-US05.)
  */
 @Component({
   selector: 'app-portfolios-page',
@@ -43,6 +47,7 @@ import { NODE_TYPES } from './node-form';
     NodeTypeChip,
     RouterLink,
     TranslocoPipe,
+    VeiledName,
   ],
   styleUrl: './portfolios-page.scss',
   templateUrl: './portfolios-page.html',
@@ -54,6 +59,7 @@ export class PortfoliosPage {
   private readonly auth = inject(AuthService);
 
   protected readonly types = NODE_TYPES;
+  protected readonly isVeiled = isVeiled;
   protected readonly columns = ['name', 'parents', 'health', 'owners', 'dates'];
   /** Only tenant admins create at the root. */
   protected readonly canCreate = computed(() => this.auth.session()?.account.tenantRole === 'tenant_admin');
@@ -61,7 +67,7 @@ export class PortfoliosPage {
   protected readonly nodes = resource({
     // The hierarchy browse of L03-US05 pages and aggregates; every page here.
     loader: async () => {
-      const all: Node[] = [];
+      const all: NodeItem[] = [];
       let cursor: string | undefined;
       do {
         const page = await this.api.invoke(listNodes, { limit: 200, cursor });
@@ -77,11 +83,11 @@ export class PortfoliosPage {
     return type === 'all' ? all : all.filter((node) => node.type === type);
   });
 
-  protected ownersOf(node: Node): string {
-    return node.owners.map((owner) => owner.displayName).join(', ');
+  protected ownersOf(node: NodeItem): string {
+    return isVeiled(node) ? '' : node.owners.map((owner) => owner.displayName).join(', ');
   }
 
-  protected parentsOf(node: Node): string {
+  protected parentsOf(node: NodeItem): string {
     return node.parents.map((parent) => parent.name).join(', ');
   }
 

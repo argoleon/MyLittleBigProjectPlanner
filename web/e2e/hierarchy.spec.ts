@@ -28,6 +28,14 @@ const PROJECT = {
   parents: [{ id: PROGRAM.id, type: 'program', name: 'IT Modernization' }],
 };
 
+/** A confidential project the member has no access to, under the program. */
+const VEILED = {
+  veiled: true,
+  id: '5d0c2c1e-8a3b-8f4e-9c1d-2b3a4c5d6e7f',
+  type: 'project',
+  parents: [{ id: PROGRAM.id, type: 'program', name: 'IT Modernization' }],
+};
+
 /** The hierarchy's API, as a tenant admin sees it, recording the creations. */
 async function mockHierarchy(page: Page) {
   const created: unknown[] = [];
@@ -48,7 +56,7 @@ async function mockHierarchy(page: Page) {
   return created;
 }
 
-/** The links of the project and who has access to it, for a member who manages its members. */
+/** The links of the project and who has access to it, for a member who administers it. */
 async function mockLinks(page: Page) {
   const node = `**/api/v1/nodes/${PROJECT.id}`;
   const manager = { id: 'r3', label: 'Project manager', labelTranslations: { fr: 'Chef de projet', en: 'Project manager' } };
@@ -58,7 +66,10 @@ async function mockLinks(page: Page) {
   );
   await page.route(`${node}/children`, (route) =>
     route.fulfill({
-      json: [{ id: 'c1', type: 'project', name: 'Cyber permissions', key: 'CYBP', weightPercent: 100, parents: [] }],
+      json: [
+        { id: 'c1', type: 'project', name: 'Cyber permissions', key: 'CYBP', weightPercent: 100, parents: [] },
+        { ...VEILED, parents: [] },
+      ],
     }),
   );
   await page.route(`${node}/parent-candidates?*`, (route) =>
@@ -69,7 +80,9 @@ async function mockLinks(page: Page) {
       ],
     }),
   );
-  await page.route(`${node}/my-permissions`, (route) => route.fulfill({ json: ['view', 'manage_members'] }));
+  await page.route(`${node}/my-permissions`, (route) =>
+    route.fulfill({ json: ['view', 'manage_members', 'administer_node'] }),
+  );
   await page.route(`${node}/access`, (route) =>
     route.fulfill({
       json: [
@@ -144,10 +157,11 @@ for (const theme of ['light', 'dark'] as const) {
       test('the list, the creation dialog and the settings have no axe-core violation', async ({ page }) => {
         await mockHierarchy(page);
         await page.route('**/api/v1/nodes?*', (route) =>
-          route.fulfill({ json: { items: [PROGRAM, PROJECT], nextCursor: null } }),
+          route.fulfill({ json: { items: [PROGRAM, PROJECT, VEILED], nextCursor: null } }),
         );
         await page.goto('/portfolios');
-        await expect(page.getByRole('row')).toHaveCount(3);
+        await expect(page.getByRole('row')).toHaveCount(4);
+        await expect(page.locator('app-veiled-name')).toHaveCount(1);
         await animationsDone(page);
         expect(await accessibilityViolations(page), 'list').toEqual([]);
 
@@ -163,12 +177,16 @@ for (const theme of ['light', 'dark'] as const) {
         expect(await accessibilityViolations(page), 'settings').toEqual([]);
       });
 
-      test('the attachments, the effective access and the grant dialog have no axe-core violation', async ({ page }) => {
+      test('the attachments, the confidentiality, the access and the grant dialog have no axe-core violation', async ({
+        page,
+      }) => {
         await mockHierarchy(page);
         await mockLinks(page);
         await page.goto(`/nodes/${PROJECT.id}/links`);
         await expect(page.locator('app-node-access-card li')).toHaveCount(2);
         await expect(page.locator('app-weight-field')).toHaveCount(1);
+        await expect(page.getByRole('switch')).toBeVisible();
+        await expect(page.getByRole('img', { name: language === 'fr' ? 'Verrouillé' : 'Locked' })).toBeVisible();
         await animationsDone(page);
         expect(await accessibilityViolations(page), 'attachments and access').toEqual([]);
 

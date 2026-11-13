@@ -439,7 +439,8 @@
       "key_taken": "Un autre projet de l’organisation a déjà cette clé.",
       "cycle": "Ce rattachement ferait du nœud son propre ancêtre.",
       "parent_not_allowed": "Ce type de nœud ne peut pas être rattaché sous ce parent.",
-      "grant_exists": "Ce rôle est déjà attribué à cette personne ou à ce groupe sur ce nœud."
+      "grant_exists": "Ce rôle est déjà attribué à cette personne ou à ce groupe sur ce nœud.",
+      "confidential_lockout": "Vous perdriez votre propre accès : demandez d’abord un rôle attribué sur le projet lui-même."
     }
   },
   "dialog": {
@@ -681,7 +682,20 @@
         "role": "Rôle",
         "inherit": "Le rôle s’applique aussi à tout ce qui se trouve sous ce nœud.",
         "grant": "Attribuer"
-      }
+      },
+      "inheritedHidden": "Hérité d’un nœud auquel vous n’avez pas accès"
+    },
+    "confidentiality": {
+      "title": "Confidentialité",
+      "toggle": "Projet confidentiel",
+      "description": "Bloque l’héritage des droits : seuls les membres qui ont un rôle sur le projet lui-même y accèdent. Chez ses parents, il reste compté de façon anonyme, sans nom ni détail.",
+      "on": "Le projet est maintenant confidentiel.",
+      "off": "Le projet n’est plus confidentiel."
+    },
+    "veiled": {
+      "name": "Projet confidentiel",
+      "hint": "Vous n’y avez pas accès.",
+      "lock": "Verrouillé"
     }
   }
 }

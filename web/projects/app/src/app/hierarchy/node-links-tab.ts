@@ -26,8 +26,10 @@ import {
 } from 'ui';
 
 import { NodeAccessCard } from './node-access-card';
+import { NodeConfidentialityCard } from './node-confidentiality-card';
 import { NODE_ICONS, parentNames } from './node-links';
 import { NodeContext } from './node-settings-page';
+import { isVeiled } from './veiled';
 import { WeightField } from './weight-field';
 
 /** Candidate parents shown at most. */
@@ -42,8 +44,10 @@ interface Notice {
 /**
  * "Attachments and permissions" tab of a node's settings (mockup 14): its
  * parents with the weighting of each link, a search to add a parent that
- * says why a node cannot be one, its children, and, for those who manage
- * its members, who has access to it.
+ * says why a node cannot be one, its children (a confidential one out of
+ * reach shows veiled), and, on the side, the confidentiality of a project
+ * for those who administer it, and who has access to the node for those who
+ * manage its members.
  */
 @Component({
   selector: 'app-node-links-tab',
@@ -55,6 +59,7 @@ interface Notice {
     MatInputModule,
     MatProgressBarModule,
     NodeAccessCard,
+    NodeConfidentialityCard,
     RouterLink,
     TranslocoPipe,
     WeightField,
@@ -70,6 +75,7 @@ export class NodeLinksTab {
   protected readonly node = this.context.node;
   protected readonly icons = NODE_ICONS;
   protected readonly parentNames = parentNames;
+  protected readonly isVeiled = isVeiled;
   private readonly id = computed(() => this.node()?.id);
 
   protected readonly parents = resource({
@@ -85,6 +91,10 @@ export class NodeLinksTab {
     params: () => this.id(),
     loader: ({ params }) => this.api.invoke(listMyNodePermissions, { id: params }),
   });
+  /** Whether the member administers the node: its confidentiality is theirs to set. */
+  protected readonly administers = computed(
+    () => this.permissions.hasValue() && this.permissions.value().includes('administer_node'),
+  );
   /** Whether the member sees and changes who has access to the node. */
   protected readonly managesMembers = computed(
     () => this.permissions.hasValue() && this.permissions.value().includes('manage_members'),
