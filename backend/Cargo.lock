@@ -83,7 +83,7 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
 name = "api"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "axum",
  "base64 0.23.1",
@@ -643,7 +643,7 @@ dependencies = [
 
 [[package]]
 name = "domain"
-version = "0.2.0"
+version = "0.3.0"
 
 [[package]]
 name = "dotenvy"
@@ -1314,7 +1314,7 @@ dependencies = [
 
 [[package]]
 name = "infra"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -1561,7 +1561,7 @@ checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
 
 [[package]]
 name = "mcp"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "axum",
  "infra",
@@ -2828,7 +2828,7 @@ dependencies = [
 
 [[package]]
 name = "testkit"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "infra",
  "reqwest",
@@ -3618,7 +3618,7 @@ checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
 
 [[package]]
 name = "worker"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "axum",
  "chrono",
