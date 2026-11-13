@@ -67,6 +67,8 @@ test('a configuration is shared by two projects, then one of them detaches with 
   await admin.goto('/admin/configurations');
   await admin.getByRole('button', { name: 'New configuration' }).click();
   const dialog = admin.getByRole('dialog', { name: 'New project configuration' });
+  // Opened: its first field has the focus, which would otherwise move while typing.
+  await expect(dialog.getByLabel('Name (Français)')).toBeFocused();
   await dialog.getByLabel('Name (Français)').fill(`Logiciel ${run}`);
   await dialog.getByLabel('Name (English)').fill(config);
   await dialog.getByRole('button', { name: 'Create' }).click();

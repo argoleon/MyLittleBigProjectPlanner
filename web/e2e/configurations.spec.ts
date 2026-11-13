@@ -113,6 +113,8 @@ test('a configuration admin creates a configuration, then publishes a draft afte
 
   await page.getByRole('button', { name: 'New configuration' }).click();
   const dialog = page.getByRole('dialog', { name: 'New project configuration' });
+  // Opened: its first field has the focus, which would otherwise move while typing.
+  await expect(dialog.getByLabel('Name (Français)')).toBeFocused();
   await dialog.getByLabel('Name (Français)').fill('Support');
   await dialog.getByLabel('Name (English)').fill('Support');
   await dialog.getByRole('button', { name: 'Create' }).click();
