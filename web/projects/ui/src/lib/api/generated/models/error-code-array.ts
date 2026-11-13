@@ -70,5 +70,10 @@ export const ERROR_CODE: ErrorCode[] = [
   'config.name_taken',
   'config.no_draft',
   'config.default',
-  'config.in_use'
+  'config.in_use',
+  'issue_type.key_taken',
+  'issue_type.cycle',
+  'issue_type.subtask_parent',
+  'issue_type.last_type',
+  'issue_type.orphan_subtask'
 ];

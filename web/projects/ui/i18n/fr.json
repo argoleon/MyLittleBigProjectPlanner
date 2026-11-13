@@ -411,7 +411,8 @@
       "not_found": "Introuvable.",
       "unknown_member": "Ce n’est pas un membre de l’organisation.",
       "too_many": "Trop d’éléments.",
-      "not_using": "Ce projet n’utilise pas cette configuration."
+      "not_using": "Ce projet n’utilise pas cette configuration.",
+      "not_a_permutation": "Chaque élément doit figurer une fois."
     },
     "invitation": {
       "invalid": "Ce lien d’invitation est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
@@ -458,6 +459,13 @@
       "no_draft": "Cette configuration n’a pas de brouillon : rien à publier ni à abandonner.",
       "default": "La configuration par défaut reste : les nouveaux projets la reçoivent.",
       "in_use": "Des projets utilisent cette configuration : déplacez-les d’abord vers une autre."
+    },
+    "issue_type": {
+      "key_taken": "Un autre type de cette configuration a déjà cet identifiant.",
+      "cycle": "Un type ne peut pas être son propre ancêtre.",
+      "subtask_parent": "Un type sous-tâche ne peut pas être le parent d’un autre type.",
+      "last_type": "Une configuration garde au moins un type qui n’est pas une sous-tâche.",
+      "orphan_subtask": "Un type sous-tâche n’aurait plus de type parent : modifiez-le d’abord."
     }
   },
   "dialog": {
@@ -856,13 +864,12 @@
         "message": "Ses modifications sont perdues. La version publiée reste telle quelle.",
         "confirm": "Abandonner",
         "done": "Le brouillon est abandonné."
-      }
+      },
+      "publishedNone": "La version {{number}} est publiée."
     },
     "sections": {
       "types": {
-        "tab": "Types",
-        "title": "Les types de ticket arrivent bientôt",
-        "hint": "Les types de ticket et leur hiérarchie (Epic, Story, Tâche…) seront définis ici."
+        "tab": "Types"
       },
       "fields": {
         "tab": "Champs",
@@ -911,7 +918,12 @@
       "projects": "Projets concernés",
       "migration": "Des tickets utilisent un type ou un statut que cette version retire : ils doivent d’abord être migrés.",
       "stale": "La configuration a changé entre-temps : vérifiez à nouveau les projets, puis publiez.",
-      "confirm": "Publier"
+      "confirm": "Publier",
+      "removedTypes": "Types retirés",
+      "tickets": {
+        "one": "{{count}} ticket",
+        "other": "{{count}} tickets"
+      }
     },
     "node": {
       "title": "Configuration du projet",
@@ -922,6 +934,55 @@
       "move": "Déplacer le projet",
       "moved": "Le projet utilise désormais « {{name}} ».",
       "readOnly": "Les administrateurs d’organisation et de configuration la modifient."
+    },
+    "types": {
+      "intro": "Les types de ticket des projets et les types sous lesquels chacun peut se placer. Les modifications vont dans le brouillon.",
+      "add": "Nouveau type",
+      "caption": "Types de ticket, dans leur ordre",
+      "columns": {
+        "order": "Ordre",
+        "type": "Type",
+        "key": "Identifiant",
+        "parents": "Parents autorisés",
+        "level": "Niveau",
+        "actions": "Actions"
+      },
+      "isSubtask": "Sous-tâche",
+      "top": "Au sommet",
+      "moveUp": "Monter {{name}}",
+      "moveDown": "Descendre {{name}}",
+      "editOf": "Modifier {{name}}",
+      "moved": "{{name}} déplacé en position {{position}}.",
+      "saved": "Type « {{name}} » enregistré dans le brouillon.",
+      "removed": "Type « {{name}} » retiré du brouillon.",
+      "editTitle": "Modifier « {{name}} »",
+      "newTitle": "Nouveau type de ticket",
+      "close": "Fermer le panneau",
+      "label": "Libellé",
+      "key": "Identifiant",
+      "keyHint": "Minuscules, chiffres et _ ; il ne pourra plus changer.",
+      "keyFixed": "Fixé à l’ajout du type ; il ne change pas.",
+      "keyFormat": "Une minuscule, puis des minuscules, chiffres ou _.",
+      "icon": "Icône",
+      "color": "Couleur",
+      "colors": {
+        "epic": "Couleur Epic",
+        "story": "Couleur Story",
+        "task": "Couleur Tâche",
+        "bug": "Couleur Bug"
+      },
+      "subtask": "Type sous-tâche",
+      "subtaskHint": "Une sous-tâche se place toujours sous un ticket d’un type parent, et n’en a aucun sous elle.",
+      "parents": "Types parents autorisés",
+      "parentsHint": "Aucun : ses tickets restent au sommet.",
+      "parentsRequired": "Un type sous-tâche a au moins un type parent.",
+      "save": "Enregistrer",
+      "remove": {
+        "action": "Retirer",
+        "title": "Retirer « {{name}} » ?",
+        "message": "Il quitte le brouillon et les parents autorisés des autres types. Les tickets qui l’utilisent devront passer à un autre type avant la publication.",
+        "confirm": "Retirer"
+      }
     }
   }
 }

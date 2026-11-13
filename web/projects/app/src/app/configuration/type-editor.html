@@ -1,0 +1,92 @@
+<section class="panel" aria-labelledby="type-editor-title">
+  <div class="panel-header">
+    <h2 id="type-editor-title" class="panel-title">
+      @if (type(); as type) {
+        {{ 'config.types.editTitle' | transloco: { name: type.label ?? type.key } }}
+      } @else {
+        {{ 'config.types.newTitle' | transloco }}
+      }
+    </h2>
+    <button matIconButton type="button" class="close" (click)="closed.emit()" [attr.aria-label]="'config.types.close' | transloco">
+      <mat-icon aria-hidden="true">close</mat-icon>
+    </button>
+  </div>
+  <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+    @if (errorKey(); as key) {
+      <p class="message error" role="alert">{{ key | transloco }}</p>
+    }
+    <ui-translatable-input [group]="form.controls.label" [label]="'config.types.label' | transloco" [maxLength]="60" />
+
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'config.types.key' | transloco }}</mat-label>
+      <input matInput formControlName="key" class="key" maxlength="40" required autocomplete="off" />
+      <mat-hint>{{ (type() ? 'config.types.keyFixed' : 'config.types.keyHint') | transloco }}</mat-hint>
+      @if (form.controls.key.getError('api'); as key) {
+        <mat-error>{{ key | transloco }}</mat-error>
+      } @else if (form.controls.key.hasError('pattern')) {
+        <mat-error>{{ 'config.types.keyFormat' | transloco }}</mat-error>
+      } @else {
+        <mat-error>{{ 'errors.field.required' | transloco }}</mat-error>
+      }
+    </mat-form-field>
+
+    <div class="pair">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'config.types.icon' | transloco }}</mat-label>
+        <mat-select formControlName="icon">
+          <mat-select-trigger>
+            <span class="option"><mat-icon aria-hidden="true">{{ form.controls.icon.value }}</mat-icon>{{ form.controls.icon.value }}</span>
+          </mat-select-trigger>
+          @for (icon of icons; track icon) {
+            <mat-option [value]="icon">
+              <span class="option"><mat-icon aria-hidden="true">{{ icon }}</mat-icon>{{ icon }}</span>
+            </mat-option>
+          }
+        </mat-select>
+        @if (form.controls.icon.getError('api'); as key) {
+          <mat-error>{{ key | transloco }}</mat-error>
+        }
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'config.types.color' | transloco }}</mat-label>
+        <mat-select formControlName="color">
+          @for (color of colors; track color) {
+            <mat-option [value]="color">
+              <span class="option"><span class="swatch" [attr.data-kind]="color"></span>{{ 'config.types.colors.' + color | transloco }}</span>
+            </mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <mat-slide-toggle formControlName="isSubtask" class="subtask">{{ 'config.types.subtask' | transloco }}</mat-slide-toggle>
+    <p class="hint">{{ 'config.types.subtaskHint' | transloco }}</p>
+
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'config.types.parents' | transloco }}</mat-label>
+      <mat-select formControlName="parentIds" multiple>
+        @for (candidate of candidates(); track candidate.id) {
+          <mat-option [value]="candidate.id">{{ candidate.labelTranslations | translated }}</mat-option>
+        }
+      </mat-select>
+      <mat-hint>{{ (form.controls.isSubtask.value ? 'config.types.parentsRequired' : 'config.types.parentsHint') | transloco }}</mat-hint>
+      @if (form.controls.parentIds.getError('api'); as key) {
+        <mat-error>{{ key | transloco }}</mat-error>
+      } @else {
+        <mat-error>{{ 'config.types.parentsRequired' | transloco }}</mat-error>
+      }
+    </mat-form-field>
+
+    <div class="actions">
+      @if (type(); as type) {
+        <button matButton type="button" class="remove" (click)="remove(type)">
+          <mat-icon aria-hidden="true">delete</mat-icon>
+          {{ 'config.types.remove.action' | transloco }}
+        </button>
+      }
+      <span class="spacer"></span>
+      <button matButton type="button" (click)="closed.emit()">{{ 'dialog.cancel' | transloco }}</button>
+      <button matButton="filled" type="submit" class="save" [disabled]="saving()">{{ 'config.types.save' | transloco }}</button>
+    </div>
+  </form>
+</section>

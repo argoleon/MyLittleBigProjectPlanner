@@ -2,7 +2,7 @@ import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoPipe } from '@jsverse/transloco';
 
-/** Kinds of work item with a dedicated color (`--app-type-*` tokens). */
+/** Kinds of work item with a dedicated color (`--app-type-*` tokens): a configured type's color. */
 export type WorkItemKind = 'story' | 'bug' | 'task' | 'epic';
 
 const ICONS: Readonly<Record<WorkItemKind, string>> = {
@@ -28,6 +28,8 @@ export class TypeChip {
   readonly kind = input.required<WorkItemKind>();
   /** Name of the type as configured in the project; defaults to the kind name. */
   readonly label = input<string | null>(null);
+  /** Icon of the type as configured (Material Symbols); defaults to the kind's. */
+  readonly iconName = input<string | null>(null);
 
-  protected readonly icon = computed(() => ICONS[this.kind()]);
+  protected readonly icon = computed(() => this.iconName() ?? ICONS[this.kind()]);
 }

@@ -59,6 +59,18 @@ import { countKey } from './config-chips';
             }
           </ul>
         }
+        @if (impact.removedTypes.length > 0) {
+          <h3 class="sub">{{ 'config.publishDialog.removedTypes' | transloco }}</h3>
+          <ul class="removed" [attr.aria-label]="'config.publishDialog.removedTypes' | transloco">
+            @for (type of impact.removedTypes; track type.id) {
+              <li>
+                <span class="name">{{ type.label ?? type.key }}</span>
+                <code class="key">{{ type.key }}</code>
+                <span class="archived">{{ ticketsKey(type.ticketCount) | transloco: { count: (type.ticketCount | localNumber) } }}</span>
+              </li>
+            }
+          </ul>
+        }
         @if (impact.needsMigration) {
           <p class="message error" role="alert">{{ 'config.publishDialog.migration' | transloco }}</p>
         }
@@ -87,6 +99,10 @@ export class PublishDialog {
   protected readonly ready = computed(() => this.impact.hasValue() && !this.impact.value().needsMigration);
   protected readonly publishing = signal(false);
   protected readonly errorKey = signal<string | null>(null);
+
+  protected ticketsKey(count: number): string {
+    return countKey('config.publishDialog.tickets.', count);
+  }
 
   /** The project of a row, or null when it shows veiled. */
   protected asProject(item: ConfigProjectItem) {

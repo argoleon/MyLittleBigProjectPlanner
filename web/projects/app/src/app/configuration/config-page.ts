@@ -108,7 +108,8 @@ export class ConfigPage {
         this.context.config.set(published);
         this.context.notice.set({
           ok: true,
-          key: countKey('config.page.published.', published.projectCount),
+          // No project yet: published all the same.
+          key: published.projectCount === 0 ? 'config.page.publishedNone' : countKey('config.page.published.', published.projectCount),
           params: { number: String(published.published.number), count: String(published.projectCount) },
         });
       });

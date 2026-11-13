@@ -1,0 +1,86 @@
+@use '../admin/admin-shared';
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-3);
+  padding: var(--app-space-4) var(--app-space-5);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--app-space-2);
+}
+
+.panel-title {
+  margin: 0;
+  font: var(--mat-sys-title-medium);
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-2);
+}
+
+.pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--app-space-3);
+
+  mat-form-field {
+    flex: 1 1 180px;
+  }
+}
+
+.option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--app-space-2);
+}
+
+.swatch {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--mat-sys-corner-extra-small);
+  border: 1px solid var(--mat-sys-outline-variant);
+
+  &[data-kind='epic'] {
+    background: var(--app-type-epic-container);
+  }
+
+  &[data-kind='story'] {
+    background: var(--app-type-story-container);
+  }
+
+  &[data-kind='task'] {
+    background: var(--app-type-task-container);
+  }
+
+  &[data-kind='bug'] {
+    background: var(--app-type-bug-container);
+  }
+}
+
+.hint {
+  margin: 0 0 var(--app-space-2);
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--app-space-2);
+}
+
+.spacer {
+  flex: 1;
+}

@@ -33,6 +33,7 @@ import { ConfigPage } from './config-page';
 import { ConfigProjectsTab } from './config-projects-tab';
 import { ConfigSectionTab } from './config-section-tab';
 import { ConfigurationsTab } from './configurations-tab';
+import { TypesTab } from './types-tab';
 
 const DEFAULT: ProjectConfig = {
   id: '0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7a01',
@@ -109,7 +110,8 @@ async function setUp(tenantRole = 'tenant_admin') {
             component: ConfigPage,
             children: [
               { path: '', pathMatch: 'full', redirectTo: 'types' },
-              { path: 'types', component: ConfigSectionTab, data: { section: 'types', icon: 'category' } },
+              { path: 'types', component: TypesTab },
+              { path: 'fields', component: ConfigSectionTab, data: { section: 'fields', icon: 'input' } },
               { path: 'projects', component: ConfigProjectsTab },
             ],
           },
@@ -287,13 +289,17 @@ describe('ConfigPage', () => {
   }
 
   it('shows the sharing and the draft, the sections and the projects in tabs', async () => {
-    const { root, text, texts, url } = await openConfig(SOFTWARE);
+    const { root, text, texts, url, harness } = await openConfig(SOFTWARE);
+    // It opens on its types.
     expect(url()).toBe(`/admin/configurations/${SOFTWARE.id}/types`);
+    expect(root().querySelector('app-types-tab')).not.toBeNull();
+    await harness.navigateByUrl(`/admin/configurations/${SOFTWARE.id}/fields`);
     expect(text(root().querySelector('h1'))).toBe('Software development');
     expect(texts('nav.eyebrow a')).toEqual(['Administration', 'Project configurations']);
     expect(texts('app-config-page .chip')).toEqual(['shareShared by 6 projects', 'edit_noteUnpublished draft · 2 changes']);
     expect(texts('a[mat-tab-link]')).toEqual(['Types', 'Fields', 'Workflows', 'Screens', 'Notifications', 'Projects (6)']);
-    expect(text(root().querySelector('app-config-section-tab'))).toContain('Issue types come next');
+    // A section of a later story.
+    expect(text(root().querySelector('app-config-section-tab'))).toContain('Fields come next');
     expect((root().querySelector('button.publish') as HTMLButtonElement).disabled).toBe(false);
     expect(await axeViolations(root().querySelector('app-config-page')!)).toEqual([]);
   });
@@ -315,7 +321,12 @@ describe('ConfigPage', () => {
     expect(text(dialog().querySelector('h2'))).toBe('Publish “Software development”?');
     expect(dialog().querySelector('mat-progress-bar')).not.toBeNull();
     expect((dialog().querySelector('button.confirm') as HTMLButtonElement).disabled).toBe(true);
-    const impact: ProjectConfigPublishImpact = { projects: PROJECTS, needsMigration: false, version: 6 };
+    const impact: ProjectConfigPublishImpact = {
+      projects: PROJECTS,
+      removedTypes: [{ id: '0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7b05', key: 'bug', label: 'Bug', ticketCount: 0 }],
+      needsMigration: false,
+      version: 6,
+    };
     await reply(isImpact(SOFTWARE.id), impact);
     expect(text(dialog().querySelector('.intro'))).toBe('The new version applies at once to these 3 projects:');
     const items = Array.from(dialog().querySelectorAll('.projects li'));
@@ -326,6 +337,14 @@ describe('ConfigPage', () => {
     ]);
     expect(text(items[1].querySelector('.archived'))).toBe('Archived');
     expect(text(items[2].querySelector('.veiled'))).toBe('Project you do not have access to');
+    // The types the draft removes, with the tickets still using them.
+    expect(text(dialog().querySelector('h3.sub'))).toBe('Removed types');
+    const removed = dialog().querySelector('.removed li')!;
+    expect([text(removed.querySelector('.name')), text(removed.querySelector('.key')), text(removed.querySelector('.archived'))]).toEqual([
+      'Bug',
+      'bug',
+      '0 tickets',
+    ]);
     expect(await axeViolations(dialog())).toEqual([]);
 
     await click(dialog().querySelector('button.confirm'));
@@ -343,14 +362,14 @@ describe('ConfigPage', () => {
   it('reads the projects again when the configuration changed in the meantime', async () => {
     const { root, reply, click, dialog, text } = await openConfig(SOFTWARE);
     await click(root().querySelector('button.publish'));
-    await reply(isImpact(SOFTWARE.id), { projects: [PLAT], needsMigration: false, version: 6 });
+    await reply(isImpact(SOFTWARE.id), { projects: [PLAT], removedTypes: [], needsMigration: false, version: 6 });
     expect(text(dialog().querySelector('.intro'))).toBe('The new version applies at once to this project:');
     await click(dialog().querySelector('button.confirm'));
     await reply((u, m) => u.endsWith('/publish') && m === 'POST', problem(412, 'precondition_failed'), 412);
     expect(text(dialog().querySelector('[role="alert"]'))).toBe(
       'The configuration changed in the meantime: check the projects again, then publish.',
     );
-    await reply(isImpact(SOFTWARE.id), { projects: [PLAT, LEGACY], needsMigration: false, version: 8 });
+    await reply(isImpact(SOFTWARE.id), { projects: [PLAT, LEGACY], removedTypes: [], needsMigration: false, version: 8 });
     await click(dialog().querySelector('button.confirm'));
     const again = await reply((u, m) => u.endsWith('/publish') && m === 'POST', { ...SOFTWARE, draft: null });
     expect(again.request.headers.get('If-Match')).toBe('"8"');
@@ -359,7 +378,7 @@ describe('ConfigPage', () => {
   it('does not publish while tickets must be migrated, and says when no project is affected', async () => {
     const { root, reply, click, dialog, text } = await openConfig(SOFTWARE);
     await click(root().querySelector('button.publish'));
-    await reply(isImpact(SOFTWARE.id), { projects: [PLAT], needsMigration: true, version: 6 });
+    await reply(isImpact(SOFTWARE.id), { projects: [PLAT], removedTypes: [], needsMigration: true, version: 6 });
     expect(text(dialog().querySelector('[role="alert"]'))).toBe(
       'Some tickets use a type or a status this version removes: they must be migrated first.',
     );
@@ -367,7 +386,7 @@ describe('ConfigPage', () => {
     TestBed.inject(MatDialog).closeAll();
 
     await click(root().querySelector('button.publish'));
-    await reply(isImpact(SOFTWARE.id), { projects: [], needsMigration: false, version: 6 });
+    await reply(isImpact(SOFTWARE.id), { projects: [], removedTypes: [], needsMigration: false, version: 6 });
     expect(text(dialog().querySelector('.intro'))).toBe(
       'No project uses this configuration yet: the new version will apply to the projects moved to it.',
     );
