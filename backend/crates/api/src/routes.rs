@@ -19,6 +19,7 @@ use utoipa_axum::routes;
 
 use crate::account;
 use crate::auth;
+use crate::configs;
 use crate::gdpr;
 use crate::grants;
 use crate::groups;
@@ -121,6 +122,14 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(grants::grantable_roles))
         .routes(routes!(grants::my_permissions))
         .routes(routes!(roles::read, roles::update, roles::delete))
+        .routes(routes!(configs::list, configs::create))
+        .routes(routes!(configs::read, configs::rename, configs::delete))
+        .routes(routes!(configs::projects))
+        .routes(routes!(configs::duplicate))
+        .routes(routes!(configs::open_draft, configs::discard_draft))
+        .routes(routes!(configs::impact))
+        .routes(routes!(configs::publish))
+        .routes(routes!(configs::node_config, configs::set_node_config))
         .routes(routes!(mfa::status))
         .routes(routes!(mfa::setup))
         .routes(routes!(mfa::confirm))

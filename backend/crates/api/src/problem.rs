@@ -99,11 +99,15 @@ pub enum ErrorCode {
     NodeArchived,
     NodeActiveChildren,
     NodeParentArchived,
+    ConfigNameTaken,
+    ConfigNoDraft,
+    ConfigDefault,
+    ConfigInUse,
 }
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 60] = [
+    pub const ALL: [Self; 64] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -164,6 +168,10 @@ impl ErrorCode {
         Self::NodeArchived,
         Self::NodeActiveChildren,
         Self::NodeParentArchived,
+        Self::ConfigNameTaken,
+        Self::ConfigNoDraft,
+        Self::ConfigDefault,
+        Self::ConfigInUse,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -228,6 +236,10 @@ impl ErrorCode {
             Self::NodeArchived => "node.archived",
             Self::NodeActiveChildren => "node.active_children",
             Self::NodeParentArchived => "node.parent_archived",
+            Self::ConfigNameTaken => "config.name_taken",
+            Self::ConfigNoDraft => "config.no_draft",
+            Self::ConfigDefault => "config.default",
+            Self::ConfigInUse => "config.in_use",
         }
     }
 
@@ -285,7 +297,11 @@ impl ErrorCode {
             | Self::NodeConfidentialLockout
             | Self::NodeArchived
             | Self::NodeActiveChildren
-            | Self::NodeParentArchived => StatusCode::CONFLICT,
+            | Self::NodeParentArchived
+            | Self::ConfigNameTaken
+            | Self::ConfigNoDraft
+            | Self::ConfigDefault
+            | Self::ConfigInUse => StatusCode::CONFLICT,
             Self::PreconditionFailed => StatusCode::PRECONDITION_FAILED,
             Self::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -366,6 +382,10 @@ impl ErrorCode {
                 "This project still has active sub-projects: archive or detach them first"
             }
             Self::NodeParentArchived => "This project is under an archived project: restore that one first",
+            Self::ConfigNameTaken => "Another project configuration already has this name",
+            Self::ConfigNoDraft => "This configuration has no draft: nothing to publish or discard",
+            Self::ConfigDefault => "The default configuration stays: new projects get it",
+            Self::ConfigInUse => "Projects use this configuration: move them to another one first",
         }
     }
 
@@ -609,7 +629,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 60] = [
+        let expected: [(ErrorCode, u16); 64] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -670,6 +690,10 @@ mod tests {
             (ErrorCode::NodeArchived, 409),
             (ErrorCode::NodeActiveChildren, 409),
             (ErrorCode::NodeParentArchived, 409),
+            (ErrorCode::ConfigNameTaken, 409),
+            (ErrorCode::ConfigNoDraft, 409),
+            (ErrorCode::ConfigDefault, 409),
+            (ErrorCode::ConfigInUse, 409),
         ];
         for (code, status) in expected {
             assert_eq!(code.status().as_u16(), status, "{}", code.as_str());

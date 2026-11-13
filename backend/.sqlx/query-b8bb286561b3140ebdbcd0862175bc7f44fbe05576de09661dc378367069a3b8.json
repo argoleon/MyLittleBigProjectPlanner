@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, name, key AS \"key!\", archived_at IS NOT NULL AS \"archived!\"\n        FROM node WHERE config_id = $1\n        ORDER BY name, id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "key!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "key"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "archived!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      null
+    ]
+  },
+  "hash": "b8bb286561b3140ebdbcd0862175bc7f44fbe05576de09661dc378367069a3b8"
+}
