@@ -45,6 +45,7 @@ export type { NewTenant } from './models/new-tenant';
 export type { Node } from './models/node';
 export type { NodeAccess } from './models/node-access';
 export type { NodeAggregate } from './models/node-aggregate';
+export type { NodeArchiving } from './models/node-archiving';
 export type { NodeCandidate } from './models/node-candidate';
 export type { NodeChanges } from './models/node-changes';
 export type { NodeChild } from './models/node-child';

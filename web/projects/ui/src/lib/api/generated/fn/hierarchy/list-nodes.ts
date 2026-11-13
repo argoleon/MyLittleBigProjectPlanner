@@ -29,6 +29,11 @@ export interface ListNodes$Params {
   descendantOf?: string;
 
 /**
+ * `true`: the archived projects, instead of the active nodes.
+ */
+  archived?: boolean;
+
+/**
  * Page size, from 1 to 200 (default 50).
  */
   limit?: number;
@@ -45,6 +50,7 @@ export function listNodes(http: HttpClient, rootUrl: string, params?: ListNodes$
     rb.query('type', params.type, {});
     rb.query('ancestorOf', params.ancestorOf, {});
     rb.query('descendantOf', params.descendantOf, {});
+    rb.query('archived', params.archived, {});
     rb.query('limit', params.limit, {});
     rb.query('cursor', params.cursor, {});
   }

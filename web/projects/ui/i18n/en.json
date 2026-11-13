@@ -440,7 +440,10 @@
       "cycle": "This link would make the node its own ancestor.",
       "parent_not_allowed": "This type of node cannot be attached under that parent.",
       "grant_exists": "They already have this role on this node.",
-      "confidential_lockout": "You would lose your own access: ask for a role granted on the project itself first."
+      "confidential_lockout": "You would lose your own access: ask for a role granted on the project itself first.",
+      "archived": "This project is archived: it is read-only until it is restored.",
+      "active_children": "This project still has active sub-projects: archive or detach them first.",
+      "parent_archived": "This project is under an archived project: restore that one first."
     }
   },
   "dialog": {
@@ -562,7 +565,8 @@
       "progress": "Progress",
       "planned": "Planned load",
       "open": "Open",
-      "late": "Late"
+      "late": "Late",
+      "parents": "Under"
     },
     "dates": "{{ start }} – {{ end }}",
     "empty": "No portfolio, program or project yet",
@@ -573,7 +577,8 @@
       "general": "General",
       "addChild": "Add a child",
       "breadcrumb": "Breadcrumb",
-      "links": "Attachments and permissions"
+      "links": "Attachments and permissions",
+      "archiving": "Archiving"
     },
     "general": {
       "name": "Name",
@@ -731,6 +736,43 @@
       "caption": "What is attached to {{ name }}",
       "empty": "No child yet",
       "emptyHint": "Add a child to follow its load and progress here."
+    },
+    "archivedIntro": "The archived projects: read-only, out of the active lists and the aggregates. Open one to restore it.",
+    "viewLabel": "Show",
+    "views": {
+      "active": "Active",
+      "archived": "Archived"
+    },
+    "archivedCaption": "Archived projects",
+    "archivedEmpty": "No archived project",
+    "archivedEmptyHint": "A finished project is archived from the Archiving tab of its settings.",
+    "archiving": {
+      "title": "Archiving",
+      "isActive": "This project is active.",
+      "isArchived": "This project is archived.",
+      "consequences": {
+        "readOnly": "It becomes read-only: neither it, its attachments nor its tickets can be changed.",
+        "lists": "It leaves the active lists; the \"Archived\" filter finds it.",
+        "aggregates": "It leaves the aggregates of its portfolios and programs.",
+        "history": "Its history is kept, and it can be restored at any time."
+      },
+      "subProjectsHint": "Its sub-projects are archived first.",
+      "restoreHint": "Restored, it can be changed again and counts again in the aggregates. If its parent project is archived, restore that one first.",
+      "archive": "Archive the project",
+      "restore": "Restore the project",
+      "notAdmin": "Only the administrators of the project archive or restore it.",
+      "confirmArchive": {
+        "title": "Archive {{ name }}?",
+        "message": "The project will become read-only and leave the active lists and the aggregates. You can restore it."
+      },
+      "confirmRestore": {
+        "title": "Restore {{ name }}?",
+        "message": "The project will be editable again and count again in the aggregates."
+      },
+      "archived": "The project is archived.",
+      "restored": "The project is restored.",
+      "banner": "Archived project.",
+      "bannerHint": "It is read-only, out of the active lists and the aggregates."
     }
   }
 }

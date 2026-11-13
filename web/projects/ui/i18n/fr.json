@@ -440,7 +440,10 @@
       "cycle": "Ce rattachement ferait du nœud son propre ancêtre.",
       "parent_not_allowed": "Ce type de nœud ne peut pas être rattaché sous ce parent.",
       "grant_exists": "Ce rôle est déjà attribué à cette personne ou à ce groupe sur ce nœud.",
-      "confidential_lockout": "Vous perdriez votre propre accès : demandez d’abord un rôle attribué sur le projet lui-même."
+      "confidential_lockout": "Vous perdriez votre propre accès : demandez d’abord un rôle attribué sur le projet lui-même.",
+      "archived": "Ce projet est archivé : il est en lecture seule tant qu’il n’est pas restauré.",
+      "active_children": "Ce projet a encore des sous-projets actifs : archivez-les ou détachez-les d’abord.",
+      "parent_archived": "Ce projet est sous un projet archivé : restaurez celui-ci d’abord."
     }
   },
   "dialog": {
@@ -562,7 +565,8 @@
       "progress": "Avancement",
       "planned": "Charge planifiée",
       "open": "Ouverts",
-      "late": "En retard"
+      "late": "En retard",
+      "parents": "Rattaché à"
     },
     "dates": "{{ start }} – {{ end }}",
     "empty": "Aucun portefeuille, programme ni projet pour l’instant",
@@ -573,7 +577,8 @@
       "general": "Général",
       "addChild": "Ajouter un enfant",
       "breadcrumb": "Fil d’Ariane",
-      "links": "Rattachements et droits"
+      "links": "Rattachements et droits",
+      "archiving": "Archivage"
     },
     "general": {
       "name": "Nom",
@@ -731,6 +736,43 @@
       "caption": "Ce qui est rattaché à {{ name }}",
       "empty": "Aucun enfant pour l’instant",
       "emptyHint": "Ajoutez un enfant pour suivre ici sa charge et son avancement."
+    },
+    "archivedIntro": "Les projets archivés : en lecture seule, hors des listes actives et des agrégats. Ouvrez-en un pour le restaurer.",
+    "viewLabel": "Afficher",
+    "views": {
+      "active": "Actifs",
+      "archived": "Archivés"
+    },
+    "archivedCaption": "Projets archivés",
+    "archivedEmpty": "Aucun projet archivé",
+    "archivedEmptyHint": "Un projet terminé s’archive depuis l’onglet Archivage de ses paramètres.",
+    "archiving": {
+      "title": "Archivage",
+      "isActive": "Ce projet est actif.",
+      "isArchived": "Ce projet est archivé.",
+      "consequences": {
+        "readOnly": "Il passe en lecture seule : ni lui, ni ses rattachements, ni ses tickets ne peuvent plus être modifiés.",
+        "lists": "Il disparaît des listes actives ; le filtre « Archivés » le retrouve.",
+        "aggregates": "Il sort des agrégats de ses portefeuilles et programmes.",
+        "history": "Son historique est conservé, et il peut être restauré à tout moment."
+      },
+      "subProjectsHint": "Ses sous-projets s’archivent d’abord.",
+      "restoreHint": "Restauré, il redevient modifiable et compte de nouveau dans les agrégats. Si son projet parent est archivé, restaurez celui-ci d’abord.",
+      "archive": "Archiver le projet",
+      "restore": "Restaurer le projet",
+      "notAdmin": "Seuls les administrateurs du projet l’archivent ou le restaurent.",
+      "confirmArchive": {
+        "title": "Archiver {{ name }} ?",
+        "message": "Le projet passera en lecture seule et sortira des listes actives et des agrégats. Vous pourrez le restaurer."
+      },
+      "confirmRestore": {
+        "title": "Restaurer {{ name }} ?",
+        "message": "Le projet redeviendra modifiable et comptera de nouveau dans les agrégats."
+      },
+      "archived": "Le projet est archivé.",
+      "restored": "Le projet est restauré.",
+      "banner": "Projet archivé.",
+      "bannerHint": "Il est en lecture seule, hors des listes actives et des agrégats."
     }
   }
 }

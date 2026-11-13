@@ -1,0 +1,40 @@
+@if (node(); as node) {
+  <section class="card" aria-labelledby="archiving-title">
+    <h2 id="archiving-title" class="card-title">{{ 'hierarchy.archiving.title' | transloco }}</h2>
+    @if (notice(); as notice) {
+      <p class="message" [class.info]="notice.ok" [class.error]="!notice.ok" [attr.role]="notice.ok ? 'status' : 'alert'">
+        {{ notice.key | transloco }}
+      </p>
+    }
+    @if (node.archived) {
+      <p class="state">{{ 'hierarchy.archiving.isArchived' | transloco }}</p>
+      <p class="hint">{{ 'hierarchy.archiving.restoreHint' | transloco }}</p>
+    } @else {
+      <p class="state">{{ 'hierarchy.archiving.isActive' | transloco }}</p>
+      <ul class="consequences">
+        <li>{{ 'hierarchy.archiving.consequences.readOnly' | transloco }}</li>
+        <li>{{ 'hierarchy.archiving.consequences.lists' | transloco }}</li>
+        <li>{{ 'hierarchy.archiving.consequences.aggregates' | transloco }}</li>
+        <li>{{ 'hierarchy.archiving.consequences.history' | transloco }}</li>
+      </ul>
+      <p class="hint">{{ 'hierarchy.archiving.subProjectsHint' | transloco }}</p>
+    }
+    @if (administers()) {
+      <div class="actions">
+        @if (node.archived) {
+          <button matButton="filled" type="button" class="restore" [disabled]="saving()" (click)="toggle(node)">
+            <mat-icon aria-hidden="true">unarchive</mat-icon>
+            {{ 'hierarchy.archiving.restore' | transloco }}
+          </button>
+        } @else {
+          <button matButton="outlined" type="button" class="archive" [disabled]="saving()" (click)="toggle(node)">
+            <mat-icon aria-hidden="true">archive</mat-icon>
+            {{ 'hierarchy.archiving.archive' | transloco }}
+          </button>
+        }
+      </div>
+    } @else if (permissions.hasValue()) {
+      <p class="hint">{{ 'hierarchy.archiving.notAdmin' | transloco }}</p>
+    }
+  </section>
+}

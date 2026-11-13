@@ -1,4 +1,4 @@
-import { Component, Injectable, effect, inject, input, resource, signal } from '@angular/core';
+import { Component, Injectable, computed, effect, inject, input, resource, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -8,6 +8,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { TranslocoPipe } from '@jsverse/transloco';
 import { Api, ErrorState, Node, getNode } from 'ui';
 
+import { ArchivedBanner } from './archived-banner';
 import { NodeDialog, NodeDialogData } from './node-dialog';
 
 /**
@@ -19,19 +20,23 @@ export class NodeContext {
   readonly node = signal<Node | null>(null);
 }
 
-/** Tabs of a node's settings (mockup 14); the others come with L03. */
+/** Tabs of a node's settings (mockup 14); "Configuration" comes with L04. */
 const TABS = [
   { path: 'general', labelKey: 'hierarchy.settings.general' },
   { path: 'links', labelKey: 'hierarchy.settings.links' },
 ] as const;
 
+/** Projects only. */
+const ARCHIVING_TAB = { path: 'archiving', labelKey: 'hierarchy.settings.archiving' } as const;
+
 /**
  * Settings of a portfolio, program or project (mockup 14): its parents and
- * its own view in the breadcrumb, "Add a child", and routed tabs.
+ * its own view in the breadcrumb, "Add a child", and routed tabs. An
+ * archived project shows a banner, and adds no child.
  */
 @Component({
   selector: 'app-node-settings-page',
-  imports: [ErrorState, MatButtonModule, MatIconModule, MatProgressBarModule, MatTabsModule, RouterLink, RouterLinkActive, RouterOutlet, TranslocoPipe],
+  imports: [ArchivedBanner, ErrorState, MatButtonModule, MatIconModule, MatProgressBarModule, MatTabsModule, RouterLink, RouterLinkActive, RouterOutlet, TranslocoPipe],
   providers: [NodeContext],
   styleUrl: './node-settings-page.scss',
   template: `
@@ -49,13 +54,18 @@ const TABS = [
       </nav>
       <div class="header">
         <h1 class="title">{{ 'hierarchy.settings.title' | transloco: { name: node.name } }}</h1>
-        <button matButton="filled" type="button" class="add-child" (click)="addChild(node)">
-          <mat-icon aria-hidden="true">add</mat-icon>
-          {{ 'hierarchy.settings.addChild' | transloco }}
-        </button>
+        @if (!node.archived) {
+          <button matButton="filled" type="button" class="add-child" (click)="addChild(node)">
+            <mat-icon aria-hidden="true">add</mat-icon>
+            {{ 'hierarchy.settings.addChild' | transloco }}
+          </button>
+        }
       </div>
+      @if (node.archived) {
+        <app-archived-banner />
+      }
       <nav mat-tab-nav-bar [tabPanel]="panel" [attr.aria-label]="'hierarchy.settings.tabs' | transloco">
-        @for (tab of tabs; track tab.path) {
+        @for (tab of tabs(); track tab.path) {
           <a mat-tab-link [routerLink]="tab.path" routerLinkActive #active="routerLinkActive" [active]="active.isActive">
             {{ tab.labelKey | transloco }}
           </a>
@@ -75,7 +85,10 @@ export class NodeSettingsPage {
   private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
   protected readonly context = inject(NodeContext);
-  protected readonly tabs = TABS;
+  /** The Archiving tab is for projects. */
+  protected readonly tabs = computed(() =>
+    this.context.node()?.type === 'project' ? [...TABS, ARCHIVING_TAB] : [...TABS],
+  );
 
   protected readonly loaded = resource({
     params: () => this.id(),

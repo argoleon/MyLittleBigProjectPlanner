@@ -12,6 +12,7 @@
           <h2 id="parents-title" class="card-title">{{ 'hierarchy.links.parents' | transloco }}</h2>
           <p class="hint">{{ 'hierarchy.links.parentsHint.' + node.type | transloco }}</p>
         </div>
+        @if (!node.archived) {
         <button
           #addButton
           matButton="tonal"
@@ -24,6 +25,7 @@
           <mat-icon aria-hidden="true">add_link</mat-icon>
           {{ 'hierarchy.links.addParent' | transloco }}
         </button>
+        }
       </div>
       @if (parents.error()) {
         <ui-error-state [error]="parents.error()" [headingLevel]="3" (retry)="parents.reload()" />
@@ -44,17 +46,24 @@
                     }
                   </span>
                 </div>
-                <app-weight-field [weight]="link.weightPercent" [parentName]="link.name" (weightChange)="setWeight(node, link, $event)" />
-                <button
-                  matIconButton
-                  type="button"
-                  class="unlink"
-                  [disabled]="busy()"
-                  [attr.aria-label]="'hierarchy.links.unlinkOf' | transloco: { name: link.name }"
-                  (click)="unlink(node, link)"
-                >
-                  <mat-icon aria-hidden="true">link_off</mat-icon>
-                </button>
+                <app-weight-field
+                  [weight]="link.weightPercent"
+                  [parentName]="link.name"
+                  [disabled]="node.archived"
+                  (weightChange)="setWeight(node, link, $event)"
+                />
+                @if (!node.archived) {
+                  <button
+                    matIconButton
+                    type="button"
+                    class="unlink"
+                    [disabled]="busy()"
+                    [attr.aria-label]="'hierarchy.links.unlinkOf' | transloco: { name: link.name }"
+                    (click)="unlink(node, link)"
+                  >
+                    <mat-icon aria-hidden="true">link_off</mat-icon>
+                  </button>
+                }
               </li>
             }
           </ul>

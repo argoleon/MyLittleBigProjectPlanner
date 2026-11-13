@@ -18,6 +18,7 @@ import {
   listMyNodePermissions,
 } from 'ui';
 
+import { ArchivedBanner } from './archived-banner';
 import { PERCENT, hoursOf } from './hierarchy-rows';
 import { HierarchyTree } from './hierarchy-tree';
 import { NodeDialog, NodeDialogData } from './node-dialog';
@@ -31,6 +32,7 @@ import { NodeDialog, NodeDialogData } from './node-dialog';
 @Component({
   selector: 'app-node-page',
   imports: [
+    ArchivedBanner,
     EmptyState,
     ErrorState,
     HierarchyTree,
@@ -69,11 +71,15 @@ export class NodePage {
     params: () => this.id(),
     loader: ({ params }) => this.api.invoke(listMyNodePermissions, { id: params }),
   });
-  /** Tenant admins, and those who administer the node, add children to it. */
+  /**
+   * Tenant admins, and those who administer the node, add children to it;
+   * nobody adds any to an archived project.
+   */
   protected readonly canAddChild = computed(
     () =>
-      this.auth.session()?.account.tenantRole === 'tenant_admin' ||
-      (this.permissions.hasValue() && this.permissions.value().includes('administer_node')),
+      !(this.node.hasValue() && this.node.value().archived) &&
+      (this.auth.session()?.account.tenantRole === 'tenant_admin' ||
+        (this.permissions.hasValue() && this.permissions.value().includes('administer_node'))),
   );
 
   protected ownersOf(node: Node): string {

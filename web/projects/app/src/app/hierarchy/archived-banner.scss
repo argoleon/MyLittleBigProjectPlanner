@@ -1,0 +1,19 @@
+:host {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-3);
+  margin: 0 0 var(--app-space-4);
+  padding: var(--app-space-3) var(--app-space-4);
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+  font: var(--mat-sys-body-medium);
+}
+
+mat-icon {
+  flex: none;
+}
+
+p {
+  margin: 0;
+}

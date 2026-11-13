@@ -54,7 +54,8 @@
         </mat-select>
       </mat-form-field>
     </div>
-    <app-owner-picker [(owners)]="owners" />
+    <app-owner-picker [(owners)]="owners" [disabled]="node.archived" />
+    @if (!node.archived) {
     <div class="actions">
       @if (dirty()) {
         <span class="unsaved">{{ 'hierarchy.general.unsaved' | transloco }}</span>
@@ -63,5 +64,6 @@
         {{ 'hierarchy.general.save' | transloco }}
       </button>
     </div>
+    }
   </form>
 }
