@@ -98,3 +98,51 @@ test('a configuration is shared by two projects, then one of them detaches with 
 
   await admin.context().close();
 });
+
+test('an issue type added to the draft reaches the projects once published', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const run = Date.now().toString(36).toUpperCase().slice(-6);
+  const config = `Support ${run}`;
+  const identifiers = (page: Page) => page.locator('app-types-tab code');
+
+  const admin = await signIn(browser, adminEmail!, adminSecret!);
+  await admin.goto('/admin/configurations');
+  await admin.getByRole('button', { name: 'New configuration' }).click();
+  const dialog = admin.getByRole('dialog', { name: 'New project configuration' });
+  await expect(dialog.getByLabel('Name (Français)')).toBeFocused();
+  await dialog.getByLabel('Name (Français)').fill(`Assistance ${run}`);
+  await dialog.getByLabel('Name (English)').fill(config);
+  await dialog.getByRole('button', { name: 'Create' }).click();
+  await expect(admin.getByRole('heading', { level: 1 })).toHaveText(config);
+
+  // The default types, Epic at the top and Sub-task at the bottom.
+  await expect(identifiers(admin)).toHaveText(['epic', 'story', 'task', 'bug', 'subtask']);
+
+  // A new type under Epic: it goes to the draft.
+  await admin.getByRole('button', { name: 'New type' }).click();
+  const panel = admin.getByRole('region', { name: 'New issue type' });
+  await panel.getByLabel('Label (Français)').fill('Incident');
+  await panel.getByLabel('Label (English)').fill('Incident');
+  await panel.getByLabel('Identifier').fill('incident');
+  // With the keyboard: the empty field's label lies over the middle of the select.
+  await panel.getByRole('combobox', { name: 'Allowed parent types' }).focus();
+  await admin.keyboard.press('Enter');
+  await admin.getByRole('option', { name: 'Epic', exact: true }).click();
+  await admin.keyboard.press('Escape');
+  await panel.getByRole('button', { name: 'Save' }).click();
+  await expect(admin.getByRole('status')).toHaveText('Type “Incident” saved in the draft.');
+  await expect(admin.getByText('Unpublished draft · 1 change')).toBeVisible();
+  await expect(identifiers(admin)).toHaveText(['epic', 'story', 'task', 'bug', 'subtask', 'incident']);
+  expect(await accessibilityViolations(admin), 'types in the draft').toEqual([]);
+
+  // Published: version 2, with the new type.
+  await admin.getByRole('button', { name: 'Publish the changes' }).click();
+  const publish = admin.getByRole('dialog', { name: `Publish “${config}”?` });
+  await publish.getByRole('button', { name: 'Publish' }).click();
+  await expect(admin.getByText('Version 2 is published.', { exact: true })).toBeVisible();
+  await admin.reload();
+  await expect(identifiers(admin)).toHaveText(['epic', 'story', 'task', 'bug', 'subtask', 'incident']);
+  await expect(admin.getByText(/Unpublished draft/)).toHaveCount(0);
+
+  await admin.context().close();
+});

@@ -1,0 +1,87 @@
+@use '../admin/admin-shared';
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--app-space-3) var(--app-space-4);
+  margin-bottom: var(--app-space-4);
+}
+
+.intro {
+  flex: 1 1 320px;
+  margin: 0;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.add {
+  margin-inline-start: auto;
+}
+
+// The table, then the panel beside it on wide screens (mockup 12).
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--app-space-4);
+  align-items: start;
+
+  &.editing {
+    @media (width >= 1200px) {
+      grid-template-columns: minmax(0, 3fr) minmax(360px, 2fr);
+    }
+  }
+}
+
+.table-card {
+  overflow-x: auto;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface);
+}
+
+.table {
+  min-width: 640px;
+  background: transparent;
+}
+
+.selected {
+  background: var(--mat-sys-secondary-container);
+}
+
+.handle-cell {
+  width: 32px;
+}
+
+.handle {
+  cursor: grab;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.secondary {
+  display: block;
+  margin-top: var(--app-space-1);
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.parents {
+  font: var(--mat-sys-body-medium);
+}
+
+.actions {
+  white-space: nowrap;
+  text-align: end;
+}
+
+// While dragged: the row follows the pointer above the page.
+.cdk-drag-preview {
+  display: table;
+  border-radius: var(--mat-sys-corner-small);
+  background: var(--mat-sys-surface-container-high);
+  box-shadow: var(--mat-sys-level3);
+}
+
+.cdk-drag-placeholder {
+  opacity: 0.4;
+}

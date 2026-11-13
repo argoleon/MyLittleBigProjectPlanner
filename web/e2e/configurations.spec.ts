@@ -65,9 +65,30 @@ const PROJECT = {
   version: 1,
 };
 
+const TYPE = (id: string, key: string, en: string, color: string, icon: string, parentIds: string[], level: number, isSubtask = false) => ({
+  id,
+  key,
+  label: en,
+  labelTranslations: { fr: en, en },
+  icon,
+  color,
+  isSubtask,
+  parentIds,
+  level,
+  version: 1,
+});
+
+const TYPES = [
+  TYPE('t1', 'epic', 'Epic', 'epic', 'bolt', [], 1),
+  TYPE('t2', 'story', 'Story', 'story', 'bookmark', ['t1'], 2),
+  TYPE('t3', 'task', 'Task', 'task', 'task_alt', ['t1'], 2),
+  TYPE('t4', 'bug', 'Bug', 'bug', 'bug_report', ['t1'], 2),
+  TYPE('t5', 'subtask', 'Sub-task', 'task', 'subdirectory_arrow_right', ['t2', 't3', 't4'], 3, true),
+];
+
 /** The configurations' API for a configuration admin, recording what is created and published. */
 async function mockConfigurations(page: Page) {
-  const sent: { created: unknown[]; published: (string | null)[] } = { created: [], published: [] };
+  const sent: { created: unknown[]; published: (string | null)[]; ordered: unknown[] } = { created: [], published: [], ordered: [] };
   await page.route('**/api/v1/auth/session', (route) =>
     route.fulfill({ json: { ...SESSION, account: { ...SESSION.account, tenantRole: 'configuration_admin' } } }),
   );
@@ -82,8 +103,14 @@ async function mockConfigurations(page: Page) {
       route.fulfill({ json: { items: config.projectCount ? PROJECTS : [] } }),
     );
   }
+  await page.route(`**/api/v1/project-configs/*/issue-types`, (route) => route.fulfill({ json: { stage: 'published', items: TYPES } }));
+  await page.route(`**/api/v1/project-configs/*/issue-types/order`, (route) => {
+    const ids = (route.request().postDataJSON() as { ids: string[] }).ids;
+    sent.ordered.push(ids);
+    return route.fulfill({ json: { stage: 'draft', items: ids.map((id) => TYPES.find((t) => t.id === id)) } });
+  });
   await page.route(`**/api/v1/project-configs/${SOFTWARE.id}/publish-impact`, (route) =>
-    route.fulfill({ json: { projects: PROJECTS, needsMigration: false, version: 5 } }),
+    route.fulfill({ json: { projects: PROJECTS, removedTypes: [], needsMigration: false, version: 5 } }),
   );
   await page.route(`**/api/v1/project-configs/${SOFTWARE.id}/publish`, (route) => {
     sent.published.push(route.request().headers()['if-match'] ?? null);
@@ -135,6 +162,22 @@ test('a configuration admin creates a configuration, then publishes a draft afte
   expect(sent.published).toEqual(['"5"']);
 });
 
+test('the issue types are reordered with the keyboard alone', async ({ page }) => {
+  const sent = await mockConfigurations(page);
+  await page.goto(`/admin/configurations/${SOFTWARE.id}/types`);
+  await expect(page.getByRole('row')).toHaveCount(6);
+  const down = page.getByRole('button', { name: 'Move Bug down' });
+  await down.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('status')).toHaveText('Bug moved to position 5.');
+  await expect(page.locator('code.key')).toHaveText(['epic', 'story', 'task', 'subtask', 'bug']);
+  expect(sent.ordered).toEqual([['t1', 't2', 't3', 't5', 't4']]);
+  // Up again, from the keyboard focus.
+  await page.getByRole('button', { name: 'Move Bug up' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('code.key')).toHaveText(['epic', 'story', 'task', 'bug', 'subtask']);
+});
+
 for (const theme of ['light', 'dark'] as const) {
   for (const language of ['fr', 'en'] as const) {
     test.describe(`accessibility of the project configurations, ${theme} mode, ${language}`, () => {
@@ -169,6 +212,15 @@ for (const theme of ['light', 'dark'] as const) {
         await page.keyboard.press('Escape');
 
         await page.goto(`/admin/configurations/${SOFTWARE.id}/types`);
+        await expect(page.locator('app-types-tab tr[mat-row]')).toHaveCount(5);
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'types').toEqual([]);
+        await page.locator('app-types-tab button.edit').nth(4).click();
+        await expect(page.locator('app-type-editor')).toBeVisible();
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'type panel').toEqual([]);
+
+        await page.goto(`/admin/configurations/${SOFTWARE.id}/fields`);
         await expect(page.locator('app-config-section-tab')).toBeVisible();
         await animationsDone(page);
         expect(await accessibilityViolations(page), 'section').toEqual([]);

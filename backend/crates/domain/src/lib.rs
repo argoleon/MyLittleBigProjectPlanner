@@ -13,6 +13,7 @@ pub mod grants;
 pub mod hierarchy;
 pub mod i18n;
 pub mod idempotency;
+pub mod issue_types;
 pub mod jobs;
 pub mod members;
 pub mod mfa;

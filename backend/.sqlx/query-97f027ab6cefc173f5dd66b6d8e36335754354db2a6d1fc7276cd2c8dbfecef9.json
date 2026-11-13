@@ -1,0 +1,125 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT item_id, key, label AS \"label: Json<BTreeMap<String, String>>\", icon, color, is_subtask,\n               parent_ids, position, version\n        FROM issue_type WHERE version_id = $1 AND item_id = $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "item_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "issue_type",
+            "name": "item_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "issue_type",
+            "name": "key"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "label: Json<BTreeMap<String, String>>",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "issue_type",
+            "name": "label"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "icon",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "issue_type",
+            "name": "icon"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "color",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "issue_type",
+            "name": "color"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "is_subtask",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "issue_type",
+            "name": "is_subtask"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "parent_ids",
+        "type_info": "UuidArray",
+        "origin": {
+          "Table": {
+            "table": "issue_type",
+            "name": "parent_ids"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "position",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "issue_type",
+            "name": "position"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "version",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "issue_type",
+            "name": "version"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "97f027ab6cefc173f5dd66b6d8e36335754354db2a6d1fc7276cd2c8dbfecef9"
+}

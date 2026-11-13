@@ -113,6 +113,18 @@ export type { DiscardProjectConfigDraft$Params as DiscardProjectConfigDraft$Para
 export { discardProjectConfigDraft as discardProjectConfigDraft } from './fn/configurations/discard-project-config-draft';
 export type { DuplicateProjectConfig$Params as DuplicateProjectConfig$Params } from './fn/configurations/duplicate-project-config';
 export { duplicateProjectConfig as duplicateProjectConfig } from './fn/configurations/duplicate-project-config';
+export type { ListIssueTypes$Params as ListIssueTypes$Params } from './fn/configurations/list-issue-types';
+export { listIssueTypes as listIssueTypes } from './fn/configurations/list-issue-types';
+export type { CreateIssueType$Params as CreateIssueType$Params } from './fn/configurations/create-issue-type';
+export { createIssueType as createIssueType } from './fn/configurations/create-issue-type';
+export type { ReorderIssueTypes$Params as ReorderIssueTypes$Params } from './fn/configurations/reorder-issue-types';
+export { reorderIssueTypes as reorderIssueTypes } from './fn/configurations/reorder-issue-types';
+export type { GetIssueType$Params as GetIssueType$Params } from './fn/configurations/get-issue-type';
+export { getIssueType as getIssueType } from './fn/configurations/get-issue-type';
+export type { UpdateIssueType$Params as UpdateIssueType$Params } from './fn/configurations/update-issue-type';
+export { updateIssueType as updateIssueType } from './fn/configurations/update-issue-type';
+export type { DeleteIssueType$Params as DeleteIssueType$Params } from './fn/configurations/delete-issue-type';
+export { deleteIssueType as deleteIssueType } from './fn/configurations/delete-issue-type';
 export type { ListProjectConfigProjects$Params as ListProjectConfigProjects$Params } from './fn/configurations/list-project-config-projects';
 export { listProjectConfigProjects as listProjectConfigProjects } from './fn/configurations/list-project-config-projects';
 export type { PublishProjectConfig$Params as PublishProjectConfig$Params } from './fn/configurations/publish-project-config';

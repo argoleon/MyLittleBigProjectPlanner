@@ -411,7 +411,8 @@
       "not_found": "Not found.",
       "unknown_member": "Not a member of the organization.",
       "too_many": "Too many items.",
-      "not_using": "This project does not use this configuration."
+      "not_using": "This project does not use this configuration.",
+      "not_a_permutation": "Every item must appear once."
     },
     "invitation": {
       "invalid": "This invitation link is invalid, has expired or was already used. Ask for a new one.",
@@ -458,6 +459,13 @@
       "no_draft": "This configuration has no draft: nothing to publish or discard.",
       "default": "The default configuration stays: new projects get it.",
       "in_use": "Projects use this configuration: move them to another one first."
+    },
+    "issue_type": {
+      "key_taken": "Another type of this configuration already has this identifier.",
+      "cycle": "A type cannot be its own ancestor.",
+      "subtask_parent": "A sub-task type cannot be the parent of another type.",
+      "last_type": "A configuration keeps at least one type that is not a sub-task.",
+      "orphan_subtask": "A sub-task type would have no parent type left: change it first."
     }
   },
   "dialog": {
@@ -856,13 +864,12 @@
         "message": "Its changes are lost. The published version stays as it is.",
         "confirm": "Discard",
         "done": "The draft is discarded."
-      }
+      },
+      "publishedNone": "Version {{number}} is published."
     },
     "sections": {
       "types": {
-        "tab": "Types",
-        "title": "Issue types come next",
-        "hint": "Issue types and their hierarchy (Epic, Story, Task…) will be defined here."
+        "tab": "Types"
       },
       "fields": {
         "tab": "Fields",
@@ -911,7 +918,12 @@
       "projects": "Projects affected",
       "migration": "Some tickets use a type or a status this version removes: they must be migrated first.",
       "stale": "The configuration changed in the meantime: check the projects again, then publish.",
-      "confirm": "Publish"
+      "confirm": "Publish",
+      "removedTypes": "Removed types",
+      "tickets": {
+        "one": "{{count}} ticket",
+        "other": "{{count}} tickets"
+      }
     },
     "node": {
       "title": "Project configuration",
@@ -922,6 +934,55 @@
       "move": "Move the project",
       "moved": "The project now uses “{{name}}”.",
       "readOnly": "Tenant admins and configuration admins change it."
+    },
+    "types": {
+      "intro": "The issue types of the projects and the types each may sit under. Changes go to the draft.",
+      "add": "New type",
+      "caption": "Issue types, in their order",
+      "columns": {
+        "order": "Order",
+        "type": "Type",
+        "key": "Identifier",
+        "parents": "Allowed parents",
+        "level": "Level",
+        "actions": "Actions"
+      },
+      "isSubtask": "Sub-task",
+      "top": "At the top",
+      "moveUp": "Move {{name}} up",
+      "moveDown": "Move {{name}} down",
+      "editOf": "Edit {{name}}",
+      "moved": "{{name}} moved to position {{position}}.",
+      "saved": "Type “{{name}}” saved in the draft.",
+      "removed": "Type “{{name}}” removed from the draft.",
+      "editTitle": "Edit “{{name}}”",
+      "newTitle": "New issue type",
+      "close": "Close the panel",
+      "label": "Label",
+      "key": "Identifier",
+      "keyHint": "Lowercase letters, digits and _; it cannot be changed later.",
+      "keyFixed": "Set when the type was added; it does not change.",
+      "keyFormat": "A lowercase letter, then lowercase letters, digits or _.",
+      "icon": "Icon",
+      "color": "Color",
+      "colors": {
+        "epic": "Epic color",
+        "story": "Story color",
+        "task": "Task color",
+        "bug": "Bug color"
+      },
+      "subtask": "Sub-task type",
+      "subtaskHint": "A sub-task always sits under a ticket of a parent type, and has none under it.",
+      "parents": "Allowed parent types",
+      "parentsHint": "None: its tickets stay at the top.",
+      "parentsRequired": "A sub-task type needs at least one parent type.",
+      "save": "Save",
+      "remove": {
+        "action": "Remove",
+        "title": "Remove “{{name}}”?",
+        "message": "It leaves the draft and the allowed parents of the other types. Tickets using it will have to move to another type before publishing.",
+        "confirm": "Remove"
+      }
     }
   }
 }

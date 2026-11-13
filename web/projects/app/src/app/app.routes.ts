@@ -5,10 +5,9 @@ import { adminHomeGuard } from './admin/admin-tabs';
 import { MainLayout } from './layout/main-layout';
 import { NAVIGATION } from './navigation';
 
-/** The sections of a configuration built by the next stories of L04, with their icon. */
+/** The sections of a configuration still to be built by the next stories of L04, with their icon. */
 const CONFIG_SECTION_ROUTES: Route[] = (
   [
-    ['types', 'category'],
     ['fields', 'input'],
     ['workflows', 'account_tree'],
     ['screens', 'web'],
@@ -122,6 +121,11 @@ export const routes: Routes = [
         loadComponent: () => import('./configuration/config-page').then((m) => m.ConfigPage),
         children: [
           { path: '', pathMatch: 'full', redirectTo: 'types' },
+          {
+            path: 'types',
+            title: 'config.sections.types.tab',
+            loadComponent: () => import('./configuration/types-tab').then((m) => m.TypesTab),
+          },
           ...CONFIG_SECTION_ROUTES,
           {
             path: 'projects',
