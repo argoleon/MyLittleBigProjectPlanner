@@ -62,10 +62,16 @@ export const routes: Routes = [
         loadComponent: () => import('./hierarchy/portfolios-page').then((m) => m.PortfoliosPage),
       },
       {
+        // The view of a node; its settings are the routes below.
+        path: 'nodes/:id',
+        pathMatch: 'full',
+        title: 'nav.portfolios',
+        loadComponent: () => import('./hierarchy/node-page').then((m) => m.NodePage),
+      },
+      {
         path: 'nodes/:id',
         loadComponent: () => import('./hierarchy/node-settings-page').then((m) => m.NodeSettingsPage),
         children: [
-          { path: '', pathMatch: 'full', redirectTo: 'general' },
           {
             path: 'general',
             title: 'hierarchy.settings.general',

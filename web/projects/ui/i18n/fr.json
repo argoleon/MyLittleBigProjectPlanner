@@ -552,23 +552,21 @@
     }
   },
   "hierarchy": {
-    "intro": "Les portefeuilles, programmes et projets de l’organisation.",
+    "intro": "Le haut de la hiérarchie : portefeuilles, programmes et projets, avec leurs indicateurs agrégés.",
     "add": "Nouveau nœud",
-    "filterLabel": "Filtrer par type",
-    "all": "Tous",
     "caption": "Portefeuilles, programmes et projets",
     "columns": {
       "name": "Nom",
       "health": "Statut",
       "owners": "Responsables",
-      "dates": "Dates",
-      "parents": "Rattaché à"
+      "progress": "Avancement",
+      "planned": "Charge planifiée",
+      "open": "Ouverts",
+      "late": "En retard"
     },
-    "root": "Racine",
     "dates": "{{ start }} – {{ end }}",
     "empty": "Aucun portefeuille, programme ni projet pour l’instant",
     "emptyHint": "Créez un portefeuille, puis ses programmes et ses projets.",
-    "emptyFilter": "Aucun nœud de ce type.",
     "settings": {
       "title": "{{ name }} · Paramètres",
       "tabs": "Rubriques des paramètres",
@@ -696,6 +694,43 @@
       "name": "Projet confidentiel",
       "hint": "Vous n’y avez pas accès.",
       "lock": "Verrouillé"
+    },
+    "tree": {
+      "expandOf": "Développer {{ name }}",
+      "collapseOf": "Réduire {{ name }}",
+      "level": "Niveau {{ level }}",
+      "alsoUnder": "Aussi rattaché à : {{ names }}",
+      "veiledHint": "Vous n’avez pas accès à ce projet. Sa charge est comptée de façon anonyme.",
+      "loadFailed": "Chargement impossible. Réessayez.",
+      "progressOf": "Avancement de {{ name }}",
+      "none": "Aucune valeur"
+    },
+    "figures": {
+      "hours": "{{ hours }} h"
+    },
+    "view": {
+      "settings": "Paramètres",
+      "gantt": {
+        "portfolio": "Gantt du portefeuille",
+        "program": "Gantt du programme",
+        "project": "Gantt du projet"
+      },
+      "workload": "Charge des équipes",
+      "owners": "Responsables : {{ names }}",
+      "planned": "Charge planifiée",
+      "project": "{{ count }} projet distinct",
+      "projects": "{{ count }} projets distincts",
+      "capacity": "Capacité consommée",
+      "capacityHint": "des équipes affectées",
+      "noCapacity": "Aucune équipe affectée",
+      "open": "Tickets ouverts",
+      "confidentialOpen": "dont {{ count }} sur un projet confidentiel",
+      "confidentialOpenMany": "dont {{ count }} sur des projets confidentiels",
+      "late": "Tickets en retard",
+      "note": "Les agrégats portent sur les projets descendants distincts : un projet rattaché à plusieurs programmes n’est compté qu’une fois.",
+      "caption": "Ce qui est rattaché à {{ name }}",
+      "empty": "Aucun enfant pour l’instant",
+      "emptyHint": "Ajoutez un enfant pour suivre ici sa charge et son avancement."
     }
   }
 }

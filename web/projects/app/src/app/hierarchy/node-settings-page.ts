@@ -26,8 +26,8 @@ const TABS = [
 ] as const;
 
 /**
- * Settings of a portfolio, program or project (mockup 14): its parents in
- * the breadcrumb, "Add a child", and routed tabs.
+ * Settings of a portfolio, program or project (mockup 14): its parents and
+ * its own view in the breadcrumb, "Add a child", and routed tabs.
  */
 @Component({
   selector: 'app-node-settings-page',
@@ -45,7 +45,7 @@ const TABS = [
         @for (parent of node.parents; track parent.id) {
           › <a [routerLink]="['/nodes', parent.id]">{{ parent.name }}</a>
         }
-        › {{ 'hierarchy.type.' + node.type | transloco }} {{ node.key ?? '' }}
+        › <a class="current" [routerLink]="['/nodes', node.id]">{{ node.name }}</a> › {{ 'hierarchy.view.settings' | transloco }}
       </nav>
       <div class="header">
         <h1 class="title">{{ 'hierarchy.settings.title' | transloco: { name: node.name } }}</h1>
@@ -94,7 +94,8 @@ export class NodeSettingsPage {
       .open<NodeDialog, NodeDialogData, Node>(NodeDialog, { data, width: 'min(560px, 100vw)', autoFocus: 'first-tabbable' })
       .afterClosed()
       .subscribe((child) => {
-        if (child) void this.router.navigate(['/nodes', child.id]);
+        // On to its settings, to complete it.
+        if (child) void this.router.navigate(['/nodes', child.id, 'general']);
       });
   }
 }

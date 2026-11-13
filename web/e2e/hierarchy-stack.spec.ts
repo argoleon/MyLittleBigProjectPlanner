@@ -11,6 +11,10 @@
  * - Confidential projects (L03-US04): made confidential, the project closes
  *   to the member, who finds it veiled under the portfolio, until they get
  *   a role on the project itself.
+ * - The portfolio view (L03-US05): the tree expands level by level, and the
+ *   worker computes the indicators within seconds: a project under two
+ *   programs counts once at the portfolio; a confidential project still
+ *   counts for those who do not see it.
  *
  * The tests share the member: they run one after the other.
  *
@@ -43,15 +47,32 @@ async function signIn(browser: Browser, email: string, secret: string): Promise<
   return page;
 }
 
-/** Creates a node from the open dialog, then waits for its settings. */
-async function createIn(page: Page, type: string, name: string, key?: string) {
+/** Fills the open dialog and creates the node. */
+async function fillNode(page: Page, type: string, name: string, key?: string) {
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('combobox', { name: 'Type' }).click();
   await page.getByRole('option', { name: type, exact: true }).click();
   await dialog.getByLabel('Name').fill(name);
   if (key) await dialog.getByLabel('Key').fill(key);
   await dialog.getByRole('button', { name: 'Create' }).click();
+}
+
+/** Creates a node from the open dialog, then waits for its settings. */
+async function createIn(page: Page, type: string, name: string, key?: string) {
+  await fillNode(page, type, name, key);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(`${name} · Settings`);
+}
+
+/**
+ * Waits for the indicator `text` on the view of a node: the worker computes
+ * the aggregates a few seconds after a change, and the page reads them
+ * when it loads.
+ */
+async function expectIndicator(page: Page, text: string) {
+  await expect(async () => {
+    await page.reload();
+    await expect(page.locator('.indicators').getByText(text, { exact: true })).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
 }
 
 async function addChild(page: Page, type: string, name: string, key?: string) {
@@ -91,12 +112,17 @@ test('a project under two weighted programs, never under its own sub-project', a
   const platformUrl = page.url();
   await addChild(page, 'Project', permissions, `S${run}`);
   const breadcrumb = page.getByRole('navigation', { name: 'Breadcrumb' });
-  // Back up to the portfolio, for the second program.
+  // Back up to the view of the portfolio, for the second program.
   await breadcrumb.getByRole('link', { name: platform }).click();
   await breadcrumb.getByRole('link', { name: modernization }).click();
   await breadcrumb.getByRole('link', { name: digital }).click();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(`${digital} · Settings`);
-  await addChild(page, 'Program', compliance);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(digital);
+  const digitalUrl = page.url();
+  await page.getByRole('button', { name: 'Add a child' }).click();
+  await fillNode(page, 'Program', compliance);
+  // The view stays, the new program shows in its tree.
+  await expect(page.getByRole('link', { name: compliance })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(digital);
 
   // The project: attached under the second program too.
   await page.goto(platformUrl);
@@ -128,6 +154,29 @@ test('a project under two weighted programs, never under its own sub-project', a
   await expect(refused.getByRole('button')).toHaveCount(0);
   expect(await accessibilityViolations(page), 'attachments tab').toEqual([]);
   await expect(page.getByRole('region', { name: 'Children' })).toContainText(permissions);
+
+  // The view of the portfolio: the project is under both programs and
+  // counts once, with its sub-project.
+  await page.goto(digitalUrl);
+  await expectIndicator(page, '2 distinct projects');
+  await expect(page.getByRole('row')).toHaveCount(3);
+  await page.getByRole('button', { name: `Expand ${modernization}` }).click();
+  await page.getByRole('button', { name: `Expand ${compliance}` }).click();
+  await expect(page.getByRole('link', { name: platform })).toHaveCount(2);
+  // Compliance comes first: under it, the project names its other program, and the other way round.
+  const platformRows = page.getByRole('row').filter({ hasText: platform });
+  await expect(platformRows.first()).toContainText(`Also under: ${modernization}`);
+  await expect(platformRows.last()).toContainText(`Also under: ${compliance}`);
+  // Down to the sub-project, with the keyboard.
+  const expandPlatform = page.getByRole('button', { name: `Expand ${platform}` }).first();
+  await expandPlatform.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('link', { name: permissions })).toBeVisible();
+  await expect(page.getByRole('button', { name: `Collapse ${platform}` })).toHaveAttribute('aria-expanded', 'true');
+  expect(await accessibilityViolations(page), 'portfolio view').toEqual([]);
+  // Folded again, the program hides what is under it.
+  await page.getByRole('button', { name: `Collapse ${modernization}` }).click();
+  await expect(page.getByRole('link', { name: platform })).toHaveCount(1);
   await page.context().close();
 });
 
@@ -171,7 +220,11 @@ test('a role granted on a portfolio opens the project below, until it is revoked
   // The member now sees the portfolio and the project below it, as a reader.
   await viewer.goto('/portfolios');
   await expect(viewer.getByRole('link', { name: portfolio })).toBeVisible();
+  await viewer.getByRole('button', { name: `Expand ${portfolio}` }).click();
   await viewer.getByRole('link', { name: project }).click();
+  await expect(viewer.getByRole('heading', { level: 1 })).toHaveText(project);
+  await expect(viewer.getByRole('button', { name: 'Add a child' })).toHaveCount(0);
+  await viewer.getByRole('link', { name: 'Settings', exact: true }).click();
   await expect(viewer.getByRole('heading', { level: 1 })).toHaveText(`${project} · Settings`);
   await viewer.getByRole('tab', { name: 'Attachments and permissions' }).click();
   await expect(viewer.getByRole('region', { name: 'Parents' })).toBeVisible();
@@ -206,6 +259,7 @@ test('a confidential project closes to those above it, who find it veiled', asyn
   const projectUrl = admin.url();
   const viewer = await signIn(browser, viewerEmail!, viewerSecret!);
   await viewer.goto('/portfolios');
+  await viewer.getByRole('button', { name: `Expand ${portfolio}` }).click();
   await expect(viewer.getByRole('link', { name: project })).toBeVisible();
 
   // The admin makes the project confidential: the inherited role stops there.
@@ -221,15 +275,23 @@ test('a confidential project closes to those above it, who find it veiled', asyn
 
   // The member no longer reads it: it shows veiled under the portfolio.
   await viewer.goto('/portfolios');
-  const row = viewer.getByRole('row').filter({ hasText: portfolio }).filter({ hasText: 'Confidential project' });
-  await expect(row).toContainText('You do not have access.');
+  await viewer.getByRole('button', { name: `Expand ${portfolio}` }).click();
+  const row = viewer.getByRole('row').filter({ hasText: 'Confidential project' });
+  await expect(row).toContainText('You do not have access to this project. Its load is counted anonymously.');
   await expect(row.getByRole('img', { name: 'Locked' })).toBeVisible();
+  await expect(row.getByRole('link')).toHaveCount(0);
   await expect(viewer.getByText(project)).toHaveCount(0);
   expect(await accessibilityViolations(viewer), 'veiled row').toEqual([]);
   await viewer.goto(projectUrl);
   await expect(viewer.getByRole('alert')).toContainText('This item does not exist or is no longer available.');
+  // On the view of the portfolio, it still counts, anonymously.
   await viewer.goto('/portfolios');
   await viewer.getByRole('link', { name: portfolio }).click();
+  await expect(viewer.getByRole('heading', { level: 1 })).toHaveText(portfolio);
+  await expectIndicator(viewer, '1 distinct project');
+  await expect(viewer.getByRole('row').filter({ hasText: 'Confidential project' })).toHaveCount(1);
+  await expect(viewer.getByText(project)).toHaveCount(0);
+  await viewer.getByRole('link', { name: 'Settings', exact: true }).click();
   await viewer.getByRole('tab', { name: 'Attachments and permissions' }).click();
   const children = viewer.getByRole('region', { name: 'Children' });
   await expect(children).toContainText('Confidential project');
@@ -239,8 +301,9 @@ test('a confidential project closes to those above it, who find it veiled', asyn
   await grantReader(admin, project, viewerEmail!);
   await expect(access.getByRole('listitem')).toContainText(['Direct role on this project']);
   await viewer.goto('/portfolios');
+  await viewer.getByRole('button', { name: `Expand ${portfolio}` }).click();
   await viewer.getByRole('link', { name: project }).click();
-  await expect(viewer.getByRole('heading', { level: 1 })).toHaveText(`${project} · Settings`);
+  await expect(viewer.getByRole('heading', { level: 1 })).toHaveText(project);
 
   await admin.context().close();
   await viewer.context().close();

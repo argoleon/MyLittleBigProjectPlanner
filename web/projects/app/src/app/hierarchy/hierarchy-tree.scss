@@ -1,0 +1,96 @@
+:host {
+  display: block;
+}
+
+.table-card {
+  overflow-x: auto;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface);
+}
+
+.table {
+  min-width: 960px;
+  background: transparent;
+}
+
+// Each level is indented by the width of a toggle.
+.name-cell {
+  padding-inline-start: calc(var(--app-space-2) + var(--level, 0) * var(--app-space-8));
+}
+
+.node {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-2);
+  padding: var(--app-space-2) 0;
+}
+
+.toggle,
+.toggle-space {
+  flex: none;
+  width: 40px;
+}
+
+.node-icon {
+  flex: none;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-1);
+  min-width: 0;
+}
+
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--app-space-2);
+}
+
+.name {
+  font: var(--mat-sys-title-small);
+  color: var(--mat-sys-on-surface);
+  text-decoration: none;
+
+  &:hover,
+  &:focus-visible {
+    text-decoration: underline;
+  }
+}
+
+.hint {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+
+  &.failed {
+    color: var(--mat-sys-error);
+  }
+}
+
+.progress {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-2);
+  min-width: 140px;
+}
+
+.percent {
+  flex: none;
+  min-width: 40px;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+  text-align: end;
+}
+
+.numeric {
+  text-align: end;
+  white-space: nowrap;
+}
+
+.late {
+  color: var(--mat-sys-error);
+}

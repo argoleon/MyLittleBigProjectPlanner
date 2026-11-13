@@ -36,22 +36,67 @@ const VEILED = {
   parents: [{ id: PROGRAM.id, type: 'program', name: 'IT Modernization' }],
 };
 
+/** The aggregate of the program: three projects, one of them confidential, some tickets late. */
+const AGGREGATE = {
+  projects: 3,
+  confidentialProjects: 1,
+  plannedMinutes: 142_800,
+  capacityMinutes: 166_000,
+  capacityUsedPercent: 86,
+  openTickets: 168,
+  lateTickets: 11,
+  progressPercent: 46,
+  confidentialOpenTickets: 38,
+};
+
+/** The rows of the hierarchy tree: the program at the top, the project and a veiled one under it. */
+const PROGRAM_ROW = {
+  id: PROGRAM.id,
+  type: 'program',
+  name: PROGRAM.name,
+  key: null,
+  health: 'at_risk',
+  owners: [{ accountId: 'a2', displayName: 'Camille Martin' }],
+  weightPercent: null,
+  otherParents: [],
+  hasChildren: true,
+  aggregate: AGGREGATE,
+};
+
+const PROJECT_ROW = {
+  ...PROGRAM_ROW,
+  id: PROJECT.id,
+  type: 'project',
+  name: PROJECT.name,
+  key: 'PLAT',
+  health: 'on_track',
+  weightPercent: 100,
+  otherParents: [{ id: 'p2', type: 'program', name: 'Compliance' }],
+  hasChildren: false,
+  aggregate: { ...AGGREGATE, projects: 1, confidentialProjects: 0, plannedMinutes: 37_200, lateTickets: 0, confidentialOpenTickets: 0 },
+};
+
+const VEILED_ROW = { veiled: true, id: VEILED.id, type: 'project', weightPercent: 100, plannedMinutes: 36_000 };
+
 /** The hierarchy's API, as a tenant admin sees it, recording the creations. */
-async function mockHierarchy(page: Page) {
+async function mockHierarchy(page: Page, top: object[] = []) {
   const created: unknown[] = [];
-  let nodes: object[] = [];
   await page.route('**/api/v1/auth/session', (route) =>
     route.fulfill({ json: { ...SESSION, account: { ...SESSION.account, tenantRole: 'tenant_admin' } } }),
   );
-  await page.route('**/api/v1/nodes?*', (route) => route.fulfill({ json: { items: nodes, nextCursor: null } }));
+  // One level at a time: the top, or what is under the program.
+  await page.route('**/api/v1/hierarchy*', (route) => {
+    const under = new URL(route.request().url()).searchParams.get('under');
+    return route.fulfill({ json: under === PROGRAM.id ? [PROJECT_ROW, VEILED_ROW] : under ? [] : top });
+  });
   await page.route('**/api/v1/nodes', (route) => {
     const body = route.request().postDataJSON() as { type: string };
     created.push(body);
-    const node = body.type === 'program' ? PROGRAM : PROJECT;
-    nodes = [...nodes, node];
-    return route.fulfill({ status: 201, json: node });
+    return route.fulfill({ status: 201, json: body.type === 'program' ? PROGRAM : PROJECT });
   });
   await page.route(`**/api/v1/nodes/${PROGRAM.id}`, (route) => route.fulfill({ json: PROGRAM }));
+  await page.route(`**/api/v1/nodes/${PROGRAM.id}/aggregate`, (route) => route.fulfill({ json: AGGREGATE }));
+  await page.route(`**/api/v1/nodes/${PROGRAM.id}/my-permissions`, (route) => route.fulfill({ json: [] }));
   await page.route(`**/api/v1/nodes/${PROJECT.id}`, (route) => route.fulfill({ json: PROJECT }));
   return created;
 }
@@ -154,16 +199,28 @@ for (const theme of ['light', 'dark'] as const) {
     test.describe(`accessibility of the hierarchy, ${theme} mode, ${language}`, () => {
       test.use({ theme, language });
 
-      test('the list, the creation dialog and the settings have no axe-core violation', async ({ page }) => {
-        await mockHierarchy(page);
-        await page.route('**/api/v1/nodes?*', (route) =>
-          route.fulfill({ json: { items: [PROGRAM, PROJECT, VEILED], nextCursor: null } }),
-        );
+      test('the list, the creation dialog, the view of a node and its settings have no axe-core violation', async ({ page }) => {
+        await mockHierarchy(page, [PROGRAM_ROW]);
         await page.goto('/portfolios');
+        await expect(page.getByRole('row')).toHaveCount(2);
+        // The program expands to its level with the keyboard.
+        const toggle = page.locator('button.toggle');
+        await toggle.focus();
+        await page.keyboard.press('Enter');
+        await expect(toggle).toHaveAttribute('aria-expanded', 'true');
         await expect(page.getByRole('row')).toHaveCount(4);
         await expect(page.locator('app-veiled-name')).toHaveCount(1);
         await animationsDone(page);
         expect(await accessibilityViolations(page), 'list').toEqual([]);
+
+        // The view of the program: its indicators (late tickets in the alert colors) and its tree.
+        await page.goto(`/nodes/${PROGRAM.id}`);
+        await expect(page.locator('.indicator')).toHaveCount(4);
+        await expect(page.locator('.indicator.late.alert')).toBeVisible();
+        await expect(page.getByRole('row')).toHaveCount(3);
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'view').toEqual([]);
+        await page.goto('/portfolios');
 
         await page.locator('button.create').click();
         await expect(page.getByRole('dialog')).toBeVisible();
@@ -171,7 +228,7 @@ for (const theme of ['light', 'dark'] as const) {
         expect(await accessibilityViolations(page), 'dialog').toEqual([]);
         await page.keyboard.press('Escape');
 
-        await page.goto(`/nodes/${PROJECT.id}`);
+        await page.goto(`/nodes/${PROJECT.id}/general`);
         await expect(page.locator('app-node-general-tab form')).toBeVisible();
         await animationsDone(page);
         expect(await accessibilityViolations(page), 'settings').toEqual([]);

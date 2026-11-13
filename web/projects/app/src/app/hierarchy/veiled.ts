@@ -1,14 +1,12 @@
 import { Component } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { VeiledNode } from 'ui';
-
 /**
  * Whether an item of a list of nodes is a veiled one: a confidential
  * project the user has no access to, listed without name or detail because
  * they see one of its parents.
  */
-export function isVeiled(item: object): item is VeiledNode {
+export function isVeiled<T extends object>(item: T): item is Extract<T, { veiled: boolean }> {
   return 'veiled' in item && item.veiled === true;
 }
 
