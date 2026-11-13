@@ -9,7 +9,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::account::TenantRole;
 use crate::i18n;
-use crate::validation::{FieldError, Violations};
+use crate::validation::FieldError;
 
 /// Longest name of a configuration, in characters, per language.
 pub const CONFIG_NAME_MAX_CHARS: usize = 100;
@@ -23,21 +23,7 @@ pub const fn manages_configurations(role: TenantRole) -> bool {
 /// The name of a configuration: one per language (`fr`, `en`), at least one,
 /// [`CONFIG_NAME_MAX_CHARS`] at most once trimmed.
 pub fn validate_name(translations: &BTreeMap<String, String>) -> Result<(), Vec<FieldError>> {
-    let mut v = Violations::new();
-    let named = translations
-        .iter()
-        .any(|(locale, name)| i18n::is_supported(locale) && !name.trim().is_empty());
-    if !named {
-        v.add("nameTranslations", "required");
-    }
-    for (locale, name) in translations {
-        if !i18n::is_supported(locale) {
-            v.add(format!("nameTranslations.{locale}"), "unsupported_locale");
-        } else if name.trim().chars().count() > CONFIG_NAME_MAX_CHARS {
-            v.add(format!("nameTranslations.{locale}"), "too_long");
-        }
-    }
-    v.into_result()
+    i18n::validate_translations("nameTranslations", translations, CONFIG_NAME_MAX_CHARS)
 }
 
 /// What a configuration holds, edited in its draft.
@@ -109,25 +95,32 @@ impl FromIterator<Item> for DraftChanges {
     }
 }
 
+/// An item the draft removes from the published version, with the
+/// tickets that use it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Removal {
+    pub item: Item,
+    pub tickets: u64,
+}
+
 /// What publishing a draft does to the projects of the configuration.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PublishImpact<P> {
     /// Every project that uses the configuration, archived ones included:
     /// they get the new version too.
     pub projects: Vec<P>,
-    /// Whether tickets must move first (a type or a status they use is gone):
-    /// the status and type mapping wizard (L04-US08).
+    /// Whether tickets must move first (a type or a workflow they use is
+    /// gone): the status and type mapping wizard (L04-US08).
     pub needs_migration: bool,
 }
 
-/// The impact of publishing a draft that removes `removed` items from the
-/// published version, on `projects`. Only a removal calls for a migration,
-/// and only when a project could have tickets on it.
-pub fn publish_impact<P>(projects: Vec<P>, removed: &BTreeSet<Item>) -> PublishImpact<P> {
-    let needs_migration = !projects.is_empty()
-        && removed
-            .iter()
-            .any(|item| matches!(item.kind, ItemKind::IssueType | ItemKind::Workflow));
+/// The impact of publishing a draft that makes `removals` on `projects`.
+/// Only a removed type or workflow that tickets still use calls for a
+/// migration; a removed field leaves its values in the tickets.
+pub fn publish_impact<P>(projects: Vec<P>, removals: &[Removal]) -> PublishImpact<P> {
+    let needs_migration = removals.iter().any(|removal| {
+        removal.tickets > 0 && matches!(removal.item.kind, ItemKind::IssueType | ItemKind::Workflow)
+    });
     PublishImpact {
         projects,
         needs_migration,
@@ -247,19 +240,26 @@ mod tests {
     }
 
     #[test]
-    fn publishing_lists_every_project_and_migrates_only_on_removals() {
+    fn publishing_lists_every_project_and_migrates_only_removals_in_use() {
         let projects = vec!["PLAT", "CYBP"];
-        let none = publish_impact(projects.clone(), &BTreeSet::new());
+        let none = publish_impact(projects.clone(), &[]);
         assert_eq!(none.projects, ["PLAT", "CYBP"]);
         assert!(!none.needs_migration);
 
-        let gone = |kind| BTreeSet::from([Item { kind, id: 7 }]);
-        assert!(publish_impact(projects.clone(), &gone(ItemKind::IssueType)).needs_migration);
-        assert!(publish_impact(projects.clone(), &gone(ItemKind::Workflow)).needs_migration);
-        assert!(!publish_impact(projects.clone(), &gone(ItemKind::Field)).needs_migration);
-        assert!(!publish_impact(projects, &gone(ItemKind::Screen)).needs_migration);
-        // Nobody uses it: nothing to migrate.
-        assert!(!publish_impact(Vec::<&str>::new(), &gone(ItemKind::IssueType)).needs_migration);
+        let gone = |kind, tickets| {
+            [Removal {
+                item: Item { kind, id: 7 },
+                tickets,
+            }]
+        };
+        // Tickets use it: they move first.
+        assert!(publish_impact(projects.clone(), &gone(ItemKind::IssueType, 3)).needs_migration);
+        assert!(publish_impact(projects.clone(), &gone(ItemKind::Workflow, 1)).needs_migration);
+        // No ticket uses it: nothing to move.
+        assert!(!publish_impact(projects.clone(), &gone(ItemKind::IssueType, 0)).needs_migration);
+        // A field leaves its values in the tickets.
+        assert!(!publish_impact(projects.clone(), &gone(ItemKind::Field, 12)).needs_migration);
+        assert!(!publish_impact(projects, &gone(ItemKind::Screen, 4)).needs_migration);
     }
 
     #[test]

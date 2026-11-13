@@ -19,14 +19,14 @@ What a configuration holds lives in **versions** (`project_config_version`), nev
 
 ## Adding a kind of content
 
-A content table (`issue_type`, `field_def`, `workflow`…) follows these rules:
+Issue types (`issue_type`, L04-US02: `infra::issue_types`, `api::issue_types`) are the first kind of content and the model to follow. A content table (`field_def`, `workflow`…) follows these rules:
 
 1. **It belongs to a version**: a `version_id` referencing `project_config_version (tenant_id, id)` with `ON DELETE CASCADE`, plus `tenant_id` and row-level security like every business table.
 2. **Its items keep a stable identifier across versions** (`item_id`), distinct from the row's own `id`: the copy in a new draft gets new rows with the same `item_id`. Tickets reference the stable identifier, so that a publication does not orphan them, and the migration wizard (L04-US08) maps removed items to others.
 3. **`copy_content` copies its rows** from one version to the next, keeping `item_id`.
 4. **Every edit goes to the draft**: the endpoint opens it if needed (`open_draft`), changes the draft's rows only, then calls `record_change(draft, Item { kind, id })`. The draft chip counts each changed item once, however many edits it had.
-5. **Removals tell the publish impact**: `domain::configuration::publish_impact` takes the items the draft removes. Removing an issue type or a workflow status calls for the migration wizard before publishing.
-6. **Defaults**: a new configuration and the tenant's default configuration (`app_seed_default_config`) get the default content of the story (default types, fields, standard workflow).
+5. **Removals tell the publish impact**: `domain::configuration::publish_impact` takes the items the draft removes with the tickets that still use them (`Removal`). Only a removed type or workflow that tickets use calls for the migration wizard (L04-US08); until tickets exist (L05) the count is 0, so nothing blocks a publication.
+6. **Defaults**: a new configuration (`infra::configs::insert`) and the tenant's default configuration (`app_seed_default_config`) get the default content of the story, through a SQL function such as `app_seed_default_issue_types(version)`, kept in step with a list in the domain (`domain::issue_types::DEFAULT_TYPES`) by an integration test. A duplicate copies its source instead.
 
 ## Who does what
 

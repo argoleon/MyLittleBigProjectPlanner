@@ -209,8 +209,24 @@ pub async fn default_id(conn: &mut PgConnection) -> Result<Option<Uuid>, sqlx::E
         .await
 }
 
-/// Creates a configuration named `name`, with an empty published version 1.
+/// Creates a configuration named `name`, with a published version 1 that
+/// holds the default content (L04-US02 onwards: the default types).
 pub async fn insert(
+    conn: &mut PgConnection,
+    id: Uuid,
+    name: &BTreeMap<String, String>,
+    created_by: Option<Uuid>,
+) -> WriteResult<Config> {
+    let config = match insert_empty(conn, id, name, created_by).await? {
+        Ok(config) => config,
+        Err(conflict) => return Ok(Err(conflict)),
+    };
+    crate::issue_types::seed_defaults(conn, config.published.id).await?;
+    found(conn, id).await
+}
+
+/// A configuration named `name`, with an empty published version 1.
+async fn insert_empty(
     conn: &mut PgConnection,
     id: Uuid,
     name: &BTreeMap<String, String>,
@@ -410,7 +426,7 @@ pub async fn duplicate(
     let Some(original) = find(conn, source).await? else {
         return Ok(Err(WriteConflict::NotFound));
     };
-    let copy = match insert(conn, id, name, created_by).await? {
+    let copy = match insert_empty(conn, id, name, created_by).await? {
         Ok(copy) => copy,
         Err(conflict) => return Ok(Err(conflict)),
     };
@@ -470,15 +486,11 @@ pub async fn projects(conn: &mut PgConnection, id: Uuid) -> Result<Vec<ConfigPro
     .await
 }
 
-/// Copies what the version `from` holds into the version `to`. Nothing yet:
-/// each content table of L04-US02 onwards adds its copy here, keeping the
+/// Copies what the version `from` holds into the version `to`: each
+/// content table of L04-US02 onwards adds its copy here, keeping the
 /// identifiers its items have across versions.
-#[expect(
-    clippy::unused_async,
-    reason = "the content tables of L04-US02 onwards copy here"
-)]
-async fn copy_content(_conn: &mut PgConnection, _from: Uuid, _to: Uuid) -> Result<(), sqlx::Error> {
-    Ok(())
+async fn copy_content(conn: &mut PgConnection, from: Uuid, to: Uuid) -> Result<(), sqlx::Error> {
+    crate::issue_types::copy(conn, from, to).await
 }
 
 /// The configuration, its row locked until the end of the transaction, if

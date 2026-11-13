@@ -103,11 +103,16 @@ pub enum ErrorCode {
     ConfigNoDraft,
     ConfigDefault,
     ConfigInUse,
+    IssueTypeKeyTaken,
+    IssueTypeCycle,
+    IssueTypeSubtaskParent,
+    IssueTypeLastType,
+    IssueTypeOrphanSubtask,
 }
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 64] = [
+    pub const ALL: [Self; 69] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -172,6 +177,11 @@ impl ErrorCode {
         Self::ConfigNoDraft,
         Self::ConfigDefault,
         Self::ConfigInUse,
+        Self::IssueTypeKeyTaken,
+        Self::IssueTypeCycle,
+        Self::IssueTypeSubtaskParent,
+        Self::IssueTypeLastType,
+        Self::IssueTypeOrphanSubtask,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -240,6 +250,11 @@ impl ErrorCode {
             Self::ConfigNoDraft => "config.no_draft",
             Self::ConfigDefault => "config.default",
             Self::ConfigInUse => "config.in_use",
+            Self::IssueTypeKeyTaken => "issue_type.key_taken",
+            Self::IssueTypeCycle => "issue_type.cycle",
+            Self::IssueTypeSubtaskParent => "issue_type.subtask_parent",
+            Self::IssueTypeLastType => "issue_type.last_type",
+            Self::IssueTypeOrphanSubtask => "issue_type.orphan_subtask",
         }
     }
 
@@ -301,7 +316,12 @@ impl ErrorCode {
             | Self::ConfigNameTaken
             | Self::ConfigNoDraft
             | Self::ConfigDefault
-            | Self::ConfigInUse => StatusCode::CONFLICT,
+            | Self::ConfigInUse
+            | Self::IssueTypeKeyTaken
+            | Self::IssueTypeCycle
+            | Self::IssueTypeSubtaskParent
+            | Self::IssueTypeLastType
+            | Self::IssueTypeOrphanSubtask => StatusCode::CONFLICT,
             Self::PreconditionFailed => StatusCode::PRECONDITION_FAILED,
             Self::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -386,6 +406,11 @@ impl ErrorCode {
             Self::ConfigNoDraft => "This configuration has no draft: nothing to publish or discard",
             Self::ConfigDefault => "The default configuration stays: new projects get it",
             Self::ConfigInUse => "Projects use this configuration: move them to another one first",
+            Self::IssueTypeKeyTaken => "Another type of this configuration already has this identifier",
+            Self::IssueTypeCycle => "A type cannot be its own ancestor",
+            Self::IssueTypeSubtaskParent => "A sub-task type cannot be the parent of another type",
+            Self::IssueTypeLastType => "A configuration keeps at least one type that is not a sub-task",
+            Self::IssueTypeOrphanSubtask => "A sub-task type would have no parent type left: change it first",
         }
     }
 
@@ -629,7 +654,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 64] = [
+        let expected: [(ErrorCode, u16); 69] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -694,6 +719,11 @@ mod tests {
             (ErrorCode::ConfigNoDraft, 409),
             (ErrorCode::ConfigDefault, 409),
             (ErrorCode::ConfigInUse, 409),
+            (ErrorCode::IssueTypeKeyTaken, 409),
+            (ErrorCode::IssueTypeCycle, 409),
+            (ErrorCode::IssueTypeSubtaskParent, 409),
+            (ErrorCode::IssueTypeLastType, 409),
+            (ErrorCode::IssueTypeOrphanSubtask, 409),
         ];
         for (code, status) in expected {
             assert_eq!(code.status().as_u16(), status, "{}", code.as_str());

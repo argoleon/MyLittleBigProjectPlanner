@@ -13,14 +13,15 @@
 //! A project the member does not see shows veiled in the lists of a
 //! configuration: counted, without name or real id.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use chrono::{DateTime, Utc};
 use domain::configuration::{
-    DeletionRefusal, deletion_refusal, manages_configurations, publish_impact, validate_name,
+    DeletionRefusal, Item, ItemKind, Removal, deletion_refusal, manages_configurations, publish_impact,
+    validate_name,
 };
 use domain::hierarchy::NodeType;
 use domain::validation::FieldError;
@@ -217,13 +218,31 @@ pub struct ProjectList {
 pub struct ImpactView {
     /// Every project that gets the new version, archived ones included.
     projects: Vec<ProjectItemView>,
+    /// The types the draft removes, with the tickets still using them.
+    removed_types: Vec<RemovedTypeView>,
     /// Whether tickets must be mapped to other types or statuses first
-    /// (the migration wizard of L04-US08).
+    /// (the migration wizard of L04-US08): a removed type tickets use.
     needs_migration: bool,
     /// Version of the configuration this impact was computed on: publish
     /// with it as `If-Match`, so that nothing changed in between.
     #[schema(example = 3)]
     version: i64,
+}
+
+/// A type the draft removes.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(as = RemovedIssueType)]
+pub struct RemovedTypeView {
+    /// Its identity across versions.
+    id: Uuid,
+    #[schema(example = "bug")]
+    key: String,
+    #[schema(example = "Bug")]
+    label: Option<String>,
+    /// Tickets of this type, which must move to another one first.
+    #[schema(example = 0)]
+    ticket_count: u64,
 }
 
 /// The configuration of a project.
@@ -771,20 +790,45 @@ pub async fn discard_draft(
         (status = 409, description = "`config.no_draft`", body = ProblemBody, content_type = PROBLEM_JSON),
     )
 )]
-pub async fn impact(mut tx: TenantTx, ApiPath(id): ApiPath<Uuid>) -> Result<ApiJson<ImpactView>, Problem> {
+pub async fn impact(
+    mut tx: TenantTx,
+    accept: AcceptLanguage,
+    ApiPath(id): ApiPath<Uuid>,
+) -> Result<ApiJson<ImpactView>, Problem> {
     require_config_admin(&tx)?;
     let config = find(&mut tx, id).await?;
-    if config.draft.is_none() {
+    let Some(draft) = &config.draft else {
         return Err(Problem::new(ErrorCode::ConfigNoDraft));
-    }
+    };
     let projects = repo::projects(&mut tx, id).await?;
+    let removed = infra::issue_types::removed(&mut tx, config.published.id, draft.id).await?;
     let sight = Sight::of(&mut tx).await?;
+    let language = Language::of(&tx, &accept);
     tx.commit().await?;
-    // Nothing is removed yet: types (L04-US02) and workflows (L04-US04)
-    // will tell what the draft removes.
-    let impact = publish_impact(projects, &BTreeSet::new());
+    // Tickets come with L05: until then, no ticket uses a removed type.
+    let tickets = |_: &infra::issue_types::IssueType| 0;
+    let removals: Vec<Removal> = removed
+        .iter()
+        .map(|t| Removal {
+            item: Item {
+                kind: ItemKind::IssueType,
+                id: t.item_id.as_u128(),
+            },
+            tickets: tickets(t),
+        })
+        .collect();
+    let impact = publish_impact(projects, &removals);
     Ok(ApiJson(ImpactView {
         projects: project_items(impact.projects, &sight),
+        removed_types: removed
+            .iter()
+            .map(|t| RemovedTypeView {
+                id: t.item_id,
+                key: t.key.clone(),
+                label: language.label(&t.label_translations),
+                ticket_count: tickets(t),
+            })
+            .collect(),
         needs_migration: impact.needs_migration,
         version: config.version,
     }))

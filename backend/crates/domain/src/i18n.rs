@@ -73,6 +73,30 @@ pub fn resolve<'a>(
         .or_else(|| translations.values().map(String::as_str).find(|s| !s.is_empty()))
 }
 
+/// A translatable label (`field` of the request): one text per language,
+/// at least one in a supported language, `max_chars` at most once trimmed.
+pub fn validate_translations(
+    field: &str,
+    translations: &BTreeMap<String, String>,
+    max_chars: usize,
+) -> Result<(), Vec<crate::validation::FieldError>> {
+    let mut v = crate::validation::Violations::new();
+    let named = translations
+        .iter()
+        .any(|(locale, text)| is_supported(locale) && !text.trim().is_empty());
+    if !named {
+        v.add(field, "required");
+    }
+    for (locale, text) in translations {
+        if !is_supported(locale) {
+            v.add(format!("{field}.{locale}"), "unsupported_locale");
+        } else if text.trim().chars().count() > max_chars {
+            v.add(format!("{field}.{locale}"), "too_long");
+        }
+    }
+    v.into_result()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

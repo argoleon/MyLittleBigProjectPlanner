@@ -20,6 +20,7 @@ pub mod http_client;
 pub mod id;
 pub mod idempotency;
 pub mod invitations;
+pub mod issue_types;
 pub mod jobs;
 pub mod jwt_crypto;
 pub mod members;

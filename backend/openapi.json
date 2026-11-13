@@ -4918,6 +4918,667 @@
         }
       }
     },
+    "/api/v1/project-configs/{id}/issue-types": {
+      "get": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "List the issue types of a configuration",
+        "description": "Tenant admins and configuration admins. In their order; from the draft if the configuration has one (`stage: draft`), else from its published version.",
+        "operationId": "listIssueTypes",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the configuration",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `label`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Its types",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueTypeList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such configuration in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "Add an issue type to the draft of a configuration",
+        "description": "Tenant admins and configuration admins. It goes last, in the draft, opened if needed; the projects get it once the draft is published.",
+        "operationId": "createIssueType",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the configuration",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique key of this creation, 1 to 255 visible ASCII characters",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `label`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewIssueType"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Added",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the type"
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "URL of the type"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueType"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`: fields, or `parentIds` `not_found` / `required` (a sub-task)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such configuration in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`issue_type.key_taken`, `issue_type.subtask_parent`, or `idempotency_key.in_flight`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`Idempotency-Key` already used for another request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/project-configs/{id}/issue-types/order": {
+      "put": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "Order the issue types in the draft of a configuration",
+        "description": "Tenant admins and configuration admins. Every type once, in the new order; each type that moves counts as a change of the draft.",
+        "operationId": "reorderIssueTypes",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the configuration",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `label`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueTypeOrder"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The types, in their new order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueTypeList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`: `ids` `not_a_permutation`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such configuration in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/project-configs/{id}/issue-types/{typeId}": {
+      "get": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "Read an issue type",
+        "description": "Tenant admins and configuration admins. From the draft if the configuration has one, else from its published version.",
+        "operationId": "getIssueType",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the configuration",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "typeId",
+            "in": "path",
+            "description": "Id of the type",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `label`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The type",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the type"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueType"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such configuration or type",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "Change an issue type in the draft of a configuration",
+        "description": "Tenant admins and configuration admins. In the draft, opened if needed; its `key` stays. A type is never its own ancestor (`issue_type.cycle`).",
+        "operationId": "updateIssueType",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the configuration",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "typeId",
+            "in": "path",
+            "description": "Id of the type",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the type, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `label`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueTypeFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The type",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "New version of the type"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueType"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`: fields, or `parentIds` `not_found` / `required` (a sub-task)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such configuration or type",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`issue_type.cycle` or `issue_type.subtask_parent`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The type changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "Remove an issue type from the draft of a configuration",
+        "description": "Tenant admins and configuration admins. From the draft, opened if needed, and from the parents of the other types. If tickets use it, publishing needs them moved to another type first (`needsMigration` of the publish impact).",
+        "operationId": "deleteIssueType",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the configuration",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "typeId",
+            "in": "path",
+            "description": "Id of the type",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the type, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed"
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such configuration or type",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`issue_type.last_type` or `issue_type.orphan_subtask`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The type changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/project-configs/{id}/projects": {
       "get": {
         "tags": [
@@ -8797,7 +9458,7 @@
       },
       "ErrorCode": {
         "type": "string",
-        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n| `invitation.invalid` | 400 | This invitation link is invalid, expired or already used |\n| `invitation.pending` | 409 | This email already has an open invitation; send it again instead |\n| `invitation.already_member` | 409 | This email already belongs to a member of the tenant |\n| `invitation.closed` | 409 | This invitation was already accepted or revoked |\n| `member.last_admin` | 409 | The tenant needs at least one active tenant admin |\n| `group.name_taken` | 409 | Another group already has this name |\n| `permission.denied` | 403 | You do not have the permission this needs |\n| `role.label_taken` | 409 | Another role already has this label |\n| `role.in_use` | 409 | Grants use this role: remove them first |\n| `account.no_password` | 409 | This account signs in through its organization: it has no password |\n| `session.current` | 409 | This is the session of the request: sign out instead |\n| `account.reauthentication_required` | 403 | Sign in again through your organization, then erase your account within 10 minutes |\n| `account.platform_admin` | 409 | A platform super admin cannot be erased: another one removes the role first |\n| `export.pending` | 409 | The export is not ready yet |\n| `node.key_taken` | 409 | Another project of the organization has this key |\n| `node.cycle` | 409 | This link would make the node its own ancestor |\n| `node.parent_not_allowed` | 409 | This type of node cannot be attached under that parent |\n| `node.grant_exists` | 409 | They already have this role on this node |\n| `node.confidential_lockout` | 409 | You would lose your own access: get a role granted on the project itself first |\n| `node.archived` | 409 | This project is archived: it is read-only until it is restored |\n| `node.active_children` | 409 | This project still has active sub-projects: archive or detach them first |\n| `node.parent_archived` | 409 | This project is under an archived project: restore that one first |\n| `config.name_taken` | 409 | Another project configuration already has this name |\n| `config.no_draft` | 409 | This configuration has no draft: nothing to publish or discard |\n| `config.default` | 409 | The default configuration stays: new projects get it |\n| `config.in_use` | 409 | Projects use this configuration: move them to another one first |\n",
+        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n| `invitation.invalid` | 400 | This invitation link is invalid, expired or already used |\n| `invitation.pending` | 409 | This email already has an open invitation; send it again instead |\n| `invitation.already_member` | 409 | This email already belongs to a member of the tenant |\n| `invitation.closed` | 409 | This invitation was already accepted or revoked |\n| `member.last_admin` | 409 | The tenant needs at least one active tenant admin |\n| `group.name_taken` | 409 | Another group already has this name |\n| `permission.denied` | 403 | You do not have the permission this needs |\n| `role.label_taken` | 409 | Another role already has this label |\n| `role.in_use` | 409 | Grants use this role: remove them first |\n| `account.no_password` | 409 | This account signs in through its organization: it has no password |\n| `session.current` | 409 | This is the session of the request: sign out instead |\n| `account.reauthentication_required` | 403 | Sign in again through your organization, then erase your account within 10 minutes |\n| `account.platform_admin` | 409 | A platform super admin cannot be erased: another one removes the role first |\n| `export.pending` | 409 | The export is not ready yet |\n| `node.key_taken` | 409 | Another project of the organization has this key |\n| `node.cycle` | 409 | This link would make the node its own ancestor |\n| `node.parent_not_allowed` | 409 | This type of node cannot be attached under that parent |\n| `node.grant_exists` | 409 | They already have this role on this node |\n| `node.confidential_lockout` | 409 | You would lose your own access: get a role granted on the project itself first |\n| `node.archived` | 409 | This project is archived: it is read-only until it is restored |\n| `node.active_children` | 409 | This project still has active sub-projects: archive or detach them first |\n| `node.parent_archived` | 409 | This project is under an archived project: restore that one first |\n| `config.name_taken` | 409 | Another project configuration already has this name |\n| `config.no_draft` | 409 | This configuration has no draft: nothing to publish or discard |\n| `config.default` | 409 | The default configuration stays: new projects get it |\n| `config.in_use` | 409 | Projects use this configuration: move them to another one first |\n| `issue_type.key_taken` | 409 | Another type of this configuration already has this identifier |\n| `issue_type.cycle` | 409 | A type cannot be its own ancestor |\n| `issue_type.subtask_parent` | 409 | A sub-task type cannot be the parent of another type |\n| `issue_type.last_type` | 409 | A configuration keeps at least one type that is not a sub-task |\n| `issue_type.orphan_subtask` | 409 | A sub-task type would have no parent type left: change it first |\n",
         "enum": [
           "bad_request",
           "validation_failed",
@@ -8862,7 +9523,12 @@
           "config.name_taken",
           "config.no_draft",
           "config.default",
-          "config.in_use"
+          "config.in_use",
+          "issue_type.key_taken",
+          "issue_type.cycle",
+          "issue_type.subtask_parent",
+          "issue_type.last_type",
+          "issue_type.orphan_subtask"
         ]
       },
       "ExportStatus": {
@@ -9326,6 +9992,191 @@
         },
         "additionalProperties": false
       },
+      "IssueType": {
+        "type": "object",
+        "description": "An issue type.",
+        "required": [
+          "id",
+          "key",
+          "labelTranslations",
+          "icon",
+          "color",
+          "isSubtask",
+          "parentIds",
+          "level",
+          "version"
+        ],
+        "properties": {
+          "color": {
+            "$ref": "#/components/schemas/IssueTypeColor"
+          },
+          "icon": {
+            "type": "string",
+            "description": "A Material Symbols name.",
+            "example": "bug_report"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Its identity, the same in every version of the configuration."
+          },
+          "isSubtask": {
+            "type": "boolean",
+            "description": "A sub-task always has a parent, and is never one."
+          },
+          "key": {
+            "type": "string",
+            "description": "Its stable identifier, set when it is added.",
+            "example": "bug"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "In the language of the request, else the tenant's default, else any.",
+            "example": "Bug"
+          },
+          "labelTranslations": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "example": {
+              "en": "Bug",
+              "fr": "Bug"
+            }
+          },
+          "level": {
+            "type": "integer",
+            "format": "int32",
+            "description": "1 for a type with no parent, else one more than its deepest parent.",
+            "example": 2,
+            "minimum": 0
+          },
+          "parentIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The types a ticket of this type may sit under (`id`s); none: only at\nthe top."
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          }
+        }
+      },
+      "IssueTypeColor": {
+        "type": "string",
+        "description": "The color of a type: one of the type color tokens of the theme.",
+        "enum": [
+          "epic",
+          "story",
+          "task",
+          "bug"
+        ]
+      },
+      "IssueTypeFields": {
+        "type": "object",
+        "description": "What an issue type is made of; its `key` stays.",
+        "required": [
+          "labelTranslations",
+          "icon",
+          "color"
+        ],
+        "properties": {
+          "color": {
+            "$ref": "#/components/schemas/IssueTypeColor"
+          },
+          "icon": {
+            "type": "string",
+            "description": "A Material Symbols name (`bug_report`)."
+          },
+          "isSubtask": {
+            "type": "boolean"
+          },
+          "labelTranslations": {
+            "type": "object",
+            "description": "One label per language (`fr`, `en`), at least one; 60 characters at\nmost.",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "parentIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The types it may sit under; required for a sub-task."
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "color": "bug",
+          "icon": "bug_report",
+          "isSubtask": false,
+          "labelTranslations": {
+            "en": "Bug",
+            "fr": "Anomalie"
+          },
+          "parentIds": []
+        }
+      },
+      "IssueTypeList": {
+        "type": "object",
+        "description": "The types of a configuration, in their order.",
+        "required": [
+          "stage",
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueType"
+            }
+          },
+          "stage": {
+            "$ref": "#/components/schemas/IssueTypeStage"
+          }
+        }
+      },
+      "IssueTypeOrder": {
+        "type": "object",
+        "description": "The order of the types.",
+        "required": [
+          "ids"
+        ],
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Every type of the configuration once, in the new order."
+          }
+        },
+        "additionalProperties": false
+      },
+      "IssueTypeStage": {
+        "type": "string",
+        "description": "Where the types were read.",
+        "enum": [
+          "draft",
+          "published"
+        ]
+      },
       "Me": {
         "type": "object",
         "description": "The signed-in account, as the current tenant sees it.",
@@ -9655,6 +10506,64 @@
           "accountType": "external",
           "email": "p.durand@client.example",
           "tenantRole": "member"
+        }
+      },
+      "NewIssueType": {
+        "type": "object",
+        "description": "A new issue type.",
+        "required": [
+          "key",
+          "labelTranslations",
+          "icon",
+          "color"
+        ],
+        "properties": {
+          "color": {
+            "$ref": "#/components/schemas/IssueTypeColor"
+          },
+          "icon": {
+            "type": "string",
+            "description": "A Material Symbols name (`bug_report`)."
+          },
+          "isSubtask": {
+            "type": "boolean"
+          },
+          "key": {
+            "type": "string",
+            "description": "A lowercase letter, then up to 39 lowercase letters, digits or\nunderscores; unique in the configuration, never changed."
+          },
+          "labelTranslations": {
+            "type": "object",
+            "description": "One label per language (`fr`, `en`), at least one; 60 characters at\nmost.",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "parentIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The types it may sit under; required for a sub-task."
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "color": "bug",
+          "icon": "bug_report",
+          "isSubtask": false,
+          "key": "bug",
+          "labelTranslations": {
+            "en": "Bug",
+            "fr": "Bug"
+          },
+          "parentIds": [
+            "01933b2e-7c4a-7b9e-8f3d-2a6c5e1f0b9a"
+          ]
         }
       },
       "NewNode": {
@@ -11019,13 +11928,14 @@
         "description": "What publishing the draft does.",
         "required": [
           "projects",
+          "removedTypes",
           "needsMigration",
           "version"
         ],
         "properties": {
           "needsMigration": {
             "type": "boolean",
-            "description": "Whether tickets must be mapped to other types or statuses first\n(the migration wizard of L04-US08)."
+            "description": "Whether tickets must be mapped to other types or statuses first\n(the migration wizard of L04-US08): a removed type tickets use."
           },
           "projects": {
             "type": "array",
@@ -11033,6 +11943,13 @@
               "$ref": "#/components/schemas/ConfigProjectItem"
             },
             "description": "Every project that gets the new version, archived ones included."
+          },
+          "removedTypes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RemovedIssueType"
+            },
+            "description": "The types the draft removes, with the tickets still using them."
           },
           "version": {
             "type": "integer",
@@ -11192,6 +12109,40 @@
               "null"
             ],
             "description": "Cursor of the next page, `null` on the last page."
+          }
+        }
+      },
+      "RemovedIssueType": {
+        "type": "object",
+        "description": "A type the draft removes.",
+        "required": [
+          "id",
+          "key",
+          "ticketCount"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Its identity across versions."
+          },
+          "key": {
+            "type": "string",
+            "example": "bug"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Bug"
+          },
+          "ticketCount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tickets of this type, which must move to another one first.",
+            "example": 0,
+            "minimum": 0
           }
         }
       },

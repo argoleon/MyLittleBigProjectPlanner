@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE issue_type t SET position = o.position - 1, version = t.version + 1\n        FROM unnest($2::uuid[]) WITH ORDINALITY AS o (item_id, position)\n        WHERE t.version_id = $1 AND t.item_id = o.item_id AND t.position <> o.position - 1\n        RETURNING t.item_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "item_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "issue_type",
+            "name": "item_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f95f4af071a25a9a16a4303b2f0a9619f6d38dfbab478369e56faa0ac405d395"
+}

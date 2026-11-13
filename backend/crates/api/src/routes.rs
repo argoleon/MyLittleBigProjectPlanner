@@ -25,6 +25,7 @@ use crate::grants;
 use crate::groups;
 use crate::hierarchy;
 use crate::invitations;
+use crate::issue_types;
 use crate::me;
 use crate::members;
 use crate::mfa;
@@ -130,6 +131,13 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(configs::impact))
         .routes(routes!(configs::publish))
         .routes(routes!(configs::node_config, configs::set_node_config))
+        .routes(routes!(issue_types::list, issue_types::create))
+        .routes(routes!(issue_types::reorder))
+        .routes(routes!(
+            issue_types::read,
+            issue_types::update,
+            issue_types::delete
+        ))
         .routes(routes!(mfa::status))
         .routes(routes!(mfa::setup))
         .routes(routes!(mfa::confirm))
