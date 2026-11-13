@@ -137,6 +137,7 @@ async fn types_are_added_changed_ordered_and_removed_in_a_version() {
     let types = issue_types::list(&mut tx, draft).await.unwrap();
     let epic = types[0].item_id;
     let story = types[1].item_id;
+    let standard = types[0].workflow_id.unwrap();
 
     // Added last.
     let incident = new_id();
@@ -147,6 +148,7 @@ async fn types_are_added_changed_ordered_and_removed_in_a_version() {
         color: "bug",
         is_subtask: false,
         parent_ids: &[epic],
+        workflow_id: standard,
     };
     let added = issue_types::insert(&mut tx, draft, incident, "incident", &fields)
         .await
@@ -154,8 +156,14 @@ async fn types_are_added_changed_ordered_and_removed_in_a_version() {
         .unwrap();
     assert_eq!((added.position, added.version), (5, 1));
     let (_, other) = config(&mut tx, "Support", "Support").await;
+    let elsewhere = TypeFields {
+        workflow_id: issue_types::list(&mut tx, other).await.unwrap()[0]
+            .workflow_id
+            .unwrap(),
+        ..fields.clone()
+    };
     assert_eq!(
-        issue_types::insert(&mut tx, other, new_id(), "incident", &fields)
+        issue_types::insert(&mut tx, other, new_id(), "incident", &elsewhere)
             .await
             .unwrap()
             .map(|t| t.key),
@@ -249,7 +257,8 @@ async fn types_stay_in_their_tenant() {
     let db = TestDb::new().await;
     let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
     let (_, published) = config(&mut tx, "Développement", "Software").await;
-    let bug = issue_types::list(&mut tx, published).await.unwrap()[3].item_id;
+    let types = issue_types::list(&mut tx, published).await.unwrap();
+    let (bug, standard) = (types[3].item_id, types[3].workflow_id.unwrap());
     tx.commit().await.unwrap();
 
     let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_b.id).await.unwrap();
@@ -262,6 +271,7 @@ async fn types_stay_in_their_tenant() {
         color: "bug",
         is_subtask: false,
         parent_ids: &[],
+        workflow_id: standard,
     };
     assert_eq!(
         issue_types::update(&mut tx, published, bug, None, &fields)

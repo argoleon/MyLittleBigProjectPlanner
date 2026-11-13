@@ -220,6 +220,11 @@ pub struct ImpactView {
     projects: Vec<ProjectItemView>,
     /// The types the draft removes, with the tickets still using them.
     removed_types: Vec<RemovedTypeView>,
+    /// The statuses the draft removes, with the tickets still in them.
+    removed_statuses: Vec<RemovedStatusView>,
+    /// What keeps the workflows of the draft from being published; while
+    /// any, publishing answers `workflow.invalid`.
+    workflow_problems: Vec<WorkflowProblemView>,
     /// Whether tickets must be mapped to other types or statuses first
     /// (the migration wizard of L04-US08): a removed type tickets use.
     needs_migration: bool,
@@ -243,6 +248,38 @@ pub struct RemovedTypeView {
     /// Tickets of this type, which must move to another one first.
     #[schema(example = 0)]
     ticket_count: u64,
+}
+
+/// A status the draft removes.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(as = RemovedWorkflowStatus)]
+pub struct RemovedStatusView {
+    id: Uuid,
+    #[schema(example = "in_review")]
+    key: String,
+    #[schema(example = "In review")]
+    label: Option<String>,
+    /// The workflow it belonged to.
+    #[schema(example = "Standard workflow")]
+    workflow: Option<String>,
+    /// Tickets in this status, which must move to another one first.
+    #[schema(example = 0)]
+    ticket_count: u64,
+}
+
+/// What keeps a workflow of the draft from being published.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(as = PublishWorkflowProblem)]
+pub struct WorkflowProblemView {
+    /// Where: `workflows.standard`, or a status of it
+    /// (`workflows.standard.statuses.in_review`).
+    #[schema(example = "workflows.standard.statuses.in_review")]
+    field: String,
+    /// `no_status`, `no_initial`, `unreachable` or `duplicate_transition`.
+    #[schema(example = "unreachable")]
+    code: String,
 }
 
 /// The configuration of a project.
@@ -802,11 +839,15 @@ pub async fn impact(
     };
     let projects = repo::projects(&mut tx, id).await?;
     let removed = infra::issue_types::removed(&mut tx, config.published.id, draft.id).await?;
+    let removed_statuses = infra::workflows::removed_statuses(&mut tx, config.published.id, draft.id).await?;
+    let workflow_problems =
+        crate::workflows::publish_errors(&infra::workflows::load(&mut tx, draft.id).await?);
     let sight = Sight::of(&mut tx).await?;
     let language = Language::of(&tx, &accept);
     tx.commit().await?;
     // Tickets come with L05: until then, no ticket uses a removed type.
     let tickets = |_: &infra::issue_types::IssueType| 0;
+    let in_status = |_: &infra::workflows::Status| 0;
     let removals: Vec<Removal> = removed
         .iter()
         .map(|t| Removal {
@@ -816,6 +857,13 @@ pub async fn impact(
             },
             tickets: tickets(t),
         })
+        .chain(removed_statuses.iter().map(|(s, _)| Removal {
+            item: Item {
+                kind: ItemKind::Workflow,
+                id: s.item_id.as_u128(),
+            },
+            tickets: in_status(s),
+        }))
         .collect();
     let impact = publish_impact(projects, &removals);
     Ok(ApiJson(ImpactView {
@@ -827,6 +875,23 @@ pub async fn impact(
                 key: t.key.clone(),
                 label: language.label(&t.label_translations),
                 ticket_count: tickets(t),
+            })
+            .collect(),
+        removed_statuses: removed_statuses
+            .iter()
+            .map(|(s, workflow)| RemovedStatusView {
+                id: s.item_id,
+                key: s.key.clone(),
+                label: language.label(&s.label_translations),
+                workflow: language.label(workflow),
+                ticket_count: in_status(s),
+            })
+            .collect(),
+        workflow_problems: workflow_problems
+            .into_iter()
+            .map(|e| WorkflowProblemView {
+                field: e.field,
+                code: e.code.to_owned(),
             })
             .collect(),
         needs_migration: impact.needs_migration,
@@ -857,7 +922,7 @@ pub async fn impact(
         (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 403, description = "`forbidden`, or `csrf.invalid`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 404, description = "No such configuration in this tenant", body = ProblemBody, content_type = PROBLEM_JSON),
-        (status = 409, description = "`config.no_draft`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 409, description = "`config.no_draft`, or `workflow.invalid`: each problem of the workflows of the draft in `errors`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 412, description = "The configuration changed since this ETag", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 428, description = "`If-Match` is missing", body = ProblemBody, content_type = PROBLEM_JSON),
     )
@@ -870,6 +935,12 @@ pub async fn publish(
 ) -> Result<Response, Problem> {
     require_config_admin(&tx)?;
     let if_match = require_if_match(&headers)?;
+    if let Some(draft) = repo::find(&mut tx, id).await?.and_then(|c| c.draft) {
+        let errors = crate::workflows::publish_errors(&infra::workflows::load(&mut tx, draft.id).await?);
+        if !errors.is_empty() {
+            return Err(Problem::new(ErrorCode::WorkflowInvalid).with_errors(errors));
+        }
+    }
     let config = repo::publish(&mut tx, id, if_match.versions())
         .await?
         .map_err(conflict_problem)?;

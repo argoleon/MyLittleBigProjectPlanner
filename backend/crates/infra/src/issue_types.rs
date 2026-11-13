@@ -23,6 +23,8 @@ pub struct IssueType {
     pub is_subtask: bool,
     /// Its allowed parents, by `item_id`.
     pub parent_ids: Vec<Uuid>,
+    /// The workflow its tickets follow (L04-US04), by `item_id`.
+    pub workflow_id: Option<Uuid>,
     pub position: i32,
     pub version: i64,
 }
@@ -46,6 +48,7 @@ struct Row {
     color: String,
     is_subtask: bool,
     parent_ids: Vec<Uuid>,
+    workflow_id: Option<Uuid>,
     position: i32,
     version: i64,
 }
@@ -60,6 +63,7 @@ impl From<Row> for IssueType {
             color: row.color,
             is_subtask: row.is_subtask,
             parent_ids: row.parent_ids,
+            workflow_id: row.workflow_id,
             position: row.position,
             version: row.version,
         }
@@ -74,6 +78,8 @@ pub struct TypeFields<'a> {
     pub color: &'a str,
     pub is_subtask: bool,
     pub parent_ids: &'a [Uuid],
+    /// The workflow its tickets follow, by `item_id`.
+    pub workflow_id: Uuid,
 }
 
 /// Why a write did not happen.
@@ -102,7 +108,7 @@ pub async fn list(conn: &mut PgConnection, version: Uuid) -> Result<Vec<IssueTyp
         Row,
         r#"
         SELECT item_id, key, label AS "label: Json<BTreeMap<String, String>>", icon, color, is_subtask,
-               parent_ids, position, version
+               parent_ids, workflow_id, position, version
         FROM issue_type WHERE version_id = $1
         ORDER BY position, key
         "#,
@@ -123,7 +129,7 @@ pub async fn find(
         Row,
         r#"
         SELECT item_id, key, label AS "label: Json<BTreeMap<String, String>>", icon, color, is_subtask,
-               parent_ids, position, version
+               parent_ids, workflow_id, position, version
         FROM issue_type WHERE version_id = $1 AND item_id = $2
         "#,
         version,
@@ -144,9 +150,10 @@ pub async fn insert(
 ) -> WriteResult<IssueType> {
     let inserted = sqlx::query!(
         r#"
-        INSERT INTO issue_type (id, tenant_id, version_id, item_id, key, label, icon, color, is_subtask, position, parent_ids)
+        INSERT INTO issue_type
+            (id, tenant_id, version_id, item_id, key, label, icon, color, is_subtask, position, parent_ids, workflow_id)
         SELECT $1, app_current_tenant(), $2, $3, $4, $5, $6, $7, $8,
-               coalesce((SELECT max(position) + 1 FROM issue_type WHERE version_id = $2), 0), $9
+               coalesce((SELECT max(position) + 1 FROM issue_type WHERE version_id = $2), 0), $9, $10
         "#,
         crate::id::new_id(),
         version,
@@ -156,7 +163,8 @@ pub async fn insert(
         fields.icon,
         fields.color,
         fields.is_subtask,
-        fields.parent_ids
+        fields.parent_ids,
+        fields.workflow_id
     )
     .execute(&mut *conn)
     .await;
@@ -181,7 +189,7 @@ pub async fn update(
     let updated = sqlx::query_scalar!(
         r#"
         UPDATE issue_type
-        SET label = $4, icon = $5, color = $6, is_subtask = $7, parent_ids = $8, version = version + 1
+        SET label = $4, icon = $5, color = $6, is_subtask = $7, parent_ids = $8, workflow_id = $9, version = version + 1
         WHERE version_id = $1 AND item_id = $2 AND ($3::bigint[] IS NULL OR version = ANY($3))
         RETURNING item_id
         "#,
@@ -192,7 +200,8 @@ pub async fn update(
         fields.icon,
         fields.color,
         fields.is_subtask,
-        fields.parent_ids
+        fields.parent_ids,
+        fields.workflow_id
     )
     .fetch_optional(&mut *conn)
     .await?;
@@ -260,8 +269,9 @@ pub async fn reorder(
 pub async fn copy(conn: &mut PgConnection, from: Uuid, to: Uuid) -> Result<(), sqlx::Error> {
     sqlx::query!(
         r#"
-        INSERT INTO issue_type (id, tenant_id, version_id, item_id, key, label, icon, color, is_subtask, position, parent_ids)
-        SELECT uuidv7(), tenant_id, $2, item_id, key, label, icon, color, is_subtask, position, parent_ids
+        INSERT INTO issue_type
+            (id, tenant_id, version_id, item_id, key, label, icon, color, is_subtask, position, parent_ids, workflow_id)
+        SELECT uuidv7(), tenant_id, $2, item_id, key, label, icon, color, is_subtask, position, parent_ids, workflow_id
         FROM issue_type WHERE version_id = $1
         "#,
         from,
@@ -290,7 +300,7 @@ pub async fn removed(
         Row,
         r#"
         SELECT item_id, key, label AS "label: Json<BTreeMap<String, String>>", icon, color, is_subtask,
-               parent_ids, position, version
+               parent_ids, workflow_id, position, version
         FROM issue_type p
         WHERE p.version_id = $1
           AND NOT EXISTS (SELECT 1 FROM issue_type d WHERE d.version_id = $2 AND d.item_id = p.item_id)

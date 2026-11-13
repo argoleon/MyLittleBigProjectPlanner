@@ -37,6 +37,7 @@ use crate::reference_items;
 use crate::roles;
 use crate::sso;
 use crate::tenant::{AppState, PublicTenantTx};
+use crate::workflows;
 
 /// OpenAPI tag of the technical endpoints.
 const SYSTEM_TAG: &str = "system";
@@ -137,6 +138,15 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
             issue_types::read,
             issue_types::update,
             issue_types::delete
+        ))
+        .routes(routes!(workflows::list, workflows::create))
+        .routes(routes!(workflows::update, workflows::delete))
+        .routes(routes!(workflows::create_status))
+        .routes(routes!(workflows::update_status, workflows::delete_status))
+        .routes(routes!(workflows::create_transition))
+        .routes(routes!(
+            workflows::update_transition,
+            workflows::delete_transition
         ))
         .routes(routes!(mfa::status))
         .routes(routes!(mfa::setup))

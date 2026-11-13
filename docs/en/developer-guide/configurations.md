@@ -28,6 +28,15 @@ Issue types (`issue_type`, L04-US02: `infra::issue_types`, `api::issue_types`) a
 5. **Removals tell the publish impact**: `domain::configuration::publish_impact` takes the items the draft removes with the tickets that still use them (`Removal`). Only a removed type or workflow that tickets use calls for the migration wizard (L04-US08); until tickets exist (L05) the count is 0, so nothing blocks a publication.
 6. **Defaults**: a new configuration (`infra::configs::insert`) and the tenant's default configuration (`app_seed_default_config`) get the default content of the story, through a SQL function such as `app_seed_default_issue_types(version)`, kept in step with a list in the domain (`domain::issue_types::DEFAULT_TYPES`) by an integration test. A duplicate copies its source instead.
 
+## Workflows
+
+Workflows (L04-US04: `infra::workflows`, `api::workflows`) hold statuses and transitions, all with stable identities; each issue type follows one (`issue_type.workflow_id`). Rules worth knowing:
+
+- **Copies go workflows first, then types**: the types refer to the workflows of their version (`copy_content`), and the seed creates the standard workflow before the default types.
+- **A draft may be incomplete**: a new status before its transitions, no initial status for a moment. `domain::workflows::problems` lists what is missing (no status, no initial status, a status nothing leads to, a repeated transition); `GET …/workflows` returns it with each workflow, the publish impact lists it as `workflowProblems`, and publishing answers 409 `workflow.invalid` with each problem as a field error (`workflows.standard.statuses.in_review`).
+- **A removed status counts like a removed type**: the publish impact lists it with its tickets, and only statuses in use call for the migration wizard.
+- Conditions, validators and post-functions of transitions come with L04-US05, transition screens with US06.
+
 ## Who does what
 
 - Tenant admins and configuration admins (`domain::configuration::manages_configurations`) manage configurations; the others get 403.

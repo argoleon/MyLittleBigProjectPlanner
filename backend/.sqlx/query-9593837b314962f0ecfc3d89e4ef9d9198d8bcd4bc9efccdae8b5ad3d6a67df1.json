@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO issue_type\n            (id, tenant_id, version_id, item_id, key, label, icon, color, is_subtask, position, parent_ids, workflow_id)\n        SELECT uuidv7(), tenant_id, $2, item_id, key, label, icon, color, is_subtask, position, parent_ids, workflow_id\n        FROM issue_type WHERE version_id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9593837b314962f0ecfc3d89e4ef9d9198d8bcd4bc9efccdae8b5ad3d6a67df1"
+}
