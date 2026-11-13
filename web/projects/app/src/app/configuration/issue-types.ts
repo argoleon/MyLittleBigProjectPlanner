@@ -67,6 +67,7 @@ export interface TypeDraft {
   readonly color: IssueTypeColor;
   readonly isSubtask: boolean;
   readonly parentIds: readonly string[];
+  readonly workflowId: string | null;
 }
 
 /** The body of the API: a sub-task keeps its parents, others may have none. */
@@ -77,5 +78,6 @@ export function typeFields(draft: TypeDraft) {
     color: draft.color,
     isSubtask: draft.isSubtask,
     parentIds: [...draft.parentIds],
+    workflowId: draft.workflowId,
   };
 }

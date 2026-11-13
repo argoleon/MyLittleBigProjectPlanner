@@ -1,0 +1,150 @@
+@use '../admin/admin-shared';
+
+// The workflows on the left, the one chosen on the right (mockup 11).
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--app-space-4);
+  align-items: start;
+
+  @media (width >= 960px) {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-1);
+}
+
+.list-title {
+  margin: 0 0 var(--app-space-2);
+  font: var(--mat-sys-label-large);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--app-space-2) var(--app-space-4);
+  border: none;
+  border-radius: var(--mat-sys-corner-full);
+  background: transparent;
+  color: var(--mat-sys-on-surface);
+  text-align: start;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--mat-sys-surface-container-high);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+
+  &.current {
+    background: var(--mat-sys-secondary-container);
+    color: var(--mat-sys-on-secondary-container);
+  }
+}
+
+.item-types {
+  font: var(--mat-sys-title-small);
+}
+
+.item-name,
+.item-problems {
+  font: var(--mat-sys-body-small);
+}
+
+.item-problems {
+  color: var(--mat-sys-error);
+}
+
+.add-workflow {
+  align-self: flex-start;
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-4);
+  min-width: 0;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-3);
+  padding: var(--app-space-4) var(--app-space-5);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface);
+}
+
+.card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--app-space-2);
+}
+
+.card-title {
+  flex: 1 1 200px;
+  margin: 0;
+  font: var(--mat-sys-title-medium);
+}
+
+.tag {
+  padding: 2px var(--app-space-2);
+  border-radius: var(--mat-sys-corner-small);
+  background: var(--mat-sys-surface-container-high);
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-medium);
+}
+
+.problems {
+  padding: var(--app-space-3) var(--app-space-4);
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+  font: var(--mat-sys-body-medium);
+
+  ul {
+    margin: var(--app-space-1) 0 0;
+    padding-inline-start: var(--app-space-5);
+  }
+}
+
+.problems-title {
+  margin: 0;
+  font: var(--mat-sys-title-small);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.table {
+  min-width: 560px;
+  background: transparent;
+}
+
+.initial {
+  margin-inline-start: var(--app-space-2);
+  font: var(--mat-sys-label-small);
+  color: var(--mat-sys-primary);
+}
+
+.move {
+  font: var(--mat-sys-body-medium);
+}
+
+.actions {
+  white-space: nowrap;
+  text-align: end;
+}

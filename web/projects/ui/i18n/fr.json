@@ -466,6 +466,12 @@
       "subtask_parent": "Un type sous-tâche ne peut pas être le parent d’un autre type.",
       "last_type": "Une configuration garde au moins un type qui n’est pas une sous-tâche.",
       "orphan_subtask": "Un type sous-tâche n’aurait plus de type parent : modifiez-le d’abord."
+    },
+    "workflow": {
+      "key_taken": "Un autre workflow de cette configuration, ou statut de ce workflow, a déjà cet identifiant.",
+      "in_use": "Des types de ticket suivent ce workflow : passez-les d’abord sur un autre.",
+      "last": "Une configuration garde au moins un workflow.",
+      "invalid": "Les workflows du brouillon ne peuvent pas être publiés en l’état : corrigez ce que liste l’onglet Workflows."
     }
   },
   "dialog": {
@@ -877,9 +883,7 @@
         "hint": "Les champs système et personnalisés, avec leurs règles par type et par étape, seront définis ici."
       },
       "workflows": {
-        "tab": "Workflows",
-        "title": "Les workflows arrivent bientôt",
-        "hint": "Les statuts et transitions de chaque type de ticket seront définis ici."
+        "tab": "Workflows"
       },
       "screens": {
         "tab": "Écrans",
@@ -923,6 +927,14 @@
       "tickets": {
         "one": "{{count}} ticket",
         "other": "{{count}} tickets"
+      },
+      "removedStatuses": "Statuts retirés",
+      "workflowProblems": "Workflows du brouillon à corriger d’abord :",
+      "problemCodes": {
+        "no_status": "aucun statut",
+        "no_initial": "pas de statut initial",
+        "unreachable": "rien ne mène à ce statut",
+        "duplicate_transition": "une transition répétée"
       }
     },
     "node": {
@@ -982,6 +994,84 @@
         "title": "Retirer « {{name}} » ?",
         "message": "Il quitte le brouillon et les parents autorisés des autres types. Les tickets qui l’utilisent devront passer à un autre type avant la publication.",
         "confirm": "Retirer"
+      },
+      "workflow": "Workflow"
+    },
+    "workflows": {
+      "byType": "Workflow par type de ticket",
+      "noType": "Aucun type ne le suit",
+      "toFix": "À corriger avant publication",
+      "add": "Nouveau workflow",
+      "readOnlyGraph": "Vue graphique en lecture seule",
+      "renameOf": "Renommer {{name}}",
+      "graph": "Graphe de {{name}} ; les tableaux des statuts et des transitions ci-dessous le décrivent.",
+      "problemsTitle": "Ce workflow ne peut pas encore être publié :",
+      "problems": {
+        "no_status": "il n’a aucun statut.",
+        "no_initial": "aucun de ses statuts n’est le statut initial.",
+        "unreachable": "rien ne mène à « {{status}} » depuis le statut initial.",
+        "duplicate_transition": "« {{transition}} » répète une autre transition."
+      },
+      "statuses": "Statuts",
+      "statusesCaption": "Statuts de {{name}}",
+      "transitions": "Transitions",
+      "transitionsCaption": "Transitions de {{name}}",
+      "columns": {
+        "label": "Libellé (FR / EN)",
+        "move": "De → vers"
+      },
+      "to": "vers",
+      "saved": "Workflow « {{name}} » enregistré dans le brouillon.",
+      "newTitle": "Nouveau workflow",
+      "renameTitle": "Renommer le workflow",
+      "label": "Nom",
+      "copyOf": "Partir de",
+      "empty": "Un workflow vide",
+      "categories": {
+        "todo": "À faire",
+        "in_progress": "En cours",
+        "done": "Terminé"
+      },
+      "remove": {
+        "of": "Retirer {{name}}",
+        "title": "Retirer « {{name}} » ?",
+        "message": "Ses statuts et transitions partent avec lui. Aucun type de ticket ne doit le suivre.",
+        "confirm": "Retirer",
+        "done": "Workflow « {{name}} » retiré du brouillon."
+      },
+      "status": {
+        "add": "Ajouter un statut",
+        "newTitle": "Nouveau statut",
+        "editTitle": "Modifier le statut",
+        "category": "Catégorie",
+        "portalLabel": "Libellé sur le portail",
+        "initial": "Statut initial : les nouveaux tickets commencent ici",
+        "isInitial": "Initial",
+        "saved": "Statut enregistré dans « {{name}} ».",
+        "remove": {
+          "of": "Retirer {{name}}",
+          "title": "Retirer le statut « {{name}} » ?",
+          "message": "Ses transitions partent avec lui. Les tickets dans ce statut devront passer dans un autre avant la publication.",
+          "confirm": "Retirer",
+          "done": "Statut « {{name}} » retiré du brouillon."
+        }
+      },
+      "transition": {
+        "add": "Ajouter une transition",
+        "newTitle": "Nouvelle transition",
+        "editTitle": "Modifier la transition",
+        "name": "Transition",
+        "from": "De",
+        "to": "Vers",
+        "any": "Tous les statuts",
+        "saved": "Transition enregistrée dans « {{name}} ».",
+        "remove": {
+          "of": "Retirer {{name}}",
+          "title": "Retirer la transition « {{name}} » ?",
+          "message": "Les tickets ne pourront plus la prendre.",
+          "confirm": "Retirer",
+          "done": "Transition « {{name}} » retirée du brouillon."
+        }
       }
     }
   }

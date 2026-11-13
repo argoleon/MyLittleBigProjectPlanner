@@ -77,6 +77,18 @@
       }
     </mat-form-field>
 
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'config.types.workflow' | transloco }}</mat-label>
+      <mat-select formControlName="workflowId">
+        @for (workflow of workflows(); track workflow.id) {
+          <mat-option [value]="workflow.id">{{ workflow.labelTranslations | translated }}</mat-option>
+        }
+      </mat-select>
+      @if (form.controls.workflowId.getError('api'); as key) {
+        <mat-error>{{ key | transloco }}</mat-error>
+      }
+    </mat-form-field>
+
     <div class="actions">
       @if (type(); as type) {
         <button matButton type="button" class="remove" (click)="remove(type)">

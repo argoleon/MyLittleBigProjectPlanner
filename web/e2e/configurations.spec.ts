@@ -74,9 +74,47 @@ const TYPE = (id: string, key: string, en: string, color: string, icon: string, 
   color,
   isSubtask,
   parentIds,
+  workflowId: 'w1',
   level,
   version: 1,
 });
+
+const STATUS = (id: string, key: string, fr: string, en: string, category: string, isInitial = false) => ({
+  id,
+  key,
+  label: en,
+  labelTranslations: { fr, en },
+  portalLabel: null,
+  portalLabelTranslations: {},
+  category,
+  isInitial,
+  version: 1,
+});
+
+/** The standard workflow of mockup 11, followed by every type. */
+const STANDARD = {
+  id: 'w1',
+  key: 'standard',
+  label: 'Standard workflow',
+  labelTranslations: { fr: 'Workflow standard', en: 'Standard workflow' },
+  issueTypeIds: ['t1', 't2', 't3', 't4', 't5'],
+  statuses: [
+    STATUS('s1', 'todo', 'À faire', 'To do', 'todo', true),
+    STATUS('s2', 'in_progress', 'En cours', 'In progress', 'in_progress'),
+    STATUS('s3', 'in_review', 'En revue', 'In review', 'in_progress'),
+    STATUS('s4', 'done', 'Terminé', 'Done', 'done'),
+    STATUS('s5', 'cancelled', 'Annulé', 'Cancelled', 'done'),
+  ],
+  transitions: [
+    { id: 'x1', name: 'Start', nameTranslations: { fr: 'Démarrer', en: 'Start' }, fromId: 's1', toId: 's2', version: 1 },
+    { id: 'x2', name: 'Send to review', nameTranslations: { fr: 'Passer en revue', en: 'Send to review' }, fromId: 's2', toId: 's3', version: 1 },
+    { id: 'x3', name: 'Reject', nameTranslations: { fr: 'Refuser', en: 'Reject' }, fromId: 's3', toId: 's2', version: 1 },
+    { id: 'x4', name: 'Validate', nameTranslations: { fr: 'Valider', en: 'Validate' }, fromId: 's3', toId: 's4', version: 1 },
+    { id: 'x5', name: 'Cancel', nameTranslations: { fr: 'Annuler', en: 'Cancel' }, fromId: null, toId: 's5', version: 1 },
+  ],
+  problems: [],
+  version: 1,
+};
 
 const TYPES = [
   TYPE('t1', 'epic', 'Epic', 'epic', 'bolt', [], 1),
@@ -104,13 +142,14 @@ async function mockConfigurations(page: Page) {
     );
   }
   await page.route(`**/api/v1/project-configs/*/issue-types`, (route) => route.fulfill({ json: { stage: 'published', items: TYPES } }));
+  await page.route(`**/api/v1/project-configs/*/workflows`, (route) => route.fulfill({ json: { stage: 'published', items: [STANDARD] } }));
   await page.route(`**/api/v1/project-configs/*/issue-types/order`, (route) => {
     const ids = (route.request().postDataJSON() as { ids: string[] }).ids;
     sent.ordered.push(ids);
     return route.fulfill({ json: { stage: 'draft', items: ids.map((id) => TYPES.find((t) => t.id === id)) } });
   });
   await page.route(`**/api/v1/project-configs/${SOFTWARE.id}/publish-impact`, (route) =>
-    route.fulfill({ json: { projects: PROJECTS, removedTypes: [], needsMigration: false, version: 5 } }),
+    route.fulfill({ json: { projects: PROJECTS, removedTypes: [], removedStatuses: [], workflowProblems: [], needsMigration: false, version: 5 } }),
   );
   await page.route(`**/api/v1/project-configs/${SOFTWARE.id}/publish`, (route) => {
     sent.published.push(route.request().headers()['if-match'] ?? null);
@@ -219,6 +258,16 @@ for (const theme of ['light', 'dark'] as const) {
         await expect(page.locator('app-type-editor')).toBeVisible();
         await animationsDone(page);
         expect(await accessibilityViolations(page), 'type panel').toEqual([]);
+
+        await page.goto(`/admin/configurations/${SOFTWARE.id}/workflows`);
+        await expect(page.locator('app-workflow-graph g[data-category]')).toHaveCount(5);
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'workflows').toEqual([]);
+        await page.locator('button.add-status').click();
+        await expect(page.getByRole('dialog')).toBeVisible();
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'status dialog').toEqual([]);
+        await page.keyboard.press('Escape');
 
         await page.goto(`/admin/configurations/${SOFTWARE.id}/fields`);
         await expect(page.locator('app-config-section-tab')).toBeVisible();

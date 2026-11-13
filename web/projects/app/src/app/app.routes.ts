@@ -9,7 +9,6 @@ import { NAVIGATION } from './navigation';
 const CONFIG_SECTION_ROUTES: Route[] = (
   [
     ['fields', 'input'],
-    ['workflows', 'account_tree'],
     ['screens', 'web'],
     ['notifications', 'notifications'],
   ] as const
@@ -125,6 +124,11 @@ export const routes: Routes = [
             path: 'types',
             title: 'config.sections.types.tab',
             loadComponent: () => import('./configuration/types-tab').then((m) => m.TypesTab),
+          },
+          {
+            path: 'workflows',
+            title: 'config.sections.workflows.tab',
+            loadComponent: () => import('./configuration/workflows-tab').then((m) => m.WorkflowsTab),
           },
           ...CONFIG_SECTION_ROUTES,
           {

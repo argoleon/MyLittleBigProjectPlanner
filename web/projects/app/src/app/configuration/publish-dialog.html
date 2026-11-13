@@ -1,0 +1,75 @@
+<h2 mat-dialog-title>{{ 'config.publishDialog.title' | transloco: { name: config.name ?? '' } }}</h2>
+<mat-dialog-content>
+  @if (errorKey(); as key) {
+    <p class="message error" role="alert">{{ key | transloco }}</p>
+  }
+  @if (impact.isLoading()) {
+    <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+  } @else if (impact.error()) {
+    <ui-error-state [error]="impact.error()" [headingLevel]="3" (retry)="impact.reload()" />
+  } @else if (impact.value(); as impact) {
+    @if (impact.projects.length === 0) {
+      <p class="intro">{{ 'config.publishDialog.none' | transloco }}</p>
+    } @else {
+      <p class="intro">{{ introKey() | transloco: { count: (impact.projects.length | localNumber) } }}</p>
+      <ul class="projects" [attr.aria-label]="'config.publishDialog.projects' | transloco">
+        @for (project of impact.projects; track project.id) {
+          <li>
+            @if (asProject(project); as seen) {
+              <span class="name">{{ seen.name }}</span> <span class="key">{{ seen.key }}</span>
+              @if (seen.archived) {
+                <span class="archived">{{ 'config.projects.archived' | transloco }}</span>
+              }
+            } @else {
+              <mat-icon class="lock" aria-hidden="true">lock</mat-icon>
+              <span class="veiled">{{ 'config.projects.veiled' | transloco }}</span>
+            }
+          </li>
+        }
+      </ul>
+    }
+    @if (impact.removedTypes.length > 0) {
+      <h3 class="sub">{{ 'config.publishDialog.removedTypes' | transloco }}</h3>
+      <ul class="removed" [attr.aria-label]="'config.publishDialog.removedTypes' | transloco">
+        @for (type of impact.removedTypes; track type.id) {
+          <li>
+            <span class="name">{{ type.label ?? type.key }}</span>
+            <code class="key">{{ type.key }}</code>
+            <span class="archived">{{ ticketsKey(type.ticketCount) | transloco: { count: (type.ticketCount | localNumber) } }}</span>
+          </li>
+        }
+      </ul>
+    }
+    @if (impact.removedStatuses.length > 0) {
+      <h3 class="sub">{{ 'config.publishDialog.removedStatuses' | transloco }}</h3>
+      <ul class="removed statuses" [attr.aria-label]="'config.publishDialog.removedStatuses' | transloco">
+        @for (status of impact.removedStatuses; track status.id) {
+          <li>
+            <span class="name">{{ status.label ?? status.key }}</span>
+            <span class="key">{{ status.workflow }}</span>
+            <span class="archived">{{ ticketsKey(status.ticketCount) | transloco: { count: (status.ticketCount | localNumber) } }}</span>
+          </li>
+        }
+      </ul>
+    }
+    @if (impact.workflowProblems.length > 0) {
+      <div class="message error problems" role="alert">
+        <p>{{ 'config.publishDialog.workflowProblems' | transloco }}</p>
+        <ul>
+          @for (problem of impact.workflowProblems; track $index) {
+            <li><code>{{ problem.field }}</code> · {{ 'config.publishDialog.problemCodes.' + problem.code | transloco }}</li>
+          }
+        </ul>
+      </div>
+    }
+    @if (impact.needsMigration) {
+      <p class="message error" role="alert">{{ 'config.publishDialog.migration' | transloco }}</p>
+    }
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button matButton type="button" mat-dialog-close>{{ 'dialog.cancel' | transloco }}</button>
+  <button matButton="filled" type="button" class="confirm" [disabled]="!ready() || publishing()" (click)="publish()">
+    {{ 'config.publishDialog.confirm' | transloco }}
+  </button>
+</mat-dialog-actions>

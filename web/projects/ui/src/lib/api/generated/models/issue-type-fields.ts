@@ -27,4 +27,10 @@ export interface IssueTypeFields {
    * The types it may sit under; required for a sub-task.
    */
   parentIds?: Array<string>;
+
+  /**
+   * The workflow its tickets follow; by default the configuration's
+   * first one for a new type, and the one it has for a change.
+   */
+  workflowId?: (string | null);
 }

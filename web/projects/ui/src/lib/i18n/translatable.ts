@@ -42,14 +42,15 @@ export function notBlank(control: AbstractControl<string | null>): ValidationErr
 }
 
 /**
- * The fields of a translatable label: `fallback` is required, every
- * language at most `maxLength` characters once trimmed.
+ * The fields of a translatable label: `fallback` is required (unless
+ * `required` is false, for an optional label), every language at most
+ * `maxLength` characters once trimmed.
  */
 export function translationsForm(
   value: Translations = {},
-  options: { fallback?: Language; maxLength?: number } = {},
+  options: { fallback?: Language; maxLength?: number; required?: boolean } = {},
 ): TranslationsForm {
-  const fallback = options.fallback ?? DEFAULT_LANGUAGE;
+  const fallback = options.required === false ? null : (options.fallback ?? DEFAULT_LANGUAGE);
   const maxLength = options.maxLength ?? LABEL_MAX_LENGTH;
   const tooLong = (control: AbstractControl<string | null>): ValidationErrors | null =>
     (control.value?.trim().length ?? 0) > maxLength ? { too_long: true } : null;

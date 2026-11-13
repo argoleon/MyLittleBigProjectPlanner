@@ -37,6 +37,7 @@ const type = (id: string, key: string, en: string, color: IssueType['color'], pa
   color,
   isSubtask,
   parentIds,
+  workflowId: 'w1',
   level,
   version: 1,
 });
@@ -47,6 +48,19 @@ const TASK = type('t3', 'task', 'Task', 'task', ['t1'], 2);
 const BUG = type('t4', 'bug', 'Bug', 'bug', ['t1'], 2);
 const SUBTASK = { ...type('t5', 'subtask', 'Sub-task', 'task', ['t2', 't3', 't4'], 3, true), icon: 'subdirectory_arrow_right' };
 const TYPES = [EPIC, STORY, TASK, BUG, SUBTASK];
+
+/** The workflow the types follow, as the panel offers it. */
+const WORKFLOW = {
+  id: 'w1',
+  key: 'standard',
+  label: 'Standard workflow',
+  labelTranslations: { fr: 'Workflow standard', en: 'Standard workflow' },
+  issueTypeIds: ['t1', 't2', 't3', 't4', 't5'],
+  statuses: [],
+  transitions: [],
+  problems: [],
+  version: 1,
+};
 
 const SESSION = {
   account: { id: 'a1', email: 'lucas@acme.example', displayName: 'Lucas Bernard', locale: null, tenantRole: 'configuration_admin' },
@@ -86,8 +100,9 @@ describe('the rules of the Types tab', () => {
         color: 'bug',
         isSubtask: false,
         parentIds: ['t1'],
+        workflowId: 'w1',
       }),
-    ).toEqual({ labelTranslations: { en: 'Incident' }, icon: 'emergency', color: 'bug', isSubtask: false, parentIds: ['t1'] });
+    ).toEqual({ labelTranslations: { en: 'Incident' }, icon: 'emergency', color: 'bug', isSubtask: false, parentIds: ['t1'], workflowId: 'w1' });
   });
 });
 
@@ -131,6 +146,7 @@ describe('TypesTab', () => {
     await harness.navigateByUrl(`/admin/configurations/${CONFIG.id}/types`);
     await reply((url) => url === `/api/v1/project-configs/${CONFIG.id}`, CONFIG);
     await reply((url) => url === `/api/v1/project-configs/${CONFIG.id}/issue-types`, list);
+    await reply((url) => url === `/api/v1/project-configs/${CONFIG.id}/workflows`, { stage: 'published', items: [WORKFLOW] });
     const root = () => document.body;
     const tab = () => root().querySelector('app-types-tab')!;
     const panel = () => root().querySelector('app-type-editor');
@@ -227,6 +243,7 @@ describe('TypesTab', () => {
       color: 'bug',
       isSubtask: false,
       parentIds: ['t1'],
+      workflowId: 'w1',
     });
     expect(created.request.headers.get('Idempotency-Key')).toBeTruthy();
     expect(text(tab().querySelector('[role="status"]'))).toBe('Type “Incident” saved in the draft.');
@@ -261,6 +278,7 @@ describe('TypesTab', () => {
       color: 'story',
       isSubtask: false,
       parentIds: ['t1'],
+      workflowId: 'w1',
     });
     expect(text(panel()!.querySelector('[role="alert"]'))).toBe('A type cannot be its own ancestor.');
 

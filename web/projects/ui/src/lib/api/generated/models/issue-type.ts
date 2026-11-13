@@ -48,4 +48,9 @@ export interface IssueType {
    */
   parentIds: Array<string>;
   version: number;
+
+  /**
+   * The workflow its tickets follow.
+   */
+  workflowId: (string | null);
 }
