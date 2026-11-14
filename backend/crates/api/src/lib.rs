@@ -20,6 +20,7 @@ pub mod hierarchy;
 pub mod idempotency;
 pub mod invitations;
 pub mod issue_types;
+pub mod issues;
 pub mod me;
 pub mod members;
 pub mod mfa;

@@ -58,7 +58,7 @@ impl From<CategoryView> for Category {
 
 impl CategoryView {
     /// The stored category; the database only holds these three.
-    fn of(raw: &str) -> Self {
+    pub(crate) fn of(raw: &str) -> Self {
         match Category::parse(raw) {
             Some(Category::Todo) | None => Self::Todo,
             Some(Category::InProgress) => Self::InProgress,

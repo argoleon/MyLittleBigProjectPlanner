@@ -527,3 +527,40 @@ async fn the_aggregates_of_every_ancestor_follow_a_change_within_seconds() {
         .unwrap();
     assert_eq!(left, 0, "no job left, none failed");
 }
+
+#[tokio::test]
+async fn the_outbox_partitions_are_kept_ready_until_cancelled() {
+    let db = TestDb::new().await;
+    db.exec_as_owner(
+        "DO $$ BEGIN EXECUTE format('DROP TABLE outbox_event_%s', \
+         to_char(date_trunc('month', now()) + interval '3 months', 'YYYY_MM')); END $$",
+    )
+    .await;
+    let token = tokio_util::sync::CancellationToken::new();
+    let keeper = tokio::spawn(worker::keep_outbox_partitions(
+        db.app_pool.clone(),
+        token.clone(),
+        Duration::from_secs(3600),
+    ));
+    let mut created = false;
+    for _ in 0..100 {
+        let found: bool = sqlx::query_scalar(
+            "SELECT to_regclass('outbox_event_' || \
+             to_char(date_trunc('month', now()) + interval '3 months', 'YYYY_MM')) IS NOT NULL",
+        )
+        .fetch_one(&db.owner_pool)
+        .await
+        .unwrap();
+        if found {
+            created = true;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert!(created, "the missing month is created at start");
+    token.cancel();
+    tokio::time::timeout(Duration::from_secs(2), keeper)
+        .await
+        .expect("stops when cancelled, without waiting for the next check")
+        .unwrap();
+}

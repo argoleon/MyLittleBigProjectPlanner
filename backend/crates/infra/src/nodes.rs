@@ -273,6 +273,16 @@ impl Row {
     }
 }
 
+/// The project whose key is `key` (`PLAT`).
+pub async fn project_of_key(conn: &mut PgConnection, key: &str) -> Result<Option<Uuid>, sqlx::Error> {
+    sqlx::query_scalar!(
+        "SELECT id FROM node WHERE key = $1 AND node_type = 'project'",
+        key
+    )
+    .fetch_optional(conn)
+    .await
+}
+
 /// The node `id`, with its owners and parents.
 pub async fn find(conn: &mut PgConnection, id: Uuid) -> Result<Option<Node>, sqlx::Error> {
     let row = sqlx::query_as!(

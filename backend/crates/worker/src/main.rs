@@ -109,6 +109,11 @@ async fn run(config: WorkerConfig) -> ExitCode {
 
     let token = CancellationToken::new();
     let health = tokio::spawn(worker::serve_health(listener, token.clone(), dependencies.into()));
+    tokio::spawn(worker::keep_outbox_partitions(
+        pool.clone(),
+        token.clone(),
+        worker::PARTITIONS_EVERY,
+    ));
     let runner = std::sync::Arc::new(worker::jobs::JobRunner::new(pool));
     let valkey = match infra::valkey::connect_lazy(&config.valkey) {
         Ok(valkey) => valkey,
