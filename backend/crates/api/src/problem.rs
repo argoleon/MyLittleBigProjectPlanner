@@ -117,11 +117,13 @@ pub enum ErrorCode {
     ScreenExists,
     ScreenGeneral,
     ScreenInUse,
+    MappingIncomplete,
+    ConfigMigrationRunning,
 }
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 78] = [
+    pub const ALL: [Self; 80] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -200,6 +202,8 @@ impl ErrorCode {
         Self::ScreenExists,
         Self::ScreenGeneral,
         Self::ScreenInUse,
+        Self::MappingIncomplete,
+        Self::ConfigMigrationRunning,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -282,6 +286,8 @@ impl ErrorCode {
             Self::ScreenExists => "screen.exists",
             Self::ScreenGeneral => "screen.general",
             Self::ScreenInUse => "screen.in_use",
+            Self::MappingIncomplete => "mapping_incomplete",
+            Self::ConfigMigrationRunning => "config.migration_running",
         }
     }
 
@@ -289,6 +295,7 @@ impl ErrorCode {
         match self {
             Self::BadRequest
             | Self::ValidationFailed
+            | Self::MappingIncomplete
             | Self::InvalidJson
             | Self::InvalidQuery
             | Self::IdempotencyKeyInvalid
@@ -357,7 +364,8 @@ impl ErrorCode {
             | Self::FieldSystem
             | Self::ScreenExists
             | Self::ScreenGeneral
-            | Self::ScreenInUse => StatusCode::CONFLICT,
+            | Self::ScreenInUse
+            | Self::ConfigMigrationRunning => StatusCode::CONFLICT,
             Self::PreconditionFailed => StatusCode::PRECONDITION_FAILED,
             Self::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -460,6 +468,10 @@ impl ErrorCode {
             Self::ScreenExists => "This type, or the configuration, already has a screen of this kind",
             Self::ScreenGeneral => "The general creation and view screens of a configuration stay",
             Self::ScreenInUse => "Transitions show this screen: give them another one first",
+            Self::MappingIncomplete => {
+                "Every removed status and type must be mapped to one the draft keeps: see errors"
+            }
+            Self::ConfigMigrationRunning => "A migration of this configuration is already under way",
         }
     }
 
@@ -703,7 +715,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 78] = [
+        let expected: [(ErrorCode, u16); 80] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -782,6 +794,8 @@ mod tests {
             (ErrorCode::ScreenExists, 409),
             (ErrorCode::ScreenGeneral, 409),
             (ErrorCode::ScreenInUse, 409),
+            (ErrorCode::MappingIncomplete, 400),
+            (ErrorCode::ConfigMigrationRunning, 409),
         ];
         for (code, status) in expected {
             assert_eq!(code.status().as_u16(), status, "{}", code.as_str());

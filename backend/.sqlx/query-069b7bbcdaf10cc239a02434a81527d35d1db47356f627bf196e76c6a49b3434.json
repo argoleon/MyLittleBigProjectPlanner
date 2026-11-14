@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO config_migration\n            (id, tenant_id, config_id, draft_id, status_mappings, type_mappings, ticket_total, created_by)\n        VALUES ($1, app_current_tenant(), $2, $3, $4, $5, $6, $7)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Jsonb",
+        "Jsonb",
+        "Int8",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "069b7bbcdaf10cc239a02434a81527d35d1db47356f627bf196e76c6a49b3434"
+}

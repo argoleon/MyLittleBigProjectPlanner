@@ -74,6 +74,15 @@ Notification rules (L04-US07: `domain::notifications`, `infra::notification_rule
 - **Recipients**: people of the ticket (reporter, assignee, watchers, the people mentioned, the last for comments and mentions only), roles of the tenant, groups and members. The list names them in `references`, like the workflows.
 - **`domain::notifications::resolve`** is what the L05 dispatcher calls: from the rule, the people of the ticket, the holders of each role on the ticket's project (granted there or above) and the members of each group, it returns the accounts to notify, never the author of the change. Each member's own preferences filter them further (L05).
 
+## Migrating tickets
+
+When a draft removes statuses or types that tickets use, publishing goes through the mapping wizard (L04-US08: `domain::migration`, `infra::config_migrations`, `api::migrations`):
+
+- **The plan** (`GET /project-configs/{id}/migration-plan`) lists each removed status and type with its tickets, the targets it may map to (the statuses of its workflow if the draft keeps it, else all; the draft's types), the new ones marked, and a suggestion (`domain::migration::suggest_status` / `suggest_type`: same identifier, else same category or sub-task-ness).
+- **Starting** (`POST /project-configs/{id}/migrations`, `If-Match` the plan's version) checks every removed item is mapped to one of its targets (400 `mapping_incomplete`, each item in `errors`), records a `config_migration` (one at a time per configuration, 409 `config.migration_running`) and queues the `config.migration` job. Its progress is read at `GET …/migrations/{migrationId}`.
+- **The job** (`infra::config_migrations::run`, in the worker) moves the tickets, then publishes the draft and marks the migration done; running it again once over does nothing, and it fails without publishing if the draft changed meanwhile.
+- **Until tickets exist (L05)** every count is 0, the publish impact never asks for a migration, and the job publishes at once. L05 adds, in `run`: the tickets moved in batches (`domain::migration::batches`), each only while still in a mapped status or type (`domain::migration::target_of`), each with an audit entry of origin `system`, committed batch by batch so that a retried job resumes without moving a ticket twice; then the e2e test on the stack (#129).
+
 ## Who does what
 
 - Tenant admins and configuration admins (`domain::configuration::manages_configurations`) manage configurations; the others get 403.
