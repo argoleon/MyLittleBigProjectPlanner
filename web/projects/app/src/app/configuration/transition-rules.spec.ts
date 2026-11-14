@@ -84,6 +84,7 @@ const REFERENCES: TransitionRuleReferences = {
 
 /** "Validate" of mockup 11: reviewers or Quality, the remaining work required, then four post-functions. */
 const VALIDATE_RULES: TransitionRules = {
+  screenId: null,
   conditions: { roleIds: ['r1', 'r-gone'], groupIds: ['g1'] },
   validators: ['f-remaining'],
   postFunctions: [
@@ -107,7 +108,12 @@ describe('the rules of a transition', () => {
 
   it('sends only what each kind of post-function takes', () => {
     const form = rulesForm(null, null, FIELDS);
-    expect(rulesValue(form, FIELDS)).toEqual({ conditions: { roleIds: [], groupIds: [] }, validators: [], postFunctions: [] });
+    expect(rulesValue(form, FIELDS)).toEqual({
+      screenId: null,
+      conditions: { roleIds: [], groupIds: [] },
+      validators: [],
+      postFunctions: [],
+    });
     const assign = rulesForm({ postFunctions: [{ kind: 'assign', assignTo: 'reporter' }] }, null, FIELDS);
     // Changed to a comment: nothing of the assignment goes.
     const post = assign.controls.postFunctions.at(0);
@@ -311,10 +317,15 @@ describe('the transition dialog with its rules', () => {
     const { tab, dialog, root, reply, click, type, option, text, texts } = await openWorkflows();
     await click(tab().querySelectorAll('button.edit-transition')[0]);
     await reply((url) => url.endsWith('/transition-roles'), REFERENCES.roles);
-    expect(texts('app-transition-rules legend', dialog())).toEqual(['Who may take it', 'Required fields', 'Post-functions']);
+    expect(texts('app-transition-rules legend', dialog())).toEqual([
+      'Transition screen',
+      'Who may take it',
+      'Required fields',
+      'Post-functions',
+    ]);
 
     // Reviewers, or the quality group found by name.
-    await click(dialog().querySelectorAll('app-transition-rules mat-select .mat-mdc-select-trigger')[0]);
+    await click(dialog().querySelectorAll('app-transition-rules mat-select .mat-mdc-select-trigger')[1]);
     await click(option('Reviewer'));
     // The roles stay open for more: closed before searching a group.
     await click(Array.from(root().querySelectorAll('.cdk-overlay-backdrop')).at(-1));
@@ -346,6 +357,7 @@ describe('the transition dialog with its rules', () => {
       fromId: 's1',
       toId: 's2',
       rules: {
+        screenId: null,
         conditions: { roleIds: ['r1'], groupIds: ['g1'] },
         validators: [],
         postFunctions: [

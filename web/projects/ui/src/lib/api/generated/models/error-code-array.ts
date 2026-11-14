@@ -81,5 +81,8 @@ export const ERROR_CODE: ErrorCode[] = [
   'workflow.last',
   'workflow.invalid',
   'config_field.key_taken',
-  'config_field.system'
+  'config_field.system',
+  'screen.exists',
+  'screen.general',
+  'screen.in_use'
 ];

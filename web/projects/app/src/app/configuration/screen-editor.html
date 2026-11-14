@@ -1,0 +1,155 @@
+<section class="panel" aria-labelledby="screen-editor-title">
+  <div class="panel-header">
+    <h2 id="screen-editor-title" class="panel-title">
+      {{ 'config.screens.editTitle' | transloco: { name: screen().nameTranslations | translated } }}
+    </h2>
+    <button matIconButton type="button" class="close" (click)="closed.emit()" [attr.aria-label]="'config.screens.close' | transloco">
+      <mat-icon aria-hidden="true">close</mat-icon>
+    </button>
+  </div>
+  @if (errorKey(); as key) {
+    <div class="message error" role="alert">
+      {{ key | transloco }}
+      @if (errorDetail(); as detail) {
+        <span class="detail">{{ 'config.screens.usedBy' | transloco: { transitions: detail } }}</span>
+      }
+    </div>
+  }
+  <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+    <ui-translatable-input [group]="form.controls.name" [label]="'config.screens.name' | transloco" [maxLength]="nameMax" />
+
+    <div class="lists" cdkDropListGroup>
+      <section class="list" aria-labelledby="on-screen-title">
+        <h3 id="on-screen-title" class="section-title">{{ 'config.screens.onScreen' | transloco }}</h3>
+        <ol class="fields on-screen" cdkDropList [cdkDropListData]="onScreen()" (cdkDropListDropped)="dropOnScreen($event)">
+          @for (field of onScreen(); track field.id; let i = $index; let count = $count) {
+            <li class="field" cdkDrag [cdkDragData]="field">
+              <mat-icon cdkDragHandle class="handle" aria-hidden="true">drag_indicator</mat-icon>
+              <span class="label">{{ field.labelTranslations | translated }}</span>
+              <button
+                matIconButton
+                type="button"
+                class="up"
+                [disabled]="i === 0"
+                (click)="move(i, i - 1)"
+                [attr.aria-label]="'config.screens.moveUp' | transloco: { name: field.labelTranslations | translated }"
+              >
+                <mat-icon aria-hidden="true">arrow_upward</mat-icon>
+              </button>
+              <button
+                matIconButton
+                type="button"
+                class="down"
+                [disabled]="i === count - 1"
+                (click)="move(i, i + 1)"
+                [attr.aria-label]="'config.screens.moveDown' | transloco: { name: field.labelTranslations | translated }"
+              >
+                <mat-icon aria-hidden="true">arrow_downward</mat-icon>
+              </button>
+              <button
+                matIconButton
+                type="button"
+                class="remove-field"
+                (click)="remove(field)"
+                [attr.aria-label]="'config.screens.removeField' | transloco: { name: field.labelTranslations | translated }"
+              >
+                <mat-icon aria-hidden="true">remove_circle_outline</mat-icon>
+              </button>
+            </li>
+          } @empty {
+            <li class="empty">{{ 'config.screens.noField' | transloco }}</li>
+          }
+        </ol>
+      </section>
+      <section class="list" aria-labelledby="available-title">
+        <h3 id="available-title" class="section-title">{{ 'config.screens.available' | transloco }}</h3>
+        <ul class="fields available" cdkDropList [cdkDropListData]="availableFields()" (cdkDropListDropped)="dropOnAvailable($event)">
+          @for (field of availableFields(); track field.id) {
+            <li class="field" cdkDrag [cdkDragData]="field">
+              <mat-icon cdkDragHandle class="handle" aria-hidden="true">drag_indicator</mat-icon>
+              <span class="label">{{ field.labelTranslations | translated }}</span>
+              <button
+                matIconButton
+                type="button"
+                class="add-field"
+                (click)="add(field)"
+                [attr.aria-label]="'config.screens.addField' | transloco: { name: field.labelTranslations | translated }"
+              >
+                <mat-icon aria-hidden="true">add_circle_outline</mat-icon>
+              </button>
+            </li>
+          } @empty {
+            <li class="empty">{{ 'config.screens.allOnScreen' | transloco }}</li>
+          }
+        </ul>
+      </section>
+    </div>
+
+    @if (missing().length > 0) {
+      <p class="warning">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        <span>
+          {{ 'config.screens.missingRequired' | transloco }}
+          @for (field of missing(); track field.id; let last = $last) {
+            <strong>{{ field.labelTranslations | translated }}</strong>{{ last ? '' : ', ' }}
+          }
+        </span>
+      </p>
+    }
+
+    <section class="preview" aria-labelledby="preview-title">
+      <h3 id="preview-title" class="section-title">{{ 'config.screens.preview' | transloco }}</h3>
+      <div class="pair">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>{{ 'config.screens.previewType' | transloco }}</mat-label>
+          <mat-select [value]="previewType()" (selectionChange)="chooseType($event.value)">
+            @for (issueType of previewTypes(); track issueType.id) {
+              <mat-option [value]="issueType.id">{{ issueType.labelTranslations | translated }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        @if (screen().kind !== 'creation') {
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>
+              {{ (screen().kind === 'transition' ? 'config.screens.previewTarget' : 'config.screens.previewStatus') | transloco }}
+            </mat-label>
+            <mat-select [value]="previewStatus()" (selectionChange)="previewStatus.set($event.value)">
+              @for (option of previewStatuses(); track option.id) {
+                <mat-option [value]="option.id">{{ option.labelTranslations | translated }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        }
+      </div>
+      <ol class="lines">
+        @for (line of lines(); track line.field.id) {
+          <li class="line" [attr.data-mode]="line.mode" [attr.aria-disabled]="line.mode === 'hidden' ? 'true' : null">
+            <span class="label">{{ line.field.labelTranslations | translated }}</span>
+            @if (line.mode === 'hidden') {
+              <span class="tag">{{ 'config.screens.hiddenByRule' | transloco }}</span>
+            } @else if (line.mode === 'required') {
+              <span class="tag required">{{ 'config.fields.modes.required' | transloco }}</span>
+            }
+            @if (line.added) {
+              <span class="tag">{{ 'config.screens.addedAtEnd' | transloco }}</span>
+            }
+          </li>
+        } @empty {
+          <li class="empty">{{ 'config.screens.previewEmpty' | transloco }}</li>
+        }
+      </ol>
+    </section>
+
+    <div class="actions">
+      @if (!screen().isGeneral) {
+        <button matButton type="button" class="remove" (click)="confirmRemove(screen())">
+          <mat-icon aria-hidden="true">delete</mat-icon>
+          {{ 'config.screens.remove.action' | transloco }}
+        </button>
+      }
+      <span class="spacer"></span>
+      <button matButton type="button" (click)="closed.emit()">{{ 'dialog.cancel' | transloco }}</button>
+      <button matButton="filled" type="submit" class="save" [disabled]="saving()">{{ 'config.screens.save' | transloco }}</button>
+    </div>
+  </form>
+</section>

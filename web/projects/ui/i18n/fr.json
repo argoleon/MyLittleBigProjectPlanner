@@ -489,6 +489,11 @@
     "config_field": {
       "key_taken": "Un autre champ de cette configuration a déjà cet identifiant.",
       "system": "Un champ système garde son libellé et ses options et ne peut pas être retiré : seuls ses types de ticket et ses règles changent."
+    },
+    "screen": {
+      "exists": "Ce type, ou la configuration, a déjà un écran de ce genre.",
+      "general": "Les écrans généraux de création et de consultation d’une configuration restent.",
+      "in_use": "Des transitions affichent cet écran : donnez-leur-en un autre d’abord."
     }
   },
   "dialog": {
@@ -901,9 +906,7 @@
         "tab": "Workflows"
       },
       "screens": {
-        "tab": "Écrans",
-        "title": "Les écrans arrivent bientôt",
-        "hint": "Les écrans de création, de consultation et de transition seront définis ici."
+        "tab": "Écrans"
       },
       "notifications": {
         "tab": "Notifications",
@@ -1243,8 +1246,63 @@
           "assignMember": "Assigne à {{name}}",
           "set": "Renseigne {{field}}",
           "clear": "Vide {{field}}",
-          "comment": "Ajoute un commentaire"
-        }
+          "comment": "Ajoute un commentaire",
+          "screen": "Affiche {{name}}"
+        },
+        "screen": "Écran de transition",
+        "screenLabel": "Écran affiché avant qu’elle s’exécute",
+        "noScreen": "Aucun",
+        "screenHint": "Ses champs suivent les règles du statut vers lequel elle mène."
+      }
+    },
+    "screens": {
+      "intro": "Les champs affichés, dans leur ordre, à la création d’un ticket, à sa consultation ou lors d’une transition. Les règles des champs priment : un champ masqué n’est pas affiché, un champ obligatoire absent est ajouté à la fin. Les modifications vont dans le brouillon.",
+      "add": "Nouvel écran",
+      "newTitle": "Nouvel écran",
+      "kind": "Affiché",
+      "kinds": {
+        "creation": "Création",
+        "view": "Consultation",
+        "transition": "Transition"
+      },
+      "type": "Type de ticket",
+      "typeHint": "Ce type l’utilise au lieu de l’écran général.",
+      "name": "Nom",
+      "create": "Créer",
+      "created": "Écran « {{name}} » ajouté au brouillon.",
+      "saved": "Écran « {{name}} » enregistré dans le brouillon.",
+      "removed": "Écran « {{name}} » retiré du brouillon.",
+      "general": "Général : tout type sans écran propre",
+      "forType": "Pour {{type}}",
+      "shownBy": "Affiché par",
+      "unused": "Rattaché à aucune transition pour l’instant",
+      "fieldCount": "{{count}} champs",
+      "noScreen": "Aucun pour l’instant.",
+      "editTitle": "Modifier « {{name}} »",
+      "close": "Fermer le panneau",
+      "onScreen": "Sur l’écran",
+      "available": "Champs disponibles",
+      "noField": "Aucun champ : glissez-en un ici ou ajoutez-le.",
+      "allOnScreen": "Tous les champs sont sur l’écran.",
+      "moveUp": "Monter {{name}}",
+      "moveDown": "Descendre {{name}}",
+      "removeField": "Retirer {{name}} de l’écran",
+      "addField": "Mettre {{name}} sur l’écran",
+      "missingRequired": "Obligatoires selon une règle là où cet écran s’affiche, et ajoutés à la fin :",
+      "preview": "Aperçu",
+      "previewType": "Pour le type",
+      "previewStatus": "Dans le statut",
+      "previewTarget": "Vers le statut",
+      "previewEmpty": "Rien à afficher.",
+      "hiddenByRule": "Masqué par une règle",
+      "addedAtEnd": "Ajouté à la fin",
+      "usedBy": "Affiché par : {{transitions}}.",
+      "save": "Enregistrer",
+      "remove": {
+        "action": "Retirer",
+        "title": "Retirer « {{name}} » ?",
+        "message": "Il quitte le brouillon. Le type pour lequel il était utilise de nouveau l’écran général.",
+        "confirm": "Retirer"
       }
     }
   }

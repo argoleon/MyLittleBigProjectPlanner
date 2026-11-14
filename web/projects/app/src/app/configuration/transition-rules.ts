@@ -89,6 +89,8 @@ export type PostFunctionForm = FormGroup<PostFunctionControls>;
 
 /** The rules as the form holds them; groups with their names to show. */
 export interface RulesControls {
+  /** The transition screen (L04-US06). */
+  screenId: FormControl<string | null>;
   roleIds: FormControl<string[]>;
   groups: FormControl<NamedRef[]>;
   validators: FormControl<string[]>;
@@ -144,6 +146,7 @@ export function rulesForm(
     (id) => references?.groups.find((g) => g.id === id) ?? { id, name: '' },
   );
   return new FormGroup<RulesControls>({
+    screenId: new FormControl(rules?.screenId ?? null),
     roleIds: new FormControl([...(rules?.conditions?.roleIds ?? [])], { nonNullable: true }),
     groups: new FormControl(groups, { nonNullable: true }),
     validators: new FormControl([...(rules?.validators ?? [])], { nonNullable: true }),
@@ -155,6 +158,7 @@ export function rulesForm(
 export function rulesValue(form: RulesForm, fields: readonly ConfigField[]): TransitionRules {
   const value = form.getRawValue();
   return {
+    screenId: value.screenId,
     conditions: { roleIds: value.roleIds, groupIds: value.groups.map((g) => g.id) },
     validators: value.validators,
     postFunctions: value.postFunctions.map((post): TransitionPostFunction => {

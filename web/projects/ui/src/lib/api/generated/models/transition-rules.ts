@@ -16,6 +16,12 @@ export interface TransitionRules {
   postFunctions?: Array<TransitionPostFunction>;
 
   /**
+   * A transition screen of the configuration, shown before the
+   * transition runs (L04-US06); `null`: none.
+   */
+  screenId?: (string | null);
+
+  /**
    * Fields of the configuration that must hold a value.
    */
   validators?: Array<string>;

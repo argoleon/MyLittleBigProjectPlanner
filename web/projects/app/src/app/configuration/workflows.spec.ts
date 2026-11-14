@@ -339,8 +339,8 @@ describe('WorkflowsTab', () => {
       nameTranslations: { fr: 'Bloquer', en: 'Block' },
       fromId: null,
       toId: 's3',
-      // No rules yet (L04-US05).
-      rules: { conditions: { roleIds: [], groupIds: [] }, validators: [], postFunctions: [] },
+      // No rules yet (L04-US05), no screen (US06).
+      rules: { screenId: null, conditions: { roleIds: [], groupIds: [] }, validators: [], postFunctions: [] },
     });
     expect(created.request.headers.get('Idempotency-Key')).toBeTruthy();
   });

@@ -13,6 +13,7 @@ import {
   AccessRole,
   Api,
   ConfigField,
+  ConfigScreen,
   GrantCandidate,
   HolderKind,
   NamedRef,
@@ -62,6 +63,8 @@ export class TransitionRulesEditor {
   readonly roles = input.required<readonly AccessRole[]>();
   /** The fields of the configuration. */
   readonly fields = input.required<readonly ConfigField[]>();
+  /** Its transition screens. */
+  readonly screens = input<readonly ConfigScreen[]>([]);
 
   protected readonly kinds = POST_FUNCTION_KINDS;
   protected readonly targets = ASSIGN_TARGETS;

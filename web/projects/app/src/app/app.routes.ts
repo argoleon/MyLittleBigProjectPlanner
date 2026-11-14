@@ -8,7 +8,6 @@ import { NAVIGATION } from './navigation';
 /** The sections of a configuration still to be built by the next stories of L04, with their icon. */
 const CONFIG_SECTION_ROUTES: Route[] = (
   [
-    ['screens', 'web'],
     ['notifications', 'notifications'],
   ] as const
 ).map(([section, icon]) => ({
@@ -133,6 +132,11 @@ export const routes: Routes = [
             path: 'workflows',
             title: 'config.sections.workflows.tab',
             loadComponent: () => import('./configuration/workflows-tab').then((m) => m.WorkflowsTab),
+          },
+          {
+            path: 'screens',
+            title: 'config.sections.screens.tab',
+            loadComponent: () => import('./configuration/screens-tab').then((m) => m.ScreensTab),
           },
           ...CONFIG_SECTION_ROUTES,
           {

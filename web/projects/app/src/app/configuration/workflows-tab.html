@@ -141,6 +141,13 @@
                   @let restricted = restrictedTo(transition);
                   @let required = requiredFields(transition);
                   @let posts = postFunctions(transition);
+                  @let screen = screenOf(transition);
+                  @if (screen) {
+                    <span class="rule">
+                      <mat-icon aria-hidden="true">web</mat-icon>
+                      {{ 'config.workflows.rules.summary.screen' | transloco: { name: screen } }}
+                    </span>
+                  }
                   @if (restricted.length > 0) {
                     <span class="rule">
                       <mat-icon aria-hidden="true">lock</mat-icon>
@@ -162,7 +169,7 @@
                       {{ post.key | transloco: post.params }}
                     </span>
                   }
-                  @if (restricted.length === 0 && required.length === 0 && posts.length === 0) {
+                  @if (!screen && restricted.length === 0 && required.length === 0 && posts.length === 0) {
                     <span class="none">{{ 'config.workflows.rules.summary.none' | transloco }}</span>
                   }
                 </td>
