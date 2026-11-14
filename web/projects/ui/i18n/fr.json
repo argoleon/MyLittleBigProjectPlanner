@@ -412,7 +412,10 @@
       "unknown_member": "Ce n’est pas un membre de l’organisation.",
       "too_many": "Trop d’éléments.",
       "not_using": "Ce projet n’utilise pas cette configuration.",
-      "not_a_permutation": "Chaque élément doit figurer une fois."
+      "not_a_permutation": "Chaque élément doit figurer une fois.",
+      "not_applicable": "Indisponible pour ce type.",
+      "less_than_min": "Le maximum est inférieur au minimum.",
+      "duplicate": "Cette valeur apparaît deux fois."
     },
     "invitation": {
       "invalid": "Ce lien d’invitation est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
@@ -472,6 +475,10 @@
       "in_use": "Des types de ticket suivent ce workflow : passez-les d’abord sur un autre.",
       "last": "Une configuration garde au moins un workflow.",
       "invalid": "Les workflows du brouillon ne peuvent pas être publiés en l’état : corrigez ce que liste l’onglet Workflows."
+    },
+    "config_field": {
+      "key_taken": "Un autre champ de cette configuration a déjà cet identifiant.",
+      "system": "Un champ système garde son libellé et ses options et ne peut pas être retiré : seuls ses types de ticket et ses règles changent."
     }
   },
   "dialog": {
@@ -878,9 +885,7 @@
         "tab": "Types"
       },
       "fields": {
-        "tab": "Champs",
-        "title": "Les champs arrivent bientôt",
-        "hint": "Les champs système et personnalisés, avec leurs règles par type et par étape, seront définis ici."
+        "tab": "Champs"
       },
       "workflows": {
         "tab": "Workflows"
@@ -996,6 +1001,105 @@
         "confirm": "Retirer"
       },
       "workflow": "Workflow"
+    },
+    "fields": {
+      "intro": "Les champs système et personnalisés, et s’ils sont masqués, visibles ou obligatoires par type de ticket et par étape du workflow. Les modifications vont dans le brouillon.",
+      "add": "Nouveau champ",
+      "caption": "Champs de la configuration",
+      "columns": {
+        "field": "Champ",
+        "key": "Identifiant",
+        "kind": "Type",
+        "types": "Types de ticket",
+        "languages": "Langues",
+        "actions": "Actions"
+      },
+      "system": "Système",
+      "allTypesShort": "Tous",
+      "noType": "Aucun type pour l’instant",
+      "editOf": "Modifier {{name}}",
+      "saved": "Champ « {{name}} » enregistré dans le brouillon.",
+      "removed": "Champ « {{name}} » retiré du brouillon.",
+      "editTitle": "Modifier « {{name}} »",
+      "newTitle": "Nouveau champ",
+      "close": "Fermer le panneau",
+      "systemHint": "Un champ système garde son libellé et ses options ; vous choisissez ses types de ticket et ses règles.",
+      "label": "Libellé",
+      "key": "Identifiant",
+      "keyHint": "Minuscules, chiffres et _ ; il ne pourra plus changer.",
+      "keyFixed": "Fixé à l’ajout du champ ; il ne change pas.",
+      "keyFormat": "Une minuscule, puis des minuscules, chiffres ou _.",
+      "kind": "Type",
+      "kindFixed": "Fixé à l’ajout du champ ; il ne change pas.",
+      "kinds": {
+        "short_text": "Texte court",
+        "rich_text": "Texte long riche",
+        "number": "Nombre",
+        "checkbox": "Case à cocher",
+        "date": "Date",
+        "date_time": "Date et heure",
+        "single_select": "Liste simple",
+        "multi_select": "Liste multiple",
+        "cascading_select": "Liste en cascade",
+        "user": "Utilisateur",
+        "group": "Groupe",
+        "labels": "Étiquettes",
+        "url": "URL",
+        "issue_link": "Lien vers un ticket"
+      },
+      "maxLength": "Longueur maximale",
+      "maxLengthHint": "En caractères, {{max}} au plus ; vide : {{max}}.",
+      "decimals": "Décimales",
+      "unit": "Unité",
+      "units": {
+        "none": "Aucune",
+        "hours": "Heures",
+        "days": "Jours",
+        "percent": "Pourcentage"
+      },
+      "min": "Minimum",
+      "max": "Maximum",
+      "multiple": "Plusieurs utilisateurs",
+      "values": {
+        "title": "Valeurs",
+        "label": "Valeur {{position}} ({{language}})",
+        "childLabel": "Valeur {{parent}}.{{position}} ({{language}})",
+        "actions": "Actions de la valeur {{position}}",
+        "childActions": "Actions de la valeur {{parent}}.{{position}}",
+        "moveUp": "Monter",
+        "moveDown": "Descendre",
+        "addChild": "Ajouter une valeur dessous",
+        "reactivate": "Réactiver",
+        "deactivate": "Désactiver",
+        "remove": "Retirer",
+        "inactive": "Désactivée : plus proposée, conservée sur les tickets qui l’ont.",
+        "add": "Ajouter une valeur"
+      },
+      "types": "Types de ticket",
+      "allTypes": "Tous les types de ticket, y compris ceux ajoutés plus tard",
+      "issueTypes": "Types de ticket du champ",
+      "issueTypesHint": "Les autres types ne l’affichent jamais.",
+      "rules": {
+        "title": "Règles par type et par étape",
+        "hint": "Cliquez une case pour passer de Masqué à Visible puis Obligatoire.",
+        "caption": "Types qui suivent {{workflow}}",
+        "type": "Type",
+        "creation": "Création",
+        "cell": "{{type}}, {{step}} : {{mode}}",
+        "empty": "Choisissez les types de ticket du champ pour définir ses règles."
+      },
+      "modes": {
+        "hidden": "Masqué",
+        "visible": "Visible",
+        "required": "Obligatoire"
+      },
+      "save": "Enregistrer",
+      "remove": {
+        "action": "Retirer",
+        "title": "Retirer « {{name}} » ?",
+        "message": "Il quitte le brouillon avec ses règles. Une fois publié, les tickets n’affichent plus ses valeurs.",
+        "confirm": "Retirer"
+      }
     },
     "workflows": {
       "byType": "Workflow par type de ticket",

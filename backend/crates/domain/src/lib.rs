@@ -9,6 +9,7 @@ pub mod auth_policy;
 pub mod configuration;
 pub mod devices;
 pub mod erasure;
+pub mod fields;
 pub mod grants;
 pub mod hierarchy;
 pub mod i18n;

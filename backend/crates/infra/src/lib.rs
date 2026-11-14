@@ -13,6 +13,7 @@ pub mod db;
 pub mod email;
 pub mod erasure;
 pub mod exports;
+pub mod fields;
 pub mod grants;
 pub mod groups;
 pub mod health;

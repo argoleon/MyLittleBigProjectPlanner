@@ -111,7 +111,7 @@ async function setUp(tenantRole = 'tenant_admin') {
             children: [
               { path: '', pathMatch: 'full', redirectTo: 'types' },
               { path: 'types', component: TypesTab },
-              { path: 'fields', component: ConfigSectionTab, data: { section: 'fields', icon: 'input' } },
+              { path: 'screens', component: ConfigSectionTab, data: { section: 'screens', icon: 'web' } },
               { path: 'projects', component: ConfigProjectsTab },
             ],
           },
@@ -293,13 +293,13 @@ describe('ConfigPage', () => {
     // It opens on its types.
     expect(url()).toBe(`/admin/configurations/${SOFTWARE.id}/types`);
     expect(root().querySelector('app-types-tab')).not.toBeNull();
-    await harness.navigateByUrl(`/admin/configurations/${SOFTWARE.id}/fields`);
+    await harness.navigateByUrl(`/admin/configurations/${SOFTWARE.id}/screens`);
     expect(text(root().querySelector('h1'))).toBe('Software development');
     expect(texts('nav.eyebrow a')).toEqual(['Administration', 'Project configurations']);
     expect(texts('app-config-page .chip')).toEqual(['shareShared by 6 projects', 'edit_noteUnpublished draft · 2 changes']);
     expect(texts('a[mat-tab-link]')).toEqual(['Types', 'Fields', 'Workflows', 'Screens', 'Notifications', 'Projects (6)']);
     // A section of a later story.
-    expect(text(root().querySelector('app-config-section-tab'))).toContain('Fields come next');
+    expect(text(root().querySelector('app-config-section-tab'))).toContain('Screens come next');
     expect((root().querySelector('button.publish') as HTMLButtonElement).disabled).toBe(false);
     expect(await axeViolations(root().querySelector('app-config-page')!)).toEqual([]);
   });

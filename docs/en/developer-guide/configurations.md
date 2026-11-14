@@ -37,6 +37,16 @@ Workflows (L04-US04: `infra::workflows`, `api::workflows`) hold statuses and tra
 - **A removed status counts like a removed type**: the publish impact lists it with its tickets, and only statuses in use call for the migration wizard.
 - Conditions, validators and post-functions of transitions come with L04-US05, transition screens with US06.
 
+## Fields
+
+Fields (L04-US03: `domain::fields`, `infra::fields`, `api::config_fields`) are the system fields (Points, Remaining work) and the custom ones, with whether each is hidden, visible or required per issue type and workflow step. Rules worth knowing:
+
+- **Copies go workflows, types, then fields**: a field lists its types (`field_def.issue_type_ids`, or `all_types` for every type, the ones added later included), and its rules (`field_rule`) name a type and a status of that type's workflow, or the creation (`status_id` null).
+- **Only Hidden and Required cells are stored**: a cell nobody set is Visible, statuses added later included. `domain::fields::mode` resolves a cell; a type the field does not apply to is Hidden everywhere. Tickets (L05) and portal forms (L13) read it, and check their values with `domain::fields::validate_value`.
+- **The rules follow the types and statuses they name**: a status or a type removed takes its cells (foreign keys); a type removed also leaves the types of its fields (`infra::fields::forget_type`); a type moved to another workflow loses its cells on the statuses of the former one (`infra::fields::prune_rules`).
+- **List values keep their identity**, in `field_def.options` with an `active` flag. A value of the published version that a change leaves out is put back, deactivated (`domain::fields::keep_published`): tickets may hold it, and `Options::value` still resolves it. A value added in the draft and never published goes for good. The API marks each value `published` so the interface knows which.
+- **The key and the type of a field are set once.** A system field keeps its label and options too (409 `config_field.system`), and cannot be removed; its types and rules change like any field's.
+
 ## Who does what
 
 - Tenant admins and configuration admins (`domain::configuration::manages_configurations`) manage configurations; the others get 403.

@@ -1,0 +1,136 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT item_id, key, label AS \"label: Json<Labels>\", kind, options AS \"options: Json<OptionsDoc>\",\n               is_system, all_types, issue_type_ids, position, version\n        FROM field_def WHERE version_id = $1\n        ORDER BY position, key\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "item_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "field_def",
+            "name": "item_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "field_def",
+            "name": "key"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "label: Json<Labels>",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "field_def",
+            "name": "label"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "field_def",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "options: Json<OptionsDoc>",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "field_def",
+            "name": "options"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "is_system",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "field_def",
+            "name": "is_system"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "all_types",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "field_def",
+            "name": "all_types"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "issue_type_ids",
+        "type_info": "UuidArray",
+        "origin": {
+          "Table": {
+            "table": "field_def",
+            "name": "issue_type_ids"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "position",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "field_def",
+            "name": "position"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "version",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "field_def",
+            "name": "version"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "31b784d39862f872b72d374650bfcb1277b2ce1acac988d6bc157ca4aa751b63"
+}

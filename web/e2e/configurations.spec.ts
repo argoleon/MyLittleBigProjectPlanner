@@ -124,9 +124,70 @@ const TYPES = [
   TYPE('t5', 'subtask', 'Sub-task', 'task', 'subdirectory_arrow_right', ['t2', 't3', 't4'], 3, true),
 ];
 
+const VALUE = (id: string, fr: string, en: string, published = true) => ({
+  id,
+  label: en,
+  labelTranslations: { fr, en },
+  active: true,
+  published,
+  children: [],
+});
+
+/** Mockup 12: Application, a single select with its rules, and the two system fields. */
+const FIELDS = [
+  {
+    id: 'f1',
+    key: 'application',
+    label: 'Application',
+    labelTranslations: { fr: 'Application', en: 'Application' },
+    kind: 'single_select',
+    options: { values: [VALUE('v1', 'Annuaire', 'Directory'), VALUE('v2', 'Messagerie', 'Mail'), VALUE('v3', 'ERP', 'ERP', false)] },
+    isSystem: false,
+    allTypes: false,
+    issueTypeIds: ['t2', 't3', 't4'],
+    rules: [
+      { issueTypeId: 't3', statusId: null, mode: 'hidden' },
+      { issueTypeId: 't4', statusId: null, mode: 'required' },
+      { issueTypeId: 't2', statusId: 's4', mode: 'required' },
+    ],
+    version: 1,
+  },
+  {
+    id: 'f2',
+    key: 'story_points',
+    label: 'Points',
+    labelTranslations: { fr: 'Points', en: 'Points' },
+    kind: 'number',
+    options: { decimals: 1 },
+    isSystem: true,
+    allTypes: false,
+    issueTypeIds: ['t2', 't3'],
+    rules: [],
+    version: 1,
+  },
+  {
+    id: 'f3',
+    key: 'remaining',
+    label: 'Remaining work',
+    labelTranslations: { fr: 'Reste à faire', en: 'Remaining work' },
+    kind: 'number',
+    options: { decimals: 2, unit: 'hours' },
+    isSystem: true,
+    allTypes: true,
+    issueTypeIds: [],
+    rules: [],
+    version: 1,
+  },
+];
+
 /** The configurations' API for a configuration admin, recording what is created and published. */
 async function mockConfigurations(page: Page) {
-  const sent: { created: unknown[]; published: (string | null)[]; ordered: unknown[] } = { created: [], published: [], ordered: [] };
+  const sent: { created: unknown[]; published: (string | null)[]; ordered: unknown[]; fields: unknown[] } = {
+    created: [],
+    published: [],
+    ordered: [],
+    fields: [],
+  };
   await page.route('**/api/v1/auth/session', (route) =>
     route.fulfill({ json: { ...SESSION, account: { ...SESSION.account, tenantRole: 'configuration_admin' } } }),
   );
@@ -143,6 +204,12 @@ async function mockConfigurations(page: Page) {
   }
   await page.route(`**/api/v1/project-configs/*/issue-types`, (route) => route.fulfill({ json: { stage: 'published', items: TYPES } }));
   await page.route(`**/api/v1/project-configs/*/workflows`, (route) => route.fulfill({ json: { stage: 'published', items: [STANDARD] } }));
+  await page.route(`**/api/v1/project-configs/*/fields`, (route) => route.fulfill({ json: { stage: 'published', items: FIELDS } }));
+  await page.route(`**/api/v1/project-configs/*/fields/*`, (route) => {
+    const body = route.request().postDataJSON() as object;
+    sent.fields.push(body);
+    return route.fulfill({ json: { ...FIELDS[0], ...body, version: 2 } });
+  });
   await page.route(`**/api/v1/project-configs/*/issue-types/order`, (route) => {
     const ids = (route.request().postDataJSON() as { ids: string[] }).ids;
     sent.ordered.push(ids);
@@ -217,6 +284,31 @@ test('the issue types are reordered with the keyboard alone', async ({ page }) =
   await expect(page.locator('code.key')).toHaveText(['epic', 'story', 'task', 'bug', 'subtask']);
 });
 
+test('the rules of a field are set with the keyboard alone', async ({ page }) => {
+  const sent = await mockConfigurations(page);
+  await page.goto(`/admin/configurations/${SOFTWARE.id}/fields`);
+  await page.getByRole('button', { name: 'Edit Application' }).click();
+  const panel = page.getByRole('region', { name: 'Edit “Application”' });
+  // Task at creation: Hidden, then Visible, then Required.
+  const task = panel.getByRole('button', { name: 'Task, Creation: Hidden' });
+  await task.focus();
+  await page.keyboard.press('Enter');
+  await expect(panel.getByRole('button', { name: 'Task, Creation: Visible' })).toBeFocused();
+  await page.keyboard.press('Space');
+  await expect(panel.getByRole('button', { name: 'Task, Creation: Required' })).toBeFocused();
+  await panel.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('status')).toHaveText('Field “Application” saved in the draft.');
+  expect(sent.fields).toEqual([
+    expect.objectContaining({
+      rules: [
+        { issueTypeId: 't4', statusId: null, mode: 'required' },
+        { issueTypeId: 't2', statusId: 's4', mode: 'required' },
+        { issueTypeId: 't3', statusId: null, mode: 'required' },
+      ],
+    }),
+  ]);
+});
+
 for (const theme of ['light', 'dark'] as const) {
   for (const language of ['fr', 'en'] as const) {
     test.describe(`accessibility of the project configurations, ${theme} mode, ${language}`, () => {
@@ -270,6 +362,15 @@ for (const theme of ['light', 'dark'] as const) {
         await page.keyboard.press('Escape');
 
         await page.goto(`/admin/configurations/${SOFTWARE.id}/fields`);
+        await expect(page.locator('app-fields-tab tr[mat-row]')).toHaveCount(3);
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'fields').toEqual([]);
+        await page.locator('app-fields-tab button.edit').first().click();
+        await expect(page.locator('app-rules-grid button.mode')).toHaveCount(3 * 6);
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'field panel').toEqual([]);
+
+        await page.goto(`/admin/configurations/${SOFTWARE.id}/screens`);
         await expect(page.locator('app-config-section-tab')).toBeVisible();
         await animationsDone(page);
         expect(await accessibilityViolations(page), 'section').toEqual([]);

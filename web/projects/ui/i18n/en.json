@@ -412,7 +412,10 @@
       "unknown_member": "Not a member of the organization.",
       "too_many": "Too many items.",
       "not_using": "This project does not use this configuration.",
-      "not_a_permutation": "Every item must appear once."
+      "not_a_permutation": "Every item must appear once.",
+      "not_applicable": "Not available for this type.",
+      "less_than_min": "The maximum is below the minimum.",
+      "duplicate": "This value appears twice."
     },
     "invitation": {
       "invalid": "This invitation link is invalid, has expired or was already used. Ask for a new one.",
@@ -472,6 +475,10 @@
       "in_use": "Issue types follow this workflow: move them to another one first.",
       "last": "A configuration keeps at least one workflow.",
       "invalid": "Workflows of the draft cannot be published as they are: fix what the Workflows tab lists."
+    },
+    "config_field": {
+      "key_taken": "Another field of this configuration already has this identifier.",
+      "system": "A system field keeps its label and options and cannot be removed: only its issue types and rules change."
     }
   },
   "dialog": {
@@ -878,9 +885,7 @@
         "tab": "Types"
       },
       "fields": {
-        "tab": "Fields",
-        "title": "Fields come next",
-        "hint": "System and custom fields, with their rules per type and per step, will be defined here."
+        "tab": "Fields"
       },
       "workflows": {
         "tab": "Workflows"
@@ -996,6 +1001,105 @@
         "confirm": "Remove"
       },
       "workflow": "Workflow"
+    },
+    "fields": {
+      "intro": "System and custom fields, and whether each is hidden, visible or required per issue type and workflow step. Changes go to the draft.",
+      "add": "New field",
+      "caption": "Fields of the configuration",
+      "columns": {
+        "field": "Field",
+        "key": "Identifier",
+        "kind": "Type",
+        "types": "Issue types",
+        "languages": "Languages",
+        "actions": "Actions"
+      },
+      "system": "System",
+      "allTypesShort": "All",
+      "noType": "No type yet",
+      "editOf": "Edit {{name}}",
+      "saved": "Field “{{name}}” saved in the draft.",
+      "removed": "Field “{{name}}” removed from the draft.",
+      "editTitle": "Edit “{{name}}”",
+      "newTitle": "New field",
+      "close": "Close the panel",
+      "systemHint": "A system field keeps its label and options; you choose its issue types and rules.",
+      "label": "Label",
+      "key": "Identifier",
+      "keyHint": "Lowercase letters, digits and _; it cannot be changed later.",
+      "keyFixed": "Set when the field was added; it does not change.",
+      "keyFormat": "A lowercase letter, then lowercase letters, digits or _.",
+      "kind": "Type",
+      "kindFixed": "Set when the field was added; it does not change.",
+      "kinds": {
+        "short_text": "Short text",
+        "rich_text": "Rich long text",
+        "number": "Number",
+        "checkbox": "Checkbox",
+        "date": "Date",
+        "date_time": "Date and time",
+        "single_select": "Single select",
+        "multi_select": "Multi-select",
+        "cascading_select": "Cascading select",
+        "user": "User",
+        "group": "Group",
+        "labels": "Labels",
+        "url": "URL",
+        "issue_link": "Link to a ticket"
+      },
+      "maxLength": "Maximum length",
+      "maxLengthHint": "In characters, {{max}} at most; empty: {{max}}.",
+      "decimals": "Decimals",
+      "unit": "Unit",
+      "units": {
+        "none": "None",
+        "hours": "Hours",
+        "days": "Days",
+        "percent": "Percent"
+      },
+      "min": "Minimum",
+      "max": "Maximum",
+      "multiple": "Several users",
+      "values": {
+        "title": "Values",
+        "label": "Value {{position}} ({{language}})",
+        "childLabel": "Value {{parent}}.{{position}} ({{language}})",
+        "actions": "Actions of value {{position}}",
+        "childActions": "Actions of value {{parent}}.{{position}}",
+        "moveUp": "Move up",
+        "moveDown": "Move down",
+        "addChild": "Add a value under it",
+        "reactivate": "Reactivate",
+        "deactivate": "Deactivate",
+        "remove": "Remove",
+        "inactive": "Deactivated: no longer offered, kept on the tickets that have it.",
+        "add": "Add a value"
+      },
+      "types": "Issue types",
+      "allTypes": "All issue types, including the ones added later",
+      "issueTypes": "Issue types of the field",
+      "issueTypesHint": "The other types never show it.",
+      "rules": {
+        "title": "Rules per type and per step",
+        "hint": "Click a cell to go from Hidden to Visible, then Required.",
+        "caption": "Types following {{workflow}}",
+        "type": "Type",
+        "creation": "Creation",
+        "cell": "{{type}}, {{step}}: {{mode}}",
+        "empty": "Choose the issue types of the field to set its rules."
+      },
+      "modes": {
+        "hidden": "Hidden",
+        "visible": "Visible",
+        "required": "Required"
+      },
+      "save": "Save",
+      "remove": {
+        "action": "Remove",
+        "title": "Remove “{{name}}”?",
+        "message": "It leaves the draft with its rules. Once published, tickets no longer show its values.",
+        "confirm": "Remove"
+      }
     },
     "workflows": {
       "byType": "Workflow by issue type",

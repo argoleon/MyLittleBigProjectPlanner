@@ -8,7 +8,6 @@ import { NAVIGATION } from './navigation';
 /** The sections of a configuration still to be built by the next stories of L04, with their icon. */
 const CONFIG_SECTION_ROUTES: Route[] = (
   [
-    ['fields', 'input'],
     ['screens', 'web'],
     ['notifications', 'notifications'],
   ] as const
@@ -124,6 +123,11 @@ export const routes: Routes = [
             path: 'types',
             title: 'config.sections.types.tab',
             loadComponent: () => import('./configuration/types-tab').then((m) => m.TypesTab),
+          },
+          {
+            path: 'fields',
+            title: 'config.sections.fields.tab',
+            loadComponent: () => import('./configuration/fields-tab').then((m) => m.FieldsTab),
           },
           {
             path: 'workflows',

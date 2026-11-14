@@ -4918,6 +4918,571 @@
         }
       }
     },
+    "/api/v1/project-configs/{id}/fields": {
+      "get": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "List the fields of a configuration",
+        "description": "Tenant admins and configuration admins. System fields and custom fields, in their order, with their rules; from the draft if the configuration has one (`stage: draft`), else from its published version.",
+        "operationId": "listFields",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the configuration",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `label`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Its fields",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigFieldList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such configuration in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "Add a custom field to the draft of a configuration",
+        "description": "Tenant admins and configuration admins. It goes last, in the draft, opened if needed, with its rules; the projects get it once the draft is published.",
+        "operationId": "createField",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the configuration",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique key of this creation, 1 to 255 visible ASCII characters",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `label`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewConfigField"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Added",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the field"
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "URL of the field"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigField"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`: fields, options (`not_applicable` to the type), `issueTypeIds` or `rules` (`not_found`, `not_applicable`, `duplicate`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such configuration in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`config_field.key_taken`, or `idempotency_key.in_flight`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`Idempotency-Key` already used for another request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/project-configs/{id}/fields/{fieldId}": {
+      "get": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "Read a field",
+        "description": "Tenant admins and configuration admins. From the draft if the configuration has one, else from its published version.",
+        "operationId": "getField",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the configuration",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "fieldId",
+            "in": "path",
+            "description": "Id of the field",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `label`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The field",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the field"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigField"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such configuration or field",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "Change a field in the draft of a configuration",
+        "description": "Tenant admins and configuration admins. In the draft, opened if needed, with its rules; its `key` and `kind` stay. A list value of the published version left out is kept, deactivated. A system field keeps its label and options (`config_field.system`): only its types and rules change.",
+        "operationId": "updateField",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the configuration",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "fieldId",
+            "in": "path",
+            "description": "Id of the field",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the field, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `label`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigFieldSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The field",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "New version of the field"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigField"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`: fields, options (`not_applicable` to the type), `issueTypeIds` or `rules` (`not_found`, `not_applicable`, `duplicate`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such configuration or field",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`config_field.system`: a system field with another label or options",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The field changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "Remove a custom field from the draft of a configuration",
+        "description": "Tenant admins and configuration admins. From the draft, opened if needed, with its rules. System fields stay (`config_field.system`).",
+        "operationId": "deleteField",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the configuration",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "fieldId",
+            "in": "path",
+            "description": "Id of the field",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the field, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed"
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such configuration or field",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`config_field.system`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The field changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/project-configs/{id}/issue-types": {
       "get": {
         "tags": [
@@ -5479,7 +6044,7 @@
           "configurations"
         ],
         "summary": "Remove an issue type from the draft of a configuration",
-        "description": "Tenant admins and configuration admins. From the draft, opened if needed, and from the parents of the other types. If tickets use it, publishing needs them moved to another type first (`needsMigration` of the publish impact).",
+        "description": "Tenant admins and configuration admins. From the draft, opened if needed, from the parents of the other types and from the fields that apply to it. If tickets use it, publishing needs them moved to another type first (`needsMigration` of the publish impact).",
         "operationId": "deleteIssueType",
         "parameters": [
           {
@@ -10599,6 +11164,180 @@
           "type": "string"
         }
       },
+      "ConfigField": {
+        "type": "object",
+        "description": "A field of a configuration.",
+        "required": [
+          "id",
+          "key",
+          "labelTranslations",
+          "kind",
+          "options",
+          "isSystem",
+          "allTypes",
+          "issueTypeIds",
+          "rules",
+          "version"
+        ],
+        "properties": {
+          "allTypes": {
+            "type": "boolean",
+            "description": "Applies to every type, including the ones added later."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Its identity, the same in every version of the configuration."
+          },
+          "isSystem": {
+            "type": "boolean",
+            "description": "A system field cannot be removed; only its types and rules change."
+          },
+          "issueTypeIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The types it applies to, when not all."
+          },
+          "key": {
+            "type": "string",
+            "description": "Its stable identifier, set when it is added.",
+            "example": "application"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/FieldKind",
+            "description": "Set when it is added."
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "In the language of the request, else the tenant's default, else any.",
+            "example": "Application"
+          },
+          "labelTranslations": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "example": {
+              "en": "Application",
+              "fr": "Application"
+            }
+          },
+          "options": {
+            "$ref": "#/components/schemas/FieldOptions"
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldRule"
+            },
+            "description": "Its cells that are not Visible."
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          }
+        }
+      },
+      "ConfigFieldList": {
+        "type": "object",
+        "description": "The fields of a configuration, in their order.",
+        "required": [
+          "stage",
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConfigField"
+            }
+          },
+          "stage": {
+            "$ref": "#/components/schemas/FieldStage"
+          }
+        }
+      },
+      "ConfigFieldSettings": {
+        "type": "object",
+        "description": "What a field is made of; its `key` and `kind` stay.",
+        "required": [
+          "labelTranslations"
+        ],
+        "properties": {
+          "allTypes": {
+            "type": "boolean",
+            "description": "Every type, including the ones added later."
+          },
+          "issueTypeIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The types it applies to, when not all."
+          },
+          "labelTranslations": {
+            "type": "object",
+            "description": "One label per language (`fr`, `en`), at least one; 80 characters at\nmost. A system field keeps its own.",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "options": {
+            "$ref": "#/components/schemas/FieldOptionsInput",
+            "description": "A system field keeps its own."
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldRule"
+            },
+            "description": "The cells that are not Visible; Visible ones may be sent, and are\nnot kept. A status must belong to the workflow of the type."
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "allTypes": false,
+          "issueTypeIds": [
+            "01933b2e-7c4a-7b9e-8f3d-2a6c5e1f0b9a"
+          ],
+          "labelTranslations": {
+            "en": "Application",
+            "fr": "Application"
+          },
+          "options": {
+            "values": [
+              {
+                "id": "01933b2e-7c4a-7b9e-8f3d-2a6c5e1f0b01",
+                "labelTranslations": {
+                  "en": "Directory",
+                  "fr": "Annuaire"
+                }
+              },
+              {
+                "labelTranslations": {
+                  "en": "ERP",
+                  "fr": "ERP"
+                }
+              }
+            ]
+          },
+          "rules": []
+        }
+      },
       "ConfigProject": {
         "type": "object",
         "description": "A project using a configuration.",
@@ -10666,7 +11405,7 @@
       },
       "ErrorCode": {
         "type": "string",
-        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n| `invitation.invalid` | 400 | This invitation link is invalid, expired or already used |\n| `invitation.pending` | 409 | This email already has an open invitation; send it again instead |\n| `invitation.already_member` | 409 | This email already belongs to a member of the tenant |\n| `invitation.closed` | 409 | This invitation was already accepted or revoked |\n| `member.last_admin` | 409 | The tenant needs at least one active tenant admin |\n| `group.name_taken` | 409 | Another group already has this name |\n| `permission.denied` | 403 | You do not have the permission this needs |\n| `role.label_taken` | 409 | Another role already has this label |\n| `role.in_use` | 409 | Grants use this role: remove them first |\n| `account.no_password` | 409 | This account signs in through its organization: it has no password |\n| `session.current` | 409 | This is the session of the request: sign out instead |\n| `account.reauthentication_required` | 403 | Sign in again through your organization, then erase your account within 10 minutes |\n| `account.platform_admin` | 409 | A platform super admin cannot be erased: another one removes the role first |\n| `export.pending` | 409 | The export is not ready yet |\n| `node.key_taken` | 409 | Another project of the organization has this key |\n| `node.cycle` | 409 | This link would make the node its own ancestor |\n| `node.parent_not_allowed` | 409 | This type of node cannot be attached under that parent |\n| `node.grant_exists` | 409 | They already have this role on this node |\n| `node.confidential_lockout` | 409 | You would lose your own access: get a role granted on the project itself first |\n| `node.archived` | 409 | This project is archived: it is read-only until it is restored |\n| `node.active_children` | 409 | This project still has active sub-projects: archive or detach them first |\n| `node.parent_archived` | 409 | This project is under an archived project: restore that one first |\n| `config.name_taken` | 409 | Another project configuration already has this name |\n| `config.no_draft` | 409 | This configuration has no draft: nothing to publish or discard |\n| `config.default` | 409 | The default configuration stays: new projects get it |\n| `config.in_use` | 409 | Projects use this configuration: move them to another one first |\n| `issue_type.key_taken` | 409 | Another type of this configuration already has this identifier |\n| `issue_type.cycle` | 409 | A type cannot be its own ancestor |\n| `issue_type.subtask_parent` | 409 | A sub-task type cannot be the parent of another type |\n| `issue_type.last_type` | 409 | A configuration keeps at least one type that is not a sub-task |\n| `issue_type.orphan_subtask` | 409 | A sub-task type would have no parent type left: change it first |\n| `workflow.key_taken` | 409 | Another workflow of this configuration, or status of this workflow, already has this identifier |\n| `workflow.in_use` | 409 | Issue types follow this workflow: move them to another one first |\n| `workflow.last` | 409 | A configuration keeps at least one workflow |\n| `workflow.invalid` | 409 | Workflows of the draft cannot be published as they are: see errors |\n",
+        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n| `invitation.invalid` | 400 | This invitation link is invalid, expired or already used |\n| `invitation.pending` | 409 | This email already has an open invitation; send it again instead |\n| `invitation.already_member` | 409 | This email already belongs to a member of the tenant |\n| `invitation.closed` | 409 | This invitation was already accepted or revoked |\n| `member.last_admin` | 409 | The tenant needs at least one active tenant admin |\n| `group.name_taken` | 409 | Another group already has this name |\n| `permission.denied` | 403 | You do not have the permission this needs |\n| `role.label_taken` | 409 | Another role already has this label |\n| `role.in_use` | 409 | Grants use this role: remove them first |\n| `account.no_password` | 409 | This account signs in through its organization: it has no password |\n| `session.current` | 409 | This is the session of the request: sign out instead |\n| `account.reauthentication_required` | 403 | Sign in again through your organization, then erase your account within 10 minutes |\n| `account.platform_admin` | 409 | A platform super admin cannot be erased: another one removes the role first |\n| `export.pending` | 409 | The export is not ready yet |\n| `node.key_taken` | 409 | Another project of the organization has this key |\n| `node.cycle` | 409 | This link would make the node its own ancestor |\n| `node.parent_not_allowed` | 409 | This type of node cannot be attached under that parent |\n| `node.grant_exists` | 409 | They already have this role on this node |\n| `node.confidential_lockout` | 409 | You would lose your own access: get a role granted on the project itself first |\n| `node.archived` | 409 | This project is archived: it is read-only until it is restored |\n| `node.active_children` | 409 | This project still has active sub-projects: archive or detach them first |\n| `node.parent_archived` | 409 | This project is under an archived project: restore that one first |\n| `config.name_taken` | 409 | Another project configuration already has this name |\n| `config.no_draft` | 409 | This configuration has no draft: nothing to publish or discard |\n| `config.default` | 409 | The default configuration stays: new projects get it |\n| `config.in_use` | 409 | Projects use this configuration: move them to another one first |\n| `issue_type.key_taken` | 409 | Another type of this configuration already has this identifier |\n| `issue_type.cycle` | 409 | A type cannot be its own ancestor |\n| `issue_type.subtask_parent` | 409 | A sub-task type cannot be the parent of another type |\n| `issue_type.last_type` | 409 | A configuration keeps at least one type that is not a sub-task |\n| `issue_type.orphan_subtask` | 409 | A sub-task type would have no parent type left: change it first |\n| `workflow.key_taken` | 409 | Another workflow of this configuration, or status of this workflow, already has this identifier |\n| `workflow.in_use` | 409 | Issue types follow this workflow: move them to another one first |\n| `workflow.last` | 409 | A configuration keeps at least one workflow |\n| `workflow.invalid` | 409 | Workflows of the draft cannot be published as they are: see errors |\n| `config_field.key_taken` | 409 | Another field of this configuration already has this identifier |\n| `config_field.system` | 409 | A system field keeps its label and options and cannot be removed; only its types and rules change |\n",
         "enum": [
           "bad_request",
           "validation_failed",
@@ -10740,7 +11479,9 @@
           "workflow.key_taken",
           "workflow.in_use",
           "workflow.last",
-          "workflow.invalid"
+          "workflow.invalid",
+          "config_field.key_taken",
+          "config_field.system"
         ]
       },
       "ExportStatus": {
@@ -10770,6 +11511,304 @@
             "example": "code"
           }
         }
+      },
+      "FieldKind": {
+        "type": "string",
+        "description": "The type of a field.",
+        "enum": [
+          "short_text",
+          "rich_text",
+          "number",
+          "checkbox",
+          "date",
+          "date_time",
+          "single_select",
+          "multi_select",
+          "cascading_select",
+          "user",
+          "group",
+          "labels",
+          "url",
+          "issue_link"
+        ]
+      },
+      "FieldMode": {
+        "type": "string",
+        "description": "Whether a field is hidden, visible or required at a step.",
+        "enum": [
+          "hidden",
+          "visible",
+          "required"
+        ]
+      },
+      "FieldOptions": {
+        "type": "object",
+        "description": "The options of a field; each type takes its own (`not_applicable`\notherwise).",
+        "properties": {
+          "decimals": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Number: decimals allowed, 0 to 4 (0 by default).",
+            "minimum": 0
+          },
+          "max": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "maxLength": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Short text: longest text, 1 to 255 characters (255 by default).",
+            "minimum": 0
+          },
+          "min": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "multiple": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "User: several users."
+          },
+          "unit": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FieldUnit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "values": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/FieldValue"
+            },
+            "description": "Single, multi and cascading select: the values, in their order."
+          }
+        }
+      },
+      "FieldOptionsInput": {
+        "type": "object",
+        "description": "The options of a field, as an admin sets them; each type takes its own\n(`not_applicable` otherwise).",
+        "properties": {
+          "decimals": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Number: decimals allowed, 0 to 4 (0 by default).",
+            "minimum": 0
+          },
+          "max": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "maxLength": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Short text: longest text, 1 to 255 characters (255 by default).",
+            "minimum": 0
+          },
+          "min": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "multiple": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "User: several users."
+          },
+          "unit": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FieldUnit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "values": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/FieldValueInput"
+            },
+            "description": "Single, multi and cascading select: the values, in their order, at\nleast one. A value of the published version left out is kept,\ndeactivated."
+          }
+        },
+        "additionalProperties": false
+      },
+      "FieldRule": {
+        "type": "object",
+        "description": "One cell of the rules grid that is not Visible: a cell nobody set is\nVisible.",
+        "required": [
+          "issueTypeId",
+          "statusId",
+          "mode"
+        ],
+        "properties": {
+          "issueTypeId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A type the field applies to."
+          },
+          "mode": {
+            "$ref": "#/components/schemas/FieldMode"
+          },
+          "statusId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "A status of the type's workflow; null: at creation."
+          }
+        },
+        "additionalProperties": false
+      },
+      "FieldStage": {
+        "type": "string",
+        "description": "Where the fields were read.",
+        "enum": [
+          "draft",
+          "published"
+        ]
+      },
+      "FieldUnit": {
+        "type": "string",
+        "description": "The unit of a number field.",
+        "enum": [
+          "hours",
+          "days",
+          "percent"
+        ]
+      },
+      "FieldValue": {
+        "type": "object",
+        "description": "A value of a list field.",
+        "required": [
+          "id",
+          "labelTranslations",
+          "active",
+          "published",
+          "children"
+        ],
+        "properties": {
+          "active": {
+            "type": "boolean",
+            "description": "False: deactivated, no longer offered; tickets that hold it keep it."
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldValue"
+            },
+            "description": "Cascading select: the values under it."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Its identity, kept for good: tickets hold it."
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "In the language of the request, else the tenant's default, else any.",
+            "example": "Directory"
+          },
+          "labelTranslations": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "example": {
+              "en": "Directory",
+              "fr": "Annuaire"
+            }
+          },
+          "published": {
+            "type": "boolean",
+            "description": "Whether the published version has it: then removing it deactivates it."
+          }
+        }
+      },
+      "FieldValueInput": {
+        "type": "object",
+        "description": "A value of a list field, as an admin sets it.",
+        "required": [
+          "labelTranslations"
+        ],
+        "properties": {
+          "active": {
+            "type": "boolean",
+            "description": "False: deactivated, no longer offered."
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldValueInput"
+            },
+            "description": "Cascading select only: the values under it (one level)."
+          },
+          "id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Its identity; none for a new value."
+          },
+          "labelTranslations": {
+            "type": "object",
+            "description": "One label per language (`fr`, `en`), at least one; 80 characters at\nmost.",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
       },
       "GrantCandidate": {
         "type": "object",
@@ -11708,6 +12747,92 @@
             "type": "boolean",
             "description": "The tenant requires it: it cannot be disabled."
           }
+        }
+      },
+      "NewConfigField": {
+        "type": "object",
+        "description": "A new custom field.",
+        "required": [
+          "key",
+          "kind",
+          "labelTranslations"
+        ],
+        "properties": {
+          "allTypes": {
+            "type": "boolean",
+            "description": "Every type, including the ones added later."
+          },
+          "issueTypeIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The types it applies to, when not all."
+          },
+          "key": {
+            "type": "string",
+            "description": "A lowercase letter, then up to 39 lowercase letters, digits or\nunderscores; unique in the configuration, never changed."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/FieldKind",
+            "description": "Never changed."
+          },
+          "labelTranslations": {
+            "type": "object",
+            "description": "One label per language (`fr`, `en`), at least one; 80 characters at\nmost.",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "options": {
+            "$ref": "#/components/schemas/FieldOptionsInput"
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldRule"
+            },
+            "description": "The cells that are not Visible; Visible ones may be sent, and are\nnot kept. A status must belong to the workflow of the type."
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "issueTypeIds": [
+            "01933b2e-7c4a-7b9e-8f3d-2a6c5e1f0b9a"
+          ],
+          "key": "application",
+          "kind": "single_select",
+          "labelTranslations": {
+            "en": "Application",
+            "fr": "Application"
+          },
+          "options": {
+            "values": [
+              {
+                "labelTranslations": {
+                  "en": "Directory",
+                  "fr": "Annuaire"
+                }
+              },
+              {
+                "labelTranslations": {
+                  "en": "Mail",
+                  "fr": "Messagerie"
+                }
+              }
+            ]
+          },
+          "rules": [
+            {
+              "issueTypeId": "01933b2e-7c4a-7b9e-8f3d-2a6c5e1f0b9a",
+              "mode": "required",
+              "statusId": null
+            }
+          ]
         }
       },
       "NewInvitation": {
