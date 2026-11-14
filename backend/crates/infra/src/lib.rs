@@ -36,10 +36,12 @@ pub mod platform;
 pub mod rate_limit;
 pub mod reference_items;
 pub mod roles;
+pub mod rule_references;
 pub mod sessions;
 pub mod shutdown;
 pub mod telemetry;
 pub mod tenant_switch;
+pub mod transition_rules;
 pub mod valkey;
 pub mod workflows;
 

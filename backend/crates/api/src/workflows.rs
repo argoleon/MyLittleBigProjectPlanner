@@ -32,6 +32,7 @@ use crate::idempotency::{self, Start};
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
 use crate::roles::Language;
 use crate::tenant::TenantTx;
+use crate::transition_rules::{ReferencesView, RulesBody, checked, references};
 
 type Labels = BTreeMap<String, String>;
 
@@ -102,6 +103,8 @@ pub struct TransitionView {
     #[schema(required = true)]
     from_id: Option<Uuid>,
     to_id: Uuid,
+    /// Who may take it, the fields it requires, what it does.
+    rules: RulesBody,
     #[schema(example = 1)]
     version: i64,
 }
@@ -160,6 +163,8 @@ pub enum StageView {
 pub struct WorkflowList {
     stage: StageView,
     items: Vec<WorkflowView>,
+    /// The roles, groups and members the rules of the transitions name.
+    references: ReferencesView,
 }
 
 /// A new workflow, empty or a copy of another one.
@@ -239,6 +244,10 @@ pub struct TransitionBody {
     #[serde(default)]
     from_id: Option<Uuid>,
     to_id: Uuid,
+    /// Its conditions, validators and post-functions; left out, they stay as
+    /// they are (none for a new transition).
+    #[serde(default)]
+    rules: Option<RulesBody>,
 }
 
 fn labels_errors(v: &mut Violations, field: &str, labels: &Labels, required: bool) {
@@ -301,6 +310,7 @@ impl Language {
                     name_translations: t.name_translations.clone(),
                     from_id: t.from_status_id,
                     to_id: t.to_status_id,
+                    rules: RulesBody::of(&t.rules),
                     version: t.version,
                 })
                 .collect(),
@@ -495,13 +505,19 @@ pub async fn list(
     let all = repo::load(&mut tx, version).await?;
     let types = types_of(&mut tx, version).await?;
     let language = Language::of(&tx, &accept);
+    let references = references(&mut tx, &language, all.transitions.iter().map(|t| &t.rules)).await?;
     tx.commit().await?;
     let items = all
         .workflows
         .iter()
         .map(|w| language.workflow(&all, w, &types))
         .collect();
-    let mut response = ApiJson(WorkflowList { stage, items }).into_response();
+    let mut response = ApiJson(WorkflowList {
+        stage,
+        items,
+        references,
+    })
+    .into_response();
     language.headers(&mut response);
     Ok(response)
 }
@@ -921,10 +937,15 @@ pub async fn create_transition(
         return Err(not_found("no such workflow"));
     }
     check_ends(&all, workflow, &body)?;
+    let rules = match &body.rules {
+        Some(rules) => Some(checked(&mut tx, draft, rules).await?),
+        None => None,
+    };
     let fields = TransitionFields {
         name_translations: &body.name_translations,
         from_status_id: body.from_id,
         to_status_id: body.to_id,
+        rules: rules.as_ref(),
     };
     repo::insert_transition(&mut tx, draft, workflow, infra::id::new_id(), &fields).await?;
     changed(&mut tx, draft, workflow).await?;
@@ -955,7 +976,7 @@ pub async fn create_transition(
     request_body = TransitionBody,
     responses(
         (status = 200, description = "Its workflow", body = WorkflowView),
-        (status = 400, description = "`validation_failed`; `fromId` or `toId` `not_found`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 400, description = "`validation_failed`; `fromId` or `toId` `not_found`; `rules.…` `not_found`, `duplicate`, `required`, `not_applicable`, `unknown_member` or a value code", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 403, description = "`forbidden`, or `csrf.invalid`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 404, description = "No such configuration or transition", body = ProblemBody, content_type = PROBLEM_JSON),
@@ -979,10 +1000,15 @@ pub async fn update_transition(
     let all = repo::load(&mut tx, draft).await?;
     let workflow = owner(&all, transition).ok_or_else(|| not_found("no such transition"))?;
     check_ends(&all, workflow, &body)?;
+    let rules = match &body.rules {
+        Some(rules) => Some(checked(&mut tx, draft, rules).await?),
+        None => None,
+    };
     let fields = TransitionFields {
         name_translations: &body.name_translations,
         from_status_id: body.from_id,
         to_status_id: body.to_id,
+        rules: rules.as_ref(),
     };
     repo::update_transition(&mut tx, draft, transition, if_match.versions(), &fields)
         .await?

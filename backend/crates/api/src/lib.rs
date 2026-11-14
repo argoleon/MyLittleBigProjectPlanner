@@ -35,6 +35,7 @@ pub mod roles;
 mod routes;
 pub mod sso;
 pub mod tenant;
+pub mod transition_rules;
 pub mod workflows;
 
 use std::future::{Future, IntoFuture};
