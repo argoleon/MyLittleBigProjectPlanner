@@ -63,8 +63,8 @@ export class TranslatableInput {
   readonly group = input.required<TranslationsForm>();
   /** Translated name of what is labelled, e.g. "Name". */
   readonly label = input.required<string>();
-  /** The language that must be filled in, whatever the user's. */
-  readonly fallback = input<Language>(DEFAULT_LANGUAGE);
+  /** The language that must be filled in, whatever the user's; null for an optional label. */
+  readonly fallback = input<Language | null>(DEFAULT_LANGUAGE);
   readonly maxLength = input(LABEL_MAX_LENGTH);
 
   protected readonly languages = LANGUAGES;

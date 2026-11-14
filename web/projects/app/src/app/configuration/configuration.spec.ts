@@ -323,7 +323,7 @@ describe('ConfigPage', () => {
     expect((dialog().querySelector('button.confirm') as HTMLButtonElement).disabled).toBe(true);
     const impact: ProjectConfigPublishImpact = {
       projects: PROJECTS,
-      removedTypes: [{ id: '0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7b05', key: 'bug', label: 'Bug', ticketCount: 0 }],
+      removedTypes: [{ id: '0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7b05', key: 'bug', label: 'Bug', ticketCount: 0 }], removedStatuses: [], workflowProblems: [],
       needsMigration: false,
       version: 6,
     };
@@ -362,14 +362,14 @@ describe('ConfigPage', () => {
   it('reads the projects again when the configuration changed in the meantime', async () => {
     const { root, reply, click, dialog, text } = await openConfig(SOFTWARE);
     await click(root().querySelector('button.publish'));
-    await reply(isImpact(SOFTWARE.id), { projects: [PLAT], removedTypes: [], needsMigration: false, version: 6 });
+    await reply(isImpact(SOFTWARE.id), { projects: [PLAT], removedTypes: [], removedStatuses: [], workflowProblems: [], needsMigration: false, version: 6 });
     expect(text(dialog().querySelector('.intro'))).toBe('The new version applies at once to this project:');
     await click(dialog().querySelector('button.confirm'));
     await reply((u, m) => u.endsWith('/publish') && m === 'POST', problem(412, 'precondition_failed'), 412);
     expect(text(dialog().querySelector('[role="alert"]'))).toBe(
       'The configuration changed in the meantime: check the projects again, then publish.',
     );
-    await reply(isImpact(SOFTWARE.id), { projects: [PLAT, LEGACY], removedTypes: [], needsMigration: false, version: 8 });
+    await reply(isImpact(SOFTWARE.id), { projects: [PLAT, LEGACY], removedTypes: [], removedStatuses: [], workflowProblems: [], needsMigration: false, version: 8 });
     await click(dialog().querySelector('button.confirm'));
     const again = await reply((u, m) => u.endsWith('/publish') && m === 'POST', { ...SOFTWARE, draft: null });
     expect(again.request.headers.get('If-Match')).toBe('"8"');
@@ -378,7 +378,7 @@ describe('ConfigPage', () => {
   it('does not publish while tickets must be migrated, and says when no project is affected', async () => {
     const { root, reply, click, dialog, text } = await openConfig(SOFTWARE);
     await click(root().querySelector('button.publish'));
-    await reply(isImpact(SOFTWARE.id), { projects: [PLAT], removedTypes: [], needsMigration: true, version: 6 });
+    await reply(isImpact(SOFTWARE.id), { projects: [PLAT], removedTypes: [], removedStatuses: [], workflowProblems: [], needsMigration: true, version: 6 });
     expect(text(dialog().querySelector('[role="alert"]'))).toBe(
       'Some tickets use a type or a status this version removes: they must be migrated first.',
     );
@@ -386,7 +386,7 @@ describe('ConfigPage', () => {
     TestBed.inject(MatDialog).closeAll();
 
     await click(root().querySelector('button.publish'));
-    await reply(isImpact(SOFTWARE.id), { projects: [], removedTypes: [], needsMigration: false, version: 6 });
+    await reply(isImpact(SOFTWARE.id), { projects: [], removedTypes: [], removedStatuses: [], workflowProblems: [], needsMigration: false, version: 6 });
     expect(text(dialog().querySelector('.intro'))).toBe(
       'No project uses this configuration yet: the new version will apply to the projects moved to it.',
     );

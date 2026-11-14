@@ -1,0 +1,157 @@
+@if (notice(); as notice) {
+  <p class="message" [class.info]="notice.ok" [class.error]="!notice.ok" [attr.role]="notice.ok ? 'status' : 'alert'">
+    {{ notice.key | transloco: notice.params }}
+  </p>
+}
+@if (workflows.isLoading() && !workflows.hasValue()) {
+  <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+} @else if (workflows.error()) {
+  <ui-error-state [error]="workflows.error()" [headingLevel]="2" (retry)="workflows.reload()" />
+} @else {
+  <div class="layout">
+    <nav class="list" [attr.aria-label]="'config.workflows.byType' | transloco">
+      <h2 class="list-title">{{ 'config.workflows.byType' | transloco }}</h2>
+      @for (workflow of items(); track workflow.id) {
+        <button
+          type="button"
+          class="item"
+          [class.current]="workflow.id === selected()?.id"
+          [attr.aria-current]="workflow.id === selected()?.id ? 'true' : null"
+          (click)="choose(workflow)"
+        >
+          <span class="item-types">{{ typesOf(workflow) || ('config.workflows.noType' | transloco) }}</span>
+          <span class="item-name">{{ workflow.labelTranslations | translated }}</span>
+          @if (workflow.problems.length > 0) {
+            <span class="item-problems">{{ 'config.workflows.toFix' | transloco }}</span>
+          }
+        </button>
+      }
+      <button matButton type="button" class="add-workflow" (click)="addWorkflow()">
+        <mat-icon aria-hidden="true">add</mat-icon>
+        {{ 'config.workflows.add' | transloco }}
+      </button>
+    </nav>
+
+    @if (selected(); as workflow) {
+      <div class="detail">
+        <section class="card" aria-labelledby="workflow-title">
+          <div class="card-header">
+            <h2 id="workflow-title" class="card-title">
+              {{ workflow.labelTranslations | translated }} <code class="key">{{ workflow.key }}</code>
+            </h2>
+            <span class="tag">{{ 'config.workflows.readOnlyGraph' | transloco }}</span>
+            <button matIconButton type="button" class="rename" (click)="renameWorkflow(workflow)" [attr.aria-label]="'config.workflows.renameOf' | transloco: { name: workflow.labelTranslations | translated }">
+              <mat-icon aria-hidden="true">edit</mat-icon>
+            </button>
+            <button matIconButton type="button" class="remove-workflow" (click)="removeWorkflow(workflow)" [attr.aria-label]="'config.workflows.remove.of' | transloco: { name: workflow.labelTranslations | translated }">
+              <mat-icon aria-hidden="true">delete</mat-icon>
+            </button>
+          </div>
+          @if (workflow.problems.length > 0) {
+            <div class="problems" role="alert">
+              <p class="problems-title">{{ 'config.workflows.problemsTitle' | transloco }}</p>
+              <ul>
+                @for (problem of workflow.problems; track $index) {
+                  <li>{{ 'config.workflows.problems.' + problem.code | transloco: problemParams(workflow, problem) }}</li>
+                }
+              </ul>
+            </div>
+          }
+          <app-workflow-graph [workflow]="workflow" />
+        </section>
+
+        <section class="card" aria-labelledby="statuses-title">
+          <div class="card-header">
+            <h2 id="statuses-title" class="card-title">{{ 'config.workflows.statuses' | transloco }}</h2>
+            <button matButton type="button" class="add-status" (click)="editStatus(workflow)">
+              <mat-icon aria-hidden="true">add</mat-icon>{{ 'config.workflows.status.add' | transloco }}
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table mat-table [dataSource]="workflow.statuses" class="table statuses">
+              <caption class="cdk-visually-hidden">{{ 'config.workflows.statusesCaption' | transloco: { name: workflow.labelTranslations | translated } }}</caption>
+              <ng-container matColumnDef="label">
+                <th mat-header-cell *matHeaderCellDef scope="col">{{ 'config.workflows.columns.label' | transloco }}</th>
+                <td mat-cell *matCellDef="let status">
+                  <strong>{{ status.labelTranslations.fr }}</strong>
+                  @if (status.labelTranslations.en) {
+                    / <span lang="en">{{ status.labelTranslations.en }}</span>
+                  }
+                  @if (status.isInitial) {
+                    <span class="initial">{{ 'config.workflows.status.isInitial' | transloco }}</span>
+                  }
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="key">
+                <th mat-header-cell *matHeaderCellDef scope="col">{{ 'config.types.columns.key' | transloco }}</th>
+                <td mat-cell *matCellDef="let status"><code class="key">{{ status.key }}</code></td>
+              </ng-container>
+              <ng-container matColumnDef="category">
+                <th mat-header-cell *matHeaderCellDef scope="col">{{ 'config.workflows.status.category' | transloco }}</th>
+                <td mat-cell *matCellDef="let status">
+                  <ui-status-chip [category]="chipCategory(status.category)" [label]="'config.workflows.categories.' + status.category | transloco" />
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="portal">
+                <th mat-header-cell *matHeaderCellDef scope="col">{{ 'config.workflows.status.portalLabel' | transloco }}</th>
+                <td mat-cell *matCellDef="let status">{{ (status.portalLabelTranslations | translated) || '—' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef scope="col"><span class="cdk-visually-hidden">{{ 'config.types.columns.actions' | transloco }}</span></th>
+                <td mat-cell *matCellDef="let status" class="actions">
+                  <button matIconButton type="button" class="edit-status" (click)="editStatus(workflow, status)" [attr.aria-label]="'config.types.editOf' | transloco: { name: status.labelTranslations | translated }">
+                    <mat-icon aria-hidden="true">edit</mat-icon>
+                  </button>
+                  <button matIconButton type="button" class="remove-status" (click)="removeStatus(status)" [attr.aria-label]="'config.workflows.status.remove.of' | transloco: { name: status.labelTranslations | translated }">
+                    <mat-icon aria-hidden="true">delete</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="statusColumns"></tr>
+              <tr mat-row *matRowDef="let status; columns: statusColumns"></tr>
+            </table>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="transitions-title">
+          <div class="card-header">
+            <h2 id="transitions-title" class="card-title">{{ 'config.workflows.transitions' | transloco }}</h2>
+            <button matButton type="button" class="add-transition" [disabled]="workflow.statuses.length === 0" (click)="editTransition(workflow)">
+              <mat-icon aria-hidden="true">add</mat-icon>{{ 'config.workflows.transition.add' | transloco }}
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table mat-table [dataSource]="workflow.transitions" class="table transitions">
+              <caption class="cdk-visually-hidden">{{ 'config.workflows.transitionsCaption' | transloco: { name: workflow.labelTranslations | translated } }}</caption>
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef scope="col">{{ 'config.workflows.transition.name' | transloco }}</th>
+                <td mat-cell *matCellDef="let transition"><strong>{{ transition.nameTranslations | translated }}</strong></td>
+              </ng-container>
+              <ng-container matColumnDef="move">
+                <th mat-header-cell *matHeaderCellDef scope="col">{{ 'config.workflows.columns.move' | transloco }}</th>
+                <td mat-cell *matCellDef="let transition" class="move">
+                  {{ transition.fromId ? statusLabel(workflow, transition.fromId) : ('config.workflows.transition.any' | transloco) }}
+                  <span aria-hidden="true">→</span><span class="cdk-visually-hidden">{{ 'config.workflows.to' | transloco }}</span>
+                  {{ statusLabel(workflow, transition.toId) }}
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef scope="col"><span class="cdk-visually-hidden">{{ 'config.types.columns.actions' | transloco }}</span></th>
+                <td mat-cell *matCellDef="let transition" class="actions">
+                  <button matIconButton type="button" class="edit-transition" (click)="editTransition(workflow, transition)" [attr.aria-label]="'config.types.editOf' | transloco: { name: transition.nameTranslations | translated }">
+                    <mat-icon aria-hidden="true">edit</mat-icon>
+                  </button>
+                  <button matIconButton type="button" class="remove-transition" (click)="removeTransition(transition)" [attr.aria-label]="'config.workflows.transition.remove.of' | transloco: { name: transition.nameTranslations | translated }">
+                    <mat-icon aria-hidden="true">delete</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="transitionColumns"></tr>
+              <tr mat-row *matRowDef="let transition; columns: transitionColumns"></tr>
+            </table>
+          </div>
+        </section>
+      </div>
+    }
+  </div>
+}

@@ -47,6 +47,13 @@ describe('translationsForm', () => {
     expect(english.controls.fr.valid).toBe(true);
   });
 
+  it('requires nothing for an optional label', () => {
+    const form = translationsForm({}, { required: false });
+    expect(form.valid).toBe(true);
+    form.controls.en.setValue('x'.repeat(101));
+    expect(form.controls.en.hasError('too_long')).toBe(true);
+  });
+
   it('limits every language once trimmed', () => {
     const form = translationsForm({ fr: 'Support' }, { maxLength: 5 });
     form.controls.en.setValue(' Desks ');

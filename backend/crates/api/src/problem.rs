@@ -108,11 +108,15 @@ pub enum ErrorCode {
     IssueTypeSubtaskParent,
     IssueTypeLastType,
     IssueTypeOrphanSubtask,
+    WorkflowKeyTaken,
+    WorkflowInUse,
+    WorkflowLast,
+    WorkflowInvalid,
 }
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 69] = [
+    pub const ALL: [Self; 73] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -182,6 +186,10 @@ impl ErrorCode {
         Self::IssueTypeSubtaskParent,
         Self::IssueTypeLastType,
         Self::IssueTypeOrphanSubtask,
+        Self::WorkflowKeyTaken,
+        Self::WorkflowInUse,
+        Self::WorkflowLast,
+        Self::WorkflowInvalid,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -255,6 +263,10 @@ impl ErrorCode {
             Self::IssueTypeSubtaskParent => "issue_type.subtask_parent",
             Self::IssueTypeLastType => "issue_type.last_type",
             Self::IssueTypeOrphanSubtask => "issue_type.orphan_subtask",
+            Self::WorkflowKeyTaken => "workflow.key_taken",
+            Self::WorkflowInUse => "workflow.in_use",
+            Self::WorkflowLast => "workflow.last",
+            Self::WorkflowInvalid => "workflow.invalid",
         }
     }
 
@@ -321,7 +333,11 @@ impl ErrorCode {
             | Self::IssueTypeCycle
             | Self::IssueTypeSubtaskParent
             | Self::IssueTypeLastType
-            | Self::IssueTypeOrphanSubtask => StatusCode::CONFLICT,
+            | Self::IssueTypeOrphanSubtask
+            | Self::WorkflowKeyTaken
+            | Self::WorkflowInUse
+            | Self::WorkflowLast
+            | Self::WorkflowInvalid => StatusCode::CONFLICT,
             Self::PreconditionFailed => StatusCode::PRECONDITION_FAILED,
             Self::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -411,6 +427,12 @@ impl ErrorCode {
             Self::IssueTypeSubtaskParent => "A sub-task type cannot be the parent of another type",
             Self::IssueTypeLastType => "A configuration keeps at least one type that is not a sub-task",
             Self::IssueTypeOrphanSubtask => "A sub-task type would have no parent type left: change it first",
+            Self::WorkflowKeyTaken => {
+                "Another workflow of this configuration, or status of this workflow, already has this identifier"
+            }
+            Self::WorkflowInUse => "Issue types follow this workflow: move them to another one first",
+            Self::WorkflowLast => "A configuration keeps at least one workflow",
+            Self::WorkflowInvalid => "Workflows of the draft cannot be published as they are: see errors",
         }
     }
 
@@ -654,7 +676,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 69] = [
+        let expected: [(ErrorCode, u16); 73] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -724,6 +746,10 @@ mod tests {
             (ErrorCode::IssueTypeSubtaskParent, 409),
             (ErrorCode::IssueTypeLastType, 409),
             (ErrorCode::IssueTypeOrphanSubtask, 409),
+            (ErrorCode::WorkflowKeyTaken, 409),
+            (ErrorCode::WorkflowInUse, 409),
+            (ErrorCode::WorkflowLast, 409),
+            (ErrorCode::WorkflowInvalid, 409),
         ];
         for (code, status) in expected {
             assert_eq!(code.status().as_u16(), status, "{}", code.as_str());

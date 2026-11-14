@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT item_id, workflow_id, name AS \"name: Json<Labels>\", from_status_id, to_status_id, position, version\n        FROM workflow_transition WHERE version_id = $1 ORDER BY position, item_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "item_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "workflow_transition",
+            "name": "item_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "workflow_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "workflow_transition",
+            "name": "workflow_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "name: Json<Labels>",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "workflow_transition",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "from_status_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "workflow_transition",
+            "name": "from_status_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "to_status_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "workflow_transition",
+            "name": "to_status_id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "position",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "workflow_transition",
+            "name": "position"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "version",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "workflow_transition",
+            "name": "version"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "a2cf2802f30b478aac231b4c177574b3d6c3ae04e9e1622fc7de1a98f13f5f37"
+}

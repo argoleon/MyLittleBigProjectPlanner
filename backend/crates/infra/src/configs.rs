@@ -210,7 +210,8 @@ pub async fn default_id(conn: &mut PgConnection) -> Result<Option<Uuid>, sqlx::E
 }
 
 /// Creates a configuration named `name`, with a published version 1 that
-/// holds the default content (L04-US02 onwards: the default types).
+/// holds the default content: the default types (L04-US02), following
+/// the standard workflow (L04-US04).
 pub async fn insert(
     conn: &mut PgConnection,
     id: Uuid,
@@ -221,6 +222,8 @@ pub async fn insert(
         Ok(config) => config,
         Err(conflict) => return Ok(Err(conflict)),
     };
+    // The workflow first: the types follow it.
+    crate::workflows::seed_default(conn, config.published.id).await?;
     crate::issue_types::seed_defaults(conn, config.published.id).await?;
     found(conn, id).await
 }
@@ -490,6 +493,8 @@ pub async fn projects(conn: &mut PgConnection, id: Uuid) -> Result<Vec<ConfigPro
 /// content table of L04-US02 onwards adds its copy here, keeping the
 /// identifiers its items have across versions.
 async fn copy_content(conn: &mut PgConnection, from: Uuid, to: Uuid) -> Result<(), sqlx::Error> {
+    // Workflows first: the types refer to them.
+    crate::workflows::copy(conn, from, to).await?;
     crate::issue_types::copy(conn, from, to).await
 }
 

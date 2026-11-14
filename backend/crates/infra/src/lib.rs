@@ -40,6 +40,7 @@ pub mod shutdown;
 pub mod telemetry;
 pub mod tenant_switch;
 pub mod valkey;
+pub mod workflows;
 
 pub use sqlx;
 pub use uuid;

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT item_id, key, label AS \"label: Json<BTreeMap<String, String>>\", icon, color, is_subtask,\n               parent_ids, position, version\n        FROM issue_type p\n        WHERE p.version_id = $1\n          AND NOT EXISTS (SELECT 1 FROM issue_type d WHERE d.version_id = $2 AND d.item_id = p.item_id)\n        ORDER BY position, key\n        ",
+  "query": "\n        SELECT item_id, workflow_id, key, label AS \"label: Json<Labels>\",\n               portal_label AS \"portal_label: Json<Labels>\", category, is_initial, position, version\n        FROM workflow_status WHERE version_id = $1 ORDER BY position, key\n        ",
   "describe": {
     "columns": [
       {
@@ -9,74 +9,74 @@
         "type_info": "Uuid",
         "origin": {
           "Table": {
-            "table": "issue_type",
+            "table": "workflow_status",
             "name": "item_id"
           }
         }
       },
       {
         "ordinal": 1,
-        "name": "key",
-        "type_info": "Text",
+        "name": "workflow_id",
+        "type_info": "Uuid",
         "origin": {
           "Table": {
-            "table": "issue_type",
-            "name": "key"
+            "table": "workflow_status",
+            "name": "workflow_id"
           }
         }
       },
       {
         "ordinal": 2,
-        "name": "label: Json<BTreeMap<String, String>>",
-        "type_info": "Jsonb",
+        "name": "key",
+        "type_info": "Text",
         "origin": {
           "Table": {
-            "table": "issue_type",
-            "name": "label"
+            "table": "workflow_status",
+            "name": "key"
           }
         }
       },
       {
         "ordinal": 3,
-        "name": "icon",
-        "type_info": "Text",
+        "name": "label: Json<Labels>",
+        "type_info": "Jsonb",
         "origin": {
           "Table": {
-            "table": "issue_type",
-            "name": "icon"
+            "table": "workflow_status",
+            "name": "label"
           }
         }
       },
       {
         "ordinal": 4,
-        "name": "color",
-        "type_info": "Text",
+        "name": "portal_label: Json<Labels>",
+        "type_info": "Jsonb",
         "origin": {
           "Table": {
-            "table": "issue_type",
-            "name": "color"
+            "table": "workflow_status",
+            "name": "portal_label"
           }
         }
       },
       {
         "ordinal": 5,
-        "name": "is_subtask",
-        "type_info": "Bool",
+        "name": "category",
+        "type_info": "Text",
         "origin": {
           "Table": {
-            "table": "issue_type",
-            "name": "is_subtask"
+            "table": "workflow_status",
+            "name": "category"
           }
         }
       },
       {
         "ordinal": 6,
-        "name": "parent_ids",
-        "type_info": "UuidArray",
+        "name": "is_initial",
+        "type_info": "Bool",
         "origin": {
           "Table": {
-            "table": "issue_type",
-            "name": "parent_ids"
+            "table": "workflow_status",
+            "name": "is_initial"
           }
         }
       },
@@ -86,7 +86,7 @@
         "type_info": "Int4",
         "origin": {
           "Table": {
-            "table": "issue_type",
+            "table": "workflow_status",
             "name": "position"
           }
         }
@@ -97,7 +97,7 @@
         "type_info": "Int8",
         "origin": {
           "Table": {
-            "table": "issue_type",
+            "table": "workflow_status",
             "name": "version"
           }
         }
@@ -105,7 +105,6 @@
     ],
     "parameters": {
       "Left": [
-        "Uuid",
         "Uuid"
       ]
     },
@@ -121,5 +120,5 @@
       false
     ]
   },
-  "hash": "0b8ac2514e3278f6e65d92f3835d5f2b67a070dd4aa4e2e4ac8933c0d2482a34"
+  "hash": "21a69453dbb86106d7147d46d727e2ede42394565c394e4dc1c119df0b2f83c2"
 }

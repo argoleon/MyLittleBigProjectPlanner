@@ -14,6 +14,7 @@ import {
   ConfirmDialogData,
   IssueType,
   IssueTypeColor,
+  Workflow,
   TranslatableInput,
   TranslatedPipe,
   createIssueType,
@@ -64,6 +65,8 @@ export class TypeEditor {
   readonly type = input.required<IssueType | null>();
   /** Every type of the configuration. */
   readonly types = input.required<readonly IssueType[]>();
+  /** The workflows a type may follow. */
+  readonly workflows = input.required<readonly Workflow[]>();
   readonly saved = output<IssueType>();
   readonly removed = output<IssueType>();
   readonly closed = output<void>();
@@ -78,6 +81,7 @@ export class TypeEditor {
     color: new FormControl<IssueTypeColor>('task', { nonNullable: true }),
     isSubtask: new FormControl(false, { nonNullable: true }),
     parentIds: new FormControl<string[]>([], { nonNullable: true }),
+    workflowId: new FormControl<string | null>(null),
   });
   protected readonly saving = signal(false);
   protected readonly errorKey = signal<string | null>(null);
@@ -107,6 +111,8 @@ export class TypeEditor {
       color: type?.color ?? 'task',
       isSubtask: type?.isSubtask ?? false,
       parentIds: [...(type?.parentIds ?? [])],
+      // A new type follows the first workflow unless told otherwise.
+      workflowId: type?.workflowId ?? this.workflows()[0]?.id ?? null,
     });
     if (type) this.form.controls.key.disable();
     else this.form.controls.key.enable();

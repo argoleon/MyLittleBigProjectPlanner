@@ -16,6 +16,7 @@ import {
   getProjectConfig,
   isApiProblem,
   listIssueTypes,
+  listWorkflows,
   reorderIssueTypes,
 } from 'ui';
 
@@ -65,6 +66,12 @@ export class TypesTab {
     loader: ({ params }) => this.api.invoke(listIssueTypes, { id: params }),
   });
   protected readonly items = computed(() => (this.types.hasValue() ? this.types.value().items : []));
+  /** The workflows a type may follow, for the panel. */
+  private readonly workflowList = resource({
+    params: () => this.configId(),
+    loader: ({ params }) => this.api.invoke(listWorkflows, { id: params }),
+  });
+  protected readonly workflows = computed(() => (this.workflowList.hasValue() ? this.workflowList.value().items : []));
   protected readonly editing = signal<Editing | null>(null);
   protected readonly notice = signal<{ ok: boolean; key: string; params?: Record<string, string> } | null>(null);
   protected readonly moving = signal(false);

@@ -50,3 +50,14 @@
   font-size: 18px;
   color: var(--mat-sys-on-surface-variant);
 }
+
+.problems {
+  p {
+    margin: 0;
+  }
+
+  ul {
+    margin: var(--app-space-1) 0 0;
+    padding-inline-start: var(--app-space-5);
+  }
+}

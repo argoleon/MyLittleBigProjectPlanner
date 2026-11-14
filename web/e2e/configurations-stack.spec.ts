@@ -146,3 +146,67 @@ test('an issue type added to the draft reaches the projects once published', asy
 
   await admin.context().close();
 });
+
+test('a status nothing leads to keeps the workflow from being published until a transition does', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const run = Date.now().toString(36).toUpperCase().slice(-6);
+  const config = `Delivery ${run}`;
+
+  const admin = await signIn(browser, adminEmail!, adminSecret!);
+  await admin.goto('/admin/configurations');
+  await admin.getByRole('button', { name: 'New configuration' }).click();
+  const dialog = admin.getByRole('dialog', { name: 'New project configuration' });
+  await expect(dialog.getByLabel('Name (Français)')).toBeFocused();
+  await dialog.getByLabel('Name (Français)').fill(`Livraison ${run}`);
+  await dialog.getByLabel('Name (English)').fill(config);
+  await dialog.getByRole('button', { name: 'Create' }).click();
+  await expect(admin.getByRole('heading', { level: 1 })).toHaveText(config);
+  await admin.getByRole('tab', { name: 'Workflows' }).click();
+
+  // The standard workflow, followed by every default type.
+  await expect(admin.getByRole('button', { name: /Epic, Story, Task, Bug, Sub-task/ })).toBeVisible();
+  await expect(admin.getByRole('img', { name: /Graph of Standard workflow/ })).toBeVisible();
+  expect(await accessibilityViolations(admin), 'standard workflow').toEqual([]);
+
+  // A new status: nothing leads to it yet.
+  await admin.getByRole('button', { name: 'Add a status' }).click();
+  const status = admin.getByRole('dialog', { name: 'New status' });
+  await expect(status.getByLabel('Label (Français)')).toBeFocused();
+  await status.getByLabel('Label (Français)').fill('En attente');
+  await status.getByLabel('Label (English)').fill('On hold');
+  await status.getByLabel('Identifier').fill('on_hold');
+  await status.getByRole('combobox', { name: 'Category' }).focus();
+  await admin.keyboard.press('Enter');
+  await admin.getByRole('option', { name: 'In progress', exact: true }).click();
+  await status.getByRole('button', { name: 'Save' }).click();
+  await expect(admin.getByRole('status')).toHaveText('Status saved in “Standard workflow”.');
+  await expect(admin.locator('.problems')).toContainText('nothing leads to “On hold” from the initial status.');
+
+  // Publishing waits for it.
+  await admin.getByRole('button', { name: 'Publish the changes' }).click();
+  const publish = admin.getByRole('dialog', { name: `Publish “${config}”?` });
+  await expect(publish.getByText('Workflows of the draft to fix first:')).toBeVisible();
+  await expect(publish.getByRole('button', { name: 'Publish' })).toBeDisabled();
+  await admin.keyboard.press('Escape');
+
+  // A transition to it, from In progress: ready, and published.
+  await admin.getByRole('button', { name: 'Add a transition' }).click();
+  const transition = admin.getByRole('dialog', { name: 'New transition' });
+  await expect(transition.getByLabel('Transition (Français)')).toBeFocused();
+  await transition.getByLabel('Transition (Français)').fill('Mettre en attente');
+  await transition.getByLabel('Transition (English)').fill('Put on hold');
+  await transition.getByRole('combobox', { name: 'From' }).focus();
+  await admin.keyboard.press('Enter');
+  await admin.getByRole('listbox', { name: 'From' }).getByRole('option', { name: 'In progress', exact: true }).click();
+  await transition.getByRole('combobox', { name: 'To' }).focus();
+  await admin.keyboard.press('Enter');
+  await admin.getByRole('listbox', { name: 'To' }).getByRole('option', { name: 'On hold', exact: true }).click();
+  await transition.getByRole('button', { name: 'Save' }).click();
+  await expect(admin.getByRole('status')).toHaveText('Transition saved in “Standard workflow”.');
+  await expect(admin.locator('.problems')).toHaveCount(0);
+  await admin.getByRole('button', { name: 'Publish the changes' }).click();
+  await publish.getByRole('button', { name: 'Publish' }).click();
+  await expect(admin.getByText('Version 2 is published.', { exact: true })).toBeVisible();
+
+  await admin.context().close();
+});

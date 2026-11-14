@@ -89,6 +89,9 @@ pub struct IssueTypeView {
     /// The types a ticket of this type may sit under (`id`s); none: only at
     /// the top.
     parent_ids: Vec<Uuid>,
+    /// The workflow its tickets follow.
+    #[schema(required = true)]
+    workflow_id: Option<Uuid>,
     /// 1 for a type with no parent, else one more than its deepest parent.
     #[schema(example = 2)]
     level: u32,
@@ -145,6 +148,10 @@ pub struct NewTypeBody {
     /// The types it may sit under; required for a sub-task.
     #[serde(default)]
     parent_ids: Vec<Uuid>,
+    /// The workflow its tickets follow; by default the configuration's
+    /// first one for a new type, and the one it has for a change.
+    #[serde(default)]
+    workflow_id: Option<Uuid>,
 }
 
 impl NewTypeBody {
@@ -155,6 +162,7 @@ impl NewTypeBody {
             color: self.color,
             is_subtask: self.is_subtask,
             parent_ids: self.parent_ids.clone(),
+            workflow_id: self.workflow_id,
         }
     }
 }
@@ -184,6 +192,10 @@ pub struct TypeBody {
     /// The types it may sit under; required for a sub-task.
     #[serde(default)]
     parent_ids: Vec<Uuid>,
+    /// The workflow its tickets follow; by default the configuration's
+    /// first one for a new type, and the one it has for a change.
+    #[serde(default)]
+    workflow_id: Option<Uuid>,
 }
 
 /// The order of the types.
@@ -205,8 +217,9 @@ impl TypeBody {
         .map_err(Problem::validation)
     }
 
-    fn fields(&self) -> TypeFields<'_> {
+    fn fields(&self, workflow_id: Uuid) -> TypeFields<'_> {
         TypeFields {
+            workflow_id,
             label_translations: &self.label_translations,
             icon: &self.icon,
             color: Color::from(self.color).as_str(),
@@ -239,6 +252,7 @@ fn views(language: &Language, types: Vec<IssueType>) -> Vec<IssueTypeView> {
             color: ColorView::of(&t.color),
             is_subtask: t.is_subtask,
             parent_ids: t.parent_ids,
+            workflow_id: t.workflow_id,
             version: t.version,
         })
         .collect()
@@ -309,6 +323,19 @@ async fn draft(tx: &mut TenantTx, config: Uuid) -> Result<Uuid, Problem> {
         .draft
         .map(|d| d.id)
         .ok_or_else(|| Problem::new(ErrorCode::ConfigNoDraft))
+}
+
+/// The workflow `wanted` of the draft, which must be one of its workflows
+/// (`workflowId` `not_found`); none: its first workflow.
+async fn workflow_of(tx: &mut TenantTx, draft: Uuid, wanted: Option<Uuid>) -> Result<Uuid, Problem> {
+    let workflows = infra::workflows::load(tx, draft).await?.workflows;
+    let found = match wanted {
+        Some(id) => workflows.iter().find(|w| w.item_id == id),
+        None => workflows.first(),
+    };
+    found
+        .map(|w| w.item_id)
+        .ok_or_else(|| Problem::validation(vec![FieldError::new("workflowId", "not_found")]))
 }
 
 /// Counts the change of the type `item` in the draft.
@@ -457,7 +484,8 @@ pub async fn create(
     if let Some(refusal) = hierarchy_refusal(&with(&types, fields.node(item)), Some(item.as_u128())) {
         return Err(hierarchy_problem(refusal));
     }
-    repo::insert(&mut tx, draft, item, &body.key, &fields.fields())
+    let workflow = workflow_of(&mut tx, draft, fields.workflow_id).await?;
+    repo::insert(&mut tx, draft, item, &body.key, &fields.fields(workflow))
         .await?
         .map_err(conflict_problem)?;
     changed(&mut tx, draft, item).await?;
@@ -517,13 +545,14 @@ pub async fn update(
     body.validate(None)?;
     let draft = draft(&mut tx, id).await?;
     let types = repo::list(&mut tx, draft).await?;
-    if !types.iter().any(|t| t.item_id == item) {
+    let Some(current) = types.iter().find(|t| t.item_id == item) else {
         return Err(conflict_problem(WriteConflict::NotFound));
-    }
+    };
     if let Some(refusal) = hierarchy_refusal(&with(&types, body.node(item)), Some(item.as_u128())) {
         return Err(hierarchy_problem(refusal));
     }
-    repo::update(&mut tx, draft, item, if_match.versions(), &body.fields())
+    let workflow = workflow_of(&mut tx, draft, body.workflow_id.or(current.workflow_id)).await?;
+    repo::update(&mut tx, draft, item, if_match.versions(), &body.fields(workflow))
         .await?
         .map_err(conflict_problem)?;
     changed(&mut tx, draft, item).await?;

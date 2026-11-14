@@ -466,6 +466,12 @@
       "subtask_parent": "A sub-task type cannot be the parent of another type.",
       "last_type": "A configuration keeps at least one type that is not a sub-task.",
       "orphan_subtask": "A sub-task type would have no parent type left: change it first."
+    },
+    "workflow": {
+      "key_taken": "Another workflow of this configuration, or status of this workflow, already has this identifier.",
+      "in_use": "Issue types follow this workflow: move them to another one first.",
+      "last": "A configuration keeps at least one workflow.",
+      "invalid": "Workflows of the draft cannot be published as they are: fix what the Workflows tab lists."
     }
   },
   "dialog": {
@@ -877,9 +883,7 @@
         "hint": "System and custom fields, with their rules per type and per step, will be defined here."
       },
       "workflows": {
-        "tab": "Workflows",
-        "title": "Workflows come next",
-        "hint": "The statuses and transitions of each issue type will be defined here."
+        "tab": "Workflows"
       },
       "screens": {
         "tab": "Screens",
@@ -923,6 +927,14 @@
       "tickets": {
         "one": "{{count}} ticket",
         "other": "{{count}} tickets"
+      },
+      "removedStatuses": "Removed statuses",
+      "workflowProblems": "Workflows of the draft to fix first:",
+      "problemCodes": {
+        "no_status": "no status",
+        "no_initial": "no initial status",
+        "unreachable": "nothing leads to this status",
+        "duplicate_transition": "a transition repeated"
       }
     },
     "node": {
@@ -982,6 +994,84 @@
         "title": "Remove “{{name}}”?",
         "message": "It leaves the draft and the allowed parents of the other types. Tickets using it will have to move to another type before publishing.",
         "confirm": "Remove"
+      },
+      "workflow": "Workflow"
+    },
+    "workflows": {
+      "byType": "Workflow by issue type",
+      "noType": "No type follows it",
+      "toFix": "To fix before publishing",
+      "add": "New workflow",
+      "readOnlyGraph": "Read-only graph",
+      "renameOf": "Rename {{name}}",
+      "graph": "Graph of {{name}}; the statuses and transitions tables below describe it.",
+      "problemsTitle": "This workflow cannot be published yet:",
+      "problems": {
+        "no_status": "it has no status.",
+        "no_initial": "none of its statuses is the initial one.",
+        "unreachable": "nothing leads to “{{status}}” from the initial status.",
+        "duplicate_transition": "“{{transition}}” repeats another transition."
+      },
+      "statuses": "Statuses",
+      "statusesCaption": "Statuses of {{name}}",
+      "transitions": "Transitions",
+      "transitionsCaption": "Transitions of {{name}}",
+      "columns": {
+        "label": "Label (FR / EN)",
+        "move": "From → to"
+      },
+      "to": "to",
+      "saved": "Workflow “{{name}}” saved in the draft.",
+      "newTitle": "New workflow",
+      "renameTitle": "Rename the workflow",
+      "label": "Name",
+      "copyOf": "Start from",
+      "empty": "An empty workflow",
+      "categories": {
+        "todo": "To do",
+        "in_progress": "In progress",
+        "done": "Done"
+      },
+      "remove": {
+        "of": "Remove {{name}}",
+        "title": "Remove “{{name}}”?",
+        "message": "Its statuses and transitions go with it. No issue type may follow it.",
+        "confirm": "Remove",
+        "done": "Workflow “{{name}}” removed from the draft."
+      },
+      "status": {
+        "add": "Add a status",
+        "newTitle": "New status",
+        "editTitle": "Change the status",
+        "category": "Category",
+        "portalLabel": "Label on the portal",
+        "initial": "Initial status: new tickets start here",
+        "isInitial": "Initial",
+        "saved": "Status saved in “{{name}}”.",
+        "remove": {
+          "of": "Remove {{name}}",
+          "title": "Remove the status “{{name}}”?",
+          "message": "Its transitions go with it. Tickets in this status will have to move to another one before publishing.",
+          "confirm": "Remove",
+          "done": "Status “{{name}}” removed from the draft."
+        }
+      },
+      "transition": {
+        "add": "Add a transition",
+        "newTitle": "New transition",
+        "editTitle": "Change the transition",
+        "name": "Transition",
+        "from": "From",
+        "to": "To",
+        "any": "All statuses",
+        "saved": "Transition saved in “{{name}}”.",
+        "remove": {
+          "of": "Remove {{name}}",
+          "title": "Remove the transition “{{name}}”?",
+          "message": "Tickets will no longer take it.",
+          "confirm": "Remove",
+          "done": "Transition “{{name}}” removed from the draft."
+        }
       }
     }
   }

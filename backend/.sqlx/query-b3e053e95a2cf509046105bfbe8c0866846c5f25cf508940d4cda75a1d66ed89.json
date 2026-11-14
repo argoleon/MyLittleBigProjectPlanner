@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT item_id, key, label AS \"label: Json<BTreeMap<String, String>>\", icon, color, is_subtask,\n               parent_ids, position, version\n        FROM issue_type WHERE version_id = $1 AND item_id = $2\n        ",
+  "query": "\n        SELECT item_id, key, label AS \"label: Json<BTreeMap<String, String>>\", icon, color, is_subtask,\n               parent_ids, workflow_id, position, version\n        FROM issue_type WHERE version_id = $1\n        ORDER BY position, key\n        ",
   "describe": {
     "columns": [
       {
@@ -82,6 +82,17 @@
       },
       {
         "ordinal": 7,
+        "name": "workflow_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "issue_type",
+            "name": "workflow_id"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
         "name": "position",
         "type_info": "Int4",
         "origin": {
@@ -92,7 +103,7 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "version",
         "type_info": "Int8",
         "origin": {
@@ -105,7 +116,6 @@
     ],
     "parameters": {
       "Left": [
-        "Uuid",
         "Uuid"
       ]
     },
@@ -117,9 +127,10 @@
       false,
       false,
       false,
+      true,
       false,
       false
     ]
   },
-  "hash": "97f027ab6cefc173f5dd66b6d8e36335754354db2a6d1fc7276cd2c8dbfecef9"
+  "hash": "b3e053e95a2cf509046105bfbe8c0866846c5f25cf508940d4cda75a1d66ed89"
 }

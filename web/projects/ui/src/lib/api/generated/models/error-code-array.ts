@@ -75,5 +75,9 @@ export const ERROR_CODE: ErrorCode[] = [
   'issue_type.cycle',
   'issue_type.subtask_parent',
   'issue_type.last_type',
-  'issue_type.orphan_subtask'
+  'issue_type.orphan_subtask',
+  'workflow.key_taken',
+  'workflow.in_use',
+  'workflow.last',
+  'workflow.invalid'
 ];
