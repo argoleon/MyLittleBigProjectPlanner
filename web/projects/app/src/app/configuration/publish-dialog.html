@@ -69,7 +69,13 @@
 </mat-dialog-content>
 <mat-dialog-actions align="end">
   <button matButton type="button" mat-dialog-close>{{ 'dialog.cancel' | transloco }}</button>
-  <button matButton="filled" type="button" class="confirm" [disabled]="!ready() || publishing()" (click)="publish()">
-    {{ 'config.publishDialog.confirm' | transloco }}
-  </button>
+  @if (toMigrate()) {
+    <button matButton="filled" type="button" class="migrate" (click)="migrate()">
+      {{ 'config.publishDialog.migrate' | transloco }}
+    </button>
+  } @else {
+    <button matButton="filled" type="button" class="confirm" [disabled]="!ready() || publishing()" (click)="publish()">
+      {{ 'config.publishDialog.confirm' | transloco }}
+    </button>
+  }
 </mat-dialog-actions>

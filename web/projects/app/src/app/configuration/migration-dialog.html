@@ -1,0 +1,103 @@
+<div class="heading">
+  <mat-icon aria-hidden="true" class="icon">sync_alt</mat-icon>
+  <h2 mat-dialog-title>{{ 'config.migration.title' | transloco }}</h2>
+</div>
+<mat-dialog-content>
+  @if (errorKey(); as key) {
+    <p class="message error" role="alert">{{ key | transloco }}</p>
+  }
+  @if (migration(); as migration) {
+    <!-- The progress, once started. -->
+    <div class="progress" role="status" aria-live="polite">
+      @if (migration.state === 'failed') {
+        <p class="message error">{{ 'config.migration.failed' | transloco: { error: migration.error ?? '' } }}</p>
+      } @else {
+        <p>
+          {{
+            'config.migration.progress'
+              | transloco: { migrated: (migration.ticketsMigrated | localNumber), total: (migration.ticketTotal | localNumber) }
+          }}
+        </p>
+        <mat-progress-bar mode="determinate" [value]="migration.percent" [attr.aria-label]="'config.migration.progressLabel' | transloco" />
+      }
+    </div>
+  } @else if (plan.isLoading()) {
+    <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+  } @else if (plan.error()) {
+    <ui-error-state [error]="plan.error()" [headingLevel]="3" (retry)="plan.reload()" />
+  } @else if (plan.value(); as plan) {
+    <p class="intro">{{ 'config.migration.intro' | transloco: { name: data.config.name ?? '', count: data.projects.length } }}</p>
+    @for (group of [{ key: 'statuses', items: plan.statuses }, { key: 'types', items: plan.types }]; track group.key) {
+      @if (group.items.length > 0) {
+        <table class="mapping" [attr.data-group]="group.key">
+          <caption class="cdk-visually-hidden">{{ 'config.migration.caption.' + group.key | transloco }}</caption>
+          <thead>
+            <tr>
+              <th scope="col">{{ 'config.migration.current.' + group.key | transloco }}</th>
+              <th scope="col" class="count">{{ 'config.migration.tickets' | transloco }}</th>
+              <th scope="col"><span class="cdk-visually-hidden">{{ 'config.migration.to' | transloco }}</span></th>
+              <th scope="col">{{ 'config.migration.target.' + group.key | transloco }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of group.items; track item.id) {
+              <tr>
+                <th scope="row">
+                  {{ item.label ?? item.key }}
+                  @if (item.workflow) {
+                    <span class="workflow">{{ item.workflow }}</span>
+                  }
+                </th>
+                <td class="count">{{ item.ticketCount | localNumber }}</td>
+                <td class="arrow"><mat-icon aria-hidden="true">arrow_forward</mat-icon></td>
+                <td>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="target">
+                    <mat-select
+                      [value]="choices()[item.id]"
+                      (selectionChange)="choose(item.id, $event.value)"
+                      [aria-label]="'config.migration.targetOf' | transloco: { name: item.label ?? item.key }"
+                    >
+                      @for (target of item.targets; track target.id) {
+                        <mat-option [value]="target.id">
+                          {{ target.isNew ? ('config.migration.new' | transloco: { name: target.label ?? '' }) : target.label }}
+                        </mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    }
+    @if (data.projects.length > 0) {
+      <div class="projects">
+        <span class="label">{{ 'config.migration.projects' | transloco }}</span>
+        <ul class="chips">
+          @for (project of data.projects; track project.id) {
+            <li class="chip">
+              @if (keyOf(project); as key) {
+                {{ key }}
+              } @else {
+                <mat-icon aria-hidden="true">lock</mat-icon>{{ 'config.projects.veiled' | transloco }}
+              }
+            </li>
+          }
+        </ul>
+      </div>
+    }
+    <p class="note">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <span>{{ 'config.migration.background' | transloco }}</span>
+    </p>
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button matButton type="button" mat-dialog-close>{{ 'dialog.cancel' | transloco }}</button>
+  @if (!migration()) {
+    <button matButton="filled" type="button" class="confirm" [disabled]="!complete() || starting()" (click)="start()">
+      {{ 'config.migration.confirm' | transloco: { count: (total() | localNumber) } }}
+    </button>
+  }
+</mat-dialog-actions>

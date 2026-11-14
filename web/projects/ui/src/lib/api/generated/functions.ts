@@ -139,6 +139,12 @@ export type { UpdateIssueType$Params as UpdateIssueType$Params } from './fn/conf
 export { updateIssueType as updateIssueType } from './fn/configurations/update-issue-type';
 export type { DeleteIssueType$Params as DeleteIssueType$Params } from './fn/configurations/delete-issue-type';
 export { deleteIssueType as deleteIssueType } from './fn/configurations/delete-issue-type';
+export type { GetMigrationPlan$Params as GetMigrationPlan$Params } from './fn/configurations/get-migration-plan';
+export { getMigrationPlan as getMigrationPlan } from './fn/configurations/get-migration-plan';
+export type { StartMigration$Params as StartMigration$Params } from './fn/configurations/start-migration';
+export { startMigration as startMigration } from './fn/configurations/start-migration';
+export type { GetMigration$Params as GetMigration$Params } from './fn/configurations/get-migration';
+export { getMigration as getMigration } from './fn/configurations/get-migration';
 export type { ListNotificationRules$Params as ListNotificationRules$Params } from './fn/configurations/list-notification-rules';
 export { listNotificationRules as listNotificationRules } from './fn/configurations/list-notification-rules';
 export type { UpdateNotificationRule$Params as UpdateNotificationRule$Params } from './fn/configurations/update-notification-rule';

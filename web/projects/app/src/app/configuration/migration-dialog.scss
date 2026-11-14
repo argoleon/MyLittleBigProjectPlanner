@@ -1,0 +1,114 @@
+@use '../admin/admin-shared';
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: var(--app-space-4);
+
+  .icon {
+    color: var(--mat-sys-primary);
+  }
+
+  h2 {
+    text-align: center;
+  }
+}
+
+.intro {
+  margin: 0 0 var(--app-space-3);
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.mapping {
+  width: 100%;
+  margin-bottom: var(--app-space-3);
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: var(--app-space-1) var(--app-space-2);
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+    text-align: start;
+  }
+
+  thead th {
+    font: var(--mat-sys-label-medium);
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  tbody th {
+    font: var(--mat-sys-body-large);
+  }
+
+  .count {
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .arrow mat-icon {
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  .target {
+    width: 100%;
+    min-width: 200px;
+  }
+}
+
+.workflow {
+  display: block;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.projects {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--app-space-2);
+  margin-bottom: var(--app-space-3);
+
+  .label {
+    font: var(--mat-sys-body-small);
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--app-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--app-space-1);
+  padding: var(--app-space-1) var(--app-space-2);
+  border-radius: var(--mat-sys-corner-small);
+  font: var(--mat-sys-label-medium);
+  color: var(--mat-sys-on-surface-variant);
+  background: var(--mat-sys-surface-container-highest);
+}
+
+.note {
+  display: flex;
+  gap: var(--app-space-2);
+  margin: 0;
+  padding: var(--app-space-3);
+  border-radius: var(--mat-sys-corner-medium);
+  font: var(--mat-sys-body-medium);
+  background: var(--mat-sys-surface-container-high);
+}
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-2);
+  padding: var(--app-space-3) 0;
+}
