@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE config_migration\n            SET state = 'failed', error = 'the draft changed since the mapping', finished_at = now()\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c14f7cf5569b8f39b40e27df55277c8f1a775ff37d61e040cf36e49828007be2"
+}

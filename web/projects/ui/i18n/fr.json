@@ -337,6 +337,7 @@
   "errors": {
     "bad_request": "La requête est mal formée.",
     "validation_failed": "Certains champs sont invalides.",
+    "mapping_incomplete": "Chaque statut et type retiré doit correspondre à un statut ou type que cette version garde.",
     "invalid_json": "Les données envoyées sont invalides.",
     "invalid_query": "Les paramètres de la requête sont invalides.",
     "not_found": "Cet élément n’existe pas ou n’est plus accessible.",
@@ -471,7 +472,8 @@
       "name_taken": "Une autre configuration de projet porte déjà ce nom.",
       "no_draft": "Cette configuration n’a pas de brouillon : rien à publier ni à abandonner.",
       "default": "La configuration par défaut reste : les nouveaux projets la reçoivent.",
-      "in_use": "Des projets utilisent cette configuration : déplacez-les d’abord vers une autre."
+      "in_use": "Des projets utilisent cette configuration : déplacez-les d’abord vers une autre.",
+      "migration_running": "Une migration de cette configuration est déjà en cours."
     },
     "issue_type": {
       "key_taken": "Un autre type de cette configuration a déjà cet identifiant.",
@@ -951,7 +953,35 @@
         "no_initial": "pas de statut initial",
         "unreachable": "rien ne mène à ce statut",
         "duplicate_transition": "une transition répétée"
-      }
+      },
+      "migrate": "Faire correspondre et migrer"
+    },
+    "migration": {
+      "title": "Migrer les tickets",
+      "intro": "Publier « {{name}} » retire des statuts ou des types qu’utilisent des tickets de ses {{count}} projets. Choisissez où vont leurs tickets.",
+      "caption": {
+        "statuses": "Statuts retirés et leur nouveau statut",
+        "types": "Types retirés et leur nouveau type"
+      },
+      "current": {
+        "statuses": "Statut actuel",
+        "types": "Type actuel"
+      },
+      "target": {
+        "statuses": "Nouveau statut",
+        "types": "Nouveau type"
+      },
+      "tickets": "Tickets",
+      "to": "devient",
+      "targetOf": "Nouvelle valeur pour {{name}}",
+      "new": "{{name}} (nouveau)",
+      "projects": "Projets concernés :",
+      "background": "La migration s’exécute en tâche de fond. L’historique de chaque ticket conserve son ancien statut et son ancien type ; la nouvelle version est publiée une fois tous les tickets migrés.",
+      "confirm": "Migrer {{count}} tickets",
+      "progress": "{{migrated}} tickets migrés sur {{total}}…",
+      "progressLabel": "Avancement de la migration",
+      "failed": "La migration s’est arrêtée, rien n’a été publié : {{error}}.",
+      "stale": "La configuration a changé entre-temps : vérifiez de nouveau la correspondance, puis migrez."
     },
     "node": {
       "title": "Configuration du projet",

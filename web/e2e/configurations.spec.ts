@@ -491,6 +491,67 @@ test('the fields of a screen are added, reordered and removed with the keyboard 
   expect(sent.screens).toEqual([{ nameTranslations: { fr: 'Consultation', en: 'View' }, fieldIds: ['f3', 'f2', 'f1'] }]);
 });
 
+test('tickets using a removed status are mapped, migrated in the background, then the draft is published', async ({ page }) => {
+  await mockConfigurations(page);
+  // Mockup 13: "In test" goes, 38 tickets use it; "In acceptance" comes.
+  await page.route(`**/api/v1/project-configs/${SOFTWARE.id}/publish-impact`, (route) =>
+    route.fulfill({
+      json: { projects: PROJECTS, removedTypes: [], removedStatuses: [], workflowProblems: [], needsMigration: true, version: 5 },
+    }),
+  );
+  await page.route(`**/api/v1/project-configs/${SOFTWARE.id}/migration-plan`, (route) =>
+    route.fulfill({
+      json: {
+        statuses: [
+          {
+            id: 's9',
+            key: 'in_test',
+            label: 'In test',
+            workflow: 'Standard workflow',
+            ticketCount: 38,
+            targets: [
+              { id: 's2', label: 'In progress', isNew: false },
+              { id: 's10', label: 'In acceptance', isNew: true },
+            ],
+            suggestedId: null,
+          },
+        ],
+        types: [],
+        ticketTotal: 38,
+        version: 5,
+      },
+    }),
+  );
+  const started: unknown[] = [];
+  await page.route(`**/api/v1/project-configs/${SOFTWARE.id}/migrations`, (route) => {
+    started.push({ ifMatch: route.request().headers()['if-match'], body: route.request().postDataJSON() });
+    return route.fulfill({
+      status: 202,
+      json: { id: 'm1', state: 'pending', ticketTotal: 38, ticketsMigrated: 0, percent: 0, error: null, createdAt: '2026-11-14T10:00:00Z', finishedAt: null },
+    });
+  });
+  await page.route(`**/api/v1/project-configs/${SOFTWARE.id}/migrations/m1`, (route) =>
+    route.fulfill({
+      json: { id: 'm1', state: 'done', ticketTotal: 38, ticketsMigrated: 38, percent: 100, error: null, createdAt: '2026-11-14T10:00:00Z', finishedAt: '2026-11-14T10:00:05Z' },
+    }),
+  );
+  await page.goto(`/admin/configurations/${SOFTWARE.id}/types`);
+  await page.getByRole('button', { name: 'Publish the changes' }).click();
+  await page.getByRole('dialog', { name: 'Publish “Software development”?' }).getByRole('button', { name: 'Map and migrate' }).click();
+  const wizard = page.getByRole('dialog', { name: 'Migrate the tickets' });
+  const confirm = wizard.getByRole('button', { name: 'Migrate 38 tickets' });
+  // Unmapped: the button stays disabled.
+  await expect(confirm).toBeDisabled();
+  await animationsDone(page);
+  expect(await accessibilityViolations(page), 'migration wizard').toEqual([]);
+  await wizard.getByRole('combobox', { name: 'New value for In test' }).click();
+  await page.getByRole('option', { name: 'In acceptance (new)' }).click();
+  await confirm.click();
+  // Published once migrated: both dialogs close.
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(started).toEqual([{ ifMatch: '"5"', body: { statusMappings: [{ fromId: 's9', toId: 's10' }], typeMappings: [] } }]);
+});
+
 for (const theme of ['light', 'dark'] as const) {
   for (const language of ['fr', 'en'] as const) {
     test.describe(`accessibility of the project configurations, ${theme} mode, ${language}`, () => {

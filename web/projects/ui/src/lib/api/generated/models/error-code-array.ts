@@ -84,5 +84,7 @@ export const ERROR_CODE: ErrorCode[] = [
   'config_field.system',
   'screen.exists',
   'screen.general',
-  'screen.in_use'
+  'screen.in_use',
+  'mapping_incomplete',
+  'config.migration_running'
 ];

@@ -337,6 +337,7 @@
   "errors": {
     "bad_request": "The request is malformed.",
     "validation_failed": "Some fields are invalid.",
+    "mapping_incomplete": "Every removed status and type must be mapped to one this version keeps.",
     "invalid_json": "The data sent is invalid.",
     "invalid_query": "The request parameters are invalid.",
     "not_found": "This item does not exist or is no longer available.",
@@ -471,7 +472,8 @@
       "name_taken": "Another project configuration already has this name.",
       "no_draft": "This configuration has no draft: nothing to publish or discard.",
       "default": "The default configuration stays: new projects get it.",
-      "in_use": "Projects use this configuration: move them to another one first."
+      "in_use": "Projects use this configuration: move them to another one first.",
+      "migration_running": "A migration of this configuration is already under way."
     },
     "issue_type": {
       "key_taken": "Another type of this configuration already has this identifier.",
@@ -951,7 +953,35 @@
         "no_initial": "no initial status",
         "unreachable": "nothing leads to this status",
         "duplicate_transition": "a transition repeated"
-      }
+      },
+      "migrate": "Map and migrate"
+    },
+    "migration": {
+      "title": "Migrate the tickets",
+      "intro": "Publishing “{{name}}” removes statuses or types that tickets of its {{count}} projects use. Choose where their tickets go.",
+      "caption": {
+        "statuses": "Removed statuses and their new status",
+        "types": "Removed types and their new type"
+      },
+      "current": {
+        "statuses": "Current status",
+        "types": "Current type"
+      },
+      "target": {
+        "statuses": "New status",
+        "types": "New type"
+      },
+      "tickets": "Tickets",
+      "to": "becomes",
+      "targetOf": "New value for {{name}}",
+      "new": "{{name}} (new)",
+      "projects": "Projects affected:",
+      "background": "The migration runs in the background. The history of each ticket keeps its former status and type; the new version is published once every ticket moved.",
+      "confirm": "Migrate {{count}} tickets",
+      "progress": "{{migrated}} of {{total}} tickets migrated…",
+      "progressLabel": "Progress of the migration",
+      "failed": "The migration stopped, nothing was published: {{error}}.",
+      "stale": "The configuration changed in the meantime: check the mapping again, then migrate."
     },
     "node": {
       "title": "Project configuration",

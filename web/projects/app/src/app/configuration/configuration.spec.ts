@@ -382,7 +382,9 @@ describe('ConfigPage', () => {
     expect(text(dialog().querySelector('[role="alert"]'))).toBe(
       'Some tickets use a type or a status this version removes: they must be migrated first.',
     );
-    expect((dialog().querySelector('button.confirm') as HTMLButtonElement).disabled).toBe(true);
+    // No publishing: the tickets are mapped and migrated first (L04-US08).
+    expect(dialog().querySelector('button.confirm')).toBeNull();
+    expect(text(dialog().querySelector('button.migrate'))).toBe('Map and migrate');
     TestBed.inject(MatDialog).closeAll();
 
     await click(root().querySelector('button.publish'));

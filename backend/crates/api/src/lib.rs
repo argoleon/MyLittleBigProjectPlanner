@@ -24,6 +24,7 @@ pub mod me;
 pub mod members;
 pub mod mfa;
 pub mod middleware;
+pub mod migrations;
 pub mod nodes;
 pub mod notification_rules;
 pub mod openapi;

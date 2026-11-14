@@ -1,0 +1,149 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, config_id, draft_id, state, status_mappings AS \"status_mappings: Json<Vec<Mapping>>\",\n               type_mappings AS \"type_mappings: Json<Vec<Mapping>>\", ticket_total, tickets_migrated, error,\n               created_at, finished_at\n        FROM config_migration WHERE config_id = $1 AND id = $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "config_migration",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "config_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "config_migration",
+            "name": "config_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "draft_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "config_migration",
+            "name": "draft_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "state",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "config_migration",
+            "name": "state"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "status_mappings: Json<Vec<Mapping>>",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "config_migration",
+            "name": "status_mappings"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "type_mappings: Json<Vec<Mapping>>",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "config_migration",
+            "name": "type_mappings"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "ticket_total",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "config_migration",
+            "name": "ticket_total"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "tickets_migrated",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "config_migration",
+            "name": "tickets_migrated"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "error",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "config_migration",
+            "name": "error"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "config_migration",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "finished_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "config_migration",
+            "name": "finished_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "5fcd12253ce8698de38d02db78fbb064d924e9e0138babd88f0ef9f6bae7163c"
+}

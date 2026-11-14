@@ -16,6 +16,7 @@ use std::time::Duration;
 use chrono::Utc;
 use domain::jobs::{AfterFailure, after_failure};
 use infra::aggregates::AGGREGATE_JOB;
+use infra::config_migrations::{MIGRATION_JOB, MigrationJob, Outcome};
 use infra::email::{EMAIL_JOB, EmailJob, MailError, Mailer, render};
 use infra::erasure::{ERASURE_JOB, ErasedMember};
 use infra::exports::{EXPORT_JOB, ExportJob, ExportStore};
@@ -121,6 +122,23 @@ impl JobHandler for Jobs {
                         .await
                         .map_err(|e| JobError::Retry(e.to_string()))?;
                     tracing::info!(computed, "node aggregates recomputed");
+                    Ok(())
+                }
+                MIGRATION_JOB => {
+                    let migration: MigrationJob = payload(job)?;
+                    let outcome = infra::config_migrations::run(conn, migration.migration_id)
+                        .await
+                        .map_err(|e| JobError::Retry(e.to_string()))?;
+                    match outcome {
+                        Outcome::Published => {
+                            tracing::info!(target: "audit", migration = %migration.migration_id, "configuration migrated and published");
+                        }
+                        // Recorded as failed: committed, not retried.
+                        Outcome::DraftChanged => {
+                            tracing::warn!(migration = %migration.migration_id, "configuration migration failed: the draft changed");
+                        }
+                        Outcome::AlreadyOver | Outcome::Missing => {}
+                    }
                     Ok(())
                 }
                 other => Err(JobError::Permanent(format!("unknown job kind {other}"))),

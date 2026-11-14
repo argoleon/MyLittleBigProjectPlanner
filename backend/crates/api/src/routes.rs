@@ -30,6 +30,7 @@ use crate::issue_types;
 use crate::me;
 use crate::members;
 use crate::mfa;
+use crate::migrations;
 use crate::nodes;
 use crate::notification_rules;
 use crate::openapi;
@@ -149,6 +150,9 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
             config_fields::update,
             config_fields::delete
         ))
+        .routes(routes!(migrations::plan_of))
+        .routes(routes!(migrations::start))
+        .routes(routes!(migrations::progress))
         .routes(routes!(notification_rules::list))
         .routes(routes!(notification_rules::update))
         .routes(routes!(screens::list, screens::create))
