@@ -113,6 +113,16 @@ export type { DiscardProjectConfigDraft$Params as DiscardProjectConfigDraft$Para
 export { discardProjectConfigDraft as discardProjectConfigDraft } from './fn/configurations/discard-project-config-draft';
 export type { DuplicateProjectConfig$Params as DuplicateProjectConfig$Params } from './fn/configurations/duplicate-project-config';
 export { duplicateProjectConfig as duplicateProjectConfig } from './fn/configurations/duplicate-project-config';
+export type { ListFields$Params as ListFields$Params } from './fn/configurations/list-fields';
+export { listFields as listFields } from './fn/configurations/list-fields';
+export type { CreateField$Params as CreateField$Params } from './fn/configurations/create-field';
+export { createField as createField } from './fn/configurations/create-field';
+export type { GetField$Params as GetField$Params } from './fn/configurations/get-field';
+export { getField as getField } from './fn/configurations/get-field';
+export type { UpdateField$Params as UpdateField$Params } from './fn/configurations/update-field';
+export { updateField as updateField } from './fn/configurations/update-field';
+export type { DeleteField$Params as DeleteField$Params } from './fn/configurations/delete-field';
+export { deleteField as deleteField } from './fn/configurations/delete-field';
 export type { ListIssueTypes$Params as ListIssueTypes$Params } from './fn/configurations/list-issue-types';
 export { listIssueTypes as listIssueTypes } from './fn/configurations/list-issue-types';
 export type { CreateIssueType$Params as CreateIssueType$Params } from './fn/configurations/create-issue-type';

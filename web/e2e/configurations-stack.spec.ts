@@ -1,6 +1,6 @@
 /**
  * Project configurations on the production stack, nothing mocked
- * (L04-US01): the tenant admin creates a configuration, moves two projects
+ * (L04-US01 to US04): the tenant admin creates a configuration, moves two projects
  * to it from their settings, sees it shared by both, then detaches one,
  * which gets its own copy.
  *
@@ -207,6 +207,72 @@ test('a status nothing leads to keeps the workflow from being published until a 
   await admin.getByRole('button', { name: 'Publish the changes' }).click();
   await publish.getByRole('button', { name: 'Publish' }).click();
   await expect(admin.getByText('Version 2 is published.', { exact: true })).toBeVisible();
+
+  await admin.context().close();
+});
+
+test('a custom field with its rules is published, then a value of it is deactivated, not removed', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const run = Date.now().toString(36).toUpperCase().slice(-6);
+  const config = `Operations ${run}`;
+
+  const admin = await signIn(browser, adminEmail!, adminSecret!);
+  await admin.goto('/admin/configurations');
+  await admin.getByRole('button', { name: 'New configuration' }).click();
+  const dialog = admin.getByRole('dialog', { name: 'New project configuration' });
+  await expect(dialog.getByLabel('Name (Français)')).toBeFocused();
+  await dialog.getByLabel('Name (Français)').fill(`Exploitation ${run}`);
+  await dialog.getByLabel('Name (English)').fill(config);
+  await dialog.getByRole('button', { name: 'Create' }).click();
+  await expect(admin.getByRole('heading', { level: 1 })).toHaveText(config);
+  await admin.getByRole('tab', { name: 'Fields' }).click();
+
+  // The system fields of every configuration.
+  await expect(admin.locator('app-fields-tab code')).toHaveText(['story_points', 'remaining']);
+  await expect(admin.locator('app-fields-tab .system')).toHaveCount(2);
+
+  // Application, a single select on bugs, required at their creation.
+  await admin.getByRole('button', { name: 'New field' }).click();
+  const panel = admin.getByRole('region', { name: 'New field' });
+  await panel.getByLabel('Label (Français)').fill('Application');
+  await panel.getByLabel('Label (English)').fill('Application');
+  await panel.getByLabel('Identifier').fill('application');
+  await panel.getByRole('combobox', { name: 'Type', exact: true }).focus();
+  await admin.keyboard.press('Enter');
+  await admin.getByRole('option', { name: 'Single select' }).click();
+  await panel.getByLabel('Value 1 (Français)').fill('Annuaire');
+  await panel.getByLabel('Value 1 (English)').fill('Directory');
+  await panel.getByRole('button', { name: 'Add a value' }).click();
+  await panel.getByLabel('Value 2 (Français)').fill('Messagerie');
+  await panel.getByLabel('Value 2 (English)').fill('Mail');
+  await panel.getByRole('combobox', { name: 'Issue types of the field' }).focus();
+  await admin.keyboard.press('Enter');
+  await admin.getByRole('option', { name: 'Bug', exact: true }).click();
+  await admin.keyboard.press('Escape');
+  await panel.getByRole('button', { name: 'Bug, Creation: Visible' }).click();
+  await expect(panel.getByRole('button', { name: 'Bug, Creation: Required' })).toBeVisible();
+  await panel.getByRole('button', { name: 'Save' }).click();
+  await expect(admin.getByRole('status')).toHaveText('Field “Application” saved in the draft.');
+  await expect(admin.locator('app-fields-tab code')).toHaveText(['story_points', 'remaining', 'application']);
+  expect(await accessibilityViolations(admin), 'field panel').toEqual([]);
+
+  // Published: version 2, with the field and its rule.
+  await admin.getByRole('button', { name: 'Publish the changes' }).click();
+  const publish = admin.getByRole('dialog', { name: `Publish “${config}”?` });
+  await publish.getByRole('button', { name: 'Publish' }).click();
+  await expect(admin.getByText('Version 2 is published.', { exact: true })).toBeVisible();
+  await admin.reload();
+  await admin.getByRole('button', { name: 'Edit Application' }).click();
+  const edit = admin.getByRole('region', { name: 'Edit “Application”' });
+  await expect(edit.getByRole('button', { name: 'Bug, Creation: Required' })).toBeVisible();
+
+  // Mail is published: removing it deactivates it, and it stays.
+  await edit.getByRole('button', { name: 'Actions of value 2' }).click();
+  await admin.getByRole('menuitem', { name: 'Deactivate' }).click();
+  await edit.getByRole('button', { name: 'Save' }).click();
+  await expect(admin.getByRole('status')).toHaveText('Field “Application” saved in the draft.');
+  await expect(edit.getByText('Deactivated: no longer offered, kept on the tickets that have it.')).toBeVisible();
+  await expect(edit.getByLabel('Value 2 (English)')).toHaveValue('Mail');
 
   await admin.context().close();
 });

@@ -1,0 +1,273 @@
+<section class="panel" aria-labelledby="field-editor-title">
+  <div class="panel-header">
+    <h2 id="field-editor-title" class="panel-title">
+      @if (field(); as field) {
+        {{ 'config.fields.editTitle' | transloco: { name: field.label ?? field.key } }}
+      } @else {
+        {{ 'config.fields.newTitle' | transloco }}
+      }
+    </h2>
+    <button matIconButton type="button" class="close" (click)="closed.emit()" [attr.aria-label]="'config.fields.close' | transloco">
+      <mat-icon aria-hidden="true">close</mat-icon>
+    </button>
+  </div>
+  <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+    @if (errorKey(); as key) {
+      <p class="message error" role="alert">{{ key | transloco }}</p>
+    }
+    @if (isSystem()) {
+      <p class="hint system">{{ 'config.fields.systemHint' | transloco }}</p>
+    }
+    <ui-translatable-input [group]="form.controls.label" [label]="'config.fields.label' | transloco" [maxLength]="labelMax" />
+
+    <div class="pair">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'config.fields.key' | transloco }}</mat-label>
+        <input matInput formControlName="key" class="key" maxlength="40" required autocomplete="off" />
+        <mat-hint>{{ (field() ? 'config.fields.keyFixed' : 'config.fields.keyHint') | transloco }}</mat-hint>
+        @if (form.controls.key.getError('api'); as key) {
+          <mat-error>{{ key | transloco }}</mat-error>
+        } @else if (form.controls.key.hasError('pattern')) {
+          <mat-error>{{ 'config.fields.keyFormat' | transloco }}</mat-error>
+        } @else {
+          <mat-error>{{ 'errors.field.required' | transloco }}</mat-error>
+        }
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'config.fields.kind' | transloco }}</mat-label>
+        <mat-select formControlName="kind">
+          <mat-select-trigger>
+            <span class="option">
+              <mat-icon aria-hidden="true">{{ kindIcon(kind()) }}</mat-icon>{{ 'config.fields.kinds.' + kind() | transloco }}
+            </span>
+          </mat-select-trigger>
+          @for (option of kinds; track option.kind) {
+            <mat-option [value]="option.kind">
+              <span class="option"><mat-icon aria-hidden="true">{{ option.icon }}</mat-icon>{{ 'config.fields.kinds.' + option.kind | transloco }}</span>
+            </mat-option>
+          }
+        </mat-select>
+        @if (field()) {
+          <mat-hint>{{ 'config.fields.kindFixed' | transloco }}</mat-hint>
+        }
+      </mat-form-field>
+    </div>
+
+    @switch (kind()) {
+      @case ('short_text') {
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'config.fields.maxLength' | transloco }}</mat-label>
+          <input matInput type="number" formControlName="maxLength" min="1" [max]="shortTextMax" />
+          <mat-hint>{{ 'config.fields.maxLengthHint' | transloco: { max: shortTextMax } }}</mat-hint>
+          <mat-error>{{ 'errors.field.out_of_range' | transloco }}</mat-error>
+        </mat-form-field>
+      }
+      @case ('number') {
+        <div class="pair">
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'config.fields.decimals' | transloco }}</mat-label>
+            <mat-select formControlName="decimals">
+              @for (count of decimals; track count) {
+                <mat-option [value]="count">{{ count }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'config.fields.unit' | transloco }}</mat-label>
+            <mat-select formControlName="unit">
+              <mat-option [value]="null">{{ 'config.fields.units.none' | transloco }}</mat-option>
+              @for (unit of units; track unit) {
+                <mat-option [value]="unit">{{ 'config.fields.units.' + unit | transloco }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+        <div class="pair">
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'config.fields.min' | transloco }}</mat-label>
+            <input matInput type="number" formControlName="min" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'config.fields.max' | transloco }}</mat-label>
+            <input matInput type="number" formControlName="max" />
+            @if (form.controls.max.getError('api'); as key) {
+              <mat-error>{{ key | transloco }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
+      }
+      @case ('user') {
+        <mat-slide-toggle formControlName="multiple" class="toggle">{{ 'config.fields.multiple' | transloco }}</mat-slide-toggle>
+      }
+    }
+
+    @if (withValues()) {
+      <fieldset class="values">
+        <legend class="section-title">{{ 'config.fields.values.title' | transloco }}</legend>
+        <ol class="value-list" cdkDropList (cdkDropListDropped)="drop(form.controls.values, $event)">
+          @for (value of form.controls.values.controls; track value; let i = $index; let count = $count) {
+            <li class="value" cdkDrag [class.inactive]="!value.controls.active.value">
+              <div class="value-row">
+                <mat-icon cdkDragHandle class="handle" aria-hidden="true">drag_indicator</mat-icon>
+                @for (language of languages; track language) {
+                  <mat-form-field appearance="outline" class="value-label" subscriptSizing="dynamic">
+                    <input
+                      matInput
+                      [formControl]="value.controls.label.controls[language]"
+                      [attr.lang]="language"
+                      [attr.maxlength]="labelMax"
+                      [attr.aria-label]="'config.fields.values.label' | transloco: { position: i + 1, language: languageNames[language] }"
+                    />
+                    @if (value.controls.label.controls[language].invalid) {
+                      <mat-error>{{ 'errors.field.required' | transloco }}</mat-error>
+                    }
+                  </mat-form-field>
+                }
+                <button
+                  matIconButton
+                  type="button"
+                  class="value-menu"
+                  [matMenuTriggerFor]="menu"
+                  [attr.aria-label]="'config.fields.values.actions' | transloco: { position: i + 1 }"
+                >
+                  <mat-icon aria-hidden="true">more_vert</mat-icon>
+                </button>
+                <mat-menu #menu="matMenu">
+                  <button mat-menu-item type="button" [disabled]="i === 0" (click)="moveValue(form.controls.values, i, i - 1)">
+                    <mat-icon aria-hidden="true">arrow_upward</mat-icon>{{ 'config.fields.values.moveUp' | transloco }}
+                  </button>
+                  <button mat-menu-item type="button" [disabled]="i === count - 1" (click)="moveValue(form.controls.values, i, i + 1)">
+                    <mat-icon aria-hidden="true">arrow_downward</mat-icon>{{ 'config.fields.values.moveDown' | transloco }}
+                  </button>
+                  @if (cascading()) {
+                    <button mat-menu-item type="button" (click)="addValue(value.controls.children)">
+                      <mat-icon aria-hidden="true">subdirectory_arrow_right</mat-icon>{{ 'config.fields.values.addChild' | transloco }}
+                    </button>
+                  }
+                  @if (!value.controls.active.value) {
+                    <button mat-menu-item type="button" (click)="reactivate(value)">
+                      <mat-icon aria-hidden="true">undo</mat-icon>{{ 'config.fields.values.reactivate' | transloco }}
+                    </button>
+                  } @else if (value.controls.published.value) {
+                    <button mat-menu-item type="button" (click)="removeValue(form.controls.values, i)">
+                      <mat-icon aria-hidden="true">block</mat-icon>{{ 'config.fields.values.deactivate' | transloco }}
+                    </button>
+                  } @else {
+                    <button mat-menu-item type="button" (click)="removeValue(form.controls.values, i)">
+                      <mat-icon aria-hidden="true">delete</mat-icon>{{ 'config.fields.values.remove' | transloco }}
+                    </button>
+                  }
+                </mat-menu>
+              </div>
+              @if (!value.controls.active.value) {
+                <p class="state">{{ 'config.fields.values.inactive' | transloco }}</p>
+              }
+              @if (cascading() && value.controls.children.length > 0) {
+                <ol class="children">
+                  @for (child of value.controls.children.controls; track child; let j = $index; let childCount = $count) {
+                    <li class="value" [class.inactive]="!child.controls.active.value">
+                      <div class="value-row">
+                        <mat-icon class="handle" aria-hidden="true">subdirectory_arrow_right</mat-icon>
+                        @for (language of languages; track language) {
+                          <mat-form-field appearance="outline" class="value-label" subscriptSizing="dynamic">
+                            <input
+                              matInput
+                              [formControl]="child.controls.label.controls[language]"
+                              [attr.lang]="language"
+                              [attr.maxlength]="labelMax"
+                              [attr.aria-label]="
+                                'config.fields.values.childLabel'
+                                  | transloco: { parent: i + 1, position: j + 1, language: languageNames[language] }
+                              "
+                            />
+                            @if (child.controls.label.controls[language].invalid) {
+                              <mat-error>{{ 'errors.field.required' | transloco }}</mat-error>
+                            }
+                          </mat-form-field>
+                        }
+                        <button
+                          matIconButton
+                          type="button"
+                          class="value-menu"
+                          [matMenuTriggerFor]="childMenu"
+                          [attr.aria-label]="'config.fields.values.childActions' | transloco: { parent: i + 1, position: j + 1 }"
+                        >
+                          <mat-icon aria-hidden="true">more_vert</mat-icon>
+                        </button>
+                        <mat-menu #childMenu="matMenu">
+                          <button mat-menu-item type="button" [disabled]="j === 0" (click)="moveValue(value.controls.children, j, j - 1)">
+                            <mat-icon aria-hidden="true">arrow_upward</mat-icon>{{ 'config.fields.values.moveUp' | transloco }}
+                          </button>
+                          <button
+                            mat-menu-item
+                            type="button"
+                            [disabled]="j === childCount - 1"
+                            (click)="moveValue(value.controls.children, j, j + 1)"
+                          >
+                            <mat-icon aria-hidden="true">arrow_downward</mat-icon>{{ 'config.fields.values.moveDown' | transloco }}
+                          </button>
+                          @if (!child.controls.active.value) {
+                            <button mat-menu-item type="button" (click)="reactivate(child)">
+                              <mat-icon aria-hidden="true">undo</mat-icon>{{ 'config.fields.values.reactivate' | transloco }}
+                            </button>
+                          } @else if (child.controls.published.value) {
+                            <button mat-menu-item type="button" (click)="removeValue(value.controls.children, j)">
+                              <mat-icon aria-hidden="true">block</mat-icon>{{ 'config.fields.values.deactivate' | transloco }}
+                            </button>
+                          } @else {
+                            <button mat-menu-item type="button" (click)="removeValue(value.controls.children, j)">
+                              <mat-icon aria-hidden="true">delete</mat-icon>{{ 'config.fields.values.remove' | transloco }}
+                            </button>
+                          }
+                        </mat-menu>
+                      </div>
+                      @if (!child.controls.active.value) {
+                        <p class="state">{{ 'config.fields.values.inactive' | transloco }}</p>
+                      }
+                    </li>
+                  }
+                </ol>
+              }
+            </li>
+          }
+        </ol>
+        <button matButton type="button" class="add-value" (click)="addValue(form.controls.values)">
+          <mat-icon aria-hidden="true">add</mat-icon>
+          {{ 'config.fields.values.add' | transloco }}
+        </button>
+      </fieldset>
+    }
+
+    <h3 class="section-title">{{ 'config.fields.types' | transloco }}</h3>
+    <mat-slide-toggle formControlName="allTypes" class="toggle">{{ 'config.fields.allTypes' | transloco }}</mat-slide-toggle>
+    @if (!applicability().allTypes) {
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'config.fields.issueTypes' | transloco }}</mat-label>
+        <mat-select formControlName="issueTypeIds" multiple>
+          @for (issueType of types(); track issueType.id) {
+            <mat-option [value]="issueType.id">{{ issueType.labelTranslations | translated }}</mat-option>
+          }
+        </mat-select>
+        <mat-hint>{{ 'config.fields.issueTypesHint' | transloco }}</mat-hint>
+      </mat-form-field>
+    }
+
+    <h3 class="section-title">{{ 'config.fields.rules.title' | transloco }}</h3>
+    <p class="hint">{{ 'config.fields.rules.hint' | transloco }}</p>
+    <app-rules-grid [types]="types()" [workflows]="workflows()" [applicability]="applicability()" [(rules)]="rules" />
+
+    <div class="actions">
+      @if (field(); as field) {
+        @if (!field.isSystem) {
+          <button matButton type="button" class="remove" (click)="remove(field)">
+            <mat-icon aria-hidden="true">delete</mat-icon>
+            {{ 'config.fields.remove.action' | transloco }}
+          </button>
+        }
+      }
+      <span class="spacer"></span>
+      <button matButton type="button" (click)="closed.emit()">{{ 'dialog.cancel' | transloco }}</button>
+      <button matButton="filled" type="submit" class="save" [disabled]="saving()">{{ 'config.fields.save' | transloco }}</button>
+    </div>
+  </form>
+</section>

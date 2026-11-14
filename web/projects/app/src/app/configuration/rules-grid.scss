@@ -1,0 +1,80 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-3);
+}
+
+// A wide workflow scrolls; its cells are buttons, reachable with the keyboard.
+.grid {
+  overflow-x: auto;
+}
+
+.rules {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+caption {
+  padding-bottom: var(--app-space-2);
+  text-align: start;
+  font: var(--mat-sys-label-large);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+th,
+td {
+  padding: var(--app-space-2);
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+  text-align: start;
+  white-space: nowrap;
+}
+
+thead th {
+  font: var(--mat-sys-label-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+tbody th {
+  font: var(--mat-sys-title-small);
+}
+
+// Hidden: outlined; Visible: tonal; Required: filled (mockup 12).
+.mode {
+  min-width: 88px;
+  min-height: 32px;
+  padding: 0 var(--app-space-2);
+  border: 1px solid var(--mat-sys-outline);
+  border-radius: var(--mat-sys-corner-small);
+  font: var(--mat-sys-label-medium);
+  color: var(--mat-sys-on-surface);
+  background: transparent;
+  cursor: pointer;
+
+  &[data-mode='visible'] {
+    border-color: transparent;
+    color: var(--mat-sys-on-secondary-container);
+    background: var(--mat-sys-secondary-container);
+  }
+
+  &[data-mode='required'] {
+    border-color: transparent;
+    color: var(--mat-sys-on-primary);
+    background: var(--mat-sys-primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+}
+
+.empty {
+  margin: 0;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
