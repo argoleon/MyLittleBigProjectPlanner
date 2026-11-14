@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id AS \"id!\" FROM issue WHERE key = $1\n        UNION ALL\n        SELECT issue_id FROM issue_key_alias WHERE key = $1\n        LIMIT 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "28729aa23f6f9df40652ce23c4f06a8f48c1c57b8cdc18e28859635fee905522"
+}

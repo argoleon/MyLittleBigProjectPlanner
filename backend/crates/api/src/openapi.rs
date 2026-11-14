@@ -68,6 +68,7 @@ const DOCS_CSP: &str = "default-src 'self'; img-src 'self' data:; style-src 'sel
         (name = members::TAG, description = "Members, invitations and groups of the tenant, for its admins"),
         (name = mfa::TAG, description = "Two-step verification of the signed-in member"),
         (name = nodes::TAG, description = "Portfolios, programs and projects of the hierarchy"),
+        (name = crate::issues::TAG, description = "Tickets: creation, reading, the tickets of the signed-in member"),
         (name = configs::TAG, description = "Project configurations: types, fields, workflows, screens and notifications shared by projects"),
         (name = sso::TAG, description = "Authentication policy and OIDC providers of the tenant, for its admins"),
         (name = platform::TAG, description = "Platform administration, for the platform super admin"),
@@ -209,6 +210,41 @@ mod tests {
                     );
                 }
             }
+        }
+    }
+
+    /// Every `$ref` under `value`.
+    fn references(value: &serde_json::Value, found: &mut Vec<String>) {
+        match value {
+            serde_json::Value::Object(map) => {
+                for (key, child) in map {
+                    match (key.as_str(), child) {
+                        ("$ref", serde_json::Value::String(target)) => found.push(target.clone()),
+                        _ => references(child, found),
+                    }
+                }
+            }
+            serde_json::Value::Array(items) => items.iter().for_each(|item| references(item, found)),
+            _ => {}
+        }
+    }
+
+    #[test]
+    fn every_reference_names_a_schema_of_the_contract() {
+        // A schema only used by query parameters is not registered by
+        // itself: the client generator then fails on the dangling reference.
+        let contract = contract_value();
+        let mut found = Vec::new();
+        references(&contract, &mut found);
+        assert!(!found.is_empty());
+        for target in found {
+            let name = target
+                .strip_prefix("#/components/schemas/")
+                .unwrap_or_else(|| panic!("unexpected reference {target}"));
+            assert!(
+                contract["components"]["schemas"][name].is_object(),
+                "{target} is not in the contract"
+            );
         }
     }
 

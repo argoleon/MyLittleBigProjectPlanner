@@ -436,6 +436,9 @@ test('a transition is restricted to a role, requires a field and gets post-funct
 
   await page.getByRole('button', { name: 'Edit Reject' }).click();
   const dialog = page.getByRole('dialog', { name: 'Change the transition' });
+  // The dialog focuses its first field once opened: only then is focus ours
+  // to move (otherwise Enter may land on another control, such as Cancel).
+  await expect(dialog.locator(':focus')).toHaveCount(1);
   await dialog.getByRole('combobox', { name: 'Roles' }).focus();
   await page.keyboard.press('Enter');
   await page.getByRole('option', { name: 'Reviewer' }).click();

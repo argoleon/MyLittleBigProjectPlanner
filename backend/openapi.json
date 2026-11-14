@@ -998,6 +998,98 @@
         }
       }
     },
+    "/api/v1/issues/{idOrKey}": {
+      "get": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Read a ticket",
+        "description": "Whoever sees its project. By id, key (`PLAT-142`) or former key.",
+        "operationId": "getIssue",
+        "parameters": [
+          {
+            "name": "idOrKey",
+            "in": "path",
+            "description": "Id or key of the ticket",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "description": "`parent`: the ticket it sits under, in a few words.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of the labels",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The ticket",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the ticket"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Issue"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`invalid_query`: an unknown `expand`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such ticket visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me": {
       "get": {
         "tags": [
@@ -1275,6 +1367,82 @@
           },
           "409": {
             "description": "`export.pending`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/issues": {
+      "get": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "List the tickets assigned to the signed-in member or reported by them",
+        "description": "Newest first; only those of projects they see.",
+        "operationId": "listMyIssues",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, from 1 to 200 (default 50).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "`nextCursor` of the previous page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of the labels",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of tickets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid `limit` or `cursor`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -8841,6 +9009,321 @@
         }
       }
     },
+    "/api/v1/projects/{key}/issue-form": {
+      "get": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "What creating a ticket in a project offers",
+        "description": "Members with `create_ticket` on the project. The types of its configuration, and for the type chosen the fields of its creation screen, the rules applied: hidden ones left out, required ones marked (added if the screen lacks them).",
+        "operationId": "getIssueForm",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "description": "Key of the project",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "typeId",
+            "in": "query",
+            "description": "The type chosen; by default the first that is no sub-task.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of the labels",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The form",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueForm"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`permission.denied`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such project visible to the member, or type",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{key}/issues": {
+      "post": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Create a ticket in a project",
+        "description": "Members with `create_ticket` on the project (tenant admins always). The ticket gets the next key of its project and the initial status of its type's workflow; its custom fields follow the rules of its type at creation. Writes `issue.created` to the event outbox.",
+        "operationId": "createIssue",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "description": "Key of the project (`PLAT`)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique key of this creation, 1 to 255 visible ASCII characters",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of the labels",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewIssue"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the ticket"
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "URL of the ticket, by its key"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Issue"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`: `summary`, `typeId`, `parentId` (`required`, `not_found`, `not_allowed`, `other_project`), `assigneeId` `unknown_member`, `dueDate` `before_start`, `description` `invalid`, `fields.{id}` (`required`, `not_applicable`, `not_found`, a value code, or `unknown_member`, `unknown_group`, `unknown_issue`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`permission.denied`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such project visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`node.archived`, or `idempotency_key.in_flight`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`Idempotency-Key` already used for another request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{key}/people": {
+      "get": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Search the members or groups a ticket of a project can name",
+        "description": "Whoever sees the project. The active members of the organization whose name or email holds `search` (the assignee, user fields), or with `kind=group` its groups (group fields); by name, ten at most.",
+        "operationId": "listProjectPeople",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "description": "Key of the project",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Part of the name (or email of a member), any case.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "description": "`member` (default) or `group`.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Who `GET …/people` searches.",
+              "enum": [
+                "member",
+                "group"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The members or groups",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IssuePerson"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`invalid_query`: an unknown `kind`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such project visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/reference-items": {
       "get": {
         "tags": [
@@ -13602,6 +14085,502 @@
         },
         "additionalProperties": false
       },
+      "Issue": {
+        "type": "object",
+        "description": "A ticket.",
+        "required": [
+          "id",
+          "key",
+          "project",
+          "type",
+          "status",
+          "summary",
+          "description",
+          "descriptionHtml",
+          "priority",
+          "reporter",
+          "assignee",
+          "startDate",
+          "dueDate",
+          "fields",
+          "parentId",
+          "createdAt",
+          "updatedAt",
+          "version"
+        ],
+        "properties": {
+          "assignee": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/IssuePerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "description": "The rich text document, as the editor reads it; `null`: none."
+          },
+          "descriptionHtml": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The description as sanitized HTML, to show."
+          },
+          "dueDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueFieldValue"
+            },
+            "description": "The custom fields that hold a value, in the order of the\nconfiguration."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string",
+            "example": "PLAT-142"
+          },
+          "parent": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/IssueRef",
+                "description": "`expand=parent`: the ticket it sits under."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "The ticket it sits under; `null`: at the top."
+          },
+          "priority": {
+            "$ref": "#/components/schemas/IssuePriority"
+          },
+          "project": {
+            "$ref": "#/components/schemas/IssueProject"
+          },
+          "reporter": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/IssuePerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "startDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "status": {
+            "$ref": "#/components/schemas/IssueStatusRef"
+          },
+          "summary": {
+            "type": "string",
+            "example": "Migrate the authentication to OIDC"
+          },
+          "type": {
+            "$ref": "#/components/schemas/IssueTypeRef"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          }
+        }
+      },
+      "IssueFieldValue": {
+        "type": "object",
+        "description": "The value of a custom field on a ticket.",
+        "required": [
+          "fieldId",
+          "key",
+          "kind",
+          "value",
+          "display"
+        ],
+        "properties": {
+          "display": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "What to show, in the language of the request: the labels of list\nvalues, the names of users and groups, the keys of tickets (of\nprojects the member sees); `null` when the value shows as is."
+          },
+          "fieldId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/FieldKind"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Application"
+          },
+          "value": {
+            "description": "As sent: text, number, boolean, identifiers…"
+          }
+        }
+      },
+      "IssueForm": {
+        "type": "object",
+        "description": "What creating a ticket in a project offers.",
+        "required": [
+          "project",
+          "types",
+          "typeId",
+          "fields"
+        ],
+        "properties": {
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueFormField"
+            },
+            "description": "The fields of its creation screen, the rules applied."
+          },
+          "project": {
+            "$ref": "#/components/schemas/IssueProject"
+          },
+          "typeId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The type the fields are for."
+          },
+          "types": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueTypeRef"
+            },
+            "description": "The types of the project's configuration, in their order."
+          }
+        }
+      },
+      "IssueFormField": {
+        "type": "object",
+        "description": "A field of the creation screen.",
+        "required": [
+          "fieldId",
+          "key",
+          "kind",
+          "mode"
+        ],
+        "properties": {
+          "decimals": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          },
+          "fieldId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/FieldKind"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "max": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "maxLength": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          },
+          "min": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/FieldMode",
+            "description": "Visible or required."
+          },
+          "multiple": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`hours`, `days` or `percent`."
+          },
+          "values": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/IssueFormValue"
+            },
+            "description": "The values to pick from, for a list field."
+          }
+        }
+      },
+      "IssueFormValue": {
+        "type": "object",
+        "description": "A list value offered by a field, active only.",
+        "required": [
+          "id",
+          "children"
+        ],
+        "properties": {
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueFormValue"
+            }
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "IssuePage": {
+        "type": "object",
+        "description": "A page of tickets.",
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueSummary"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cursor of the next page, `null` on the last page."
+          }
+        }
+      },
+      "IssuePerson": {
+        "type": "object",
+        "description": "A person of a ticket.",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Camille Martin"
+          }
+        }
+      },
+      "IssuePriority": {
+        "type": "string",
+        "description": "The priority of a ticket.",
+        "enum": [
+          "highest",
+          "high",
+          "medium",
+          "low",
+          "lowest"
+        ]
+      },
+      "IssueProject": {
+        "type": "object",
+        "description": "A project, by its key and name.",
+        "required": [
+          "id",
+          "key",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string",
+            "example": "PLAT"
+          },
+          "name": {
+            "type": "string",
+            "example": "Identity platform"
+          }
+        }
+      },
+      "IssueRef": {
+        "type": "object",
+        "description": "Another ticket, in a few words.",
+        "required": [
+          "id",
+          "key",
+          "summary"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string",
+            "example": "PLAT-100"
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      },
+      "IssueStatusRef": {
+        "type": "object",
+        "description": "The status of a ticket.",
+        "required": [
+          "id",
+          "key",
+          "category"
+        ],
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/WorkflowCategory"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "In progress"
+          }
+        }
+      },
+      "IssueSummary": {
+        "type": "object",
+        "description": "A ticket in a list.",
+        "required": [
+          "id",
+          "key",
+          "summary",
+          "project",
+          "type",
+          "status",
+          "priority",
+          "assignee",
+          "updatedAt"
+        ],
+        "properties": {
+          "assignee": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/IssuePerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/IssuePriority"
+          },
+          "project": {
+            "$ref": "#/components/schemas/IssueProject"
+          },
+          "status": {
+            "$ref": "#/components/schemas/IssueStatusRef"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/IssueTypeRef"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "IssueType": {
         "type": "object",
         "description": "An issue type.",
@@ -13795,6 +14774,56 @@
           }
         },
         "additionalProperties": false
+      },
+      "IssueTypeRef": {
+        "type": "object",
+        "description": "The type of a ticket.",
+        "required": [
+          "id",
+          "key",
+          "labelTranslations",
+          "icon",
+          "color",
+          "isSubtask",
+          "parentIds"
+        ],
+        "properties": {
+          "color": {
+            "type": "string",
+            "description": "One of the type color tokens: `epic`, `story`, `task`, `bug`."
+          },
+          "icon": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isSubtask": {
+            "type": "boolean"
+          },
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Story"
+          },
+          "labelTranslations": {
+            "$ref": "#/components/schemas/BTreeMap"
+          },
+          "parentIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The types it may sit under."
+          }
+        }
       },
       "IssueTypeStage": {
         "type": "string",
@@ -14478,6 +15507,99 @@
           "accountType": "external",
           "email": "p.durand@client.example",
           "tenantRole": "member"
+        }
+      },
+      "NewIssue": {
+        "type": "object",
+        "description": "A new ticket.",
+        "required": [
+          "typeId",
+          "summary"
+        ],
+        "properties": {
+          "assigneeId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "An active member of the organization."
+          },
+          "description": {
+            "description": "A rich text document (Tiptap JSON): paragraphs, headings, lists,\nquotes, code, links (http, https, mailto) and bold, italic, strike,\ncode marks."
+          },
+          "dueDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "fields": {
+            "type": "object",
+            "description": "Custom field values, by field id, as the field takes them.",
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "The ticket it sits under, in the same project; required for a\nsub-task."
+          },
+          "priority": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/IssuePriority",
+                "description": "`medium` by default."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "startDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "summary": {
+            "type": "string",
+            "description": "1 to 255 characters."
+          },
+          "typeId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A type of the project's configuration."
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "description": {
+            "content": [
+              {
+                "content": [
+                  {
+                    "text": "Replace the local accounts.",
+                    "type": "text"
+                  }
+                ],
+                "type": "paragraph"
+              }
+            ],
+            "type": "doc"
+          },
+          "fields": {},
+          "priority": "high",
+          "summary": "Migrate the authentication to OIDC",
+          "typeId": "01933b2e-7c4a-7b9e-8f3d-2a6c5e1f0b9a"
         }
       },
       "NewIssueType": {
@@ -17556,6 +18678,10 @@
     {
       "name": "hierarchy",
       "description": "Portfolios, programs and projects of the hierarchy"
+    },
+    {
+      "name": "issues",
+      "description": "Tickets: creation, reading, the tickets of the signed-in member"
     },
     {
       "name": "configurations",

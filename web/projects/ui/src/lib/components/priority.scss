@@ -1,0 +1,12 @@
+.priority {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--app-space-1);
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  color: var(--mat-sys-on-surface-variant);
+}

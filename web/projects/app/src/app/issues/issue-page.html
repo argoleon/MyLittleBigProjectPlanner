@@ -1,0 +1,102 @@
+@if (issue.error()) {
+  <ui-error-state [error]="issue.error()" [headingLevel]="1" (retry)="issue.reload()" />
+} @else if (!issue.hasValue()) {
+  <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+} @else {
+  @let current = issue.value();
+  <nav class="eyebrow" [attr.aria-label]="'issue.page.breadcrumb' | transloco">
+    <a [routerLink]="['/nodes', current.project.id]">{{ current.project.name }}</a>
+    @if (current.parent; as parent) {
+      › <a class="parent" [routerLink]="['/issues', parent.key]">{{ parent.key }} {{ parent.summary }}</a>
+    }
+  </nav>
+  <p class="identity">
+    <ui-type-chip [kind]="chipKind(current.type.color)" [label]="current.type.label ?? current.type.key" [iconName]="current.type.icon" />
+    <span class="key">{{ current.key }}</span>
+  </p>
+  <h1 class="title">{{ current.summary }}</h1>
+  <div class="actions">
+    <ui-status-chip [category]="chipCategory(current.status.category)" [label]="current.status.label ?? current.status.key" />
+    @if (canAddSubtask()) {
+      <button matButton="tonal" type="button" class="add-subtask" (click)="addSubtask(current)">
+        <mat-icon aria-hidden="true">add</mat-icon>
+        {{ 'issue.page.addSubtask' | transloco }}
+      </button>
+    }
+  </div>
+
+  <div class="layout">
+    <div class="main">
+      <section class="card description" aria-labelledby="issue-description">
+        <h2 class="card-title" id="issue-description">{{ 'issue.page.description' | transloco }}</h2>
+        @if (current.descriptionHtml; as html) {
+          <ui-rich-text [html]="html" />
+        } @else {
+          <p class="empty">{{ 'issue.page.noDescription' | transloco }}</p>
+        }
+      </section>
+    </div>
+
+    <aside class="side">
+      <section class="card" aria-labelledby="issue-details">
+        <h2 class="card-title" id="issue-details">{{ 'issue.page.details' | transloco }}</h2>
+        <dl class="details">
+          <div class="detail">
+            <dt>{{ 'issue.page.assignee' | transloco }}</dt>
+            <dd>{{ current.assignee?.name ?? ('issue.page.unassigned' | transloco) }}</dd>
+          </div>
+          <div class="detail">
+            <dt>{{ 'issue.page.reporter' | transloco }}</dt>
+            <dd>{{ current.reporter?.name ?? '—' }}</dd>
+          </div>
+          <div class="detail">
+            <dt>{{ 'issue.page.priority' | transloco }}</dt>
+            <dd><ui-priority [priority]="current.priority" /></dd>
+          </div>
+          <div class="detail">
+            <dt>{{ 'issue.page.startDate' | transloco }}</dt>
+            <dd>{{ (current.startDate | localDate) || '—' }}</dd>
+          </div>
+          <div class="detail">
+            <dt>{{ 'issue.page.dueDate' | transloco }}</dt>
+            <dd>{{ (current.dueDate | localDate) || '—' }}</dd>
+          </div>
+          @for (value of current.fields; track value.fieldId) {
+            <div class="detail custom">
+              <dt>{{ value.label ?? value.key }}</dt>
+              <dd>
+                @switch (kindOf(value)) {
+                  @case ('number') {
+                    {{ value.value | localNumber }}
+                  }
+                  @case ('date') {
+                    {{ value.value | localDate }}
+                  }
+                  @case ('instant') {
+                    {{ value.value | instant }}
+                  }
+                  @case ('boolean') {
+                    {{ (value.value ? 'issue.page.yes' : 'issue.page.no') | transloco }}
+                  }
+                  @default {
+                    {{ textOf(value) }}
+                  }
+                }
+              </dd>
+            </div>
+          }
+        </dl>
+      </section>
+
+      <section class="card" aria-labelledby="issue-attachment">
+        <h2 class="card-title" id="issue-attachment">{{ 'issue.page.attachment' | transloco }}</h2>
+        <p class="attachment">
+          {{ 'issue.page.project' | transloco }}
+          <a [routerLink]="['/nodes', current.project.id]">{{ current.project.name }}</a>
+          ({{ current.project.key }})
+        </p>
+        <p class="meta">{{ 'issue.page.created' | transloco: { at: (current.createdAt | instant) } }}</p>
+      </section>
+    </aside>
+  </div>
+}

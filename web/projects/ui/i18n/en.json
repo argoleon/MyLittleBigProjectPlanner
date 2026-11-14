@@ -426,7 +426,12 @@
       "invalid_id": "Not a valid identifier.",
       "unknown_value": "Not a value of this list.",
       "inactive_value": "This value is deactivated.",
-      "not_a_child": "This value is not under the first one."
+      "not_a_child": "This value is not under the first one.",
+      "other_project": "Must be in the same project.",
+      "unknown_group": "This group does not exist.",
+      "unknown_issue": "This ticket does not exist.",
+      "invalid": "The content is invalid.",
+      "too_deep": "The content is nested too deeply."
     },
     "invitation": {
       "invalid": "This invitation link is invalid, has expired or was already used. Ask for a new one.",
@@ -1370,6 +1375,99 @@
       "removeMember": "Remove {{name}}",
       "save": "Save",
       "saved": "Notifications of “{{event}}” saved in the draft."
+    }
+  },
+  "richText": {
+    "toolbar": "Formatting",
+    "bold": "Bold",
+    "italic": "Italic",
+    "strike": "Strikethrough",
+    "code": "Code",
+    "heading": "Heading",
+    "bulletList": "Bulleted list",
+    "orderedList": "Numbered list",
+    "blockquote": "Quote",
+    "codeBlock": "Code block",
+    "link": "Link",
+    "linkAddress": "Link address",
+    "linkApply": "Apply",
+    "linkInvalid": "Enter a web address (http or https) or an email address (mailto)."
+  },
+  "priority": {
+    "highest": "Highest",
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low",
+    "lowest": "Lowest"
+  },
+  "issue": {
+    "people": {
+      "remove": "Remove {{ name }}",
+      "search": "Search for a member…",
+      "searchGroup": "Search for a group…",
+      "noMatch": "No match."
+    },
+    "fields": {
+      "removeLabel": "Remove the label {{ label }}",
+      "addLabel": "Add a label…",
+      "none": "None",
+      "cascadeChild": "{{ label }}: detail",
+      "unit": {
+        "hours": "h",
+        "days": "d",
+        "percent": "%"
+      },
+      "issueLinkHint": "A ticket key, such as PLAT-12"
+    },
+    "dialog": {
+      "title": "New ticket",
+      "subtaskTitle": "New sub-task of {{ key }}",
+      "project": "Project",
+      "forbidden": "You cannot create tickets in this project.",
+      "type": "Type",
+      "summary": "Summary",
+      "description": "Description",
+      "priority": "Priority",
+      "assignee": "Assignee",
+      "startDate": "Start",
+      "dueDate": "Due",
+      "fields": "Fields of this type",
+      "create": "Create"
+    },
+    "page": {
+      "title": "Ticket",
+      "breadcrumb": "Where the ticket belongs",
+      "addSubtask": "Add a sub-task",
+      "description": "Description",
+      "noDescription": "No description.",
+      "details": "Details",
+      "assignee": "Assignee",
+      "unassigned": "Unassigned",
+      "reporter": "Reporter",
+      "priority": "Priority",
+      "startDate": "Start",
+      "dueDate": "Due",
+      "yes": "Yes",
+      "no": "No",
+      "attachment": "Belongs to",
+      "project": "Project",
+      "created": "Created {{ at }}"
+    },
+    "list": {
+      "create": "New ticket",
+      "intro": "The tickets assigned to you or reported by you, newest first.",
+      "empty": "No ticket yet",
+      "emptyHint": "Tickets assigned to you or that you report show up here.",
+      "caption": "My tickets",
+      "columns": {
+        "ticket": "Ticket",
+        "summary": "Summary",
+        "project": "Project",
+        "status": "Status",
+        "priority": "Priority",
+        "updated": "Updated"
+      },
+      "loadMore": "Show more"
     }
   }
 }

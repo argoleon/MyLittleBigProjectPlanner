@@ -1,0 +1,122 @@
+import { Component, computed, inject, input, resource } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { Router, RouterLink } from '@angular/router';
+import { TranslocoPipe } from '@jsverse/transloco';
+import {
+  Api,
+  AuthService,
+  ErrorState,
+  InstantPipe,
+  Issue,
+  IssueFieldValue,
+  LocalDatePipe,
+  LocalNumberPipe,
+  Priority,
+  RichText,
+  StatusChip,
+  TypeChip,
+  getIssue,
+  getIssueForm,
+  listMyNodePermissions,
+} from 'ui';
+
+import { createIssueFlow } from './issue-flow';
+import { chipCategory, chipKind } from './issue-fields';
+
+/**
+ * A ticket (mockup 03, L05-US01): its type and key, summary, status,
+ * description, details and custom fields, and the project it belongs to.
+ * Those who create tickets in the project add sub-tasks from here.
+ */
+@Component({
+  selector: 'app-issue-page',
+  imports: [
+    ErrorState,
+    InstantPipe,
+    LocalDatePipe,
+    LocalNumberPipe,
+    MatButtonModule,
+    MatIconModule,
+    MatProgressBarModule,
+    Priority,
+    RichText,
+    RouterLink,
+    StatusChip,
+    TranslocoPipe,
+    TypeChip,
+  ],
+  templateUrl: './issue-page.html',
+  styleUrl: './issue-page.scss',
+})
+export class IssuePage {
+  /** Key (or id) of the ticket, from the route. */
+  readonly key = input.required<string>();
+
+  private readonly api = inject(Api);
+  private readonly auth = inject(AuthService);
+  private readonly dialog = inject(MatDialog);
+  private readonly router = inject(Router);
+
+  protected readonly chipCategory = chipCategory;
+  protected readonly chipKind = chipKind;
+
+  protected readonly issue = resource({
+    params: () => this.key(),
+    loader: ({ params }) => this.api.invoke(getIssue, { idOrKey: params, expand: 'parent' }),
+  });
+  private readonly projectId = computed(() => (this.issue.hasValue() ? this.issue.value().project.id : undefined));
+  private readonly permissions = resource({
+    params: () => this.projectId(),
+    loader: ({ params }) => this.api.invoke(listMyNodePermissions, { id: params }),
+  });
+  /** Tenant admins, and those with `create_ticket` on the project, create tickets there. */
+  private readonly canCreate = computed(
+    () =>
+      this.auth.session()?.account.tenantRole === 'tenant_admin' ||
+      (this.permissions.hasValue() && this.permissions.value().includes('create_ticket')),
+  );
+  /** The types of the project, read only when the member may create. */
+  private readonly form = resource({
+    params: () => (this.canCreate() && this.issue.hasValue() ? this.issue.value().project.key : undefined),
+    loader: ({ params }) => this.api.invoke(getIssueForm, { key: params }),
+  });
+  /** A type of the configuration may sit under this ticket's. */
+  protected readonly canAddSubtask = computed(() => {
+    if (!this.issue.hasValue() || !this.form.hasValue()) return false;
+    const typeId = this.issue.value().type.id;
+    return this.form.value().types.some((t) => t.parentIds.includes(typeId));
+  });
+
+  /** A custom field value as it reads: its display, else its value formatted by kind. */
+  protected kindOf(value: IssueFieldValue): 'text' | 'number' | 'date' | 'instant' | 'boolean' | 'list' {
+    if (value.display != null) return 'text';
+    switch (value.kind) {
+      case 'number':
+        return 'number';
+      case 'date':
+        return 'date';
+      case 'date_time':
+        return 'instant';
+      case 'checkbox':
+        return 'boolean';
+      case 'labels':
+        return 'list';
+      default:
+        return 'text';
+    }
+  }
+
+  protected textOf(value: IssueFieldValue): string {
+    if (value.display != null) return value.display;
+    return Array.isArray(value.value) ? (value.value as unknown[]).join(', ') : String(value.value);
+  }
+
+  protected addSubtask(issue: Issue): void {
+    void createIssueFlow(this.dialog, this.router, {
+      parent: { id: issue.id, key: issue.key, typeId: issue.type.id, projectKey: issue.project.key },
+    });
+  }
+}
