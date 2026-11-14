@@ -35,7 +35,16 @@ Workflows (L04-US04: `infra::workflows`, `api::workflows`) hold statuses and tra
 - **Copies go workflows first, then types**: the types refer to the workflows of their version (`copy_content`), and the seed creates the standard workflow before the default types.
 - **A draft may be incomplete**: a new status before its transitions, no initial status for a moment. `domain::workflows::problems` lists what is missing (no status, no initial status, a status nothing leads to, a repeated transition); `GET …/workflows` returns it with each workflow, the publish impact lists it as `workflowProblems`, and publishing answers 409 `workflow.invalid` with each problem as a field error (`workflows.standard.statuses.in_review`).
 - **A removed status counts like a removed type**: the publish impact lists it with its tickets, and only statuses in use call for the migration wizard.
-- Transition screens come with L04-US06.
+- A transition may show a transition screen (`rules.screenId`, stored in `workflow_transition.screen_id`), see Screens below.
+
+## Screens
+
+Screens (L04-US06: `domain::screens`, `infra::screens`, `api::screens`) list fields in their order:
+
+- **A general creation screen and a general view screen** per version, seeded with every field (`app_seed_default_screens`, in step with `domain::screens::DEFAULT_SCREENS`), never removed. A type may get its own creation or view screen (`issue_type_id`), which takes over for it (`domain::screens::pick`) and goes with the type.
+- **Transition screens** are named and attached to transitions. One a transition shows cannot be removed (409 `screen.in_use`, naming the transitions); the foreign key from `workflow_transition.screen_id` is checked at commit, because copying a version copies the transitions before the screens (last in `copy_content`).
+- **Fields follow**: a new custom field is appended to the general creation and view screens (`infra::screens::append_field`), a removed one leaves every screen (`forget_field`).
+- **Resolution** (`domain::screens::resolve`, `GET /project-configs/{id}/resolved-screen`): the field rules win. A field hidden for the type and the step is left out; one required there but missing is added at the end. The step is the creation for a creation screen, the ticket's status for a view screen, and the target status of the transition for a transition screen. Tickets (L05) and portal forms (L13) resolve the published version the same way.
 
 ## Transition rules
 

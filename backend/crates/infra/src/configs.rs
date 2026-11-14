@@ -225,8 +225,9 @@ pub async fn insert(
     // The workflow first: the types follow it.
     crate::workflows::seed_default(conn, config.published.id).await?;
     crate::issue_types::seed_defaults(conn, config.published.id).await?;
-    // Then the system fields, on the types.
+    // Then the system fields, on the types; then the screens, of the fields.
     crate::fields::seed_defaults(conn, config.published.id).await?;
+    crate::screens::seed_defaults(conn, config.published.id).await?;
     found(conn, id).await
 }
 
@@ -499,7 +500,9 @@ async fn copy_content(conn: &mut PgConnection, from: Uuid, to: Uuid) -> Result<(
     // rules name both.
     crate::workflows::copy(conn, from, to).await?;
     crate::issue_types::copy(conn, from, to).await?;
-    crate::fields::copy(conn, from, to).await
+    crate::fields::copy(conn, from, to).await?;
+    // The transition screens are checked at commit: copied last.
+    crate::screens::copy(conn, from, to).await
 }
 
 /// The configuration, its row locked until the end of the transaction, if

@@ -255,6 +255,7 @@ async fn statuses_are_added_changed_and_removed_with_their_transitions() {
         new_id(),
         &TransitionFields {
             rules: None,
+            screen_id: None,
             name_translations: &name,
             from_status_id: None,
             to_status_id: blocked,
@@ -436,6 +437,7 @@ async fn transition_rules_are_kept_in_copies_and_leave_a_removed_field() {
     };
     let set = |rules| TransitionFields {
         rules,
+        screen_id: None,
         name_translations: &start.name_translations,
         from_status_id: start.from_status_id,
         to_status_id: start.to_status_id,

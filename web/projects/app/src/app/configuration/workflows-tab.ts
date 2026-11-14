@@ -26,6 +26,7 @@ import {
   isApiProblem,
   listFields,
   listIssueTypes,
+  listScreens,
   LocaleService,
   listWorkflows,
   resolveLabel,
@@ -81,6 +82,20 @@ export class WorkflowsTab {
     loader: ({ params }) => this.api.invoke(listFields, { id: params }),
   });
   private readonly fields = computed(() => (this.fieldList.hasValue() ? this.fieldList.value().items : []));
+  private readonly screenList = resource({
+    params: () => this.configId(),
+    loader: ({ params }) => this.api.invoke(listScreens, { id: params }),
+  });
+  /** The transition screens a transition may show. */
+  private readonly transitionScreens = computed(() =>
+    this.screenList.hasValue() ? this.screenList.value().items.filter((s) => s.kind === 'transition') : [],
+  );
+
+  /** The name of the transition screen of `transition`, if any. */
+  protected screenOf(transition: WorkflowTransition): string | null {
+    const screen = this.transitionScreens().find((s) => s.id === transition.rules.screenId);
+    return screen ? resolveLabel(screen.nameTranslations, this.locale.language()) : null;
+  }
   private readonly chosen = signal<string | null>(null);
   /** The workflow shown: the one chosen, else the first. */
   protected readonly selected = computed(() => this.items().find((w) => w.id === this.chosen()) ?? this.items()[0] ?? null);
@@ -158,6 +173,7 @@ export class WorkflowsTab {
       transition,
       fields: this.fields(),
       references: this.references(),
+      screens: this.transitionScreens(),
     };
     // Its rules may name roles, groups or members the list does not name yet.
     this.open(TransitionDialog, data, 'config.workflows.transition.saved', { width: 'min(720px, 100vw)', reload: true });

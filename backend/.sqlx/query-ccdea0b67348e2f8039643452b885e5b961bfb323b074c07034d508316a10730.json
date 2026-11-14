@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT item_id, workflow_id, name AS \"name: Json<Labels>\", from_status_id, to_status_id,\n               rules AS \"rules: Json<RulesDoc>\", position, version\n        FROM workflow_transition WHERE version_id = $1 ORDER BY position, item_id\n        ",
+  "query": "\n        SELECT item_id, workflow_id, name AS \"name: Json<Labels>\", from_status_id, to_status_id,\n               rules AS \"rules: Json<RulesDoc>\", screen_id, position, version\n        FROM workflow_transition WHERE version_id = $1 ORDER BY position, item_id\n        ",
   "describe": {
     "columns": [
       {
@@ -71,6 +71,17 @@
       },
       {
         "ordinal": 6,
+        "name": "screen_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "workflow_transition",
+            "name": "screen_id"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
         "name": "position",
         "type_info": "Int4",
         "origin": {
@@ -81,7 +92,7 @@
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "version",
         "type_info": "Int8",
         "origin": {
@@ -104,9 +115,10 @@
       true,
       false,
       false,
+      true,
       false,
       false
     ]
   },
-  "hash": "977af76832665a0b4c472758cab32d85d0fb5a8f3f148e9bf1352fa0c1a8fb14"
+  "hash": "ccdea0b67348e2f8039643452b885e5b961bfb323b074c07034d508316a10730"
 }

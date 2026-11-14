@@ -145,6 +145,16 @@ export type { PublishProjectConfig$Params as PublishProjectConfig$Params } from 
 export { publishProjectConfig as publishProjectConfig } from './fn/configurations/publish-project-config';
 export type { GetProjectConfigPublishImpact$Params as GetProjectConfigPublishImpact$Params } from './fn/configurations/get-project-config-publish-impact';
 export { getProjectConfigPublishImpact as getProjectConfigPublishImpact } from './fn/configurations/get-project-config-publish-impact';
+export type { ResolveScreen$Params as ResolveScreen$Params } from './fn/configurations/resolve-screen';
+export { resolveScreen as resolveScreen } from './fn/configurations/resolve-screen';
+export type { ListScreens$Params as ListScreens$Params } from './fn/configurations/list-screens';
+export { listScreens as listScreens } from './fn/configurations/list-screens';
+export type { CreateScreen$Params as CreateScreen$Params } from './fn/configurations/create-screen';
+export { createScreen as createScreen } from './fn/configurations/create-screen';
+export type { UpdateScreen$Params as UpdateScreen$Params } from './fn/configurations/update-screen';
+export { updateScreen as updateScreen } from './fn/configurations/update-screen';
+export type { DeleteScreen$Params as DeleteScreen$Params } from './fn/configurations/delete-screen';
+export { deleteScreen as deleteScreen } from './fn/configurations/delete-screen';
 export type { UpdateWorkflowStatus$Params as UpdateWorkflowStatus$Params } from './fn/configurations/update-workflow-status';
 export { updateWorkflowStatus as updateWorkflowStatus } from './fn/configurations/update-workflow-status';
 export type { DeleteWorkflowStatus$Params as DeleteWorkflowStatus$Params } from './fn/configurations/delete-workflow-status';

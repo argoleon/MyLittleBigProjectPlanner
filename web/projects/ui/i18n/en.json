@@ -489,6 +489,11 @@
     "config_field": {
       "key_taken": "Another field of this configuration already has this identifier.",
       "system": "A system field keeps its label and options and cannot be removed: only its issue types and rules change."
+    },
+    "screen": {
+      "exists": "This type, or the configuration, already has a screen of this kind.",
+      "general": "The general creation and view screens of a configuration stay.",
+      "in_use": "Transitions show this screen: give them another one first."
     }
   },
   "dialog": {
@@ -901,9 +906,7 @@
         "tab": "Workflows"
       },
       "screens": {
-        "tab": "Screens",
-        "title": "Screens come next",
-        "hint": "The creation, view and transition screens will be defined here."
+        "tab": "Screens"
       },
       "notifications": {
         "tab": "Notifications",
@@ -1243,8 +1246,63 @@
           "assignMember": "Assigns to {{name}}",
           "set": "Sets {{field}}",
           "clear": "Clears {{field}}",
-          "comment": "Adds a comment"
-        }
+          "comment": "Adds a comment",
+          "screen": "Shows {{name}}"
+        },
+        "screen": "Transition screen",
+        "screenLabel": "Screen shown before it runs",
+        "noScreen": "None",
+        "screenHint": "Its fields follow the rules of the status it leads to."
+      }
+    },
+    "screens": {
+      "intro": "The fields shown, in their order, when a ticket is created, viewed, or moved by a transition. The field rules win: a hidden field is not shown, a required one missing is added at the end. Changes go to the draft.",
+      "add": "New screen",
+      "newTitle": "New screen",
+      "kind": "Shown",
+      "kinds": {
+        "creation": "Creation",
+        "view": "View",
+        "transition": "Transition"
+      },
+      "type": "Issue type",
+      "typeHint": "This type uses it instead of the general screen.",
+      "name": "Name",
+      "create": "Create",
+      "created": "Screen “{{name}}” added to the draft.",
+      "saved": "Screen “{{name}}” saved in the draft.",
+      "removed": "Screen “{{name}}” removed from the draft.",
+      "general": "General: every type without its own",
+      "forType": "For {{type}}",
+      "shownBy": "Shown by",
+      "unused": "Attached to no transition yet",
+      "fieldCount": "{{count}} fields",
+      "noScreen": "None yet.",
+      "editTitle": "Edit “{{name}}”",
+      "close": "Close the panel",
+      "onScreen": "On the screen",
+      "available": "Available fields",
+      "noField": "No field: drag one here or add it.",
+      "allOnScreen": "Every field is on the screen.",
+      "moveUp": "Move {{name}} up",
+      "moveDown": "Move {{name}} down",
+      "removeField": "Take {{name}} off the screen",
+      "addField": "Put {{name}} on the screen",
+      "missingRequired": "Required by a rule where this screen is shown, and added at the end there:",
+      "preview": "Preview",
+      "previewType": "For the type",
+      "previewStatus": "In the status",
+      "previewTarget": "Leading to the status",
+      "previewEmpty": "Nothing to show.",
+      "hiddenByRule": "Hidden by a rule",
+      "addedAtEnd": "Added at the end",
+      "usedBy": "Shown by: {{transitions}}.",
+      "save": "Save",
+      "remove": {
+        "action": "Remove",
+        "title": "Remove “{{name}}”?",
+        "message": "It leaves the draft. The type it was for uses the general screen again.",
+        "confirm": "Remove"
       }
     }
   }

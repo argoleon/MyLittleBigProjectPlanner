@@ -10,6 +10,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
 import {
   Api,
   ConfigField,
+  ConfigScreen,
   TransitionRuleReferences,
   TranslatableInput,
   TranslatedPipe,
@@ -253,6 +254,8 @@ export interface TransitionDialogData {
   readonly fields: readonly ConfigField[];
   /** The names of the roles, groups and members the rules name. */
   readonly references: TransitionRuleReferences | null;
+  /** The transition screens of the configuration. */
+  readonly screens: readonly ConfigScreen[];
 }
 
 /**
@@ -299,7 +302,7 @@ export interface TransitionDialogData {
           </mat-select>
           <mat-error>{{ (form.controls.toId.getError('api') ?? 'errors.field.required') | transloco }}</mat-error>
         </mat-form-field>
-        <app-transition-rules [form]="form.controls.rules" [roles]="roles()" [fields]="data.fields" />
+        <app-transition-rules [form]="form.controls.rules" [roles]="roles()" [fields]="data.fields" [screens]="data.screens" />
       </mat-dialog-content>
       <mat-dialog-actions align="end">
         <button matButton type="button" mat-dialog-close>{{ 'dialog.cancel' | transloco }}</button>

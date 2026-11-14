@@ -21,6 +21,7 @@ pub mod mfa;
 pub mod oidc;
 pub mod permissions;
 pub mod reference_item;
+pub mod screens;
 pub mod tenancy;
 pub mod tenant;
 pub mod transitions;

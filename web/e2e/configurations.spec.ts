@@ -211,14 +211,58 @@ const FIELDS = [
   },
 ];
 
+/** The general screens, and a transition screen shown by Reject. */
+const SCREENS = [
+  {
+    id: 'sc1',
+    kind: 'creation',
+    issueTypeId: null,
+    isGeneral: true,
+    name: 'Creation',
+    nameTranslations: { fr: 'Création', en: 'Creation' },
+    fieldIds: ['f1', 'f2', 'f3'],
+    usedBy: [],
+    version: 1,
+  },
+  {
+    id: 'sc2',
+    kind: 'view',
+    isGeneral: true,
+    name: 'View',
+    nameTranslations: { fr: 'Consultation', en: 'View' },
+    fieldIds: ['f1', 'f2', 'f3'],
+    usedBy: [],
+    version: 1,
+  },
+  {
+    id: 'sc3',
+    kind: 'transition',
+    issueTypeId: null,
+    isGeneral: false,
+    name: 'Rejection reason',
+    nameTranslations: { fr: 'Motif du refus', en: 'Rejection reason' },
+    fieldIds: ['f1'],
+    usedBy: [{ transitionId: 'x3', workflowId: 'w1', transition: 'Reject', workflow: 'Standard workflow' }],
+    version: 1,
+  },
+];
+
 /** The configurations' API for a configuration admin, recording what is created and published. */
 async function mockConfigurations(page: Page) {
-  const sent: { created: unknown[]; published: (string | null)[]; ordered: unknown[]; fields: unknown[]; transitions: unknown[] } = {
+  const sent: {
+    created: unknown[];
+    published: (string | null)[];
+    ordered: unknown[];
+    fields: unknown[];
+    transitions: unknown[];
+    screens: unknown[];
+  } = {
     created: [],
     published: [],
     ordered: [],
     fields: [],
     transitions: [],
+    screens: [],
   };
   await page.route('**/api/v1/auth/session', (route) =>
     route.fulfill({ json: { ...SESSION, account: { ...SESSION.account, tenantRole: 'configuration_admin' } } }),
@@ -239,6 +283,12 @@ async function mockConfigurations(page: Page) {
     route.fulfill({ json: { stage: 'published', items: [STANDARD], references: REFERENCES } }),
   );
   await page.route(`**/api/v1/project-configs/transition-roles`, (route) => route.fulfill({ json: REFERENCES.roles }));
+  await page.route(`**/api/v1/project-configs/*/screens`, (route) => route.fulfill({ json: { stage: 'published', items: SCREENS } }));
+  await page.route(`**/api/v1/project-configs/*/screens/*`, (route) => {
+    const body = route.request().postDataJSON() as object;
+    sent.screens.push(body);
+    return route.fulfill({ json: { ...SCREENS[1], ...body, version: 2 } });
+  });
   await page.route(`**/api/v1/project-configs/transition-candidates*`, (route) =>
     route.fulfill({ json: [{ kind: 'group', id: 'g1', name: 'Quality', email: null }] }),
   );
@@ -384,6 +434,7 @@ test('a transition is restricted to a role, requires a field and gets post-funct
   expect(sent.transitions).toEqual([
     expect.objectContaining({
       rules: {
+        screenId: null,
         conditions: { roleIds: ['r1'], groupIds: [] },
         validators: ['f3'],
         postFunctions: [
@@ -393,6 +444,27 @@ test('a transition is restricted to a role, requires a field and gets post-funct
       },
     }),
   ]);
+});
+
+test('the fields of a screen are added, reordered and removed with the keyboard alone', async ({ page }) => {
+  const sent = await mockConfigurations(page);
+  await page.goto(`/admin/configurations/${SOFTWARE.id}/screens`);
+  await expect(page.getByRole('button', { name: /Rejection reason/ })).toContainText('Shown by Reject');
+  await page.getByRole('button', { name: /^View/ }).focus();
+  await page.keyboard.press('Enter');
+  const panel = page.getByRole('region', { name: 'Edit “View”' });
+  await panel.getByRole('button', { name: 'Take Application off the screen' }).focus();
+  await page.keyboard.press('Enter');
+  await panel.getByRole('button', { name: 'Move Remaining work up' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(panel.locator('.on-screen .label')).toHaveText(['Remaining work', 'Points']);
+  await panel.getByRole('button', { name: 'Put Application on the screen' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(panel.locator('.on-screen .label')).toHaveText(['Remaining work', 'Points', 'Application']);
+  await panel.getByRole('button', { name: 'Save' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('status')).toHaveText('Screen “View” saved in the draft.');
+  expect(sent.screens).toEqual([{ nameTranslations: { fr: 'Consultation', en: 'View' }, fieldIds: ['f3', 'f2', 'f1'] }]);
 });
 
 for (const theme of ['light', 'dark'] as const) {
@@ -463,6 +535,15 @@ for (const theme of ['light', 'dark'] as const) {
         expect(await accessibilityViolations(page), 'field panel').toEqual([]);
 
         await page.goto(`/admin/configurations/${SOFTWARE.id}/screens`);
+        await expect(page.locator('app-screens-tab button.item')).toHaveCount(3);
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'screens').toEqual([]);
+        await page.locator('app-screens-tab button.item').nth(2).click();
+        await expect(page.locator('app-screen-editor .lines .line')).toHaveCount(1);
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'screen editor').toEqual([]);
+
+        await page.goto(`/admin/configurations/${SOFTWARE.id}/notifications`);
         await expect(page.locator('app-config-section-tab')).toBeVisible();
         await animationsDone(page);
         expect(await accessibilityViolations(page), 'section').toEqual([]);

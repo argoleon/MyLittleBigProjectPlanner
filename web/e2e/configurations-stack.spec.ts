@@ -1,6 +1,6 @@
 /**
  * Project configurations on the production stack, nothing mocked
- * (L04-US01 to US05): the tenant admin creates a configuration, moves two projects
+ * (L04-US01 to US06): the tenant admin creates a configuration, moves two projects
  * to it from their settings, sees it shared by both, then detaches one,
  * which gets its own copy.
  *
@@ -325,6 +325,56 @@ test('a transition restricted to a role, requiring a field and assigning its tak
   await expect(admin.getByText('Version 2 is published.', { exact: true })).toBeVisible();
   await admin.reload();
   await expect(admin.getByRole('row', { name: /Validate/ })).toContainText('Requires Remaining work');
+
+  await admin.context().close();
+});
+
+test('a transition screen shown by Reject cannot be removed until Reject lets it go', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const run = Date.now().toString(36).toUpperCase().slice(-6);
+  const config = `Triage ${run}`;
+
+  const admin = await signIn(browser, adminEmail!, adminSecret!);
+  await admin.goto('/admin/configurations');
+  await admin.getByRole('button', { name: 'New configuration' }).click();
+  const dialog = admin.getByRole('dialog', { name: 'New project configuration' });
+  await expect(dialog.getByLabel('Name (Français)')).toBeFocused();
+  await dialog.getByLabel('Name (Français)').fill(`Tri ${run}`);
+  await dialog.getByLabel('Name (English)').fill(config);
+  await dialog.getByRole('button', { name: 'Create' }).click();
+  await expect(admin.getByRole('heading', { level: 1 })).toHaveText(config);
+
+  // The general screens, then a transition screen with the remaining work.
+  await admin.getByRole('tab', { name: 'Screens' }).click();
+  await expect(admin.locator('app-screens-tab button.item')).toHaveCount(2);
+  await admin.getByRole('button', { name: 'New screen' }).click();
+  const create = admin.getByRole('dialog', { name: 'New screen' });
+  await create.getByLabel('Name (Français)').fill('Motif du refus');
+  await create.getByLabel('Name (English)').fill('Rejection reason');
+  await create.getByRole('button', { name: 'Create' }).click();
+  await expect(admin.getByRole('status')).toHaveText('Screen “Rejection reason” added to the draft.');
+  const panel = admin.getByRole('region', { name: 'Edit “Rejection reason”' });
+  await panel.getByRole('button', { name: 'Put Remaining work on the screen' }).click();
+  await panel.getByRole('button', { name: 'Save' }).click();
+  await expect(admin.getByRole('status')).toHaveText('Screen “Rejection reason” saved in the draft.');
+  expect(await accessibilityViolations(admin), 'screen editor').toEqual([]);
+
+  // Reject shows it.
+  await admin.getByRole('tab', { name: 'Workflows' }).click();
+  await admin.getByRole('button', { name: 'Edit Reject' }).click();
+  const edit = admin.getByRole('dialog', { name: 'Change the transition' });
+  await edit.getByRole('combobox', { name: 'Screen shown before it runs' }).click();
+  await admin.getByRole('option', { name: 'Rejection reason' }).click();
+  await edit.getByRole('button', { name: 'Save' }).click();
+  await expect(admin.getByRole('row', { name: /Reject/ })).toContainText('Shows Rejection reason');
+
+  // Kept while Reject shows it, naming it.
+  await admin.getByRole('tab', { name: 'Screens' }).click();
+  await admin.getByRole('button', { name: /Rejection reason/ }).click();
+  await expect(admin.getByRole('button', { name: /Rejection reason/ })).toContainText('Shown by Reject');
+  await panel.getByRole('button', { name: 'Remove' }).click();
+  await admin.getByRole('dialog').getByRole('button', { name: 'Remove' }).click();
+  await expect(panel.getByRole('alert')).toContainText('Shown by: Reject (Standard workflow).');
 
   await admin.context().close();
 });

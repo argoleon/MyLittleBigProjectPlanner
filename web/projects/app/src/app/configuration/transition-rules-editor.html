@@ -1,5 +1,18 @@
 <div class="rules" [formGroup]="form()">
   <fieldset class="section">
+    <legend class="section-title">{{ 'config.workflows.rules.screen' | transloco }}</legend>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'config.workflows.rules.screenLabel' | transloco }}</mat-label>
+      <mat-select formControlName="screenId">
+        <mat-option [value]="null">{{ 'config.workflows.rules.noScreen' | transloco }}</mat-option>
+        @for (screen of screens(); track screen.id) {
+          <mat-option [value]="screen.id">{{ screen.nameTranslations | translated }}</mat-option>
+        }
+      </mat-select>
+      <mat-hint>{{ 'config.workflows.rules.screenHint' | transloco }}</mat-hint>
+    </mat-form-field>
+  </fieldset>
+  <fieldset class="section">
     <legend class="section-title">{{ 'config.workflows.rules.conditions' | transloco }}</legend>
     <p class="hint">{{ 'config.workflows.rules.conditionsHint' | transloco }}</p>
     <mat-form-field appearance="outline">
