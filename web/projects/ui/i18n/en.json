@@ -415,7 +415,17 @@
       "not_a_permutation": "Every item must appear once.",
       "not_applicable": "Not available for this type.",
       "less_than_min": "The maximum is below the minimum.",
-      "duplicate": "This value appears twice."
+      "duplicate": "This value appears twice.",
+      "wrong_type": "This value does not fit the field.",
+      "too_many_decimals": "Too many decimals.",
+      "invalid_date": "Not a valid date.",
+      "invalid_date_time": "Not a valid date and time.",
+      "invalid_url": "Not a valid web address.",
+      "invalid_label": "A label has no spaces.",
+      "invalid_id": "Not a valid identifier.",
+      "unknown_value": "Not a value of this list.",
+      "inactive_value": "This value is deactivated.",
+      "not_a_child": "This value is not under the first one."
     },
     "invitation": {
       "invalid": "This invitation link is invalid, has expired or was already used. Ask for a new one.",
@@ -1175,6 +1185,65 @@
           "message": "Tickets will no longer take it.",
           "confirm": "Remove",
           "done": "Transition “{{name}}” removed from the draft."
+        }
+      },
+      "rules": {
+        "column": "Rules",
+        "conditions": "Who may take it",
+        "conditionsHint": "No role and no group: whoever may edit the ticket. Otherwise, one of the roles on the project or one of the groups is enough.",
+        "roles": "Roles",
+        "groupsChosen": "Groups who may take it",
+        "deletedGroup": "Deleted group",
+        "deleted": "deleted",
+        "removeGroup": "Remove the group {{name}}",
+        "addGroup": "Add a group",
+        "validators": "Required fields",
+        "requiredFields": "Fields that must be filled in",
+        "validatorsHint": "The transition is refused, naming them, while one is empty.",
+        "postFunctions": "Post-functions",
+        "postFunctionsHint": "Run in this order when the transition is taken.",
+        "kind": "Post-function {{position}}",
+        "kinds": {
+          "assign": "Assign the ticket",
+          "set_field": "Set a field",
+          "clear_field": "Clear a field",
+          "add_comment": "Add a comment"
+        },
+        "moveUp": "Move post-function {{position}} up",
+        "moveDown": "Move post-function {{position}} down",
+        "remove": "Remove post-function {{position}}",
+        "assignTo": "Assign to",
+        "targets": {
+          "current_user": "Whoever takes the transition",
+          "reporter": "The reporter",
+          "member": "A member",
+          "nobody": "Nobody (unassign)"
+        },
+        "member": "Member",
+        "memberRequired": "Choose a member.",
+        "field": "Field",
+        "settableHint": "Fields whose value can be entered here.",
+        "checked": "Ticked",
+        "value": "Value",
+        "labelsHint": "Separated by commas or spaces.",
+        "comment": "Comment",
+        "fieldRequired": "Choose a field.",
+        "commentRequired": "Write the comment.",
+        "add": "Add a post-function",
+        "summary": {
+          "restricted": "Only:",
+          "requires": "Requires {{fields}}",
+          "none": "Open to everyone",
+          "assign": {
+            "current_user": "Assigns to whoever takes it",
+            "reporter": "Assigns to the reporter",
+            "member": "Assigns to a member",
+            "nobody": "Unassigns"
+          },
+          "assignMember": "Assigns to {{name}}",
+          "set": "Sets {{field}}",
+          "clear": "Clears {{field}}",
+          "comment": "Adds a comment"
         }
       }
     }

@@ -1,6 +1,6 @@
 /**
  * Project configurations on the production stack, nothing mocked
- * (L04-US01 to US04): the tenant admin creates a configuration, moves two projects
+ * (L04-US01 to US05): the tenant admin creates a configuration, moves two projects
  * to it from their settings, sees it shared by both, then detaches one,
  * which gets its own copy.
  *
@@ -273,6 +273,58 @@ test('a custom field with its rules is published, then a value of it is deactiva
   await expect(admin.getByRole('status')).toHaveText('Field “Application” saved in the draft.');
   await expect(edit.getByText('Deactivated: no longer offered, kept on the tickets that have it.')).toBeVisible();
   await expect(edit.getByLabel('Value 2 (English)')).toHaveValue('Mail');
+
+  await admin.context().close();
+});
+
+test('a transition restricted to a role, requiring a field and assigning its taker is published with its rules', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const run = Date.now().toString(36).toUpperCase().slice(-6);
+  const config = `Review ${run}`;
+
+  const admin = await signIn(browser, adminEmail!, adminSecret!);
+  await admin.goto('/admin/configurations');
+  await admin.getByRole('button', { name: 'New configuration' }).click();
+  const dialog = admin.getByRole('dialog', { name: 'New project configuration' });
+  await expect(dialog.getByLabel('Name (Français)')).toBeFocused();
+  await dialog.getByLabel('Name (Français)').fill(`Revue ${run}`);
+  await dialog.getByLabel('Name (English)').fill(config);
+  await dialog.getByRole('button', { name: 'Create' }).click();
+  await expect(admin.getByRole('heading', { level: 1 })).toHaveText(config);
+  await admin.getByRole('tab', { name: 'Workflows' }).click();
+  const validate = admin.getByRole('row', { name: /Validate/ });
+  await expect(validate).toContainText('Open to everyone');
+
+  // Validate: one role, the remaining work filled in, assigned to whoever validates.
+  await admin.getByRole('button', { name: 'Edit Validate' }).click();
+  const edit = admin.getByRole('dialog', { name: 'Change the transition' });
+  await edit.getByRole('combobox', { name: 'Roles' }).click();
+  const role = admin.getByRole('listbox', { name: 'Roles' }).getByRole('option').first();
+  const roleName = (await role.textContent())!.trim();
+  await role.click();
+  // A multiple select stays open: Tab closes it and leaves the dialog open.
+  await admin.keyboard.press('Tab');
+  await expect(admin.getByRole('listbox')).toHaveCount(0);
+  await edit.getByRole('combobox', { name: 'Fields that must be filled in' }).click();
+  await admin.getByRole('option', { name: 'Remaining work' }).click();
+  await admin.keyboard.press('Tab');
+  await expect(admin.getByRole('listbox')).toHaveCount(0);
+  await edit.getByRole('button', { name: 'Add a post-function' }).click();
+  await expect(edit.getByRole('combobox', { name: 'Assign to' })).toContainText('Whoever takes the transition');
+  expect(await accessibilityViolations(admin), 'transition rules').toEqual([]);
+  await edit.getByRole('button', { name: 'Save' }).click();
+  await expect(admin.getByRole('status')).toHaveText('Transition saved in “Standard workflow”.');
+  await expect(validate).toContainText(`Only: ${roleName}`);
+  await expect(validate).toContainText('Requires Remaining work');
+  await expect(validate).toContainText('Assigns to whoever takes it');
+
+  // Published: the projects' version has them.
+  await admin.getByRole('button', { name: 'Publish the changes' }).click();
+  const publish = admin.getByRole('dialog', { name: `Publish “${config}”?` });
+  await publish.getByRole('button', { name: 'Publish' }).click();
+  await expect(admin.getByText('Version 2 is published.', { exact: true })).toBeVisible();
+  await admin.reload();
+  await expect(admin.getByRole('row', { name: /Validate/ })).toContainText('Requires Remaining work');
 
   await admin.context().close();
 });

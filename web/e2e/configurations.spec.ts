@@ -92,6 +92,25 @@ const STATUS = (id: string, key: string, fr: string, en: string, category: strin
 });
 
 /** The standard workflow of mockup 11, followed by every type. */
+const NO_RULES = { conditions: { roleIds: [], groupIds: [] }, validators: [], postFunctions: [] };
+
+const TRANSITION = (id: string, fr: string, en: string, fromId: string | null, toId: string, rules: object = NO_RULES) => ({
+  id,
+  name: en,
+  nameTranslations: { fr, en },
+  fromId,
+  toId,
+  rules,
+  version: 1,
+});
+
+/** What the transition rules name. */
+const REFERENCES = {
+  roles: [{ id: 'r1', label: 'Reviewer', labelTranslations: { fr: 'Relecteur', en: 'Reviewer' } }],
+  groups: [{ id: 'g1', name: 'Quality' }],
+  members: [],
+};
+
 const STANDARD = {
   id: 'w1',
   key: 'standard',
@@ -106,11 +125,23 @@ const STANDARD = {
     STATUS('s5', 'cancelled', 'Annulé', 'Cancelled', 'done'),
   ],
   transitions: [
-    { id: 'x1', name: 'Start', nameTranslations: { fr: 'Démarrer', en: 'Start' }, fromId: 's1', toId: 's2', version: 1 },
-    { id: 'x2', name: 'Send to review', nameTranslations: { fr: 'Passer en revue', en: 'Send to review' }, fromId: 's2', toId: 's3', version: 1 },
-    { id: 'x3', name: 'Reject', nameTranslations: { fr: 'Refuser', en: 'Reject' }, fromId: 's3', toId: 's2', version: 1 },
-    { id: 'x4', name: 'Validate', nameTranslations: { fr: 'Valider', en: 'Validate' }, fromId: 's3', toId: 's4', version: 1 },
-    { id: 'x5', name: 'Cancel', nameTranslations: { fr: 'Annuler', en: 'Cancel' }, fromId: null, toId: 's5', version: 1 },
+    TRANSITION('x1', 'Démarrer', 'Start', 's1', 's2', {
+      conditions: { roleIds: [], groupIds: [] },
+      validators: [],
+      postFunctions: [{ kind: 'assign', assignTo: 'current_user' }],
+    }),
+    TRANSITION('x2', 'Passer en revue', 'Send to review', 's2', 's3', {
+      conditions: { roleIds: [], groupIds: [] },
+      validators: ['f3'],
+      postFunctions: [],
+    }),
+    TRANSITION('x3', 'Refuser', 'Reject', 's3', 's2'),
+    TRANSITION('x4', 'Valider', 'Validate', 's3', 's4', {
+      conditions: { roleIds: ['r1'], groupIds: ['g1'] },
+      validators: [],
+      postFunctions: [{ kind: 'add_comment', text: 'Validated' }],
+    }),
+    TRANSITION('x5', 'Annuler', 'Cancel', null, 's5'),
   ],
   problems: [],
   version: 1,
@@ -182,11 +213,12 @@ const FIELDS = [
 
 /** The configurations' API for a configuration admin, recording what is created and published. */
 async function mockConfigurations(page: Page) {
-  const sent: { created: unknown[]; published: (string | null)[]; ordered: unknown[]; fields: unknown[] } = {
+  const sent: { created: unknown[]; published: (string | null)[]; ordered: unknown[]; fields: unknown[]; transitions: unknown[] } = {
     created: [],
     published: [],
     ordered: [],
     fields: [],
+    transitions: [],
   };
   await page.route('**/api/v1/auth/session', (route) =>
     route.fulfill({ json: { ...SESSION, account: { ...SESSION.account, tenantRole: 'configuration_admin' } } }),
@@ -203,7 +235,17 @@ async function mockConfigurations(page: Page) {
     );
   }
   await page.route(`**/api/v1/project-configs/*/issue-types`, (route) => route.fulfill({ json: { stage: 'published', items: TYPES } }));
-  await page.route(`**/api/v1/project-configs/*/workflows`, (route) => route.fulfill({ json: { stage: 'published', items: [STANDARD] } }));
+  await page.route(`**/api/v1/project-configs/*/workflows`, (route) =>
+    route.fulfill({ json: { stage: 'published', items: [STANDARD], references: REFERENCES } }),
+  );
+  await page.route(`**/api/v1/project-configs/transition-roles`, (route) => route.fulfill({ json: REFERENCES.roles }));
+  await page.route(`**/api/v1/project-configs/transition-candidates*`, (route) =>
+    route.fulfill({ json: [{ kind: 'group', id: 'g1', name: 'Quality', email: null }] }),
+  );
+  await page.route(`**/api/v1/project-configs/*/workflow-transitions/*`, (route) => {
+    sent.transitions.push(route.request().postDataJSON());
+    return route.fulfill({ json: STANDARD });
+  });
   await page.route(`**/api/v1/project-configs/*/fields`, (route) => route.fulfill({ json: { stage: 'published', items: FIELDS } }));
   await page.route(`**/api/v1/project-configs/*/fields/*`, (route) => {
     const body = route.request().postDataJSON() as object;
@@ -309,6 +351,50 @@ test('the rules of a field are set with the keyboard alone', async ({ page }) =>
   ]);
 });
 
+test('a transition is restricted to a role, requires a field and gets post-functions in order', async ({ page }) => {
+  const sent = await mockConfigurations(page);
+  await page.goto(`/admin/configurations/${SOFTWARE.id}/workflows`);
+  // The rules of each transition, summed up.
+  const validate = page.getByRole('row', { name: /Validate/ });
+  await expect(validate).toContainText('Only: Reviewer, Quality');
+  await expect(validate).toContainText('Adds a comment');
+  await expect(page.getByRole('row', { name: /Send to review/ })).toContainText('Requires Remaining work');
+
+  await page.getByRole('button', { name: 'Edit Reject' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Change the transition' });
+  await dialog.getByRole('combobox', { name: 'Roles' }).focus();
+  await page.keyboard.press('Enter');
+  await page.getByRole('option', { name: 'Reviewer' }).click();
+  // A multiple select stays open: closed from its backdrop, the dialog stays.
+  await page.locator('.cdk-overlay-backdrop').last().click();
+  await dialog.getByRole('combobox', { name: 'Fields that must be filled in' }).focus();
+  await page.keyboard.press('Enter');
+  await page.getByRole('option', { name: 'Remaining work' }).click();
+  await page.locator('.cdk-overlay-backdrop').last().click();
+  await dialog.getByRole('button', { name: 'Add a post-function' }).press('Enter');
+  await dialog.getByRole('combobox', { name: 'Post-function 1' }).focus();
+  await page.keyboard.press('Enter');
+  await page.getByRole('option', { name: 'Add a comment' }).click();
+  await dialog.getByLabel('Comment').fill('Sent back');
+  await dialog.getByRole('button', { name: 'Add a post-function' }).press('Enter');
+  // Assign first: moved up.
+  await dialog.getByRole('button', { name: 'Move post-function 2 up' }).press('Enter');
+  await dialog.getByRole('button', { name: 'Save' }).press('Enter');
+  await expect(page.getByRole('status')).toHaveText('Transition saved in “Standard workflow”.');
+  expect(sent.transitions).toEqual([
+    expect.objectContaining({
+      rules: {
+        conditions: { roleIds: ['r1'], groupIds: [] },
+        validators: ['f3'],
+        postFunctions: [
+          { kind: 'assign', assignTo: 'current_user' },
+          { kind: 'add_comment', text: 'Sent back' },
+        ],
+      },
+    }),
+  ]);
+});
+
 for (const theme of ['light', 'dark'] as const) {
   for (const language of ['fr', 'en'] as const) {
     test.describe(`accessibility of the project configurations, ${theme} mode, ${language}`, () => {
@@ -359,6 +445,12 @@ for (const theme of ['light', 'dark'] as const) {
         await expect(page.getByRole('dialog')).toBeVisible();
         await animationsDone(page);
         expect(await accessibilityViolations(page), 'status dialog').toEqual([]);
+        await page.keyboard.press('Escape');
+        await expect(page.getByRole('dialog')).toHaveCount(0);
+        await page.locator('button.edit-transition').nth(3).click();
+        await expect(page.getByRole('dialog').locator('app-transition-rules mat-chip')).toHaveCount(1);
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'transition dialog with its rules').toEqual([]);
         await page.keyboard.press('Escape');
 
         await page.goto(`/admin/configurations/${SOFTWARE.id}/fields`);

@@ -148,3 +148,25 @@
   white-space: nowrap;
   text-align: end;
 }
+
+// What a transition's rules do, one line each (L04-US05).
+.rules {
+  font: var(--mat-sys-body-small);
+
+  .rule {
+    display: flex;
+    align-items: center;
+    gap: var(--app-space-1);
+
+    mat-icon {
+      width: 16px;
+      height: 16px;
+      font-size: 16px;
+      color: var(--mat-sys-on-surface-variant);
+    }
+  }
+
+  .none {
+    color: var(--mat-sys-on-surface-variant);
+  }
+}

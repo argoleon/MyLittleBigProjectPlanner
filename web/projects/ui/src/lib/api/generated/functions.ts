@@ -101,6 +101,10 @@ export type { ListProjectConfigs$Params as ListProjectConfigs$Params } from './f
 export { listProjectConfigs as listProjectConfigs } from './fn/configurations/list-project-configs';
 export type { CreateProjectConfig$Params as CreateProjectConfig$Params } from './fn/configurations/create-project-config';
 export { createProjectConfig as createProjectConfig } from './fn/configurations/create-project-config';
+export type { ListTransitionCandidates$Params as ListTransitionCandidates$Params } from './fn/configurations/list-transition-candidates';
+export { listTransitionCandidates as listTransitionCandidates } from './fn/configurations/list-transition-candidates';
+export type { ListTransitionRoles$Params as ListTransitionRoles$Params } from './fn/configurations/list-transition-roles';
+export { listTransitionRoles as listTransitionRoles } from './fn/configurations/list-transition-roles';
 export type { GetProjectConfig$Params as GetProjectConfig$Params } from './fn/configurations/get-project-config';
 export { getProjectConfig as getProjectConfig } from './fn/configurations/get-project-config';
 export type { RenameProjectConfig$Params as RenameProjectConfig$Params } from './fn/configurations/rename-project-config';
