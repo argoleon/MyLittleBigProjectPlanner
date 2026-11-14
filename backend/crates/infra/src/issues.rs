@@ -69,19 +69,25 @@ pub struct NewIssue<'a> {
     pub fields: &'a serde_json::Value,
 }
 
-/// Creates the ticket with the next key of its project; it as stored.
-pub async fn create(conn: &mut PgConnection, new: &NewIssue<'_>) -> Result<Issue, sqlx::Error> {
-    let number = sqlx::query_scalar!(
+/// The next key number of `project`, under the row lock of its counter
+/// until the transaction ends.
+async fn next_number(conn: &mut PgConnection, project: Uuid) -> Result<i32, sqlx::Error> {
+    sqlx::query_scalar!(
         r#"
         INSERT INTO project_issue_counter (tenant_id, project_id, last_number)
         VALUES (app_current_tenant(), $1, 1)
         ON CONFLICT (tenant_id, project_id) DO UPDATE SET last_number = project_issue_counter.last_number + 1
         RETURNING last_number
         "#,
-        new.project_id
+        project
     )
-    .fetch_one(&mut *conn)
-    .await?;
+    .fetch_one(conn)
+    .await
+}
+
+/// Creates the ticket with the next key of its project; it as stored.
+pub async fn create(conn: &mut PgConnection, new: &NewIssue<'_>) -> Result<Issue, sqlx::Error> {
+    let number = next_number(conn, new.project_id).await?;
     let key = domain::issues::key(new.project_key, u32::try_from(number).unwrap_or(u32::MAX));
     sqlx::query!(
         r#"
@@ -109,6 +115,122 @@ pub async fn create(conn: &mut PgConnection, new: &NewIssue<'_>) -> Result<Issue
     .execute(&mut *conn)
     .await?;
     find(conn, new.id).await?.ok_or_else(|| sqlx::Error::RowNotFound)
+}
+
+/// Locks the ticket `id` until the transaction ends; its version, if it
+/// exists.
+pub async fn lock(conn: &mut PgConnection, id: Uuid) -> Result<Option<i64>, sqlx::Error> {
+    sqlx::query_scalar!("SELECT version FROM issue WHERE id = $1 FOR UPDATE", id)
+        .fetch_optional(conn)
+        .await
+}
+
+/// What a ticket becomes once edited (L05-US02): every editable value.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Edited<'a> {
+    pub summary: &'a str,
+    pub description: Option<&'a serde_json::Value>,
+    pub priority: &'a str,
+    pub assignee_id: Option<Uuid>,
+    pub start_date: Option<NaiveDate>,
+    pub due_date: Option<NaiveDate>,
+    pub fields: &'a serde_json::Value,
+}
+
+/// Writes `edited` to the ticket `id` and bumps its version; it as stored.
+pub async fn update(conn: &mut PgConnection, id: Uuid, edited: &Edited<'_>) -> Result<Issue, sqlx::Error> {
+    sqlx::query!(
+        r#"
+        UPDATE issue
+        SET summary = $2, description = $3, priority = $4, assignee_id = $5, start_date = $6, due_date = $7,
+            fields = $8, version = version + 1, updated_at = now()
+        WHERE id = $1
+        "#,
+        id,
+        edited.summary.trim(),
+        edited.description,
+        edited.priority,
+        edited.assignee_id,
+        edited.start_date,
+        edited.due_date,
+        edited.fields
+    )
+    .execute(&mut *conn)
+    .await?;
+    find(conn, id).await?.ok_or(sqlx::Error::RowNotFound)
+}
+
+/// The sub-tasks (direct children) of the ticket `id`, oldest first.
+pub async fn children(conn: &mut PgConnection, id: Uuid) -> Result<Vec<Issue>, sqlx::Error> {
+    sqlx::query_as!(
+        Row,
+        r#"
+        SELECT i.id, i.project_id, i.key, i.key_number, i.type_id, i.status_id, i.parent_id, i.summary,
+               i.description, i.priority, i.reporter_id, r.display_name AS "reporter_name?", i.assignee_id,
+               a.display_name AS "assignee_name?", i.start_date, i.due_date, i.fields, i.created_at, i.updated_at,
+               i.version
+        FROM issue i
+        LEFT JOIN account r ON r.id = i.reporter_id
+        LEFT JOIN account a ON a.id = i.assignee_id
+        WHERE i.parent_id = $1
+        ORDER BY i.created_at, i.id
+        "#,
+        id
+    )
+    .fetch_all(conn)
+    .await
+    .map(|rows| rows.into_iter().map(Issue::from).collect())
+}
+
+/// Where a ticket moves (L05-US02).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Move<'a> {
+    pub id: Uuid,
+    pub project_id: Uuid,
+    /// The key of the target project (`CRM`).
+    pub project_key: &'a str,
+    pub type_id: Uuid,
+    pub status_id: Uuid,
+    pub parent_id: Option<Uuid>,
+    /// The values it keeps there.
+    pub fields: &'a serde_json::Value,
+}
+
+/// Moves a ticket: the next key of its new project, its former key kept as
+/// an alias, its type, status, parent and values as given, its version
+/// bumped; it as stored.
+pub async fn move_to(conn: &mut PgConnection, moved: &Move<'_>) -> Result<Issue, sqlx::Error> {
+    let number = next_number(conn, moved.project_id).await?;
+    let key = domain::issues::key(moved.project_key, u32::try_from(number).unwrap_or(u32::MAX));
+    sqlx::query!(
+        r#"
+        INSERT INTO issue_key_alias (id, tenant_id, key, issue_id)
+        SELECT $1, tenant_id, key, id FROM issue WHERE id = $2
+        "#,
+        crate::id::new_id(),
+        moved.id
+    )
+    .execute(&mut *conn)
+    .await?;
+    sqlx::query!(
+        r#"
+        UPDATE issue
+        SET project_id = $2, key_number = $3, key = $4, type_id = $5, status_id = $6, parent_id = $7,
+            fields = $8, version = version + 1, updated_at = now()
+        WHERE id = $1
+        "#,
+        moved.id,
+        moved.project_id,
+        number,
+        key,
+        moved.type_id,
+        moved.status_id,
+        moved.parent_id,
+        moved.fields
+    )
+    .execute(&mut *conn)
+    .await?;
+    find(conn, moved.id).await?.ok_or(sqlx::Error::RowNotFound)
 }
 
 struct Row {

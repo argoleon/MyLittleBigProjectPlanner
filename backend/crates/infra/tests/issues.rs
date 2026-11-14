@@ -255,3 +255,136 @@ async fn outbox_partitions_are_created_once_and_take_the_events_of_their_month()
     assert_eq!(forced.len(), 5, "default, current and three ahead: {forced:?}");
     assert!(forced.iter().all(|(_, force)| *force), "{forced:?}");
 }
+
+#[tokio::test]
+async fn an_edit_bumps_the_version_and_a_lock_holds_others_until_it_commits() {
+    let db = TestDb::new().await;
+    let (plat, admin) = project(&db, &db.tenant_a, "PLAT").await;
+    let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+    let issue = create(&mut tx, plat, "PLAT", admin, "Draft").await;
+    tx.commit().await.unwrap();
+
+    // The first edit holds the lock; the second waits for it, then reads
+    // the version it left.
+    let mut first = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+    assert_eq!(issues::lock(&mut first, issue.id).await.unwrap(), Some(1));
+    let pool = db.app_pool.clone();
+    let tenant = db.tenant_a.id;
+    let second = tokio::spawn(async move {
+        let mut tx = begin_tenant_tx(&pool, tenant).await.unwrap();
+        let version = issues::lock(&mut tx, issue.id).await.unwrap();
+        tx.rollback().await.unwrap();
+        version
+    });
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    assert!(!second.is_finished(), "the second lock waits for the first");
+    let fields = json!({"a": 1});
+    let edited = issues::update(
+        &mut first,
+        issue.id,
+        &issues::Edited {
+            summary: "  Final  ",
+            description: None,
+            priority: "high",
+            assignee_id: Some(admin),
+            start_date: None,
+            due_date: None,
+            fields: &fields,
+        },
+    )
+    .await
+    .unwrap();
+    first.commit().await.unwrap();
+    assert_eq!(
+        (
+            edited.summary.as_str(),
+            edited.priority.as_str(),
+            edited.version,
+            edited.assignee_id
+        ),
+        ("Final", "high", 2, Some(admin))
+    );
+    assert!(edited.updated_at > issue.updated_at);
+    assert_eq!(second.await.unwrap(), Some(2));
+
+    // Another tenant locks nothing.
+    let mut other = begin_tenant_tx(&db.app_pool, db.tenant_b.id).await.unwrap();
+    assert_eq!(issues::lock(&mut other, issue.id).await.unwrap(), None);
+}
+
+#[tokio::test]
+async fn a_move_takes_the_next_key_of_its_project_and_keeps_the_former_one() {
+    let db = TestDb::new().await;
+    let (plat, admin) = project(&db, &db.tenant_a, "PLAT").await;
+    let (crm, _) = project(&db, &db.tenant_a, "CRM").await;
+    let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+    let parent = create(&mut tx, plat, "PLAT", admin, "Parent").await;
+    create(&mut tx, crm, "CRM", admin, "Already there").await;
+    let fields = json!({});
+    let sub = issues::create(
+        &mut tx,
+        &NewIssue {
+            id: new_id(),
+            project_id: plat,
+            project_key: "PLAT",
+            type_id: Uuid::from_u128(3),
+            status_id: Uuid::from_u128(2),
+            parent_id: Some(parent.id),
+            summary: "Child",
+            description: None,
+            priority: "medium",
+            reporter_id: admin,
+            assignee_id: None,
+            start_date: None,
+            due_date: None,
+            fields: &fields,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        issues::children(&mut tx, parent.id).await.unwrap(),
+        std::slice::from_ref(&sub)
+    );
+
+    let kept = json!({"f": "v"});
+    let moved = issues::move_to(
+        &mut tx,
+        &issues::Move {
+            id: parent.id,
+            project_id: crm,
+            project_key: "CRM",
+            type_id: Uuid::from_u128(7),
+            status_id: Uuid::from_u128(8),
+            parent_id: None,
+            fields: &kept,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        (
+            moved.key.as_str(),
+            moved.key_number,
+            moved.project_id,
+            moved.version
+        ),
+        ("CRM-2", 2, crm, 2)
+    );
+    assert_eq!(
+        (moved.type_id, moved.status_id, &moved.fields),
+        (Uuid::from_u128(7), Uuid::from_u128(8), &kept)
+    );
+    assert_eq!(
+        issues::id_of_key(&mut tx, "PLAT-1").await.unwrap(),
+        Some(parent.id)
+    );
+    assert_eq!(
+        issues::id_of_key(&mut tx, "CRM-2").await.unwrap(),
+        Some(parent.id)
+    );
+    // The child stays under its parent; PLAT's numbers are never reused.
+    assert_eq!(issues::children(&mut tx, parent.id).await.unwrap()[0].id, sub.id);
+    assert_eq!(create(&mut tx, plat, "PLAT", admin, "Next").await.key, "PLAT-3");
+    tx.commit().await.unwrap();
+}
