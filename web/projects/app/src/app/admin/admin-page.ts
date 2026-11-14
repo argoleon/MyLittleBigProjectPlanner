@@ -2,24 +2,9 @@ import { Component, computed, inject, resource } from '@angular/core';
 import { MatTabsModule } from '@angular/material/tabs';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { Api, getCurrentTenant } from 'ui';
+import { Api, AuthService, getCurrentTenant } from 'ui';
 
-/** A tab of the administration screen. */
-export interface AdminTab {
-  readonly path: string;
-  readonly labelKey: string;
-}
-
-/**
- * Tabs of the administration (mockup 09). Project configurations and
- * quotas come with their work packages.
- */
-export const ADMIN_TABS: readonly AdminTab[] = [
-  { path: 'members', labelKey: 'admin.tabs.members' },
-  { path: 'groups', labelKey: 'admin.tabs.groups' },
-  { path: 'roles', labelKey: 'admin.tabs.roles' },
-  { path: 'authentication', labelKey: 'admin.tabs.authentication' },
-];
+import { ADMIN_TABS } from './admin-tabs';
 
 /** Administration screen of the tenant: routed tabs. */
 @Component({
@@ -35,7 +20,7 @@ export const ADMIN_TABS: readonly AdminTab[] = [
     </p>
     <h1 class="title">{{ 'nav.administration' | transloco }}</h1>
     <nav mat-tab-nav-bar [tabPanel]="panel" [attr.aria-label]="'admin.tabs.label' | transloco">
-      @for (tab of tabs; track tab.path) {
+      @for (tab of tabs(); track tab.path) {
         <a mat-tab-link [routerLink]="tab.path" routerLinkActive #active="routerLinkActive" [active]="active.isActive">
           {{ tab.labelKey | transloco }}
         </a>
@@ -47,7 +32,12 @@ export const ADMIN_TABS: readonly AdminTab[] = [
   `,
 })
 export class AdminPage {
-  protected readonly tabs = ADMIN_TABS;
+  private readonly auth = inject(AuthService);
+  /** The tabs of the signed-in member's tenant role. */
+  protected readonly tabs = computed(() => {
+    const role = this.auth.session()?.account.tenantRole;
+    return ADMIN_TABS.filter((tab) => role !== undefined && tab.roles.includes(role));
+  });
   private readonly api = inject(Api);
   private readonly tenant = resource({ loader: () => this.api.invoke(getCurrentTenant) });
   protected readonly tenantName = computed(() => (this.tenant.hasValue() ? this.tenant.value().name : null));

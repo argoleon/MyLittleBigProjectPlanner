@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE issue_type SET parent_ids = array_remove(parent_ids, $2), version = version + 1\n        WHERE version_id = $1 AND $2 = ANY(parent_ids)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "750197f1cd58e603386f23f26afbcbf5716fb55ebc096210d4600bac06879533"
+}

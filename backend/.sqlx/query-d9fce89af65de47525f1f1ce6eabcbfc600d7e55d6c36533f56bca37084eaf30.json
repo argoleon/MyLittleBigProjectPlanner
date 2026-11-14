@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT app_seed_default_issue_types($1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "app_seed_default_issue_types",
+        "type_info": "Void",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "d9fce89af65de47525f1f1ce6eabcbfc600d7e55d6c36533f56bca37084eaf30"
+}

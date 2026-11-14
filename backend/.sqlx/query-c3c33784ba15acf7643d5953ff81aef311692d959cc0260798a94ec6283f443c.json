@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT s.item_id, s.kind, s.issue_type_id, s.name AS \"name: Json<Labels>\", s.field_ids, s.position, s.version\n        FROM screen s\n        LEFT JOIN issue_type t ON t.version_id = s.version_id AND t.item_id = s.issue_type_id\n        WHERE s.version_id = $1\n        ORDER BY array_position(ARRAY['creation', 'view', 'transition'], s.kind),\n                 s.issue_type_id IS NOT NULL, t.position, s.position, s.item_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "item_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "screen",
+            "name": "item_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "screen",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "issue_type_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "screen",
+            "name": "issue_type_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "name: Json<Labels>",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "screen",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "field_ids",
+        "type_info": "UuidArray",
+        "origin": {
+          "Table": {
+            "table": "screen",
+            "name": "field_ids"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "position",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "screen",
+            "name": "position"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "version",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "screen",
+            "name": "version"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "c3c33784ba15acf7643d5953ff81aef311692d959cc0260798a94ec6283f443c"
+}

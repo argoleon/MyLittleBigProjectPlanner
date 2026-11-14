@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard, signedOutGuard, stageGuard } from 'ui';
 
+import { adminHomeGuard } from './admin/admin-tabs';
 import { MainLayout } from './layout/main-layout';
 import { NAVIGATION } from './navigation';
 
@@ -83,6 +84,11 @@ export const routes: Routes = [
             loadComponent: () => import('./hierarchy/node-links-tab').then((m) => m.NodeLinksTab),
           },
           {
+            path: 'configuration',
+            title: 'hierarchy.settings.configuration',
+            loadComponent: () => import('./hierarchy/node-configuration-tab').then((m) => m.NodeConfigurationTab),
+          },
+          {
             path: 'archiving',
             title: 'hierarchy.settings.archiving',
             loadComponent: () => import('./hierarchy/node-archiving-tab').then((m) => m.NodeArchivingTab),
@@ -95,10 +101,49 @@ export const routes: Routes = [
         loadComponent: () => import('./account/account-page').then((m) => m.AccountPage),
       },
       {
+        // A project configuration (mockup 11): its own screen, out of the admin tabs.
+        path: 'admin/configurations/:id',
+        loadComponent: () => import('./configuration/config-page').then((m) => m.ConfigPage),
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'types' },
+          {
+            path: 'types',
+            title: 'config.sections.types.tab',
+            loadComponent: () => import('./configuration/types-tab').then((m) => m.TypesTab),
+          },
+          {
+            path: 'fields',
+            title: 'config.sections.fields.tab',
+            loadComponent: () => import('./configuration/fields-tab').then((m) => m.FieldsTab),
+          },
+          {
+            path: 'workflows',
+            title: 'config.sections.workflows.tab',
+            loadComponent: () => import('./configuration/workflows-tab').then((m) => m.WorkflowsTab),
+          },
+          {
+            path: 'screens',
+            title: 'config.sections.screens.tab',
+            loadComponent: () => import('./configuration/screens-tab').then((m) => m.ScreensTab),
+          },
+          {
+            path: 'notifications',
+            title: 'config.sections.notifications.tab',
+            loadComponent: () => import('./configuration/notifications-tab').then((m) => m.NotificationsTab),
+          },
+          {
+            path: 'projects',
+            title: 'config.projects.tab',
+            loadComponent: () => import('./configuration/config-projects-tab').then((m) => m.ConfigProjectsTab),
+          },
+        ],
+      },
+      {
         path: 'admin',
         loadComponent: () => import('./admin/admin-page').then((m) => m.AdminPage),
         children: [
-          { path: '', pathMatch: 'full', redirectTo: 'members' },
+          // The first tab of the member's role.
+          { path: '', pathMatch: 'full', canActivate: [adminHomeGuard], children: [] },
           {
             path: 'members',
             title: 'admin.tabs.members',
@@ -118,6 +163,11 @@ export const routes: Routes = [
             path: 'authentication',
             title: 'admin.tabs.authentication',
             loadComponent: () => import('./admin/authentication-settings').then((m) => m.AuthenticationSettings),
+          },
+          {
+            path: 'configurations',
+            title: 'admin.tabs.configurations',
+            loadComponent: () => import('./configuration/configurations-tab').then((m) => m.ConfigurationsTab),
           },
         ],
       },

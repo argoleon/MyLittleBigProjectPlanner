@@ -1,0 +1,162 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT c.id, c.name AS \"name: Json<BTreeMap<String, String>>\", c.is_default,\n               (SELECT count(*) FROM node n WHERE n.config_id = c.id) AS \"project_count!\",\n               p.id AS published_id, p.number AS published_number,\n               p.published_at AS \"published_at!\",\n               d.id AS \"draft_id?\", d.number AS \"draft_number?\", d.created_at AS \"draft_created_at?\",\n               (SELECT count(*) FROM project_config_change ch WHERE ch.version_id = d.id) AS \"draft_changes!\",\n               c.version, c.created_at\n        FROM project_config c\n        JOIN project_config_version p ON p.config_id = c.id AND p.state = 'published'\n        LEFT JOIN project_config_version d ON d.config_id = c.id AND d.state = 'draft'\n        WHERE c.id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "project_config",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name: Json<BTreeMap<String, String>>",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "project_config",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "is_default",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "project_config",
+            "name": "is_default"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "project_count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "published_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "project_config_version",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "published_number",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "project_config_version",
+            "name": "number"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "published_at!",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "project_config_version",
+            "name": "published_at"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "draft_id?",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "project_config_version",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "draft_number?",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "project_config_version",
+            "name": "number"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "draft_created_at?",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "project_config_version",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "draft_changes!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 11,
+        "name": "version",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "project_config",
+            "name": "version"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "project_config",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      null,
+      false,
+      false
+    ]
+  },
+  "hash": "dd3b10b26e70dfe959f0f92d4cb1a7d5d29bf74b7d20463bdbff93effbba253f"
+}

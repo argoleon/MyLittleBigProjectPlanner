@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE project_config_version SET state = 'retired' WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "67aaca6ae146c708dfee9cdf0de7bc361eaa145392af40c5bb9e0ddc36f7aa8c"
+}

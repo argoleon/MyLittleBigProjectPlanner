@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO workflow_status\n                (id, tenant_id, version_id, item_id, workflow_id, key, label, portal_label, category, is_initial, position)\n            VALUES ($1, app_current_tenant(), $2, $3, $4, $5, $6, $7, $8, $9, $10)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Jsonb",
+        "Jsonb",
+        "Text",
+        "Bool",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "eb94bdde11f69b024d30ed28833d46a789d3293cc4167f9a0993765724539777"
+}

@@ -1,0 +1,100 @@
+<div class="toolbar">
+  <p class="intro">{{ 'config.fields.intro' | transloco }}</p>
+  <button matButton="filled" type="button" class="add" (click)="edit(null)">
+    <mat-icon aria-hidden="true">add</mat-icon>
+    {{ 'config.fields.add' | transloco }}
+  </button>
+</div>
+@if (notice(); as notice) {
+  <p class="message" [class.info]="notice.ok" [class.error]="!notice.ok" [attr.role]="notice.ok ? 'status' : 'alert'">
+    {{ notice.key | transloco: notice.params }}
+  </p>
+}
+@if (fields.isLoading() && !fields.hasValue()) {
+  <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+} @else if (fields.error()) {
+  <ui-error-state [error]="fields.error()" [headingLevel]="2" (retry)="fields.reload()" />
+} @else {
+  <div class="layout" [class.editing]="editing()">
+    <div class="table-card">
+      <table mat-table [dataSource]="items()" class="table">
+        <caption class="cdk-visually-hidden">{{ 'config.fields.caption' | transloco }}</caption>
+        <ng-container matColumnDef="field">
+          <th mat-header-cell *matHeaderCellDef scope="col">{{ 'config.fields.columns.field' | transloco }}</th>
+          <td mat-cell *matCellDef="let item">
+            <span class="name">
+              <mat-icon aria-hidden="true" class="kind-icon">{{ kindIcon(item.kind) }}</mat-icon>
+              <span class="label">{{ item.labelTranslations | translated }}</span>
+              @if (item.isSystem) {
+                <span class="system">{{ 'config.fields.system' | transloco }}</span>
+              }
+            </span>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="key">
+          <th mat-header-cell *matHeaderCellDef scope="col">{{ 'config.fields.columns.key' | transloco }}</th>
+          <td mat-cell *matCellDef="let item"><code class="key">{{ item.key }}</code></td>
+        </ng-container>
+        <ng-container matColumnDef="kind">
+          <th mat-header-cell *matHeaderCellDef scope="col">{{ 'config.fields.columns.kind' | transloco }}</th>
+          <td mat-cell *matCellDef="let item">
+            {{ 'config.fields.kinds.' + item.kind | transloco }}
+            @if (item.options.unit) {
+              <span class="secondary">{{ 'config.fields.units.' + item.options.unit | transloco }}</span>
+            }
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="types">
+          <th mat-header-cell *matHeaderCellDef scope="col">{{ 'config.fields.columns.types' | transloco }}</th>
+          <td mat-cell *matCellDef="let item" class="types">
+            @let types = typesOf(item);
+            @if (types === null) {
+              {{ 'config.fields.allTypesShort' | transloco }}
+            } @else {
+              @for (type of types; track type.id; let last = $last) {
+                {{ type.labelTranslations | translated }}{{ last ? '' : ', ' }}
+              } @empty {
+                <span class="secondary">{{ 'config.fields.noType' | transloco }}</span>
+              }
+            }
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="languages">
+          <th mat-header-cell *matHeaderCellDef scope="col">{{ 'config.fields.columns.languages' | transloco }}</th>
+          <td mat-cell *matCellDef="let item">{{ languagesOf(item).join(', ') }}</td>
+        </ng-container>
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef scope="col">
+            <span class="cdk-visually-hidden">{{ 'config.fields.columns.actions' | transloco }}</span>
+          </th>
+          <td mat-cell *matCellDef="let item" class="actions">
+            <button
+              matIconButton
+              type="button"
+              class="edit"
+              (click)="edit(item)"
+              [attr.aria-label]="'config.fields.editOf' | transloco: { name: item.labelTranslations | translated }"
+            >
+              <mat-icon aria-hidden="true">edit</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr mat-row *matRowDef="let item; columns: columns" [class.selected]="editing()?.field?.id === item.id"></tr>
+      </table>
+    </div>
+    @if (editing(); as editing) {
+      @if (configId(); as configId) {
+        <app-field-editor
+          [configId]="configId"
+          [field]="editing.field"
+          [types]="types()"
+          [workflows]="workflows()"
+          (saved)="saved($event)"
+          (removed)="removed($event)"
+          (closed)="close()"
+        />
+      }
+    }
+  </div>
+}

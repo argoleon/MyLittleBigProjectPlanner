@@ -1,0 +1,151 @@
+@use '../admin/admin-shared';
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-3);
+  min-width: 0;
+  padding: var(--app-space-4) var(--app-space-5);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--app-space-2);
+}
+
+.panel-title {
+  margin: 0;
+  font: var(--mat-sys-title-medium);
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-2);
+  min-width: 0;
+}
+
+.pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--app-space-3);
+
+  mat-form-field {
+    flex: 1 1 180px;
+  }
+}
+
+.option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--app-space-2);
+}
+
+.section-title {
+  margin: var(--app-space-3) 0 var(--app-space-1);
+  padding: 0;
+  font: var(--mat-sys-title-small);
+}
+
+.hint {
+  margin: 0 0 var(--app-space-2);
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+
+  &.system {
+    padding: var(--app-space-2) var(--app-space-3);
+    border-radius: var(--mat-sys-corner-medium);
+    background: var(--mat-sys-surface-container);
+  }
+}
+
+.toggle {
+  margin-bottom: var(--app-space-2);
+}
+
+.values {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.value-list,
+.children {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.children {
+  margin-top: var(--app-space-2);
+  padding-inline-start: var(--app-space-6);
+}
+
+.value {
+  border-radius: var(--mat-sys-corner-small);
+  background: var(--mat-sys-surface);
+}
+
+.value-row {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-2);
+}
+
+.value-label {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.handle {
+  flex: none;
+  cursor: grab;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.inactive .value-label {
+  text-decoration: line-through;
+}
+
+.state {
+  margin: var(--app-space-1) 0 0 var(--app-space-6);
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.add-value {
+  align-self: flex-start;
+  margin-top: var(--app-space-2);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--app-space-2);
+  margin-top: var(--app-space-3);
+}
+
+.spacer {
+  flex: 1;
+}
+
+// While dragged: the value follows the pointer above the page.
+.cdk-drag-preview {
+  border-radius: var(--mat-sys-corner-small);
+  background: var(--mat-sys-surface-container-high);
+  box-shadow: var(--mat-sys-level3);
+}
+
+.cdk-drag-placeholder {
+  opacity: 0.4;
+}

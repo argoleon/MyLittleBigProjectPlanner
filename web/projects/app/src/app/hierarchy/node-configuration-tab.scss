@@ -1,0 +1,31 @@
+@use './node-cards';
+
+:host {
+  display: block;
+  max-width: 720px;
+}
+
+.uses {
+  margin: 0;
+  font: var(--mat-sys-body-large);
+}
+
+.config-name {
+  font: var(--mat-sys-title-medium);
+}
+
+.move {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--app-space-3);
+  margin-top: var(--app-space-2);
+}
+
+.select {
+  flex: 1 1 280px;
+}
+
+.save {
+  margin-top: var(--app-space-2);
+}

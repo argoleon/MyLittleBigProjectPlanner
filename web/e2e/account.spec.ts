@@ -111,6 +111,8 @@ test('the password is changed with the current one', async ({ page }) => {
   await page.goto('/account');
   await page.getByRole('button', { name: 'Change', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Change your password' });
+  // Opened: its first field has the focus, which would otherwise move while typing.
+  await expect(dialog.getByLabel('Current password')).toBeFocused();
   await dialog.getByLabel('Current password').fill('correct horse battery staple');
   await dialog.getByLabel('New password', { exact: true }).fill('a much longer passphrase');
   await dialog.getByLabel('Confirm the new password').fill('a much longer passphrase');

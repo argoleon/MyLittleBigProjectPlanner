@@ -1,0 +1,61 @@
+@if (loaded.isLoading() && !context.config()) {
+  <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+} @else if (loaded.error()) {
+  <ui-error-state [error]="loaded.error()" [headingLevel]="1" (retry)="loaded.reload()" />
+} @else if (context.config(); as config) {
+  <nav class="eyebrow" [attr.aria-label]="'config.page.breadcrumb' | transloco">
+    <a routerLink="/admin">{{ 'nav.administration' | transloco }}</a> ›
+    <a routerLink="/admin/configurations">{{ 'admin.tabs.configurations' | transloco }}</a>
+  </nav>
+  <div class="header">
+    <div class="heading">
+      <h1 class="title">{{ config.nameTranslations | translated }}</h1>
+      <app-config-chips [config]="config" />
+    </div>
+    <div class="actions">
+      <button matButton="outlined" type="button" class="duplicate" (click)="duplicate(config)">
+        <mat-icon aria-hidden="true">content_copy</mat-icon>
+        {{ 'config.page.duplicate' | transloco }}
+      </button>
+      @if (config.draft) {
+        <button matButton type="button" class="discard" [disabled]="busy()" (click)="discard(config)">
+          {{ 'config.page.discard.action' | transloco }}
+        </button>
+      }
+      <button
+        matButton="filled"
+        type="button"
+        class="publish"
+        [disabled]="!config.draft || busy()"
+        [attr.aria-describedby]="config.draft ? null : 'publish-hint'"
+        (click)="publish(config)"
+      >
+        <mat-icon aria-hidden="true">publish</mat-icon>
+        {{ 'config.page.publish' | transloco }}
+      </button>
+    </div>
+  </div>
+  @if (!config.draft) {
+    <p id="publish-hint" class="hint">
+      {{ 'config.page.upToDate' | transloco: { number: (config.published.number | localNumber) } }}
+    </p>
+  }
+  @if (context.notice(); as notice) {
+    <p class="message" [class.info]="notice.ok" [class.error]="!notice.ok" [attr.role]="notice.ok ? 'status' : 'alert'">
+      {{ notice.key | transloco: notice.params }}
+    </p>
+  }
+  <nav mat-tab-nav-bar [tabPanel]="panel" [attr.aria-label]="'config.page.tabs' | transloco">
+    @for (section of sections; track section) {
+      <a mat-tab-link [routerLink]="section" routerLinkActive #active="routerLinkActive" [active]="active.isActive">
+        {{ 'config.sections.' + section + '.tab' | transloco }}
+      </a>
+    }
+    <a mat-tab-link routerLink="projects" routerLinkActive #projects="routerLinkActive" [active]="projects.isActive">
+      {{ projectsKey() | transloco: { count: (config.projectCount | localNumber) } }}
+    </a>
+  </nav>
+  <mat-tab-nav-panel #panel class="panel">
+    <router-outlet />
+  </mat-tab-nav-panel>
+}

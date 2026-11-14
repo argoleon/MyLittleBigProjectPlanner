@@ -1,0 +1,73 @@
+<div class="toolbar">
+  <p class="intro">{{ 'config.screens.intro' | transloco }}</p>
+  <button matButton="filled" type="button" class="add" (click)="add()">
+    <mat-icon aria-hidden="true">add</mat-icon>
+    {{ 'config.screens.add' | transloco }}
+  </button>
+</div>
+@if (notice(); as notice) {
+  <p class="message" [class.info]="notice.ok" [class.error]="!notice.ok" [attr.role]="notice.ok ? 'status' : 'alert'">
+    {{ notice.key | transloco: notice.params }}
+  </p>
+}
+@if (screens.isLoading() && !screens.hasValue()) {
+  <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+} @else if (screens.error()) {
+  <ui-error-state [error]="screens.error()" [headingLevel]="2" (retry)="screens.reload()" />
+} @else {
+  <div class="layout" [class.editing]="selected()">
+    <div class="groups">
+      @for (kind of kinds; track kind) {
+        <section class="group" [attr.aria-labelledby]="'screens-' + kind">
+          <h2 class="group-title" [id]="'screens-' + kind">{{ 'config.screens.kinds.' + kind | transloco }}</h2>
+          <ul class="items">
+            @for (screen of ofKind(kind); track screen.id) {
+              <li>
+                <button
+                  type="button"
+                  class="item"
+                  [class.current]="selected()?.id === screen.id"
+                  [attr.aria-current]="selected()?.id === screen.id ? 'true' : null"
+                  (click)="choose(screen)"
+                >
+                  <span class="item-name">{{ screen.nameTranslations | translated }}</span>
+                  <span class="item-scope">
+                    @if (screen.isGeneral) {
+                      {{ 'config.screens.general' | transloco }}
+                    } @else if (typeOf(screen); as type) {
+                      {{ 'config.screens.forType' | transloco: { type: type.labelTranslations | translated } }}
+                    } @else if (screen.usedBy.length > 0) {
+                      {{ 'config.screens.shownBy' | transloco }}
+                      @for (use of screen.usedBy; track use.transitionId; let last = $last) {
+                        {{ use.transition }}{{ last ? '' : ', ' }}
+                      }
+                    } @else {
+                      {{ 'config.screens.unused' | transloco }}
+                    }
+                  </span>
+                  <span class="item-count">{{ 'config.screens.fieldCount' | transloco: { count: screen.fieldIds.length } }}</span>
+                </button>
+              </li>
+            } @empty {
+              <li class="empty">{{ 'config.screens.noScreen' | transloco }}</li>
+            }
+          </ul>
+        </section>
+      }
+    </div>
+    @if (selected(); as screen) {
+      @if (configId(); as configId) {
+        <app-screen-editor
+          [configId]="configId"
+          [screen]="screen"
+          [fields]="fields()"
+          [types]="types()"
+          [workflows]="workflows()"
+          (saved)="saved($event)"
+          (removed)="removed($event)"
+          (closed)="close()"
+        />
+      }
+    }
+  </div>
+}

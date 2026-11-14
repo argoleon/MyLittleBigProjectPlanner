@@ -19,22 +19,30 @@ use utoipa_axum::routes;
 
 use crate::account;
 use crate::auth;
+use crate::config_fields;
+use crate::configs;
 use crate::gdpr;
 use crate::grants;
 use crate::groups;
 use crate::hierarchy;
 use crate::invitations;
+use crate::issue_types;
 use crate::me;
 use crate::members;
 use crate::mfa;
+use crate::migrations;
 use crate::nodes;
+use crate::notification_rules;
 use crate::openapi;
 use crate::platform;
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
 use crate::reference_items;
 use crate::roles;
+use crate::screens;
 use crate::sso;
 use crate::tenant::{AppState, PublicTenantTx};
+use crate::transition_rules;
+use crate::workflows;
 
 /// OpenAPI tag of the technical endpoints.
 const SYSTEM_TAG: &str = "system";
@@ -121,6 +129,46 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(grants::grantable_roles))
         .routes(routes!(grants::my_permissions))
         .routes(routes!(roles::read, roles::update, roles::delete))
+        .routes(routes!(configs::list, configs::create))
+        .routes(routes!(configs::read, configs::rename, configs::delete))
+        .routes(routes!(configs::projects))
+        .routes(routes!(configs::duplicate))
+        .routes(routes!(configs::open_draft, configs::discard_draft))
+        .routes(routes!(configs::impact))
+        .routes(routes!(configs::publish))
+        .routes(routes!(configs::node_config, configs::set_node_config))
+        .routes(routes!(issue_types::list, issue_types::create))
+        .routes(routes!(issue_types::reorder))
+        .routes(routes!(
+            issue_types::read,
+            issue_types::update,
+            issue_types::delete
+        ))
+        .routes(routes!(config_fields::list, config_fields::create))
+        .routes(routes!(
+            config_fields::read,
+            config_fields::update,
+            config_fields::delete
+        ))
+        .routes(routes!(migrations::plan_of))
+        .routes(routes!(migrations::start))
+        .routes(routes!(migrations::progress))
+        .routes(routes!(notification_rules::list))
+        .routes(routes!(notification_rules::update))
+        .routes(routes!(screens::list, screens::create))
+        .routes(routes!(screens::update, screens::delete))
+        .routes(routes!(screens::resolved))
+        .routes(routes!(transition_rules::roles))
+        .routes(routes!(transition_rules::candidates))
+        .routes(routes!(workflows::list, workflows::create))
+        .routes(routes!(workflows::update, workflows::delete))
+        .routes(routes!(workflows::create_status))
+        .routes(routes!(workflows::update_status, workflows::delete_status))
+        .routes(routes!(workflows::create_transition))
+        .routes(routes!(
+            workflows::update_transition,
+            workflows::delete_transition
+        ))
         .routes(routes!(mfa::status))
         .routes(routes!(mfa::setup))
         .routes(routes!(mfa::confirm))

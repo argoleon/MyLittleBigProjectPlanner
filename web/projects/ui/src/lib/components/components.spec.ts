@@ -58,6 +58,14 @@ describe('TypeChip', () => {
     const fixture = await render(TypeChip, { kind: 'story', label: 'User story' });
     expect(text(fixture)).toContain('Type: User story');
   });
+
+  it('shows the configured icon in the color of its kind', async () => {
+    const fixture = await render(TypeChip, { kind: 'bug', label: 'Incident', iconName: 'emergency' });
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('mat-icon')?.textContent).toBe('emergency');
+    expect(element.querySelector('.chip')?.getAttribute('data-kind')).toBe('bug');
+    expect(text(fixture)).toContain('Type: Incident');
+  });
 });
 
 describe('AccountTypeChip and MemberStatusChip', () => {

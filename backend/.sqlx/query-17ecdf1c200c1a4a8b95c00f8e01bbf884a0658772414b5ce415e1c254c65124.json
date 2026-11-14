@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO field_rule (id, tenant_id, version_id, field_id, issue_type_id, status_id, mode)\n        SELECT r.id, app_current_tenant(), $1, $2, r.issue_type_id, r.status_id, r.mode\n        FROM unnest($3::uuid[], $4::uuid[], $5::uuid[], $6::text[]) AS r (id, issue_type_id, status_id, mode)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "UuidArray",
+        "UuidArray",
+        "UuidArray",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "17ecdf1c200c1a4a8b95c00f8e01bbf884a0658772414b5ce415e1c254c65124"
+}

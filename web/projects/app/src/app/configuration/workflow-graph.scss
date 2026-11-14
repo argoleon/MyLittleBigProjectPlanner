@@ -1,0 +1,70 @@
+:host {
+  display: block;
+  overflow-x: auto;
+  border-radius: var(--mat-sys-corner-small);
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+}
+
+svg {
+  display: block;
+  max-width: none;
+}
+
+.node {
+  fill: var(--app-status-todo-container);
+  stroke: var(--mat-sys-outline-variant);
+}
+
+.node-label {
+  fill: var(--app-status-todo-on);
+  font: var(--mat-sys-body-medium);
+}
+
+[data-category='progress'] {
+  .node {
+    fill: var(--app-status-progress-container);
+  }
+
+  .node-label {
+    fill: var(--app-status-progress-on);
+  }
+}
+
+[data-category='done'] {
+  .node {
+    fill: var(--app-status-done-container);
+  }
+
+  .node-label {
+    fill: var(--app-status-done-on);
+  }
+}
+
+// Reached only from any status, or not at all.
+.apart .node {
+  stroke: var(--mat-sys-outline);
+  stroke-dasharray: 6 4;
+}
+
+.edge {
+  fill: none;
+  stroke: var(--mat-sys-outline);
+  stroke-width: 1.5;
+
+  &.any {
+    stroke-dasharray: 4 3;
+  }
+}
+
+.arrow-head {
+  fill: var(--mat-sys-outline);
+}
+
+.edge-label {
+  fill: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-small);
+}

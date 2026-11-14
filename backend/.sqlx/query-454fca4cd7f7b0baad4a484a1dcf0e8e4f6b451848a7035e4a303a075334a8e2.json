@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE field_def\n        SET label = $4, options = $5, all_types = $6, issue_type_ids = $7, version = version + 1\n        WHERE version_id = $1 AND item_id = $2 AND ($3::bigint[] IS NULL OR version = ANY($3))\n        RETURNING item_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "item_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "field_def",
+            "name": "item_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Int8Array",
+        "Jsonb",
+        "Jsonb",
+        "Bool",
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "454fca4cd7f7b0baad4a484a1dcf0e8e4f6b451848a7035e4a303a075334a8e2"
+}

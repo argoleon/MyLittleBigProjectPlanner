@@ -77,12 +77,12 @@ impl From<Holder> for HolderView {
 #[serde(rename_all = "camelCase")]
 #[schema(as = AccessRole)]
 pub struct RoleRefView {
-    id: Uuid,
+    pub(crate) id: Uuid,
     /// In the language of the request (`Accept-Language`), else the
     /// tenant's default, else any.
     #[schema(example = "Project manager")]
-    label: Option<String>,
-    label_translations: BTreeMap<String, String>,
+    pub(crate) label: Option<String>,
+    pub(crate) label_translations: BTreeMap<String, String>,
 }
 
 /// A grant that applies on a node.

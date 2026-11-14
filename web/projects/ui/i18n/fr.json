@@ -61,6 +61,12 @@
     "errorTitle": "Une erreur est survenue",
     "retry": "Réessayer"
   },
+  "translatable": {
+    "field": "{{label}} ({{language}})",
+    "fallback": "Langue de repli : obligatoire",
+    "optional": "Facultatif",
+    "required": "Obligatoire en {{language}}, la langue de repli."
+  },
   "auth": {
     "languages": "Langue",
     "signIn": {
@@ -157,7 +163,8 @@
       "authentication": "Authentification",
       "members": "Membres",
       "groups": "Groupes",
-      "roles": "Rôles"
+      "roles": "Rôles",
+      "configurations": "Configurations de projet"
     },
     "auth": {
       "policyTitle": "Politique d’authentification",
@@ -330,6 +337,7 @@
   "errors": {
     "bad_request": "La requête est mal formée.",
     "validation_failed": "Certains champs sont invalides.",
+    "mapping_incomplete": "Chaque statut et type retiré doit correspondre à un statut ou type que cette version garde.",
     "invalid_json": "Les données envoyées sont invalides.",
     "invalid_query": "Les paramètres de la requête sont invalides.",
     "not_found": "Cet élément n’existe pas ou n’est plus accessible.",
@@ -403,7 +411,22 @@
       "not_allowed": "Pas autorisé ici.",
       "not_found": "Introuvable.",
       "unknown_member": "Ce n’est pas un membre de l’organisation.",
-      "too_many": "Trop d’éléments."
+      "too_many": "Trop d’éléments.",
+      "not_using": "Ce projet n’utilise pas cette configuration.",
+      "not_a_permutation": "Chaque élément doit figurer une fois.",
+      "not_applicable": "Indisponible pour ce type.",
+      "less_than_min": "Le maximum est inférieur au minimum.",
+      "duplicate": "Cette valeur apparaît deux fois.",
+      "wrong_type": "Cette valeur ne convient pas au champ.",
+      "too_many_decimals": "Trop de décimales.",
+      "invalid_date": "Date invalide.",
+      "invalid_date_time": "Date et heure invalides.",
+      "invalid_url": "Adresse web invalide.",
+      "invalid_label": "Une étiquette n’a pas d’espace.",
+      "invalid_id": "Identifiant invalide.",
+      "unknown_value": "Pas une valeur de cette liste.",
+      "inactive_value": "Cette valeur est désactivée.",
+      "not_a_child": "Cette valeur n’est pas sous la première."
     },
     "invitation": {
       "invalid": "Ce lien d’invitation est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
@@ -444,6 +467,35 @@
       "archived": "Ce projet est archivé : il est en lecture seule tant qu’il n’est pas restauré.",
       "active_children": "Ce projet a encore des sous-projets actifs : archivez-les ou détachez-les d’abord.",
       "parent_archived": "Ce projet est sous un projet archivé : restaurez celui-ci d’abord."
+    },
+    "config": {
+      "name_taken": "Une autre configuration de projet porte déjà ce nom.",
+      "no_draft": "Cette configuration n’a pas de brouillon : rien à publier ni à abandonner.",
+      "default": "La configuration par défaut reste : les nouveaux projets la reçoivent.",
+      "in_use": "Des projets utilisent cette configuration : déplacez-les d’abord vers une autre.",
+      "migration_running": "Une migration de cette configuration est déjà en cours."
+    },
+    "issue_type": {
+      "key_taken": "Un autre type de cette configuration a déjà cet identifiant.",
+      "cycle": "Un type ne peut pas être son propre ancêtre.",
+      "subtask_parent": "Un type sous-tâche ne peut pas être le parent d’un autre type.",
+      "last_type": "Une configuration garde au moins un type qui n’est pas une sous-tâche.",
+      "orphan_subtask": "Un type sous-tâche n’aurait plus de type parent : modifiez-le d’abord."
+    },
+    "workflow": {
+      "key_taken": "Un autre workflow de cette configuration, ou statut de ce workflow, a déjà cet identifiant.",
+      "in_use": "Des types de ticket suivent ce workflow : passez-les d’abord sur un autre.",
+      "last": "Une configuration garde au moins un workflow.",
+      "invalid": "Les workflows du brouillon ne peuvent pas être publiés en l’état : corrigez ce que liste l’onglet Workflows."
+    },
+    "config_field": {
+      "key_taken": "Un autre champ de cette configuration a déjà cet identifiant.",
+      "system": "Un champ système garde son libellé et ses options et ne peut pas être retiré : seuls ses types de ticket et ses règles changent."
+    },
+    "screen": {
+      "exists": "Ce type, ou la configuration, a déjà un écran de ce genre.",
+      "general": "Les écrans généraux de création et de consultation d’une configuration restent.",
+      "in_use": "Des transitions affichent cet écran : donnez-leur-en un autre d’abord."
     }
   },
   "dialog": {
@@ -578,7 +630,8 @@
       "addChild": "Ajouter un enfant",
       "breadcrumb": "Fil d’Ariane",
       "links": "Rattachements et droits",
-      "archiving": "Archivage"
+      "archiving": "Archivage",
+      "configuration": "Configuration"
     },
     "general": {
       "name": "Nom",
@@ -773,6 +826,550 @@
       "restored": "Le projet est restauré.",
       "banner": "Projet archivé.",
       "bannerHint": "Il est en lecture seule, hors des listes actives et des agrégats."
+    }
+  },
+  "config": {
+    "default": "Par défaut",
+    "unused": "Utilisée par aucun projet",
+    "shared": {
+      "one": "Utilisée par {{count}} projet",
+      "other": "Partagée par {{count}} projets"
+    },
+    "draft": {
+      "one": "Brouillon non publié · {{count}} modification",
+      "other": "Brouillon non publié · {{count}} modifications"
+    },
+    "intro": "Une configuration de projet regroupe les types de ticket, champs, workflows, écrans et notifications des projets qui la partagent. Les nouveaux projets reçoivent celle par défaut.",
+    "add": "Nouvelle configuration",
+    "empty": "Aucune configuration de projet",
+    "emptyHint": "Créez-en une pour partager une façon de travailler entre projets.",
+    "caption": "Configurations de projet",
+    "columns": {
+      "name": "Nom",
+      "state": "État",
+      "actions": "Actions"
+    },
+    "version": "Version {{number}}",
+    "name": "Nom",
+    "delete": {
+      "of": "Supprimer {{name}}",
+      "title": "Supprimer « {{name}} » ?",
+      "message": "Aucun projet ne l’utilise. Ses versions et son brouillon sont supprimés avec elle.",
+      "confirm": "Supprimer",
+      "done": "Configuration « {{name}} » supprimée."
+    },
+    "dialog": {
+      "create": {
+        "title": "Nouvelle configuration de projet",
+        "confirm": "Créer"
+      },
+      "duplicate": {
+        "title": "Dupliquer « {{name}} »",
+        "intro": "La copie part de la version publiée de « {{name}} », sans ses projets ni son brouillon.",
+        "confirm": "Dupliquer"
+      },
+      "detach": {
+        "title": "Détacher {{project}}",
+        "intro": "{{project}} reçoit sa propre copie de « {{name}} » : les modifications suivantes de l’original ne le concernent plus.",
+        "confirm": "Détacher"
+      }
+    },
+    "page": {
+      "breadcrumb": "Fil d’Ariane",
+      "tabs": "Sections de la configuration",
+      "duplicate": "Dupliquer",
+      "publish": "Publier les modifications",
+      "upToDate": "La version {{number}} est publiée. Les modifications vont dans un brouillon jusqu’à leur publication.",
+      "projects": {
+        "one": "Projet ({{count}})",
+        "other": "Projets ({{count}})"
+      },
+      "published": {
+        "one": "La version {{number}} est publiée sur son projet.",
+        "other": "La version {{number}} est publiée sur ses {{count}} projets."
+      },
+      "discard": {
+        "action": "Abandonner le brouillon",
+        "title": "Abandonner le brouillon de « {{name}} » ?",
+        "message": "Ses modifications sont perdues. La version publiée reste telle quelle.",
+        "confirm": "Abandonner",
+        "done": "Le brouillon est abandonné."
+      },
+      "publishedNone": "La version {{number}} est publiée."
+    },
+    "sections": {
+      "types": {
+        "tab": "Types"
+      },
+      "fields": {
+        "tab": "Champs"
+      },
+      "workflows": {
+        "tab": "Workflows"
+      },
+      "screens": {
+        "tab": "Écrans"
+      },
+      "notifications": {
+        "tab": "Notifications"
+      }
+    },
+    "projects": {
+      "tab": "Projets",
+      "caption": "Projets utilisant cette configuration",
+      "empty": "Aucun projet n’utilise cette configuration",
+      "emptyHint": "Déplacez-y un projet depuis l’onglet Configuration de ses paramètres.",
+      "columns": {
+        "name": "Projet",
+        "state": "État",
+        "actions": "Actions"
+      },
+      "archived": "Archivé",
+      "veiled": "Projet auquel vous n’avez pas accès",
+      "detach": "Détacher",
+      "detachOf": "Détacher {{name}}",
+      "detached": "{{project}} utilise désormais sa propre configuration « {{name}} »."
+    },
+    "publishDialog": {
+      "title": "Publier « {{name}} » ?",
+      "none": "Aucun projet n’utilise encore cette configuration : la nouvelle version s’appliquera aux projets qui y seront déplacés.",
+      "intro": {
+        "one": "La nouvelle version s’applique immédiatement à ce projet :",
+        "other": "La nouvelle version s’applique immédiatement à ces {{count}} projets :"
+      },
+      "projects": "Projets concernés",
+      "migration": "Des tickets utilisent un type ou un statut que cette version retire : ils doivent d’abord être migrés.",
+      "stale": "La configuration a changé entre-temps : vérifiez à nouveau les projets, puis publiez.",
+      "confirm": "Publier",
+      "removedTypes": "Types retirés",
+      "tickets": {
+        "one": "{{count}} ticket",
+        "other": "{{count}} tickets"
+      },
+      "removedStatuses": "Statuts retirés",
+      "workflowProblems": "Workflows du brouillon à corriger d’abord :",
+      "problemCodes": {
+        "no_status": "aucun statut",
+        "no_initial": "pas de statut initial",
+        "unreachable": "rien ne mène à ce statut",
+        "duplicate_transition": "une transition répétée"
+      },
+      "migrate": "Faire correspondre et migrer"
+    },
+    "migration": {
+      "title": "Migrer les tickets",
+      "intro": "Publier « {{name}} » retire des statuts ou des types qu’utilisent des tickets de ses {{count}} projets. Choisissez où vont leurs tickets.",
+      "caption": {
+        "statuses": "Statuts retirés et leur nouveau statut",
+        "types": "Types retirés et leur nouveau type"
+      },
+      "current": {
+        "statuses": "Statut actuel",
+        "types": "Type actuel"
+      },
+      "target": {
+        "statuses": "Nouveau statut",
+        "types": "Nouveau type"
+      },
+      "tickets": "Tickets",
+      "to": "devient",
+      "targetOf": "Nouvelle valeur pour {{name}}",
+      "new": "{{name}} (nouveau)",
+      "projects": "Projets concernés :",
+      "background": "La migration s’exécute en tâche de fond. L’historique de chaque ticket conserve son ancien statut et son ancien type ; la nouvelle version est publiée une fois tous les tickets migrés.",
+      "confirm": "Migrer {{count}} tickets",
+      "progress": "{{migrated}} tickets migrés sur {{total}}…",
+      "progressLabel": "Avancement de la migration",
+      "failed": "La migration s’est arrêtée, rien n’a été publié : {{error}}.",
+      "stale": "La configuration a changé entre-temps : vérifiez de nouveau la correspondance, puis migrez."
+    },
+    "node": {
+      "title": "Configuration du projet",
+      "uses": "Ce projet utilise",
+      "hint": "Ses types de ticket, champs, workflows, écrans et notifications viennent de cette configuration.",
+      "choose": "Configuration",
+      "archived": "Un projet archivé garde sa configuration jusqu’à sa restauration.",
+      "move": "Déplacer le projet",
+      "moved": "Le projet utilise désormais « {{name}} ».",
+      "readOnly": "Les administrateurs d’organisation et de configuration la modifient."
+    },
+    "types": {
+      "intro": "Les types de ticket des projets et les types sous lesquels chacun peut se placer. Les modifications vont dans le brouillon.",
+      "add": "Nouveau type",
+      "caption": "Types de ticket, dans leur ordre",
+      "columns": {
+        "order": "Ordre",
+        "type": "Type",
+        "key": "Identifiant",
+        "parents": "Parents autorisés",
+        "level": "Niveau",
+        "actions": "Actions"
+      },
+      "isSubtask": "Sous-tâche",
+      "top": "Au sommet",
+      "moveUp": "Monter {{name}}",
+      "moveDown": "Descendre {{name}}",
+      "editOf": "Modifier {{name}}",
+      "moved": "{{name}} déplacé en position {{position}}.",
+      "saved": "Type « {{name}} » enregistré dans le brouillon.",
+      "removed": "Type « {{name}} » retiré du brouillon.",
+      "editTitle": "Modifier « {{name}} »",
+      "newTitle": "Nouveau type de ticket",
+      "close": "Fermer le panneau",
+      "label": "Libellé",
+      "key": "Identifiant",
+      "keyHint": "Minuscules, chiffres et _ ; il ne pourra plus changer.",
+      "keyFixed": "Fixé à l’ajout du type ; il ne change pas.",
+      "keyFormat": "Une minuscule, puis des minuscules, chiffres ou _.",
+      "icon": "Icône",
+      "color": "Couleur",
+      "colors": {
+        "epic": "Couleur Epic",
+        "story": "Couleur Story",
+        "task": "Couleur Tâche",
+        "bug": "Couleur Bug"
+      },
+      "subtask": "Type sous-tâche",
+      "subtaskHint": "Une sous-tâche se place toujours sous un ticket d’un type parent, et n’en a aucun sous elle.",
+      "parents": "Types parents autorisés",
+      "parentsHint": "Aucun : ses tickets restent au sommet.",
+      "parentsRequired": "Un type sous-tâche a au moins un type parent.",
+      "save": "Enregistrer",
+      "remove": {
+        "action": "Retirer",
+        "title": "Retirer « {{name}} » ?",
+        "message": "Il quitte le brouillon et les parents autorisés des autres types. Les tickets qui l’utilisent devront passer à un autre type avant la publication.",
+        "confirm": "Retirer"
+      },
+      "workflow": "Workflow"
+    },
+    "fields": {
+      "intro": "Les champs système et personnalisés, et s’ils sont masqués, visibles ou obligatoires par type de ticket et par étape du workflow. Les modifications vont dans le brouillon.",
+      "add": "Nouveau champ",
+      "caption": "Champs de la configuration",
+      "columns": {
+        "field": "Champ",
+        "key": "Identifiant",
+        "kind": "Type",
+        "types": "Types de ticket",
+        "languages": "Langues",
+        "actions": "Actions"
+      },
+      "system": "Système",
+      "allTypesShort": "Tous",
+      "noType": "Aucun type pour l’instant",
+      "editOf": "Modifier {{name}}",
+      "saved": "Champ « {{name}} » enregistré dans le brouillon.",
+      "removed": "Champ « {{name}} » retiré du brouillon.",
+      "editTitle": "Modifier « {{name}} »",
+      "newTitle": "Nouveau champ",
+      "close": "Fermer le panneau",
+      "systemHint": "Un champ système garde son libellé et ses options ; vous choisissez ses types de ticket et ses règles.",
+      "label": "Libellé",
+      "key": "Identifiant",
+      "keyHint": "Minuscules, chiffres et _ ; il ne pourra plus changer.",
+      "keyFixed": "Fixé à l’ajout du champ ; il ne change pas.",
+      "keyFormat": "Une minuscule, puis des minuscules, chiffres ou _.",
+      "kind": "Type",
+      "kindFixed": "Fixé à l’ajout du champ ; il ne change pas.",
+      "kinds": {
+        "short_text": "Texte court",
+        "rich_text": "Texte long riche",
+        "number": "Nombre",
+        "checkbox": "Case à cocher",
+        "date": "Date",
+        "date_time": "Date et heure",
+        "single_select": "Liste simple",
+        "multi_select": "Liste multiple",
+        "cascading_select": "Liste en cascade",
+        "user": "Utilisateur",
+        "group": "Groupe",
+        "labels": "Étiquettes",
+        "url": "URL",
+        "issue_link": "Lien vers un ticket"
+      },
+      "maxLength": "Longueur maximale",
+      "maxLengthHint": "En caractères, {{max}} au plus ; vide : {{max}}.",
+      "decimals": "Décimales",
+      "unit": "Unité",
+      "units": {
+        "none": "Aucune",
+        "hours": "Heures",
+        "days": "Jours",
+        "percent": "Pourcentage"
+      },
+      "min": "Minimum",
+      "max": "Maximum",
+      "multiple": "Plusieurs utilisateurs",
+      "values": {
+        "title": "Valeurs",
+        "label": "Valeur {{position}} ({{language}})",
+        "childLabel": "Valeur {{parent}}.{{position}} ({{language}})",
+        "actions": "Actions de la valeur {{position}}",
+        "childActions": "Actions de la valeur {{parent}}.{{position}}",
+        "moveUp": "Monter",
+        "moveDown": "Descendre",
+        "addChild": "Ajouter une valeur dessous",
+        "reactivate": "Réactiver",
+        "deactivate": "Désactiver",
+        "remove": "Retirer",
+        "inactive": "Désactivée : plus proposée, conservée sur les tickets qui l’ont.",
+        "add": "Ajouter une valeur"
+      },
+      "types": "Types de ticket",
+      "allTypes": "Tous les types de ticket, y compris ceux ajoutés plus tard",
+      "issueTypes": "Types de ticket du champ",
+      "issueTypesHint": "Les autres types ne l’affichent jamais.",
+      "rules": {
+        "title": "Règles par type et par étape",
+        "hint": "Cliquez une case pour passer de Masqué à Visible puis Obligatoire.",
+        "caption": "Types qui suivent {{workflow}}",
+        "type": "Type",
+        "creation": "Création",
+        "cell": "{{type}}, {{step}} : {{mode}}",
+        "empty": "Choisissez les types de ticket du champ pour définir ses règles."
+      },
+      "modes": {
+        "hidden": "Masqué",
+        "visible": "Visible",
+        "required": "Obligatoire"
+      },
+      "save": "Enregistrer",
+      "remove": {
+        "action": "Retirer",
+        "title": "Retirer « {{name}} » ?",
+        "message": "Il quitte le brouillon avec ses règles. Une fois publié, les tickets n’affichent plus ses valeurs.",
+        "confirm": "Retirer"
+      }
+    },
+    "workflows": {
+      "byType": "Workflow par type de ticket",
+      "noType": "Aucun type ne le suit",
+      "toFix": "À corriger avant publication",
+      "add": "Nouveau workflow",
+      "readOnlyGraph": "Vue graphique en lecture seule",
+      "renameOf": "Renommer {{name}}",
+      "graph": "Graphe de {{name}} ; les tableaux des statuts et des transitions ci-dessous le décrivent.",
+      "problemsTitle": "Ce workflow ne peut pas encore être publié :",
+      "problems": {
+        "no_status": "il n’a aucun statut.",
+        "no_initial": "aucun de ses statuts n’est le statut initial.",
+        "unreachable": "rien ne mène à « {{status}} » depuis le statut initial.",
+        "duplicate_transition": "« {{transition}} » répète une autre transition."
+      },
+      "statuses": "Statuts",
+      "statusesCaption": "Statuts de {{name}}",
+      "transitions": "Transitions",
+      "transitionsCaption": "Transitions de {{name}}",
+      "columns": {
+        "label": "Libellé (FR / EN)",
+        "move": "De → vers"
+      },
+      "to": "vers",
+      "saved": "Workflow « {{name}} » enregistré dans le brouillon.",
+      "newTitle": "Nouveau workflow",
+      "renameTitle": "Renommer le workflow",
+      "label": "Nom",
+      "copyOf": "Partir de",
+      "empty": "Un workflow vide",
+      "categories": {
+        "todo": "À faire",
+        "in_progress": "En cours",
+        "done": "Terminé"
+      },
+      "remove": {
+        "of": "Retirer {{name}}",
+        "title": "Retirer « {{name}} » ?",
+        "message": "Ses statuts et transitions partent avec lui. Aucun type de ticket ne doit le suivre.",
+        "confirm": "Retirer",
+        "done": "Workflow « {{name}} » retiré du brouillon."
+      },
+      "status": {
+        "add": "Ajouter un statut",
+        "newTitle": "Nouveau statut",
+        "editTitle": "Modifier le statut",
+        "category": "Catégorie",
+        "portalLabel": "Libellé sur le portail",
+        "initial": "Statut initial : les nouveaux tickets commencent ici",
+        "isInitial": "Initial",
+        "saved": "Statut enregistré dans « {{name}} ».",
+        "remove": {
+          "of": "Retirer {{name}}",
+          "title": "Retirer le statut « {{name}} » ?",
+          "message": "Ses transitions partent avec lui. Les tickets dans ce statut devront passer dans un autre avant la publication.",
+          "confirm": "Retirer",
+          "done": "Statut « {{name}} » retiré du brouillon."
+        }
+      },
+      "transition": {
+        "add": "Ajouter une transition",
+        "newTitle": "Nouvelle transition",
+        "editTitle": "Modifier la transition",
+        "name": "Transition",
+        "from": "De",
+        "to": "Vers",
+        "any": "Tous les statuts",
+        "saved": "Transition enregistrée dans « {{name}} ».",
+        "remove": {
+          "of": "Retirer {{name}}",
+          "title": "Retirer la transition « {{name}} » ?",
+          "message": "Les tickets ne pourront plus la prendre.",
+          "confirm": "Retirer",
+          "done": "Transition « {{name}} » retirée du brouillon."
+        }
+      },
+      "rules": {
+        "column": "Règles",
+        "conditions": "Qui peut la prendre",
+        "conditionsHint": "Aucun rôle ni groupe : quiconque peut modifier le ticket. Sinon, un des rôles sur le projet ou un des groupes suffit.",
+        "roles": "Rôles",
+        "groupsChosen": "Groupes qui peuvent la prendre",
+        "deletedGroup": "Groupe supprimé",
+        "deleted": "supprimé",
+        "removeGroup": "Retirer le groupe {{name}}",
+        "addGroup": "Ajouter un groupe",
+        "validators": "Champs obligatoires",
+        "requiredFields": "Champs à renseigner",
+        "validatorsHint": "La transition est refusée, en les nommant, tant que l’un est vide.",
+        "postFunctions": "Post-fonctions",
+        "postFunctionsHint": "Exécutées dans cet ordre quand la transition est prise.",
+        "kind": "Post-fonction {{position}}",
+        "kinds": {
+          "assign": "Assigner le ticket",
+          "set_field": "Renseigner un champ",
+          "clear_field": "Vider un champ",
+          "add_comment": "Ajouter un commentaire"
+        },
+        "moveUp": "Monter la post-fonction {{position}}",
+        "moveDown": "Descendre la post-fonction {{position}}",
+        "remove": "Retirer la post-fonction {{position}}",
+        "assignTo": "Assigner à",
+        "targets": {
+          "current_user": "Qui prend la transition",
+          "reporter": "Le rapporteur",
+          "member": "Un membre",
+          "nobody": "Personne (désassigner)"
+        },
+        "member": "Membre",
+        "memberRequired": "Choisissez un membre.",
+        "field": "Champ",
+        "settableHint": "Les champs dont la valeur peut être saisie ici.",
+        "checked": "Coché",
+        "value": "Valeur",
+        "labelsHint": "Séparées par des virgules ou des espaces.",
+        "comment": "Commentaire",
+        "fieldRequired": "Choisissez un champ.",
+        "commentRequired": "Rédigez le commentaire.",
+        "add": "Ajouter une post-fonction",
+        "summary": {
+          "restricted": "Seulement :",
+          "requires": "Exige {{fields}}",
+          "none": "Ouverte à tous",
+          "assign": {
+            "current_user": "Assigne à qui la prend",
+            "reporter": "Assigne au rapporteur",
+            "member": "Assigne à un membre",
+            "nobody": "Désassigne"
+          },
+          "assignMember": "Assigne à {{name}}",
+          "set": "Renseigne {{field}}",
+          "clear": "Vide {{field}}",
+          "comment": "Ajoute un commentaire",
+          "screen": "Affiche {{name}}"
+        },
+        "screen": "Écran de transition",
+        "screenLabel": "Écran affiché avant qu’elle s’exécute",
+        "noScreen": "Aucun",
+        "screenHint": "Ses champs suivent les règles du statut vers lequel elle mène."
+      }
+    },
+    "screens": {
+      "intro": "Les champs affichés, dans leur ordre, à la création d’un ticket, à sa consultation ou lors d’une transition. Les règles des champs priment : un champ masqué n’est pas affiché, un champ obligatoire absent est ajouté à la fin. Les modifications vont dans le brouillon.",
+      "add": "Nouvel écran",
+      "newTitle": "Nouvel écran",
+      "kind": "Affiché",
+      "kinds": {
+        "creation": "Création",
+        "view": "Consultation",
+        "transition": "Transition"
+      },
+      "type": "Type de ticket",
+      "typeHint": "Ce type l’utilise au lieu de l’écran général.",
+      "name": "Nom",
+      "create": "Créer",
+      "created": "Écran « {{name}} » ajouté au brouillon.",
+      "saved": "Écran « {{name}} » enregistré dans le brouillon.",
+      "removed": "Écran « {{name}} » retiré du brouillon.",
+      "general": "Général : tout type sans écran propre",
+      "forType": "Pour {{type}}",
+      "shownBy": "Affiché par",
+      "unused": "Rattaché à aucune transition pour l’instant",
+      "fieldCount": "{{count}} champs",
+      "noScreen": "Aucun pour l’instant.",
+      "editTitle": "Modifier « {{name}} »",
+      "close": "Fermer le panneau",
+      "onScreen": "Sur l’écran",
+      "available": "Champs disponibles",
+      "noField": "Aucun champ : glissez-en un ici ou ajoutez-le.",
+      "allOnScreen": "Tous les champs sont sur l’écran.",
+      "moveUp": "Monter {{name}}",
+      "moveDown": "Descendre {{name}}",
+      "removeField": "Retirer {{name}} de l’écran",
+      "addField": "Mettre {{name}} sur l’écran",
+      "missingRequired": "Obligatoires selon une règle là où cet écran s’affiche, et ajoutés à la fin :",
+      "preview": "Aperçu",
+      "previewType": "Pour le type",
+      "previewStatus": "Dans le statut",
+      "previewTarget": "Vers le statut",
+      "previewEmpty": "Rien à afficher.",
+      "hiddenByRule": "Masqué par une règle",
+      "addedAtEnd": "Ajouté à la fin",
+      "usedBy": "Affiché par : {{transitions}}.",
+      "save": "Enregistrer",
+      "remove": {
+        "action": "Retirer",
+        "title": "Retirer « {{name}} » ?",
+        "message": "Il quitte le brouillon. Le type pour lequel il était utilise de nouveau l’écran général.",
+        "confirm": "Retirer"
+      }
+    },
+    "notifications": {
+      "intro": "Pour chaque événement d’un ticket, qui il notifie sur les projets qui utilisent cette configuration. L’auteur d’une modification n’en est jamais notifié ; chaque membre peut couper des événements dans ses préférences.",
+      "caption": "Règles de notification, par événement",
+      "columns": {
+        "event": "Événement",
+        "recipients": "Notifie",
+        "actions": "Actions"
+      },
+      "events": {
+        "created": "Ticket créé",
+        "assigned": "Ticket assigné",
+        "status_changed": "Statut modifié",
+        "commented": "Commentaire ajouté",
+        "mentioned": "Mention d’une personne"
+      },
+      "kinds": {
+        "reporter": "Rapporteur",
+        "assignee": "Assigné",
+        "watchers": "Observateurs",
+        "mentioned": "Personnes mentionnées"
+      },
+      "nobody": "Personne",
+      "deleted": "Supprimé",
+      "editOf": "Modifier qui « {{event}} » notifie",
+      "editTitle": "Qui « {{event}} » notifie",
+      "authorNever": "L’auteur de la modification n’en est jamais notifié.",
+      "people": "Personnes du ticket",
+      "roles": "Rôles sur le projet",
+      "rolesHint": "Qui les détient sur le projet du ticket, attribués là ou au-dessus.",
+      "groupsChosen": "Groupes notifiés",
+      "addGroup": "Ajouter un groupe",
+      "removeGroup": "Retirer le groupe {{name}}",
+      "membersChosen": "Membres notifiés",
+      "addMember": "Ajouter un membre",
+      "removeMember": "Retirer {{name}}",
+      "save": "Enregistrer",
+      "saved": "Notifications de « {{event}} » enregistrées dans le brouillon."
     }
   }
 }

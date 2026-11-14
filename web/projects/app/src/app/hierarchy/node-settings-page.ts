@@ -20,14 +20,17 @@ export class NodeContext {
   readonly node = signal<Node | null>(null);
 }
 
-/** Tabs of a node's settings (mockup 14); "Configuration" comes with L04. */
+/** Tabs of every node's settings (mockup 14). */
 const TABS = [
   { path: 'general', labelKey: 'hierarchy.settings.general' },
   { path: 'links', labelKey: 'hierarchy.settings.links' },
 ] as const;
 
 /** Projects only. */
-const ARCHIVING_TAB = { path: 'archiving', labelKey: 'hierarchy.settings.archiving' } as const;
+const PROJECT_TABS = [
+  { path: 'configuration', labelKey: 'hierarchy.settings.configuration' },
+  { path: 'archiving', labelKey: 'hierarchy.settings.archiving' },
+] as const;
 
 /**
  * Settings of a portfolio, program or project (mockup 14): its parents and
@@ -85,9 +88,9 @@ export class NodeSettingsPage {
   private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
   protected readonly context = inject(NodeContext);
-  /** The Archiving tab is for projects. */
+  /** The Configuration and Archiving tabs are for projects. */
   protected readonly tabs = computed(() =>
-    this.context.node()?.type === 'project' ? [...TABS, ARCHIVING_TAB] : [...TABS],
+    this.context.node()?.type === 'project' ? [...TABS, ...PROJECT_TABS] : [...TABS],
   );
 
   protected readonly loaded = resource({

@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH draft AS (\n            SELECT id, config_id FROM project_config_version WHERE id = $2 AND state = 'draft'\n        ), inserted AS (\n            INSERT INTO project_config_change (id, tenant_id, version_id, item_kind, item_id)\n            SELECT $1, app_current_tenant(), draft.id, $3, $4 FROM draft\n            ON CONFLICT (version_id, item_kind, item_id) DO NOTHING\n            RETURNING version_id\n        )\n        SELECT draft.config_id FROM draft JOIN inserted ON inserted.version_id = draft.id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "config_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "project_config_version",
+            "name": "config_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "36d4d436590862653fcb504c5f0f45c5c87c2144fab5a9df24f5ce5199159bb5"
+}

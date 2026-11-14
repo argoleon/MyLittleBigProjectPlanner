@@ -1,0 +1,27 @@
+@use '../admin/admin-shared';
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-2);
+}
+
+// Check boxes in a column, without the frame of a fieldset.
+.kinds {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: 0;
+
+  legend {
+    padding: 0;
+    font: var(--mat-sys-title-small);
+  }
+}
+
+.intro {
+  margin: 0 0 var(--app-space-2);
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}

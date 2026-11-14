@@ -1,0 +1,51 @@
+@if (current.isLoading() && !current.hasValue()) {
+  <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+} @else if (current.error()) {
+  <ui-error-state [error]="current.error()" [headingLevel]="2" (retry)="current.reload()" />
+} @else if (current.value(); as config) {
+  <section class="card" aria-labelledby="configuration-title">
+    <h2 id="configuration-title" class="card-title">{{ 'config.node.title' | transloco }}</h2>
+    @if (notice(); as notice) {
+      <p class="message" [class.info]="notice.ok" [class.error]="!notice.ok" [attr.role]="notice.ok ? 'status' : 'alert'">
+        {{ notice.key | transloco: notice.params }}
+      </p>
+    }
+    <p class="uses">
+      {{ 'config.node.uses' | transloco }}
+      @if (manages()) {
+        <a class="config-name" [routerLink]="['/admin/configurations', config.id]">{{ config.name }}</a>
+      } @else {
+        <strong class="config-name">{{ config.name }}</strong>
+      }
+    </p>
+    <app-config-chips [config]="{ isDefault: config.isDefault, projectCount: config.projectCount, draft: null }" />
+    <p class="hint">{{ 'config.node.hint' | transloco }}</p>
+
+    @if (manages()) {
+      <div class="move">
+        <mat-form-field appearance="outline" class="select">
+          <mat-label>{{ 'config.node.choose' | transloco }}</mat-label>
+          <mat-select [formControl]="choice">
+            @for (option of configs.value() ?? []; track option.id) {
+              <mat-option [value]="option.id">{{ option.nameTranslations | translated }}</mat-option>
+            }
+          </mat-select>
+          @if (node()?.archived) {
+            <mat-hint>{{ 'config.node.archived' | transloco }}</mat-hint>
+          }
+        </mat-form-field>
+        <button
+          matButton="filled"
+          type="button"
+          class="save"
+          [disabled]="saving() || choice.disabled || choice.value === config.id"
+          (click)="move()"
+        >
+          {{ 'config.node.move' | transloco }}
+        </button>
+      </div>
+    } @else {
+      <p class="hint">{{ 'config.node.readOnly' | transloco }}</p>
+    }
+  </section>
+}

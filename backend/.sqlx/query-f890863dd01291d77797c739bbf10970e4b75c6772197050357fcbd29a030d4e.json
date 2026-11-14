@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO project_config_version (id, tenant_id, config_id, number, state, created_by, published_at)\n        VALUES ($1, app_current_tenant(), $2, 1, 'published', $3, now())\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f890863dd01291d77797c739bbf10970e4b75c6772197050357fcbd29a030d4e"
+}

@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT config_id AS \"config_id!\" FROM node WHERE id = $1 AND node_type = 'project'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "config_id!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "config_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "32f52750efc28296649a5b66ca318318e42784f210d845542f473f7cb342d847"
+}

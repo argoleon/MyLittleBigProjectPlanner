@@ -99,11 +99,31 @@ pub enum ErrorCode {
     NodeArchived,
     NodeActiveChildren,
     NodeParentArchived,
+    ConfigNameTaken,
+    ConfigNoDraft,
+    ConfigDefault,
+    ConfigInUse,
+    IssueTypeKeyTaken,
+    IssueTypeCycle,
+    IssueTypeSubtaskParent,
+    IssueTypeLastType,
+    IssueTypeOrphanSubtask,
+    WorkflowKeyTaken,
+    WorkflowInUse,
+    WorkflowLast,
+    WorkflowInvalid,
+    FieldKeyTaken,
+    FieldSystem,
+    ScreenExists,
+    ScreenGeneral,
+    ScreenInUse,
+    MappingIncomplete,
+    ConfigMigrationRunning,
 }
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 60] = [
+    pub const ALL: [Self; 80] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -164,6 +184,26 @@ impl ErrorCode {
         Self::NodeArchived,
         Self::NodeActiveChildren,
         Self::NodeParentArchived,
+        Self::ConfigNameTaken,
+        Self::ConfigNoDraft,
+        Self::ConfigDefault,
+        Self::ConfigInUse,
+        Self::IssueTypeKeyTaken,
+        Self::IssueTypeCycle,
+        Self::IssueTypeSubtaskParent,
+        Self::IssueTypeLastType,
+        Self::IssueTypeOrphanSubtask,
+        Self::WorkflowKeyTaken,
+        Self::WorkflowInUse,
+        Self::WorkflowLast,
+        Self::WorkflowInvalid,
+        Self::FieldKeyTaken,
+        Self::FieldSystem,
+        Self::ScreenExists,
+        Self::ScreenGeneral,
+        Self::ScreenInUse,
+        Self::MappingIncomplete,
+        Self::ConfigMigrationRunning,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -228,6 +268,26 @@ impl ErrorCode {
             Self::NodeArchived => "node.archived",
             Self::NodeActiveChildren => "node.active_children",
             Self::NodeParentArchived => "node.parent_archived",
+            Self::ConfigNameTaken => "config.name_taken",
+            Self::ConfigNoDraft => "config.no_draft",
+            Self::ConfigDefault => "config.default",
+            Self::ConfigInUse => "config.in_use",
+            Self::IssueTypeKeyTaken => "issue_type.key_taken",
+            Self::IssueTypeCycle => "issue_type.cycle",
+            Self::IssueTypeSubtaskParent => "issue_type.subtask_parent",
+            Self::IssueTypeLastType => "issue_type.last_type",
+            Self::IssueTypeOrphanSubtask => "issue_type.orphan_subtask",
+            Self::WorkflowKeyTaken => "workflow.key_taken",
+            Self::WorkflowInUse => "workflow.in_use",
+            Self::WorkflowLast => "workflow.last",
+            Self::WorkflowInvalid => "workflow.invalid",
+            Self::FieldKeyTaken => "config_field.key_taken",
+            Self::FieldSystem => "config_field.system",
+            Self::ScreenExists => "screen.exists",
+            Self::ScreenGeneral => "screen.general",
+            Self::ScreenInUse => "screen.in_use",
+            Self::MappingIncomplete => "mapping_incomplete",
+            Self::ConfigMigrationRunning => "config.migration_running",
         }
     }
 
@@ -235,6 +295,7 @@ impl ErrorCode {
         match self {
             Self::BadRequest
             | Self::ValidationFailed
+            | Self::MappingIncomplete
             | Self::InvalidJson
             | Self::InvalidQuery
             | Self::IdempotencyKeyInvalid
@@ -285,7 +346,26 @@ impl ErrorCode {
             | Self::NodeConfidentialLockout
             | Self::NodeArchived
             | Self::NodeActiveChildren
-            | Self::NodeParentArchived => StatusCode::CONFLICT,
+            | Self::NodeParentArchived
+            | Self::ConfigNameTaken
+            | Self::ConfigNoDraft
+            | Self::ConfigDefault
+            | Self::ConfigInUse
+            | Self::IssueTypeKeyTaken
+            | Self::IssueTypeCycle
+            | Self::IssueTypeSubtaskParent
+            | Self::IssueTypeLastType
+            | Self::IssueTypeOrphanSubtask
+            | Self::WorkflowKeyTaken
+            | Self::WorkflowInUse
+            | Self::WorkflowLast
+            | Self::WorkflowInvalid
+            | Self::FieldKeyTaken
+            | Self::FieldSystem
+            | Self::ScreenExists
+            | Self::ScreenGeneral
+            | Self::ScreenInUse
+            | Self::ConfigMigrationRunning => StatusCode::CONFLICT,
             Self::PreconditionFailed => StatusCode::PRECONDITION_FAILED,
             Self::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -366,6 +446,32 @@ impl ErrorCode {
                 "This project still has active sub-projects: archive or detach them first"
             }
             Self::NodeParentArchived => "This project is under an archived project: restore that one first",
+            Self::ConfigNameTaken => "Another project configuration already has this name",
+            Self::ConfigNoDraft => "This configuration has no draft: nothing to publish or discard",
+            Self::ConfigDefault => "The default configuration stays: new projects get it",
+            Self::ConfigInUse => "Projects use this configuration: move them to another one first",
+            Self::IssueTypeKeyTaken => "Another type of this configuration already has this identifier",
+            Self::IssueTypeCycle => "A type cannot be its own ancestor",
+            Self::IssueTypeSubtaskParent => "A sub-task type cannot be the parent of another type",
+            Self::IssueTypeLastType => "A configuration keeps at least one type that is not a sub-task",
+            Self::IssueTypeOrphanSubtask => "A sub-task type would have no parent type left: change it first",
+            Self::WorkflowKeyTaken => {
+                "Another workflow of this configuration, or status of this workflow, already has this identifier"
+            }
+            Self::WorkflowInUse => "Issue types follow this workflow: move them to another one first",
+            Self::WorkflowLast => "A configuration keeps at least one workflow",
+            Self::WorkflowInvalid => "Workflows of the draft cannot be published as they are: see errors",
+            Self::FieldKeyTaken => "Another field of this configuration already has this identifier",
+            Self::FieldSystem => {
+                "A system field keeps its label and options and cannot be removed; only its types and rules change"
+            }
+            Self::ScreenExists => "This type, or the configuration, already has a screen of this kind",
+            Self::ScreenGeneral => "The general creation and view screens of a configuration stay",
+            Self::ScreenInUse => "Transitions show this screen: give them another one first",
+            Self::MappingIncomplete => {
+                "Every removed status and type must be mapped to one the draft keeps: see errors"
+            }
+            Self::ConfigMigrationRunning => "A migration of this configuration is already under way",
         }
     }
 
@@ -609,7 +715,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 60] = [
+        let expected: [(ErrorCode, u16); 80] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -670,6 +776,26 @@ mod tests {
             (ErrorCode::NodeArchived, 409),
             (ErrorCode::NodeActiveChildren, 409),
             (ErrorCode::NodeParentArchived, 409),
+            (ErrorCode::ConfigNameTaken, 409),
+            (ErrorCode::ConfigNoDraft, 409),
+            (ErrorCode::ConfigDefault, 409),
+            (ErrorCode::ConfigInUse, 409),
+            (ErrorCode::IssueTypeKeyTaken, 409),
+            (ErrorCode::IssueTypeCycle, 409),
+            (ErrorCode::IssueTypeSubtaskParent, 409),
+            (ErrorCode::IssueTypeLastType, 409),
+            (ErrorCode::IssueTypeOrphanSubtask, 409),
+            (ErrorCode::WorkflowKeyTaken, 409),
+            (ErrorCode::WorkflowInUse, 409),
+            (ErrorCode::WorkflowLast, 409),
+            (ErrorCode::WorkflowInvalid, 409),
+            (ErrorCode::FieldKeyTaken, 409),
+            (ErrorCode::FieldSystem, 409),
+            (ErrorCode::ScreenExists, 409),
+            (ErrorCode::ScreenGeneral, 409),
+            (ErrorCode::ScreenInUse, 409),
+            (ErrorCode::MappingIncomplete, 400),
+            (ErrorCode::ConfigMigrationRunning, 409),
         ];
         for (code, status) in expected {
             assert_eq!(code.status().as_u16(), status, "{}", code.as_str());

@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT EXISTS (\n            SELECT 1 FROM workflow_status\n            WHERE version_id = $1 AND item_id = $2 AND NOT ($3::bigint[] IS NULL OR version = ANY($3))\n        ) AS \"stale!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "stale!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "bdb456bcef06f299d980ab32e5a540fdf0105e8dc194ace13132d03a786586a1"
+}

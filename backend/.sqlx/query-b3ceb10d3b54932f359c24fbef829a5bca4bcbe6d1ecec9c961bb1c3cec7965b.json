@@ -1,0 +1,137 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT item_id, key, label AS \"label: Json<BTreeMap<String, String>>\", icon, color, is_subtask,\n               parent_ids, workflow_id, position, version\n        FROM issue_type p\n        WHERE p.version_id = $1\n          AND NOT EXISTS (SELECT 1 FROM issue_type d WHERE d.version_id = $2 AND d.item_id = p.item_id)\n        ORDER BY position, key\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "item_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "issue_type",
+            "name": "item_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "issue_type",
+            "name": "key"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "label: Json<BTreeMap<String, String>>",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "issue_type",
+            "name": "label"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "icon",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "issue_type",
+            "name": "icon"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "color",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "issue_type",
+            "name": "color"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "is_subtask",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "issue_type",
+            "name": "is_subtask"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "parent_ids",
+        "type_info": "UuidArray",
+        "origin": {
+          "Table": {
+            "table": "issue_type",
+            "name": "parent_ids"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "workflow_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "issue_type",
+            "name": "workflow_id"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "position",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "issue_type",
+            "name": "position"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "version",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "issue_type",
+            "name": "version"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "b3ceb10d3b54932f359c24fbef829a5bca4bcbe6d1ecec9c961bb1c3cec7965b"
+}

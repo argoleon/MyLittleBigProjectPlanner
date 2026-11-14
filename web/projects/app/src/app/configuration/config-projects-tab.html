@@ -1,0 +1,59 @@
+@if (projects.isLoading() && !projects.hasValue()) {
+  <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+} @else if (projects.error()) {
+  <ui-error-state [error]="projects.error()" [headingLevel]="2" (retry)="projects.reload()" />
+} @else if (projects.value()?.items?.length === 0) {
+  <ui-empty-state
+    icon="folder_off"
+    [title]="'config.projects.empty' | transloco"
+    [message]="'config.projects.emptyHint' | transloco"
+  />
+} @else {
+  <div class="table-card">
+    <table mat-table [dataSource]="projects.value()?.items ?? []" class="table">
+      <caption class="cdk-visually-hidden">{{ 'config.projects.caption' | transloco }}</caption>
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef scope="col">{{ 'config.projects.columns.name' | transloco }}</th>
+        <td mat-cell *matCellDef="let item">
+          @if (asProject(item); as project) {
+            <a class="name" [routerLink]="['/nodes', project.id]">{{ project.name }}</a>
+            <span class="secondary">{{ project.key }}</span>
+          } @else {
+            <app-veiled-name />
+          }
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="state">
+        <th mat-header-cell *matHeaderCellDef scope="col">{{ 'config.projects.columns.state' | transloco }}</th>
+        <td mat-cell *matCellDef="let item">
+          @if (asProject(item)?.archived) {
+            <span class="archived">{{ 'config.projects.archived' | transloco }}</span>
+          }
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef scope="col">
+          <span class="cdk-visually-hidden">{{ 'config.projects.columns.actions' | transloco }}</span>
+        </th>
+        <td mat-cell *matCellDef="let item" class="actions">
+          @if (asProject(item); as project) {
+            @if (shared() && !project.archived) {
+              <button
+                matButton
+                type="button"
+                class="detach"
+                (click)="detach(project)"
+                [attr.aria-label]="'config.projects.detachOf' | transloco: { name: project.name }"
+              >
+                <mat-icon aria-hidden="true">call_split</mat-icon>
+                {{ 'config.projects.detach' | transloco }}
+              </button>
+            }
+          }
+        </td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="columns"></tr>
+      <tr mat-row *matRowDef="let item; columns: columns"></tr>
+    </table>
+  </div>
+}

@@ -61,6 +61,12 @@
     "errorTitle": "Something went wrong",
     "retry": "Try again"
   },
+  "translatable": {
+    "field": "{{label}} ({{language}})",
+    "fallback": "Fallback language: required",
+    "optional": "Optional",
+    "required": "Required in {{language}}, the fallback language."
+  },
   "auth": {
     "languages": "Language",
     "signIn": {
@@ -157,7 +163,8 @@
       "authentication": "Authentication",
       "members": "Members",
       "groups": "Groups",
-      "roles": "Roles"
+      "roles": "Roles",
+      "configurations": "Project configurations"
     },
     "auth": {
       "policyTitle": "Authentication policy",
@@ -330,6 +337,7 @@
   "errors": {
     "bad_request": "The request is malformed.",
     "validation_failed": "Some fields are invalid.",
+    "mapping_incomplete": "Every removed status and type must be mapped to one this version keeps.",
     "invalid_json": "The data sent is invalid.",
     "invalid_query": "The request parameters are invalid.",
     "not_found": "This item does not exist or is no longer available.",
@@ -403,7 +411,22 @@
       "not_allowed": "Not allowed here.",
       "not_found": "Not found.",
       "unknown_member": "Not a member of the organization.",
-      "too_many": "Too many items."
+      "too_many": "Too many items.",
+      "not_using": "This project does not use this configuration.",
+      "not_a_permutation": "Every item must appear once.",
+      "not_applicable": "Not available for this type.",
+      "less_than_min": "The maximum is below the minimum.",
+      "duplicate": "This value appears twice.",
+      "wrong_type": "This value does not fit the field.",
+      "too_many_decimals": "Too many decimals.",
+      "invalid_date": "Not a valid date.",
+      "invalid_date_time": "Not a valid date and time.",
+      "invalid_url": "Not a valid web address.",
+      "invalid_label": "A label has no spaces.",
+      "invalid_id": "Not a valid identifier.",
+      "unknown_value": "Not a value of this list.",
+      "inactive_value": "This value is deactivated.",
+      "not_a_child": "This value is not under the first one."
     },
     "invitation": {
       "invalid": "This invitation link is invalid, has expired or was already used. Ask for a new one.",
@@ -444,6 +467,35 @@
       "archived": "This project is archived: it is read-only until it is restored.",
       "active_children": "This project still has active sub-projects: archive or detach them first.",
       "parent_archived": "This project is under an archived project: restore that one first."
+    },
+    "config": {
+      "name_taken": "Another project configuration already has this name.",
+      "no_draft": "This configuration has no draft: nothing to publish or discard.",
+      "default": "The default configuration stays: new projects get it.",
+      "in_use": "Projects use this configuration: move them to another one first.",
+      "migration_running": "A migration of this configuration is already under way."
+    },
+    "issue_type": {
+      "key_taken": "Another type of this configuration already has this identifier.",
+      "cycle": "A type cannot be its own ancestor.",
+      "subtask_parent": "A sub-task type cannot be the parent of another type.",
+      "last_type": "A configuration keeps at least one type that is not a sub-task.",
+      "orphan_subtask": "A sub-task type would have no parent type left: change it first."
+    },
+    "workflow": {
+      "key_taken": "Another workflow of this configuration, or status of this workflow, already has this identifier.",
+      "in_use": "Issue types follow this workflow: move them to another one first.",
+      "last": "A configuration keeps at least one workflow.",
+      "invalid": "Workflows of the draft cannot be published as they are: fix what the Workflows tab lists."
+    },
+    "config_field": {
+      "key_taken": "Another field of this configuration already has this identifier.",
+      "system": "A system field keeps its label and options and cannot be removed: only its issue types and rules change."
+    },
+    "screen": {
+      "exists": "This type, or the configuration, already has a screen of this kind.",
+      "general": "The general creation and view screens of a configuration stay.",
+      "in_use": "Transitions show this screen: give them another one first."
     }
   },
   "dialog": {
@@ -578,7 +630,8 @@
       "addChild": "Add a child",
       "breadcrumb": "Breadcrumb",
       "links": "Attachments and permissions",
-      "archiving": "Archiving"
+      "archiving": "Archiving",
+      "configuration": "Configuration"
     },
     "general": {
       "name": "Name",
@@ -773,6 +826,550 @@
       "restored": "The project is restored.",
       "banner": "Archived project.",
       "bannerHint": "It is read-only, out of the active lists and the aggregates."
+    }
+  },
+  "config": {
+    "default": "Default",
+    "unused": "Used by no project",
+    "shared": {
+      "one": "Used by {{count}} project",
+      "other": "Shared by {{count}} projects"
+    },
+    "draft": {
+      "one": "Unpublished draft · {{count}} change",
+      "other": "Unpublished draft · {{count}} changes"
+    },
+    "intro": "A project configuration gathers the issue types, fields, workflows, screens and notifications of the projects that share it. New projects get the default one.",
+    "add": "New configuration",
+    "empty": "No project configuration",
+    "emptyHint": "Create one to share a way of working between projects.",
+    "caption": "Project configurations",
+    "columns": {
+      "name": "Name",
+      "state": "State",
+      "actions": "Actions"
+    },
+    "version": "Version {{number}}",
+    "name": "Name",
+    "delete": {
+      "of": "Delete {{name}}",
+      "title": "Delete “{{name}}”?",
+      "message": "No project uses it. Its versions and its draft are deleted with it.",
+      "confirm": "Delete",
+      "done": "Configuration “{{name}}” deleted."
+    },
+    "dialog": {
+      "create": {
+        "title": "New project configuration",
+        "confirm": "Create"
+      },
+      "duplicate": {
+        "title": "Duplicate “{{name}}”",
+        "intro": "The copy starts from the published version of “{{name}}”, without its projects or its draft.",
+        "confirm": "Duplicate"
+      },
+      "detach": {
+        "title": "Detach {{project}}",
+        "intro": "{{project}} gets its own copy of “{{name}}”: further changes to the original no longer affect it.",
+        "confirm": "Detach"
+      }
+    },
+    "page": {
+      "breadcrumb": "Breadcrumb",
+      "tabs": "Configuration sections",
+      "duplicate": "Duplicate",
+      "publish": "Publish the changes",
+      "upToDate": "Version {{number}} is published. Changes go to a draft until they are published.",
+      "projects": {
+        "one": "Project ({{count}})",
+        "other": "Projects ({{count}})"
+      },
+      "published": {
+        "one": "Version {{number}} is published to its project.",
+        "other": "Version {{number}} is published to its {{count}} projects."
+      },
+      "discard": {
+        "action": "Discard the draft",
+        "title": "Discard the draft of “{{name}}”?",
+        "message": "Its changes are lost. The published version stays as it is.",
+        "confirm": "Discard",
+        "done": "The draft is discarded."
+      },
+      "publishedNone": "Version {{number}} is published."
+    },
+    "sections": {
+      "types": {
+        "tab": "Types"
+      },
+      "fields": {
+        "tab": "Fields"
+      },
+      "workflows": {
+        "tab": "Workflows"
+      },
+      "screens": {
+        "tab": "Screens"
+      },
+      "notifications": {
+        "tab": "Notifications"
+      }
+    },
+    "projects": {
+      "tab": "Projects",
+      "caption": "Projects using this configuration",
+      "empty": "No project uses this configuration",
+      "emptyHint": "Move a project to it from the Configuration tab of the project's settings.",
+      "columns": {
+        "name": "Project",
+        "state": "State",
+        "actions": "Actions"
+      },
+      "archived": "Archived",
+      "veiled": "Project you do not have access to",
+      "detach": "Detach",
+      "detachOf": "Detach {{name}}",
+      "detached": "{{project}} now uses its own configuration “{{name}}”."
+    },
+    "publishDialog": {
+      "title": "Publish “{{name}}”?",
+      "none": "No project uses this configuration yet: the new version will apply to the projects moved to it.",
+      "intro": {
+        "one": "The new version applies at once to this project:",
+        "other": "The new version applies at once to these {{count}} projects:"
+      },
+      "projects": "Projects affected",
+      "migration": "Some tickets use a type or a status this version removes: they must be migrated first.",
+      "stale": "The configuration changed in the meantime: check the projects again, then publish.",
+      "confirm": "Publish",
+      "removedTypes": "Removed types",
+      "tickets": {
+        "one": "{{count}} ticket",
+        "other": "{{count}} tickets"
+      },
+      "removedStatuses": "Removed statuses",
+      "workflowProblems": "Workflows of the draft to fix first:",
+      "problemCodes": {
+        "no_status": "no status",
+        "no_initial": "no initial status",
+        "unreachable": "nothing leads to this status",
+        "duplicate_transition": "a transition repeated"
+      },
+      "migrate": "Map and migrate"
+    },
+    "migration": {
+      "title": "Migrate the tickets",
+      "intro": "Publishing “{{name}}” removes statuses or types that tickets of its {{count}} projects use. Choose where their tickets go.",
+      "caption": {
+        "statuses": "Removed statuses and their new status",
+        "types": "Removed types and their new type"
+      },
+      "current": {
+        "statuses": "Current status",
+        "types": "Current type"
+      },
+      "target": {
+        "statuses": "New status",
+        "types": "New type"
+      },
+      "tickets": "Tickets",
+      "to": "becomes",
+      "targetOf": "New value for {{name}}",
+      "new": "{{name}} (new)",
+      "projects": "Projects affected:",
+      "background": "The migration runs in the background. The history of each ticket keeps its former status and type; the new version is published once every ticket moved.",
+      "confirm": "Migrate {{count}} tickets",
+      "progress": "{{migrated}} of {{total}} tickets migrated…",
+      "progressLabel": "Progress of the migration",
+      "failed": "The migration stopped, nothing was published: {{error}}.",
+      "stale": "The configuration changed in the meantime: check the mapping again, then migrate."
+    },
+    "node": {
+      "title": "Project configuration",
+      "uses": "This project uses",
+      "hint": "Its issue types, fields, workflows, screens and notifications come from this configuration.",
+      "choose": "Configuration",
+      "archived": "An archived project keeps its configuration until it is restored.",
+      "move": "Move the project",
+      "moved": "The project now uses “{{name}}”.",
+      "readOnly": "Tenant admins and configuration admins change it."
+    },
+    "types": {
+      "intro": "The issue types of the projects and the types each may sit under. Changes go to the draft.",
+      "add": "New type",
+      "caption": "Issue types, in their order",
+      "columns": {
+        "order": "Order",
+        "type": "Type",
+        "key": "Identifier",
+        "parents": "Allowed parents",
+        "level": "Level",
+        "actions": "Actions"
+      },
+      "isSubtask": "Sub-task",
+      "top": "At the top",
+      "moveUp": "Move {{name}} up",
+      "moveDown": "Move {{name}} down",
+      "editOf": "Edit {{name}}",
+      "moved": "{{name}} moved to position {{position}}.",
+      "saved": "Type “{{name}}” saved in the draft.",
+      "removed": "Type “{{name}}” removed from the draft.",
+      "editTitle": "Edit “{{name}}”",
+      "newTitle": "New issue type",
+      "close": "Close the panel",
+      "label": "Label",
+      "key": "Identifier",
+      "keyHint": "Lowercase letters, digits and _; it cannot be changed later.",
+      "keyFixed": "Set when the type was added; it does not change.",
+      "keyFormat": "A lowercase letter, then lowercase letters, digits or _.",
+      "icon": "Icon",
+      "color": "Color",
+      "colors": {
+        "epic": "Epic color",
+        "story": "Story color",
+        "task": "Task color",
+        "bug": "Bug color"
+      },
+      "subtask": "Sub-task type",
+      "subtaskHint": "A sub-task always sits under a ticket of a parent type, and has none under it.",
+      "parents": "Allowed parent types",
+      "parentsHint": "None: its tickets stay at the top.",
+      "parentsRequired": "A sub-task type needs at least one parent type.",
+      "save": "Save",
+      "remove": {
+        "action": "Remove",
+        "title": "Remove “{{name}}”?",
+        "message": "It leaves the draft and the allowed parents of the other types. Tickets using it will have to move to another type before publishing.",
+        "confirm": "Remove"
+      },
+      "workflow": "Workflow"
+    },
+    "fields": {
+      "intro": "System and custom fields, and whether each is hidden, visible or required per issue type and workflow step. Changes go to the draft.",
+      "add": "New field",
+      "caption": "Fields of the configuration",
+      "columns": {
+        "field": "Field",
+        "key": "Identifier",
+        "kind": "Type",
+        "types": "Issue types",
+        "languages": "Languages",
+        "actions": "Actions"
+      },
+      "system": "System",
+      "allTypesShort": "All",
+      "noType": "No type yet",
+      "editOf": "Edit {{name}}",
+      "saved": "Field “{{name}}” saved in the draft.",
+      "removed": "Field “{{name}}” removed from the draft.",
+      "editTitle": "Edit “{{name}}”",
+      "newTitle": "New field",
+      "close": "Close the panel",
+      "systemHint": "A system field keeps its label and options; you choose its issue types and rules.",
+      "label": "Label",
+      "key": "Identifier",
+      "keyHint": "Lowercase letters, digits and _; it cannot be changed later.",
+      "keyFixed": "Set when the field was added; it does not change.",
+      "keyFormat": "A lowercase letter, then lowercase letters, digits or _.",
+      "kind": "Type",
+      "kindFixed": "Set when the field was added; it does not change.",
+      "kinds": {
+        "short_text": "Short text",
+        "rich_text": "Rich long text",
+        "number": "Number",
+        "checkbox": "Checkbox",
+        "date": "Date",
+        "date_time": "Date and time",
+        "single_select": "Single select",
+        "multi_select": "Multi-select",
+        "cascading_select": "Cascading select",
+        "user": "User",
+        "group": "Group",
+        "labels": "Labels",
+        "url": "URL",
+        "issue_link": "Link to a ticket"
+      },
+      "maxLength": "Maximum length",
+      "maxLengthHint": "In characters, {{max}} at most; empty: {{max}}.",
+      "decimals": "Decimals",
+      "unit": "Unit",
+      "units": {
+        "none": "None",
+        "hours": "Hours",
+        "days": "Days",
+        "percent": "Percent"
+      },
+      "min": "Minimum",
+      "max": "Maximum",
+      "multiple": "Several users",
+      "values": {
+        "title": "Values",
+        "label": "Value {{position}} ({{language}})",
+        "childLabel": "Value {{parent}}.{{position}} ({{language}})",
+        "actions": "Actions of value {{position}}",
+        "childActions": "Actions of value {{parent}}.{{position}}",
+        "moveUp": "Move up",
+        "moveDown": "Move down",
+        "addChild": "Add a value under it",
+        "reactivate": "Reactivate",
+        "deactivate": "Deactivate",
+        "remove": "Remove",
+        "inactive": "Deactivated: no longer offered, kept on the tickets that have it.",
+        "add": "Add a value"
+      },
+      "types": "Issue types",
+      "allTypes": "All issue types, including the ones added later",
+      "issueTypes": "Issue types of the field",
+      "issueTypesHint": "The other types never show it.",
+      "rules": {
+        "title": "Rules per type and per step",
+        "hint": "Click a cell to go from Hidden to Visible, then Required.",
+        "caption": "Types following {{workflow}}",
+        "type": "Type",
+        "creation": "Creation",
+        "cell": "{{type}}, {{step}}: {{mode}}",
+        "empty": "Choose the issue types of the field to set its rules."
+      },
+      "modes": {
+        "hidden": "Hidden",
+        "visible": "Visible",
+        "required": "Required"
+      },
+      "save": "Save",
+      "remove": {
+        "action": "Remove",
+        "title": "Remove “{{name}}”?",
+        "message": "It leaves the draft with its rules. Once published, tickets no longer show its values.",
+        "confirm": "Remove"
+      }
+    },
+    "workflows": {
+      "byType": "Workflow by issue type",
+      "noType": "No type follows it",
+      "toFix": "To fix before publishing",
+      "add": "New workflow",
+      "readOnlyGraph": "Read-only graph",
+      "renameOf": "Rename {{name}}",
+      "graph": "Graph of {{name}}; the statuses and transitions tables below describe it.",
+      "problemsTitle": "This workflow cannot be published yet:",
+      "problems": {
+        "no_status": "it has no status.",
+        "no_initial": "none of its statuses is the initial one.",
+        "unreachable": "nothing leads to “{{status}}” from the initial status.",
+        "duplicate_transition": "“{{transition}}” repeats another transition."
+      },
+      "statuses": "Statuses",
+      "statusesCaption": "Statuses of {{name}}",
+      "transitions": "Transitions",
+      "transitionsCaption": "Transitions of {{name}}",
+      "columns": {
+        "label": "Label (FR / EN)",
+        "move": "From → to"
+      },
+      "to": "to",
+      "saved": "Workflow “{{name}}” saved in the draft.",
+      "newTitle": "New workflow",
+      "renameTitle": "Rename the workflow",
+      "label": "Name",
+      "copyOf": "Start from",
+      "empty": "An empty workflow",
+      "categories": {
+        "todo": "To do",
+        "in_progress": "In progress",
+        "done": "Done"
+      },
+      "remove": {
+        "of": "Remove {{name}}",
+        "title": "Remove “{{name}}”?",
+        "message": "Its statuses and transitions go with it. No issue type may follow it.",
+        "confirm": "Remove",
+        "done": "Workflow “{{name}}” removed from the draft."
+      },
+      "status": {
+        "add": "Add a status",
+        "newTitle": "New status",
+        "editTitle": "Change the status",
+        "category": "Category",
+        "portalLabel": "Label on the portal",
+        "initial": "Initial status: new tickets start here",
+        "isInitial": "Initial",
+        "saved": "Status saved in “{{name}}”.",
+        "remove": {
+          "of": "Remove {{name}}",
+          "title": "Remove the status “{{name}}”?",
+          "message": "Its transitions go with it. Tickets in this status will have to move to another one before publishing.",
+          "confirm": "Remove",
+          "done": "Status “{{name}}” removed from the draft."
+        }
+      },
+      "transition": {
+        "add": "Add a transition",
+        "newTitle": "New transition",
+        "editTitle": "Change the transition",
+        "name": "Transition",
+        "from": "From",
+        "to": "To",
+        "any": "All statuses",
+        "saved": "Transition saved in “{{name}}”.",
+        "remove": {
+          "of": "Remove {{name}}",
+          "title": "Remove the transition “{{name}}”?",
+          "message": "Tickets will no longer take it.",
+          "confirm": "Remove",
+          "done": "Transition “{{name}}” removed from the draft."
+        }
+      },
+      "rules": {
+        "column": "Rules",
+        "conditions": "Who may take it",
+        "conditionsHint": "No role and no group: whoever may edit the ticket. Otherwise, one of the roles on the project or one of the groups is enough.",
+        "roles": "Roles",
+        "groupsChosen": "Groups who may take it",
+        "deletedGroup": "Deleted group",
+        "deleted": "deleted",
+        "removeGroup": "Remove the group {{name}}",
+        "addGroup": "Add a group",
+        "validators": "Required fields",
+        "requiredFields": "Fields that must be filled in",
+        "validatorsHint": "The transition is refused, naming them, while one is empty.",
+        "postFunctions": "Post-functions",
+        "postFunctionsHint": "Run in this order when the transition is taken.",
+        "kind": "Post-function {{position}}",
+        "kinds": {
+          "assign": "Assign the ticket",
+          "set_field": "Set a field",
+          "clear_field": "Clear a field",
+          "add_comment": "Add a comment"
+        },
+        "moveUp": "Move post-function {{position}} up",
+        "moveDown": "Move post-function {{position}} down",
+        "remove": "Remove post-function {{position}}",
+        "assignTo": "Assign to",
+        "targets": {
+          "current_user": "Whoever takes the transition",
+          "reporter": "The reporter",
+          "member": "A member",
+          "nobody": "Nobody (unassign)"
+        },
+        "member": "Member",
+        "memberRequired": "Choose a member.",
+        "field": "Field",
+        "settableHint": "Fields whose value can be entered here.",
+        "checked": "Ticked",
+        "value": "Value",
+        "labelsHint": "Separated by commas or spaces.",
+        "comment": "Comment",
+        "fieldRequired": "Choose a field.",
+        "commentRequired": "Write the comment.",
+        "add": "Add a post-function",
+        "summary": {
+          "restricted": "Only:",
+          "requires": "Requires {{fields}}",
+          "none": "Open to everyone",
+          "assign": {
+            "current_user": "Assigns to whoever takes it",
+            "reporter": "Assigns to the reporter",
+            "member": "Assigns to a member",
+            "nobody": "Unassigns"
+          },
+          "assignMember": "Assigns to {{name}}",
+          "set": "Sets {{field}}",
+          "clear": "Clears {{field}}",
+          "comment": "Adds a comment",
+          "screen": "Shows {{name}}"
+        },
+        "screen": "Transition screen",
+        "screenLabel": "Screen shown before it runs",
+        "noScreen": "None",
+        "screenHint": "Its fields follow the rules of the status it leads to."
+      }
+    },
+    "screens": {
+      "intro": "The fields shown, in their order, when a ticket is created, viewed, or moved by a transition. The field rules win: a hidden field is not shown, a required one missing is added at the end. Changes go to the draft.",
+      "add": "New screen",
+      "newTitle": "New screen",
+      "kind": "Shown",
+      "kinds": {
+        "creation": "Creation",
+        "view": "View",
+        "transition": "Transition"
+      },
+      "type": "Issue type",
+      "typeHint": "This type uses it instead of the general screen.",
+      "name": "Name",
+      "create": "Create",
+      "created": "Screen “{{name}}” added to the draft.",
+      "saved": "Screen “{{name}}” saved in the draft.",
+      "removed": "Screen “{{name}}” removed from the draft.",
+      "general": "General: every type without its own",
+      "forType": "For {{type}}",
+      "shownBy": "Shown by",
+      "unused": "Attached to no transition yet",
+      "fieldCount": "{{count}} fields",
+      "noScreen": "None yet.",
+      "editTitle": "Edit “{{name}}”",
+      "close": "Close the panel",
+      "onScreen": "On the screen",
+      "available": "Available fields",
+      "noField": "No field: drag one here or add it.",
+      "allOnScreen": "Every field is on the screen.",
+      "moveUp": "Move {{name}} up",
+      "moveDown": "Move {{name}} down",
+      "removeField": "Take {{name}} off the screen",
+      "addField": "Put {{name}} on the screen",
+      "missingRequired": "Required by a rule where this screen is shown, and added at the end there:",
+      "preview": "Preview",
+      "previewType": "For the type",
+      "previewStatus": "In the status",
+      "previewTarget": "Leading to the status",
+      "previewEmpty": "Nothing to show.",
+      "hiddenByRule": "Hidden by a rule",
+      "addedAtEnd": "Added at the end",
+      "usedBy": "Shown by: {{transitions}}.",
+      "save": "Save",
+      "remove": {
+        "action": "Remove",
+        "title": "Remove “{{name}}”?",
+        "message": "It leaves the draft. The type it was for uses the general screen again.",
+        "confirm": "Remove"
+      }
+    },
+    "notifications": {
+      "intro": "For each ticket event, whom it notifies on the projects using this configuration. Whoever makes a change is never notified of it; each member can mute events in their own preferences.",
+      "caption": "Notification rules, by event",
+      "columns": {
+        "event": "Event",
+        "recipients": "Notifies",
+        "actions": "Actions"
+      },
+      "events": {
+        "created": "Ticket created",
+        "assigned": "Ticket assigned",
+        "status_changed": "Status changed",
+        "commented": "Comment added",
+        "mentioned": "Someone mentioned"
+      },
+      "kinds": {
+        "reporter": "Reporter",
+        "assignee": "Assignee",
+        "watchers": "Watchers",
+        "mentioned": "People mentioned"
+      },
+      "nobody": "Nobody",
+      "deleted": "Deleted",
+      "editOf": "Edit whom “{{event}}” notifies",
+      "editTitle": "Whom “{{event}}” notifies",
+      "authorNever": "Whoever makes the change is never notified of it.",
+      "people": "People of the ticket",
+      "roles": "Roles on the project",
+      "rolesHint": "Who holds them on the ticket's project, granted there or above.",
+      "groupsChosen": "Groups notified",
+      "addGroup": "Add a group",
+      "removeGroup": "Remove the group {{name}}",
+      "membersChosen": "Members notified",
+      "addMember": "Add a member",
+      "removeMember": "Remove {{name}}",
+      "save": "Save",
+      "saved": "Notifications of “{{event}}” saved in the draft."
     }
   }
 }

@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT event, recipient_kinds, role_ids, group_ids, account_ids, version\n        FROM notification_rule WHERE version_id = $1\n        ORDER BY array_position(ARRAY['created', 'assigned', 'status_changed', 'commented', 'mentioned'], event)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "event",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "notification_rule",
+            "name": "event"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "recipient_kinds",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "notification_rule",
+            "name": "recipient_kinds"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "role_ids",
+        "type_info": "UuidArray",
+        "origin": {
+          "Table": {
+            "table": "notification_rule",
+            "name": "role_ids"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "group_ids",
+        "type_info": "UuidArray",
+        "origin": {
+          "Table": {
+            "table": "notification_rule",
+            "name": "group_ids"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "account_ids",
+        "type_info": "UuidArray",
+        "origin": {
+          "Table": {
+            "table": "notification_rule",
+            "name": "account_ids"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "version",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "notification_rule",
+            "name": "version"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "57ab87f90d58ad56ade00acc9f488fa116d4d54e68a28605c469bb7bbed0f216"
+}

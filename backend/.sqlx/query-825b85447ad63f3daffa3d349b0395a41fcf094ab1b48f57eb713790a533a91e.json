@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT app_seed_default_notifications($1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "app_seed_default_notifications",
+        "type_info": "Void",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "825b85447ad63f3daffa3d349b0395a41fcf094ab1b48f57eb713790a533a91e"
+}

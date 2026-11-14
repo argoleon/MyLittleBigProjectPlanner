@@ -7,7 +7,7 @@ import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { provideApi, provideMaterialDefaults } from 'ui';
+import { AuthService, provideApi, provideMaterialDefaults } from 'ui';
 import { axeViolations, provideI18nTesting } from 'ui/testing';
 
 import en from '../../../../ui/i18n/en.json';
@@ -56,6 +56,17 @@ async function open({ policy = POLICY as object, providers = [PROVIDER] as objec
       provideMaterialDefaults(),
     ],
   });
+  // Signed in as a tenant admin: the administration shows their tabs.
+  const signedIn = TestBed.inject(AuthService).load();
+  TestBed.inject(HttpTestingController)
+    .expectOne('/api/v1/auth/session')
+    .flush({
+      account: { id: 'a1', email: 'lucas@acme.example', displayName: 'Lucas Bernard', locale: null, tenantRole: 'tenant_admin' },
+      stage: 'complete',
+      csrfToken: 'csrf',
+      expiresAt: '2026-11-20T09:00:00Z',
+    });
+  await signedIn;
   const harness = await RouterTestingHarness.create();
   await harness.navigateByUrl('/admin/authentication');
   const http = TestBed.inject(HttpTestingController);
@@ -105,7 +116,7 @@ describe('AuthenticationSettings', () => {
     const { root, text } = await open();
     expect(text('.eyebrow')).toBe('Administration · Acme Industrie');
     const tabs = Array.from(root().querySelectorAll('a[mat-tab-link]')).map((a) => a.textContent?.trim());
-    expect(tabs).toEqual(['Members', 'Groups', 'Roles', 'Authentication']);
+    expect(tabs).toEqual(['Members', 'Groups', 'Roles', 'Authentication', 'Project configurations']);
     expect(text('a[mat-tab-link][aria-selected="true"]')).toBe('Authentication');
     const toggles = Array.from(root().querySelectorAll('mat-slide-toggle'));
     expect(toggles.map((t) => t.textContent?.trim())).toEqual([

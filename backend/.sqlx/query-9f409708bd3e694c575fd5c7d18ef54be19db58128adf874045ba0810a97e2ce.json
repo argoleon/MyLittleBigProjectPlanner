@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO workflow_status\n            (id, tenant_id, version_id, item_id, workflow_id, key, label, portal_label, category, is_initial, position)\n        SELECT uuidv7(), tenant_id, $2, item_id, workflow_id, key, label, portal_label, category, is_initial, position\n        FROM workflow_status WHERE version_id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9f409708bd3e694c575fd5c7d18ef54be19db58128adf874045ba0810a97e2ce"
+}

@@ -6,21 +6,29 @@
 pub mod account;
 pub mod aggregates;
 pub mod auth_policy;
+pub mod configuration;
 pub mod devices;
 pub mod erasure;
+pub mod fields;
 pub mod grants;
 pub mod hierarchy;
 pub mod i18n;
 pub mod idempotency;
+pub mod issue_types;
 pub mod jobs;
 pub mod members;
 pub mod mfa;
+pub mod migration;
+pub mod notifications;
 pub mod oidc;
 pub mod permissions;
 pub mod reference_item;
+pub mod screens;
 pub mod tenancy;
 pub mod tenant;
+pub mod transitions;
 pub mod validation;
+pub mod workflows;
 
 /// Name of the product, shared by every service.
 pub const PRODUCT_NAME: &str = "My Little Big Project Planner";

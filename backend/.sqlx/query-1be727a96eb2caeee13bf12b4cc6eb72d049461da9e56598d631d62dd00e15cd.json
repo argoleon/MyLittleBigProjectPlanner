@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE workflow_transition\n        SET name = $4, from_status_id = $5, to_status_id = $6, rules = coalesce($7, rules),\n            screen_id = CASE WHEN $8 THEN $9 ELSE screen_id END, version = version + 1\n        WHERE version_id = $1 AND item_id = $2 AND ($3::bigint[] IS NULL OR version = ANY($3))\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Int8Array",
+        "Jsonb",
+        "Uuid",
+        "Uuid",
+        "Jsonb",
+        "Bool",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1be727a96eb2caeee13bf12b4cc6eb72d049461da9e56598d631d62dd00e15cd"
+}
