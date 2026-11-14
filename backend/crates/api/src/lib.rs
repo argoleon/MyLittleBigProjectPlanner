@@ -25,6 +25,7 @@ pub mod members;
 pub mod mfa;
 pub mod middleware;
 pub mod nodes;
+pub mod notification_rules;
 pub mod openapi;
 pub mod pagination;
 pub mod permissions;

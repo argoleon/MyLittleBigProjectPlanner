@@ -31,6 +31,7 @@ use crate::me;
 use crate::members;
 use crate::mfa;
 use crate::nodes;
+use crate::notification_rules;
 use crate::openapi;
 use crate::platform;
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
@@ -148,6 +149,8 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
             config_fields::update,
             config_fields::delete
         ))
+        .routes(routes!(notification_rules::list))
+        .routes(routes!(notification_rules::update))
         .routes(routes!(screens::list, screens::create))
         .routes(routes!(screens::update, screens::delete))
         .routes(routes!(screens::resolved))

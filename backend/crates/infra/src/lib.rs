@@ -28,6 +28,7 @@ pub mod members;
 pub mod memberships;
 pub mod mfa;
 pub mod nodes;
+pub mod notification_rules;
 pub mod oidc;
 pub mod oidc_providers;
 pub mod pagination;

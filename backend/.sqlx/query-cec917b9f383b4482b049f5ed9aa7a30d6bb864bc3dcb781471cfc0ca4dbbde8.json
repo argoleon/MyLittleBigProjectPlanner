@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE notification_rule\n        SET recipient_kinds = $4, role_ids = $5, group_ids = $6, account_ids = $7, version = version + 1\n        WHERE version_id = $1 AND event = $2 AND ($3::bigint[] IS NULL OR version = ANY($3))\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int8Array",
+        "TextArray",
+        "UuidArray",
+        "UuidArray",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cec917b9f383b4482b049f5ed9aa7a30d6bb864bc3dcb781471cfc0ca4dbbde8"
+}

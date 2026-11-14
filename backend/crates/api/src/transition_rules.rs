@@ -362,6 +362,18 @@ pub(crate) async fn references<'a>(
             _ => None,
         }));
     }
+    named_references(tx, language, roles, groups, members).await
+}
+
+/// The roles, groups and members of the tenant among these, with their
+/// names: one deleted since is left out.
+pub(crate) async fn named_references(
+    tx: &mut TenantTx,
+    language: &Language,
+    roles: BTreeSet<Uuid>,
+    groups: BTreeSet<Uuid>,
+    members: BTreeSet<Uuid>,
+) -> Result<ReferencesView, Problem> {
     let list = |set: BTreeSet<Uuid>| set.into_iter().collect::<Vec<_>>();
     let named = |items: Vec<(Uuid, String)>| {
         items
