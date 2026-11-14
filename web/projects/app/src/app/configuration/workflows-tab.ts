@@ -24,6 +24,7 @@ import {
   errorTranslationKey,
   getProjectConfig,
   isApiProblem,
+  listFields,
   listIssueTypes,
   LocaleService,
   listWorkflows,
@@ -41,6 +42,7 @@ import {
   WorkflowDialogData,
 } from './workflow-dialogs';
 import { chipCategory } from './workflow-layout';
+import { Summary, conditionNames, postFunctionSummaries } from './transition-rules';
 
 /**
  * "Workflows" tab of a configuration (mockup 11, L04-US04): the workflows
@@ -61,7 +63,7 @@ export class WorkflowsTab {
   protected readonly context = inject(ConfigContext);
 
   protected readonly statusColumns = ['label', 'key', 'category', 'portal', 'actions'];
-  protected readonly transitionColumns = ['name', 'move', 'actions'];
+  protected readonly transitionColumns = ['name', 'move', 'rules', 'actions'];
   protected readonly configId = computed(() => this.context.config()?.id);
   protected readonly workflows = resource({
     params: () => this.configId(),
@@ -72,6 +74,13 @@ export class WorkflowsTab {
     loader: ({ params }) => this.api.invoke(listIssueTypes, { id: params }),
   });
   protected readonly items = computed(() => (this.workflows.hasValue() ? this.workflows.value().items : []));
+  /** The names of the roles, groups and members the transition rules name. */
+  private readonly references = computed(() => (this.workflows.hasValue() ? this.workflows.value().references : null));
+  private readonly fieldList = resource({
+    params: () => this.configId(),
+    loader: ({ params }) => this.api.invoke(listFields, { id: params }),
+  });
+  private readonly fields = computed(() => (this.fieldList.hasValue() ? this.fieldList.value().items : []));
   private readonly chosen = signal<string | null>(null);
   /** The workflow shown: the one chosen, else the first. */
   protected readonly selected = computed(() => this.items().find((w) => w.id === this.chosen()) ?? this.items()[0] ?? null);
@@ -89,6 +98,28 @@ export class WorkflowsTab {
       .filter((t) => workflow.issueTypeIds.includes(t.id))
       .map((t) => resolveLabel(t.labelTranslations, this.locale.language()))
       .join(', ');
+  }
+
+  /** Who may take `transition`, by name; empty: everyone. A role or group deleted since is said so. */
+  protected restrictedTo(transition: WorkflowTransition): string[] {
+    const { roles, groups } = conditionNames(transition.rules, this.references(), (labels) =>
+      resolveLabel(labels, this.locale.language()),
+    );
+    return [...roles, ...groups].map((name) => name ?? '');
+  }
+
+  /** The fields `transition` requires, by label. */
+  protected requiredFields(transition: WorkflowTransition): string[] {
+    return (transition.rules.validators ?? []).map((id) => this.fieldName(id));
+  }
+
+  protected postFunctions(transition: WorkflowTransition): Summary[] {
+    return postFunctionSummaries(transition.rules, this.references(), (id) => this.fieldName(id));
+  }
+
+  private fieldName(id: string | null | undefined): string {
+    const field = this.fields().find((f) => f.id === id);
+    return field ? resolveLabel(field.labelTranslations, this.locale.language()) : '';
   }
 
   protected statusLabel(workflow: Workflow, id: string | null): string {
@@ -121,8 +152,15 @@ export class WorkflowsTab {
   }
 
   protected editTransition(workflow: Workflow, transition?: WorkflowTransition): void {
-    const data: TransitionDialogData = { configId: this.configId()!, workflow, transition };
-    this.open(TransitionDialog, data, 'config.workflows.transition.saved');
+    const data: TransitionDialogData = {
+      configId: this.configId()!,
+      workflow,
+      transition,
+      fields: this.fields(),
+      references: this.references(),
+    };
+    // Its rules may name roles, groups or members the list does not name yet.
+    this.open(TransitionDialog, data, 'config.workflows.transition.saved', { width: 'min(720px, 100vw)', reload: true });
   }
 
   protected removeWorkflow(workflow: Workflow): void {
@@ -147,15 +185,21 @@ export class WorkflowsTab {
     );
   }
 
-  private open<C, D>(component: ComponentType<C>, data: D, noticeKey: string): void {
+  private open<C, D>(
+    component: ComponentType<C>,
+    data: D,
+    noticeKey: string,
+    options: { width?: string; reload?: boolean } = {},
+  ): void {
     this.dialog
-      .open<C, D, Workflow>(component, { data, width: 'min(560px, 100vw)', autoFocus: 'first-tabbable' })
+      .open<C, D, Workflow>(component, { data, width: options.width ?? 'min(560px, 100vw)', autoFocus: 'first-tabbable' })
       .afterClosed()
       .subscribe(async (saved) => {
         if (!saved) return;
         this.chosen.set(saved.id);
         this.notice.set({ ok: true, key: noticeKey, params: { name: resolveLabel(saved.labelTranslations, this.locale.language()) } });
         this.replace(saved);
+        if (options.reload) this.workflows.reload();
         await this.refreshConfig();
       });
   }
@@ -166,7 +210,7 @@ export class WorkflowsTab {
     const list: WorkflowList = this.workflows.value();
     const found = list.items.some((w) => w.id === saved.id);
     const items = found ? list.items.map((w) => (w.id === saved.id ? saved : w)) : [...list.items, saved];
-    this.workflows.set({ stage: 'draft', items });
+    this.workflows.set({ stage: 'draft', items, references: list.references });
   }
 
   /** Asks to confirm a removal; `base` is the prefix of its keys (`config.workflows.remove.`). */

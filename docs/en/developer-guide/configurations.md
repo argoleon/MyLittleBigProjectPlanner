@@ -35,7 +35,17 @@ Workflows (L04-US04: `infra::workflows`, `api::workflows`) hold statuses and tra
 - **Copies go workflows first, then types**: the types refer to the workflows of their version (`copy_content`), and the seed creates the standard workflow before the default types.
 - **A draft may be incomplete**: a new status before its transitions, no initial status for a moment. `domain::workflows::problems` lists what is missing (no status, no initial status, a status nothing leads to, a repeated transition); `GET …/workflows` returns it with each workflow, the publish impact lists it as `workflowProblems`, and publishing answers 409 `workflow.invalid` with each problem as a field error (`workflows.standard.statuses.in_review`).
 - **A removed status counts like a removed type**: the publish impact lists it with its tickets, and only statuses in use call for the migration wizard.
-- Conditions, validators and post-functions of transitions come with L04-US05, transition screens with US06.
+- Transition screens come with L04-US06.
+
+## Transition rules
+
+A transition carries its rules (L04-US05: `domain::transitions`, `infra::transition_rules`, `api::transition_rules`) in `workflow_transition.rules`, copied with the transition:
+
+- **Conditions**: roles and groups of the tenant. None: whoever may edit the ticket; otherwise one of the roles on the project, or one of the groups, is enough (`domain::transitions::allowed`). A role or group deleted since matches nobody, and the workflow list (`references`) no longer names it.
+- **Validators**: fields of the configuration that must hold a value.
+- **Post-functions**, in their order: assign (to whoever takes the transition, the reporter, a member, or nobody), set or clear a field, add a comment. A value set must fit its field (`domain::fields::validate_value`).
+- **`domain::transitions::evaluate`** is what tickets (L05) call: from the rules, a snapshot of the ticket and the actor, it returns why the transition is refused (not allowed; every required field missing) or the changes to apply in one transaction, in order.
+- Changing a transition without `rules` keeps them. A field removed from the draft leaves them (`infra::workflows::forget_field`). Configuration admins pick roles, groups and members from `GET /project-configs/transition-roles` and `/transition-candidates`.
 
 ## Fields
 

@@ -4231,6 +4231,142 @@
         }
       }
     },
+    "/api/v1/project-configs/transition-candidates": {
+      "get": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "Search the groups and members transition rules can name",
+        "description": "Tenant admins and configuration admins. The groups, then the active members of the tenant, whose name (or email) holds `search`, each by name: a condition names groups, the Assign post-function a member.",
+        "operationId": "listTransitionCandidates",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Part of the name (or of a member's email), any case.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "At most this many groups and this many members, from 1 to 50\n(default 10).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The candidates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GrantCandidate"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid `limit`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/project-configs/transition-roles": {
+      "get": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "List the roles a transition can be restricted to",
+        "description": "Tenant admins and configuration admins. Every role of the tenant, from the oldest.",
+        "operationId": "listTransitionRoles",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of the labels",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The roles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccessRole"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/project-configs/{id}": {
       "get": {
         "tags": [
@@ -5383,7 +5519,7 @@
           "configurations"
         ],
         "summary": "Remove a custom field from the draft of a configuration",
-        "description": "Tenant admins and configuration admins. From the draft, opened if needed, with its rules. System fields stay (`config_field.system`).",
+        "description": "Tenant admins and configuration admins. From the draft, opened if needed, with its rules, and from the validators and post-functions of the transitions. System fields stay (`config_field.system`).",
         "operationId": "deleteField",
         "parameters": [
           {
@@ -6707,7 +6843,7 @@
             }
           },
           "400": {
-            "description": "`validation_failed`; `fromId` or `toId` `not_found`",
+            "description": "`validation_failed`; `fromId` or `toId` `not_found`; `rules.…` `not_found`, `duplicate`, `required`, `not_applicable`, `unknown_member` or a value code",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -11120,6 +11256,16 @@
           "external"
         ]
       },
+      "AssignTarget": {
+        "type": "string",
+        "description": "Whom the Assign post-function assigns the ticket to.",
+        "enum": [
+          "current_user",
+          "reporter",
+          "member",
+          "nobody"
+        ]
+      },
       "AuthPolicy": {
         "type": "object",
         "description": "Authentication policy of the tenant.",
@@ -12749,6 +12895,23 @@
           }
         }
       },
+      "NamedRef": {
+        "type": "object",
+        "description": "A group or a member the rules name.",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
       "NewConfigField": {
         "type": "object",
         "description": "A new custom field.",
@@ -14125,6 +14288,16 @@
           }
         }
       },
+      "PostFunctionKind": {
+        "type": "string",
+        "description": "What a post-function does.",
+        "enum": [
+          "assign",
+          "set_field",
+          "clear_field",
+          "add_comment"
+        ]
+      },
       "Problem": {
         "type": "object",
         "description": "Body of every error response (`application/problem+json`).",
@@ -15090,6 +15263,132 @@
           }
         }
       },
+      "TransitionConditions": {
+        "type": "object",
+        "description": "Who may take a transition: anyone when both lists are empty, otherwise\nwhoever has one of the roles on the project or belongs to one of the\ngroups.",
+        "properties": {
+          "groupIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "roleIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "TransitionPostFunction": {
+        "type": "object",
+        "description": "One post-function; each kind takes its own properties.",
+        "required": [
+          "kind"
+        ],
+        "properties": {
+          "accountId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "`assign` to a `member` only: their account."
+          },
+          "assignTo": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AssignTarget",
+                "description": "`assign` only."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fieldId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "`set_field` and `clear_field`: a field of the configuration."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PostFunctionKind"
+          },
+          "text": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`add_comment`: 2,000 characters at most."
+          },
+          "value": {
+            "description": "`set_field`: a value that fits the field, as on a ticket."
+          }
+        },
+        "additionalProperties": false
+      },
+      "TransitionRuleReferences": {
+        "type": "object",
+        "description": "What the rules of the transitions name, with their names: a role, a\ngroup or a member missing here was deleted since, and matches nobody.",
+        "required": [
+          "roles",
+          "groups",
+          "members"
+        ],
+        "properties": {
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NamedRef"
+            }
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NamedRef"
+            },
+            "description": "By account."
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccessRole"
+            }
+          }
+        }
+      },
+      "TransitionRules": {
+        "type": "object",
+        "description": "The rules of a transition.",
+        "properties": {
+          "conditions": {
+            "$ref": "#/components/schemas/TransitionConditions"
+          },
+          "postFunctions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransitionPostFunction"
+            },
+            "description": "Run in their order, in the transaction of the transition."
+          },
+          "validators": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Fields of the configuration that must hold a value."
+          }
+        },
+        "additionalProperties": false
+      },
       "VeiledHierarchyNode": {
         "type": "object",
         "description": "A confidential project the member has no access to, as a row of the\ntree: its planned load, without name or detail.",
@@ -15277,7 +15576,8 @@
         "description": "The workflows of a configuration, in their order.",
         "required": [
           "stage",
-          "items"
+          "items",
+          "references"
         ],
         "properties": {
           "items": {
@@ -15285,6 +15585,10 @@
             "items": {
               "$ref": "#/components/schemas/Workflow"
             }
+          },
+          "references": {
+            "$ref": "#/components/schemas/TransitionRuleReferences",
+            "description": "The roles, groups and members the rules of the transitions name."
           },
           "stage": {
             "$ref": "#/components/schemas/WorkflowStage"
@@ -15419,6 +15723,7 @@
           "nameTranslations",
           "fromId",
           "toId",
+          "rules",
           "version"
         ],
         "properties": {
@@ -15443,6 +15748,10 @@
           },
           "nameTranslations": {
             "$ref": "#/components/schemas/BTreeMap"
+          },
+          "rules": {
+            "$ref": "#/components/schemas/TransitionRules",
+            "description": "Who may take it, the fields it requires, what it does."
           },
           "toId": {
             "type": "string",
@@ -15473,6 +15782,17 @@
           },
           "nameTranslations": {
             "$ref": "#/components/schemas/BTreeMap"
+          },
+          "rules": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TransitionRules",
+                "description": "Its conditions, validators and post-functions; left out, they stay as\nthey are (none for a new transition)."
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "toId": {
             "type": "string",

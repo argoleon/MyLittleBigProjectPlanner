@@ -415,7 +415,17 @@
       "not_a_permutation": "Chaque élément doit figurer une fois.",
       "not_applicable": "Indisponible pour ce type.",
       "less_than_min": "Le maximum est inférieur au minimum.",
-      "duplicate": "Cette valeur apparaît deux fois."
+      "duplicate": "Cette valeur apparaît deux fois.",
+      "wrong_type": "Cette valeur ne convient pas au champ.",
+      "too_many_decimals": "Trop de décimales.",
+      "invalid_date": "Date invalide.",
+      "invalid_date_time": "Date et heure invalides.",
+      "invalid_url": "Adresse web invalide.",
+      "invalid_label": "Une étiquette n’a pas d’espace.",
+      "invalid_id": "Identifiant invalide.",
+      "unknown_value": "Pas une valeur de cette liste.",
+      "inactive_value": "Cette valeur est désactivée.",
+      "not_a_child": "Cette valeur n’est pas sous la première."
     },
     "invitation": {
       "invalid": "Ce lien d’invitation est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
@@ -1175,6 +1185,65 @@
           "message": "Les tickets ne pourront plus la prendre.",
           "confirm": "Retirer",
           "done": "Transition « {{name}} » retirée du brouillon."
+        }
+      },
+      "rules": {
+        "column": "Règles",
+        "conditions": "Qui peut la prendre",
+        "conditionsHint": "Aucun rôle ni groupe : quiconque peut modifier le ticket. Sinon, un des rôles sur le projet ou un des groupes suffit.",
+        "roles": "Rôles",
+        "groupsChosen": "Groupes qui peuvent la prendre",
+        "deletedGroup": "Groupe supprimé",
+        "deleted": "supprimé",
+        "removeGroup": "Retirer le groupe {{name}}",
+        "addGroup": "Ajouter un groupe",
+        "validators": "Champs obligatoires",
+        "requiredFields": "Champs à renseigner",
+        "validatorsHint": "La transition est refusée, en les nommant, tant que l’un est vide.",
+        "postFunctions": "Post-fonctions",
+        "postFunctionsHint": "Exécutées dans cet ordre quand la transition est prise.",
+        "kind": "Post-fonction {{position}}",
+        "kinds": {
+          "assign": "Assigner le ticket",
+          "set_field": "Renseigner un champ",
+          "clear_field": "Vider un champ",
+          "add_comment": "Ajouter un commentaire"
+        },
+        "moveUp": "Monter la post-fonction {{position}}",
+        "moveDown": "Descendre la post-fonction {{position}}",
+        "remove": "Retirer la post-fonction {{position}}",
+        "assignTo": "Assigner à",
+        "targets": {
+          "current_user": "Qui prend la transition",
+          "reporter": "Le rapporteur",
+          "member": "Un membre",
+          "nobody": "Personne (désassigner)"
+        },
+        "member": "Membre",
+        "memberRequired": "Choisissez un membre.",
+        "field": "Champ",
+        "settableHint": "Les champs dont la valeur peut être saisie ici.",
+        "checked": "Coché",
+        "value": "Valeur",
+        "labelsHint": "Séparées par des virgules ou des espaces.",
+        "comment": "Commentaire",
+        "fieldRequired": "Choisissez un champ.",
+        "commentRequired": "Rédigez le commentaire.",
+        "add": "Ajouter une post-fonction",
+        "summary": {
+          "restricted": "Seulement :",
+          "requires": "Exige {{fields}}",
+          "none": "Ouverte à tous",
+          "assign": {
+            "current_user": "Assigne à qui la prend",
+            "reporter": "Assigne au rapporteur",
+            "member": "Assigne à un membre",
+            "nobody": "Désassigne"
+          },
+          "assignMember": "Assigne à {{name}}",
+          "set": "Renseigne {{field}}",
+          "clear": "Vide {{field}}",
+          "comment": "Ajoute un commentaire"
         }
       }
     }

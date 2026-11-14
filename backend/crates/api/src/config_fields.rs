@@ -908,7 +908,8 @@ fn trimmed(labels: &BTreeMap<String, String>) -> BTreeMap<String, String> {
     operation_id = "deleteField",
     summary = "Remove a custom field from the draft of a configuration",
     description = "Tenant admins and configuration admins. From the draft, opened if needed, with \
-                   its rules. System fields stay (`config_field.system`).",
+                   its rules, and from the validators and post-functions of the transitions. System \
+                   fields stay (`config_field.system`).",
     params(
         ("id" = Uuid, Path, description = "Id of the configuration"),
         ("fieldId" = Uuid, Path, description = "Id of the field"),
@@ -942,6 +943,14 @@ pub async fn delete(
         .await?
         .map_err(conflict_problem)?;
     changed(&mut tx, draft, item).await?;
+    // The transition rules that named it no longer do.
+    for workflow in infra::workflows::forget_field(&mut tx, draft, item).await? {
+        let workflow = Item {
+            kind: ItemKind::Workflow,
+            id: workflow.as_u128(),
+        };
+        configs_repo::record_change(&mut tx, draft, workflow).await?;
+    }
     tx.commit().await?;
     Ok(StatusCode::NO_CONTENT)
 }

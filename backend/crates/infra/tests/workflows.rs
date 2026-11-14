@@ -3,7 +3,8 @@
 //! configuration, followed by its types; copies into a draft keeping
 //! identities, a workflow duplicated with identities of its own; unique
 //! identifiers; one initial status; a status removed with its transitions;
-//! the statuses a draft removes; tenant isolation.
+//! the statuses a draft removes; tenant isolation; transition rules kept in
+//! copies, leaving a removed field (L04-US05).
 
 #![allow(clippy::unwrap_used)]
 
@@ -253,6 +254,7 @@ async fn statuses_are_added_changed_and_removed_with_their_transitions() {
         standard,
         new_id(),
         &TransitionFields {
+            rules: None,
             name_translations: &name,
             from_status_id: None,
             to_status_id: blocked,
@@ -388,4 +390,113 @@ async fn workflows_stay_in_their_tenant() {
     let foreign =
         workflows::insert_workflow(&mut tx, published, new_id(), "stolen", &labels("Volé", "Stolen")).await;
     assert!(foreign.is_err());
+}
+
+/// The field `key` of `version`.
+async fn field(conn: &mut PgConnection, version: Uuid, key: &str) -> Uuid {
+    infra::fields::list(conn, version)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|field| field.key == key)
+        .unwrap()
+        .item_id
+}
+
+#[tokio::test]
+async fn transition_rules_are_kept_in_copies_and_leave_a_removed_field() {
+    use domain::fields::Value;
+    use domain::transitions::{AssignTo, Condition, PostFunction, Rules};
+
+    let db = TestDb::new().await;
+    let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+    let (id, published) = config(&mut tx, "Software").await;
+    let all = workflows::load(&mut tx, published).await.unwrap();
+    let standard = all.workflows[0].item_id;
+    let start = all.transitions[0].clone();
+    assert_eq!(start.rules, Rules::default(), "no rules at first");
+    let points = field(&mut tx, published, "story_points").await;
+    let remaining = field(&mut tx, published, "remaining").await;
+    let rules = Rules {
+        condition: Condition {
+            roles: vec![1],
+            groups: vec![2],
+        },
+        validators: vec![remaining.as_u128(), points.as_u128()],
+        post_functions: vec![
+            PostFunction::Assign(AssignTo::CurrentUser),
+            PostFunction::SetField {
+                field: points.as_u128(),
+                value: Value::Number(3.0),
+            },
+            PostFunction::AddComment {
+                text: "Started".into(),
+            },
+        ],
+    };
+    let set = |rules| TransitionFields {
+        rules,
+        name_translations: &start.name_translations,
+        from_status_id: start.from_status_id,
+        to_status_id: start.to_status_id,
+    };
+    workflows::update_transition(&mut tx, published, start.item_id, None, &set(Some(&rules)))
+        .await
+        .unwrap()
+        .unwrap();
+    // Changed without its rules: they stay.
+    workflows::update_transition(&mut tx, published, start.item_id, None, &set(None))
+        .await
+        .unwrap()
+        .unwrap();
+    let rules_of =
+        |all: &Workflows, workflow: Uuid| all.transitions_of(workflow).next().unwrap().rules.clone();
+    assert_eq!(
+        rules_of(&workflows::load(&mut tx, published).await.unwrap(), standard),
+        rules
+    );
+
+    // Into a draft, and a workflow duplicated there.
+    let draft = configs::open_draft(&mut tx, id, None)
+        .await
+        .unwrap()
+        .unwrap()
+        .draft
+        .unwrap()
+        .id;
+    assert_eq!(
+        rules_of(&workflows::load(&mut tx, draft).await.unwrap(), standard),
+        rules
+    );
+    let copy = new_id();
+    workflows::duplicate_workflow(&mut tx, draft, standard, copy, "copy", &labels("Copie", "Copy"))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        rules_of(&workflows::load(&mut tx, draft).await.unwrap(), copy),
+        rules
+    );
+
+    // Points leaves the draft: its validator and its post-function go.
+    let mut changed = workflows::forget_field(&mut tx, draft, points).await.unwrap();
+    changed.sort_unstable();
+    let mut expected = vec![standard, copy];
+    expected.sort_unstable();
+    assert_eq!(changed, expected);
+    let after = rules_of(&workflows::load(&mut tx, draft).await.unwrap(), standard);
+    assert_eq!(after.validators, [remaining.as_u128()]);
+    assert_eq!(after.post_functions.len(), 2);
+    assert_eq!(after.condition, rules.condition);
+    assert!(
+        workflows::forget_field(&mut tx, draft, points)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    // The published version keeps them.
+    assert_eq!(
+        rules_of(&workflows::load(&mut tx, published).await.unwrap(), standard),
+        rules
+    );
 }

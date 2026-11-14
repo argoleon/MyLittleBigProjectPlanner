@@ -58,6 +58,7 @@ const transition = (id: string, en: string, fromId: string | null, toId: string)
   nameTranslations: { en },
   fromId,
   toId,
+  rules: { conditions: { roleIds: [], groupIds: [] }, validators: [], postFunctions: [] },
   version: 1,
 });
 
@@ -334,7 +335,13 @@ describe('WorkflowsTab', () => {
     await choose(1, 'In review');
     await click(dialog().querySelector('button.confirm'));
     const created = await reply((url, method) => url.endsWith('/workflows/w1/transitions') && method === 'POST', STANDARD, 201);
-    expect(created.request.body).toEqual({ nameTranslations: { fr: 'Bloquer', en: 'Block' }, fromId: null, toId: 's3' });
+    expect(created.request.body).toEqual({
+      nameTranslations: { fr: 'Bloquer', en: 'Block' },
+      fromId: null,
+      toId: 's3',
+      // No rules yet (L04-US05).
+      rules: { conditions: { roleIds: [], groupIds: [] }, validators: [], postFunctions: [] },
+    });
     expect(created.request.headers.get('Idempotency-Key')).toBeTruthy();
   });
 

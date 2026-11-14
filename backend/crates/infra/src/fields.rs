@@ -6,7 +6,7 @@
 
 use std::collections::BTreeMap;
 
-use domain::fields::{Kind, ListValue, Mode, Options, Rule, Step, Unit};
+use domain::fields::{Kind, ListValue, Mode, Options, Rule, Step, Unit, Value};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgConnection;
 use sqlx::types::Json;
@@ -173,6 +173,32 @@ impl RuleRow {
                 Mode::Hidden
             },
         }
+    }
+}
+
+/// A value as JSON holds it, for a field; none for an object, which no
+/// field takes.
+pub fn value_of(json: &serde_json::Value) -> Option<Value> {
+    Some(match json {
+        serde_json::Value::Null => Value::Null,
+        serde_json::Value::Bool(b) => Value::Bool(*b),
+        serde_json::Value::Number(n) => Value::Number(n.as_f64()?),
+        serde_json::Value::String(s) => Value::Text(s.clone()),
+        serde_json::Value::Array(items) => Value::List(items.iter().map(value_of).collect::<Option<_>>()?),
+        serde_json::Value::Object(_) => return None,
+    })
+}
+
+/// The JSON of a value.
+pub fn json_of(value: &Value) -> serde_json::Value {
+    match value {
+        Value::Null => serde_json::Value::Null,
+        Value::Bool(b) => serde_json::Value::Bool(*b),
+        Value::Number(n) => {
+            serde_json::Number::from_f64(*n).map_or(serde_json::Value::Null, serde_json::Value::Number)
+        }
+        Value::Text(s) => serde_json::Value::String(s.clone()),
+        Value::List(items) => serde_json::Value::Array(items.iter().map(json_of).collect()),
     }
 }
 
@@ -515,5 +541,24 @@ mod tests {
         assert_eq!(erp.labels["fr"], "ERP", "labels are trimmed");
         assert!(!erp.active && erp.children[0].active);
         assert_eq!(back.unit, Some(Unit::Hours));
+    }
+
+    #[test]
+    fn values_convert_from_and_to_json() {
+        let json = serde_json::json!(["a", 1.5, true, null, []]);
+        let value = value_of(&json).unwrap();
+        assert_eq!(
+            value,
+            Value::List(vec![
+                Value::Text("a".into()),
+                Value::Number(1.5),
+                Value::Bool(true),
+                Value::Null,
+                Value::List(Vec::new())
+            ])
+        );
+        assert_eq!(json_of(&value), json);
+        assert_eq!(value_of(&serde_json::json!({"a": 1})), None);
+        assert_eq!(value_of(&serde_json::json!([{"a": 1}])), None);
     }
 }

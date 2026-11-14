@@ -135,6 +135,38 @@
                   {{ statusLabel(workflow, transition.toId) }}
                 </td>
               </ng-container>
+              <ng-container matColumnDef="rules">
+                <th mat-header-cell *matHeaderCellDef scope="col">{{ 'config.workflows.rules.column' | transloco }}</th>
+                <td mat-cell *matCellDef="let transition" class="rules">
+                  @let restricted = restrictedTo(transition);
+                  @let required = requiredFields(transition);
+                  @let posts = postFunctions(transition);
+                  @if (restricted.length > 0) {
+                    <span class="rule">
+                      <mat-icon aria-hidden="true">lock</mat-icon>
+                      {{ 'config.workflows.rules.summary.restricted' | transloco }}
+                      @for (name of restricted; track $index; let last = $last) {
+                        {{ name || ('config.workflows.rules.deleted' | transloco) }}{{ last ? '' : ', ' }}
+                      }
+                    </span>
+                  }
+                  @if (required.length > 0) {
+                    <span class="rule">
+                      <mat-icon aria-hidden="true">rule</mat-icon>
+                      {{ 'config.workflows.rules.summary.requires' | transloco: { fields: required.join(', ') } }}
+                    </span>
+                  }
+                  @for (post of posts; track $index) {
+                    <span class="rule">
+                      <mat-icon aria-hidden="true">bolt</mat-icon>
+                      {{ post.key | transloco: post.params }}
+                    </span>
+                  }
+                  @if (restricted.length === 0 && required.length === 0 && posts.length === 0) {
+                    <span class="none">{{ 'config.workflows.rules.summary.none' | transloco }}</span>
+                  }
+                </td>
+              </ng-container>
               <ng-container matColumnDef="actions">
                 <th mat-header-cell *matHeaderCellDef scope="col"><span class="cdk-visually-hidden">{{ 'config.types.columns.actions' | transloco }}</span></th>
                 <td mat-cell *matCellDef="let transition" class="actions">

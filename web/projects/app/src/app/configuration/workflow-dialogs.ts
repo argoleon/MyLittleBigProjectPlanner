@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, resource, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -9,6 +9,8 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { TranslocoPipe } from '@jsverse/transloco';
 import {
   Api,
+  ConfigField,
+  TransitionRuleReferences,
   TranslatableInput,
   TranslatedPipe,
   Workflow,
@@ -18,6 +20,7 @@ import {
   createWorkflow,
   createWorkflowStatus,
   createWorkflowTransition,
+  listTransitionRoles,
   translationsForm,
   translationsValue,
   updateWorkflow,
@@ -26,6 +29,8 @@ import {
 } from 'ui';
 
 import { placeApiErrors } from './form-errors';
+import { TransitionRulesEditor } from './transition-rules-editor';
+import { placeRuleErrors, rulesForm, rulesValue } from './transition-rules';
 
 /** A key: a lowercase letter, then lowercase letters, digits or underscores. */
 export const KEY_PATTERN = /^[a-z][a-z0-9_]{0,39}$/;
@@ -244,12 +249,29 @@ export interface TransitionDialogData {
   readonly configId: string;
   readonly workflow: Workflow;
   readonly transition?: WorkflowTransition;
+  /** The fields of the configuration, for the rules. */
+  readonly fields: readonly ConfigField[];
+  /** The names of the roles, groups and members the rules name. */
+  readonly references: TransitionRuleReferences | null;
 }
 
-/** Adds or changes a transition: its name, from a status or from all, to a status. Closes with its workflow. */
+/**
+ * Adds or changes a transition: its name, from a status or from all, to a
+ * status, and its rules (L04-US05). Closes with its workflow.
+ */
 @Component({
   selector: 'app-transition-dialog',
-  imports: [MatButtonModule, MatDialogModule, MatFormFieldModule, MatSelectModule, ReactiveFormsModule, TranslatableInput, TranslatedPipe, TranslocoPipe],
+  imports: [
+    MatButtonModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    ReactiveFormsModule,
+    TransitionRulesEditor,
+    TranslatableInput,
+    TranslatedPipe,
+    TranslocoPipe,
+  ],
   styleUrl: './config-dialog.scss',
   template: `
     <h2 mat-dialog-title>{{ (data.transition ? 'config.workflows.transition.editTitle' : 'config.workflows.transition.newTitle') | transloco }}</h2>
@@ -277,6 +299,7 @@ export interface TransitionDialogData {
           </mat-select>
           <mat-error>{{ (form.controls.toId.getError('api') ?? 'errors.field.required') | transloco }}</mat-error>
         </mat-form-field>
+        <app-transition-rules [form]="form.controls.rules" [roles]="roles()" [fields]="data.fields" />
       </mat-dialog-content>
       <mat-dialog-actions align="end">
         <button matButton type="button" mat-dialog-close>{{ 'dialog.cancel' | transloco }}</button>
@@ -298,7 +321,11 @@ export class TransitionDialog {
     nameTranslations: translationsForm(this.data.transition?.nameTranslations ?? {}, { maxLength: 60 }),
     fromId: new FormControl<string>(this.data.transition?.fromId ?? ANY_STATUS, { nonNullable: true }),
     toId: new FormControl<string | null>(this.data.transition?.toId ?? null, { validators: Validators.required }),
+    rules: rulesForm(this.data.transition?.rules, this.data.references, this.data.fields),
   });
+  private readonly roleList = resource({ loader: () => this.api.invoke(listTransitionRoles, {}) });
+  /** The roles a transition can be restricted to. */
+  protected readonly roles = computed(() => (this.roleList.hasValue() ? this.roleList.value() : []));
   protected readonly saving = signal(false);
   protected readonly errorKey = signal<string | null>(null);
 
@@ -314,6 +341,7 @@ export class TransitionDialog {
       nameTranslations: translationsValue(this.form.controls.nameTranslations),
       fromId: fromId === ANY_STATUS ? null : fromId,
       toId: toId!,
+      rules: rulesValue(this.form.controls.rules, this.data.fields),
     };
     try {
       const transition = this.data.transition;
@@ -332,7 +360,8 @@ export class TransitionDialog {
           });
       this.dialogRef.close(saved);
     } catch (error) {
-      this.errorKey.set(placeApiErrors(error, this.form.controls));
+      const left = placeApiErrors(error, this.form.controls);
+      this.errorKey.set(placeRuleErrors(error, this.form.controls.rules) ? null : left);
     } finally {
       this.saving.set(false);
     }

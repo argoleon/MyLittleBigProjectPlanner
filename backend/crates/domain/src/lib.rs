@@ -23,6 +23,7 @@ pub mod permissions;
 pub mod reference_item;
 pub mod tenancy;
 pub mod tenant;
+pub mod transitions;
 pub mod validation;
 pub mod workflows;
 

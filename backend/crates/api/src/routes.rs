@@ -38,6 +38,7 @@ use crate::reference_items;
 use crate::roles;
 use crate::sso;
 use crate::tenant::{AppState, PublicTenantTx};
+use crate::transition_rules;
 use crate::workflows;
 
 /// OpenAPI tag of the technical endpoints.
@@ -146,6 +147,8 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
             config_fields::update,
             config_fields::delete
         ))
+        .routes(routes!(transition_rules::roles))
+        .routes(routes!(transition_rules::candidates))
         .routes(routes!(workflows::list, workflows::create))
         .routes(routes!(workflows::update, workflows::delete))
         .routes(routes!(workflows::create_status))

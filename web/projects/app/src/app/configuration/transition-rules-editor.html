@@ -1,0 +1,229 @@
+<div class="rules" [formGroup]="form()">
+  <fieldset class="section">
+    <legend class="section-title">{{ 'config.workflows.rules.conditions' | transloco }}</legend>
+    <p class="hint">{{ 'config.workflows.rules.conditionsHint' | transloco }}</p>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'config.workflows.rules.roles' | transloco }}</mat-label>
+      <mat-select formControlName="roleIds" multiple>
+        @for (role of roles(); track role.id) {
+          <mat-option [value]="role.id">{{ role.labelTranslations | translated }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    @if (form().controls.groups.value.length > 0) {
+      <mat-chip-set [attr.aria-label]="'config.workflows.rules.groupsChosen' | transloco">
+        @for (group of form().controls.groups.value; track group.id) {
+          <mat-chip (removed)="removeGroup(group)">
+            {{ group.name || ('config.workflows.rules.deletedGroup' | transloco) }}
+            <button matChipRemove type="button" [attr.aria-label]="'config.workflows.rules.removeGroup' | transloco: { name: group.name }">
+              <mat-icon aria-hidden="true">cancel</mat-icon>
+            </button>
+          </mat-chip>
+        }
+      </mat-chip-set>
+    }
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'config.workflows.rules.addGroup' | transloco }}</mat-label>
+      <input
+        #groupInput
+        matInput
+        class="group-search"
+        autocomplete="off"
+        [matAutocomplete]="groupAuto"
+        (input)="search(groupInput.value, 'group')"
+        (focus)="search(groupInput.value, 'group')"
+      />
+      <mat-autocomplete #groupAuto="matAutocomplete" (optionSelected)="addGroup($event, groupInput)">
+        @for (group of groupOptions(); track group.id) {
+          <mat-option [value]="group">{{ group.name }}</mat-option>
+        }
+      </mat-autocomplete>
+    </mat-form-field>
+  </fieldset>
+
+  <fieldset class="section">
+    <legend class="section-title">{{ 'config.workflows.rules.validators' | transloco }}</legend>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'config.workflows.rules.requiredFields' | transloco }}</mat-label>
+      <mat-select formControlName="validators" multiple>
+        @for (field of fields(); track field.id) {
+          <mat-option [value]="field.id">{{ field.labelTranslations | translated }}</mat-option>
+        }
+      </mat-select>
+      <mat-hint>{{ 'config.workflows.rules.validatorsHint' | transloco }}</mat-hint>
+    </mat-form-field>
+  </fieldset>
+
+  <fieldset class="section">
+    <legend class="section-title">{{ 'config.workflows.rules.postFunctions' | transloco }}</legend>
+    <p class="hint">{{ 'config.workflows.rules.postFunctionsHint' | transloco }}</p>
+    <ol class="posts">
+      @for (post of form().controls.postFunctions.controls; track post; let i = $index; let count = $count) {
+        <li class="post" [formGroup]="post">
+          <div class="post-header">
+            <span class="number">{{ i + 1 }}</span>
+            <mat-form-field appearance="outline" class="kind" subscriptSizing="dynamic">
+              <mat-label>{{ 'config.workflows.rules.kind' | transloco: { position: i + 1 } }}</mat-label>
+              <mat-select formControlName="kind">
+                @for (kind of kinds; track kind) {
+                  <mat-option [value]="kind">{{ 'config.workflows.rules.kinds.' + kind | transloco }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <button
+              matIconButton
+              type="button"
+              class="up"
+              [disabled]="i === 0"
+              (click)="move(i, i - 1)"
+              [attr.aria-label]="'config.workflows.rules.moveUp' | transloco: { position: i + 1 }"
+            >
+              <mat-icon aria-hidden="true">arrow_upward</mat-icon>
+            </button>
+            <button
+              matIconButton
+              type="button"
+              class="down"
+              [disabled]="i === count - 1"
+              (click)="move(i, i + 1)"
+              [attr.aria-label]="'config.workflows.rules.moveDown' | transloco: { position: i + 1 }"
+            >
+              <mat-icon aria-hidden="true">arrow_downward</mat-icon>
+            </button>
+            <button
+              matIconButton
+              type="button"
+              class="remove-post"
+              (click)="remove(i)"
+              [attr.aria-label]="'config.workflows.rules.remove' | transloco: { position: i + 1 }"
+            >
+              <mat-icon aria-hidden="true">delete</mat-icon>
+            </button>
+          </div>
+          @switch (post.controls.kind.value) {
+            @case ('assign') {
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'config.workflows.rules.assignTo' | transloco }}</mat-label>
+                <mat-select formControlName="assignTo">
+                  @for (target of targets; track target) {
+                    <mat-option [value]="target">{{ 'config.workflows.rules.targets.' + target | transloco }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              @if (post.controls.assignTo.value === 'member') {
+                <mat-form-field appearance="outline">
+                  <mat-label>{{ 'config.workflows.rules.member' | transloco }}</mat-label>
+                  <input
+                    #memberInput
+                    matInput
+                    class="member-search"
+                    autocomplete="off"
+                    [value]="memberName(post.controls.member.value)"
+                    [matAutocomplete]="memberAuto"
+                    (input)="post.controls.member.setValue(null); search(memberInput.value, 'member')"
+                    (focus)="search(memberInput.value, 'member')"
+                  />
+                  <mat-autocomplete #memberAuto="matAutocomplete" [displayWith]="memberName" (optionSelected)="chooseMember(post, $event)">
+                    @for (member of memberOptions(); track member.id) {
+                      <mat-option [value]="member">{{ member.name }} · {{ member.email }}</mat-option>
+                    }
+                  </mat-autocomplete>
+                  @if (post.controls.member.getError('api'); as key) {
+                    <mat-hint class="error-hint">{{ key | transloco }}</mat-hint>
+                  } @else if (post.hasError('member') && post.touched) {
+                    <mat-hint class="error-hint">{{ 'config.workflows.rules.memberRequired' | transloco }}</mat-hint>
+                  }
+                </mat-form-field>
+              }
+            }
+            @case ('set_field') {
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'config.workflows.rules.field' | transloco }}</mat-label>
+                <mat-select formControlName="fieldId" (selectionChange)="fieldChanged(post)">
+                  @for (field of settable(); track field.id) {
+                    <mat-option [value]="field.id">{{ field.labelTranslations | translated }}</mat-option>
+                  }
+                </mat-select>
+                <mat-hint>{{ 'config.workflows.rules.settableHint' | transloco }}</mat-hint>
+              </mat-form-field>
+              @switch (inputOf(post)) {
+                @case ('checkbox') {
+                  <mat-slide-toggle formControlName="value">{{ 'config.workflows.rules.checked' | transloco }}</mat-slide-toggle>
+                }
+                @case ('select') {
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ 'config.workflows.rules.value' | transloco }}</mat-label>
+                    <mat-select formControlName="value">
+                      @for (value of valuesOf(post); track value.id) {
+                        <mat-option [value]="value.id">{{ value.labelTranslations | translated }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                }
+                @case ('multi') {
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ 'config.workflows.rules.value' | transloco }}</mat-label>
+                    <mat-select formControlName="value" multiple>
+                      @for (value of valuesOf(post); track value.id) {
+                        <mat-option [value]="value.id">{{ value.labelTranslations | translated }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                }
+                @case ('long_text') {
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ 'config.workflows.rules.value' | transloco }}</mat-label>
+                    <textarea matInput formControlName="value" rows="3"></textarea>
+                  </mat-form-field>
+                }
+                @case (null) {}
+                @default {
+                  @let kind = inputOf(post);
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ 'config.workflows.rules.value' | transloco }}</mat-label>
+                    <input matInput formControlName="value" class="value" [type]="kind === 'number' || kind === 'date' ? kind : 'text'" />
+                    @if (kind === 'labels') {
+                      <mat-hint>{{ 'config.workflows.rules.labelsHint' | transloco }}</mat-hint>
+                    }
+                  </mat-form-field>
+                }
+              }
+              @if (post.controls.value.getError('api'); as key) {
+                <p class="error-text" role="alert">{{ key | transloco }}</p>
+              }
+            }
+            @case ('clear_field') {
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'config.workflows.rules.field' | transloco }}</mat-label>
+                <mat-select formControlName="fieldId">
+                  @for (field of fields(); track field.id) {
+                    <mat-option [value]="field.id">{{ field.labelTranslations | translated }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            }
+            @case ('add_comment') {
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'config.workflows.rules.comment' | transloco }}</mat-label>
+                <textarea matInput formControlName="text" rows="3" [attr.maxlength]="commentMax"></textarea>
+                @if (post.controls.text.getError('api'); as key) {
+                  <mat-hint class="error-hint">{{ key | transloco }}</mat-hint>
+                }
+              </mat-form-field>
+            }
+          }
+          @if (post.hasError('field') && post.touched) {
+            <p class="error-text">{{ 'config.workflows.rules.fieldRequired' | transloco }}</p>
+          }
+          @if (post.hasError('text') && post.touched) {
+            <p class="error-text">{{ 'config.workflows.rules.commentRequired' | transloco }}</p>
+          }
+        </li>
+      }
+    </ol>
+    <button matButton type="button" class="add-post" (click)="add()">
+      <mat-icon aria-hidden="true">add</mat-icon>
+      {{ 'config.workflows.rules.add' | transloco }}
+    </button>
+  </fieldset>
+</div>
