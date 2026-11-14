@@ -909,9 +909,7 @@
         "tab": "Screens"
       },
       "notifications": {
-        "tab": "Notifications",
-        "title": "Notifications come next",
-        "hint": "Which events notify whom will be defined here."
+        "tab": "Notifications"
       }
     },
     "projects": {
@@ -1304,6 +1302,44 @@
         "message": "It leaves the draft. The type it was for uses the general screen again.",
         "confirm": "Remove"
       }
+    },
+    "notifications": {
+      "intro": "For each ticket event, whom it notifies on the projects using this configuration. Whoever makes a change is never notified of it; each member can mute events in their own preferences.",
+      "caption": "Notification rules, by event",
+      "columns": {
+        "event": "Event",
+        "recipients": "Notifies",
+        "actions": "Actions"
+      },
+      "events": {
+        "created": "Ticket created",
+        "assigned": "Ticket assigned",
+        "status_changed": "Status changed",
+        "commented": "Comment added",
+        "mentioned": "Someone mentioned"
+      },
+      "kinds": {
+        "reporter": "Reporter",
+        "assignee": "Assignee",
+        "watchers": "Watchers",
+        "mentioned": "People mentioned"
+      },
+      "nobody": "Nobody",
+      "deleted": "Deleted",
+      "editOf": "Edit whom “{{event}}” notifies",
+      "editTitle": "Whom “{{event}}” notifies",
+      "authorNever": "Whoever makes the change is never notified of it.",
+      "people": "People of the ticket",
+      "roles": "Roles on the project",
+      "rolesHint": "Who holds them on the ticket's project, granted there or above.",
+      "groupsChosen": "Groups notified",
+      "addGroup": "Add a group",
+      "removeGroup": "Remove the group {{name}}",
+      "membersChosen": "Members notified",
+      "addMember": "Add a member",
+      "removeMember": "Remove {{name}}",
+      "save": "Save",
+      "saved": "Notifications of “{{event}}” saved in the draft."
     }
   }
 }

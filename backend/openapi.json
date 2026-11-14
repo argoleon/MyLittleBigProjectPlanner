@@ -6280,6 +6280,216 @@
         }
       }
     },
+    "/api/v1/project-configs/{id}/notification-rules": {
+      "get": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "List the notification rules of a configuration",
+        "description": "Tenant admins and configuration admins. One per event, in their order, with the names of the roles, groups and members they name (one deleted since is left out of `references`); from the draft if the configuration has one.",
+        "operationId": "listNotificationRules",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the configuration",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of the role labels",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Its rules",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationRuleList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such configuration in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/project-configs/{id}/notification-rules/{event}": {
+      "put": {
+        "tags": [
+          "configurations"
+        ],
+        "summary": "Change whom an event notifies, in the draft of a configuration",
+        "description": "Tenant admins and configuration admins. In the draft, opened if needed. Each recipient once; the people mentioned for `commented` and `mentioned` only; roles, groups and active members of the tenant.",
+        "operationId": "updateNotificationRule",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the configuration",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "event",
+            "in": "path",
+            "description": "The event",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/NotificationEvent"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the rule (its `version`), or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of the role labels",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationRecipients"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The rules",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationRuleList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`: `recipientKinds[…]` `duplicate` or `not_applicable`, `roleIds[…]` / `groupIds[…]` `not_found` or `duplicate`, `accountIds[…]` `unknown_member` or `duplicate`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such configuration in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The rule changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/project-configs/{id}/projects": {
       "get": {
         "tags": [
@@ -14668,6 +14878,119 @@
           "portfolio",
           "program",
           "project"
+        ]
+      },
+      "NotificationEvent": {
+        "type": "string",
+        "description": "A ticket event that notifies.",
+        "enum": [
+          "created",
+          "assigned",
+          "status_changed",
+          "commented",
+          "mentioned"
+        ]
+      },
+      "NotificationRecipientKind": {
+        "type": "string",
+        "description": "People of the ticket a rule notifies.",
+        "enum": [
+          "reporter",
+          "assignee",
+          "watchers",
+          "mentioned"
+        ]
+      },
+      "NotificationRecipients": {
+        "type": "object",
+        "description": "Whom an event notifies; nobody when every list is empty. The author of\nthe change never is.",
+        "properties": {
+          "accountIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Members chosen by name."
+          },
+          "groupIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "recipientKinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationRecipientKind"
+            }
+          },
+          "roleIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Roles of the tenant: their holders on the ticket's project, granted\nthere or above."
+          }
+        },
+        "additionalProperties": false
+      },
+      "NotificationRule": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/NotificationRecipients"
+          },
+          {
+            "type": "object",
+            "required": [
+              "event",
+              "version"
+            ],
+            "properties": {
+              "event": {
+                "$ref": "#/components/schemas/NotificationEvent"
+              },
+              "version": {
+                "type": "integer",
+                "format": "int64",
+                "example": 1
+              }
+            }
+          }
+        ],
+        "description": "The rule of an event."
+      },
+      "NotificationRuleList": {
+        "type": "object",
+        "description": "The rules of a configuration, one per event, with the names of the\nroles, groups and members they name.",
+        "required": [
+          "stage",
+          "items",
+          "references"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationRule"
+            }
+          },
+          "references": {
+            "$ref": "#/components/schemas/TransitionRuleReferences"
+          },
+          "stage": {
+            "$ref": "#/components/schemas/NotificationRuleStage"
+          }
+        }
+      },
+      "NotificationRuleStage": {
+        "type": "string",
+        "description": "Where the rules were read.",
+        "enum": [
+          "draft",
+          "published"
         ]
       },
       "OidcProvider": {

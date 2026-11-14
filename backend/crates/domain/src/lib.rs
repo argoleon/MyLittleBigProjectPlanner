@@ -18,6 +18,7 @@ pub mod issue_types;
 pub mod jobs;
 pub mod members;
 pub mod mfa;
+pub mod notifications;
 pub mod oidc;
 pub mod permissions;
 pub mod reference_item;

@@ -1,0 +1,91 @@
+<h2 mat-dialog-title>
+  {{ 'config.notifications.editTitle' | transloco: { event: ('config.notifications.events.' + data.rule.event | transloco) } }}
+</h2>
+<form [formGroup]="form" (ngSubmit)="save()" novalidate>
+  <mat-dialog-content class="fields">
+    @if (errorKey(); as key) {
+      <p class="message error" role="alert">{{ key | transloco }}</p>
+    }
+    <p class="intro">{{ 'config.notifications.authorNever' | transloco }}</p>
+    <fieldset class="kinds" formGroupName="kinds">
+      <legend>{{ 'config.notifications.people' | transloco }}</legend>
+      @for (kind of kinds; track kind) {
+        <mat-checkbox [formControlName]="kind">{{ 'config.notifications.kinds.' + kind | transloco }}</mat-checkbox>
+      }
+    </fieldset>
+
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'config.notifications.roles' | transloco }}</mat-label>
+      <mat-select formControlName="roleIds" multiple>
+        @for (role of roles(); track role.id) {
+          <mat-option [value]="role.id">{{ role.labelTranslations | translated }}</mat-option>
+        }
+      </mat-select>
+      <mat-hint>{{ 'config.notifications.rolesHint' | transloco }}</mat-hint>
+    </mat-form-field>
+
+    @if (groups().length > 0) {
+      <mat-chip-set [attr.aria-label]="'config.notifications.groupsChosen' | transloco">
+        @for (group of groups(); track group.id) {
+          <mat-chip (removed)="removeGroup(group.id)">
+            {{ group.name || ('config.notifications.deleted' | transloco) }}
+            <button matChipRemove type="button" [attr.aria-label]="'config.notifications.removeGroup' | transloco: { name: group.name }">
+              <mat-icon aria-hidden="true">cancel</mat-icon>
+            </button>
+          </mat-chip>
+        }
+      </mat-chip-set>
+    }
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'config.notifications.addGroup' | transloco }}</mat-label>
+      <input
+        #groupInput
+        matInput
+        class="group-search"
+        autocomplete="off"
+        [matAutocomplete]="groupAuto"
+        (input)="search(groupInput.value, 'group')"
+        (focus)="search(groupInput.value, 'group')"
+      />
+      <mat-autocomplete #groupAuto="matAutocomplete" (optionSelected)="addGroup($event, groupInput)">
+        @for (group of groupOptions(); track group.id) {
+          <mat-option [value]="group">{{ group.name }}</mat-option>
+        }
+      </mat-autocomplete>
+    </mat-form-field>
+
+    @if (members().length > 0) {
+      <mat-chip-set [attr.aria-label]="'config.notifications.membersChosen' | transloco">
+        @for (member of members(); track member.id) {
+          <mat-chip (removed)="removeMember(member.id)">
+            {{ member.name || ('config.notifications.deleted' | transloco) }}
+            <button matChipRemove type="button" [attr.aria-label]="'config.notifications.removeMember' | transloco: { name: member.name }">
+              <mat-icon aria-hidden="true">cancel</mat-icon>
+            </button>
+          </mat-chip>
+        }
+      </mat-chip-set>
+    }
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'config.notifications.addMember' | transloco }}</mat-label>
+      <input
+        #memberInput
+        matInput
+        class="member-search"
+        autocomplete="off"
+        [matAutocomplete]="memberAuto"
+        (input)="search(memberInput.value, 'member')"
+        (focus)="search(memberInput.value, 'member')"
+      />
+      <mat-autocomplete #memberAuto="matAutocomplete" (optionSelected)="addMember($event, memberInput)">
+        @for (member of memberOptions(); track member.id) {
+          <mat-option [value]="member">{{ member.name }} · {{ member.email }}</mat-option>
+        }
+      </mat-autocomplete>
+    </mat-form-field>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button matButton type="button" mat-dialog-close>{{ 'dialog.cancel' | transloco }}</button>
+    <button matButton="filled" type="submit" class="confirm" [disabled]="saving()">{{ 'config.notifications.save' | transloco }}</button>
+  </mat-dialog-actions>
+</form>

@@ -139,6 +139,10 @@ export type { UpdateIssueType$Params as UpdateIssueType$Params } from './fn/conf
 export { updateIssueType as updateIssueType } from './fn/configurations/update-issue-type';
 export type { DeleteIssueType$Params as DeleteIssueType$Params } from './fn/configurations/delete-issue-type';
 export { deleteIssueType as deleteIssueType } from './fn/configurations/delete-issue-type';
+export type { ListNotificationRules$Params as ListNotificationRules$Params } from './fn/configurations/list-notification-rules';
+export { listNotificationRules as listNotificationRules } from './fn/configurations/list-notification-rules';
+export type { UpdateNotificationRule$Params as UpdateNotificationRule$Params } from './fn/configurations/update-notification-rule';
+export { updateNotificationRule as updateNotificationRule } from './fn/configurations/update-notification-rule';
 export type { ListProjectConfigProjects$Params as ListProjectConfigProjects$Params } from './fn/configurations/list-project-config-projects';
 export { listProjectConfigProjects as listProjectConfigProjects } from './fn/configurations/list-project-config-projects';
 export type { PublishProjectConfig$Params as PublishProjectConfig$Params } from './fn/configurations/publish-project-config';

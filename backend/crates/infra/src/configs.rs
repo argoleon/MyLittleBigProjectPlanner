@@ -228,6 +228,7 @@ pub async fn insert(
     // Then the system fields, on the types; then the screens, of the fields.
     crate::fields::seed_defaults(conn, config.published.id).await?;
     crate::screens::seed_defaults(conn, config.published.id).await?;
+    crate::notification_rules::seed_defaults(conn, config.published.id).await?;
     found(conn, id).await
 }
 
@@ -501,6 +502,7 @@ async fn copy_content(conn: &mut PgConnection, from: Uuid, to: Uuid) -> Result<(
     crate::workflows::copy(conn, from, to).await?;
     crate::issue_types::copy(conn, from, to).await?;
     crate::fields::copy(conn, from, to).await?;
+    crate::notification_rules::copy(conn, from, to).await?;
     // The transition screens are checked at commit: copied last.
     crate::screens::copy(conn, from, to).await
 }

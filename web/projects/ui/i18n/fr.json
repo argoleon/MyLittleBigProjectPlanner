@@ -909,9 +909,7 @@
         "tab": "Écrans"
       },
       "notifications": {
-        "tab": "Notifications",
-        "title": "Les notifications arrivent bientôt",
-        "hint": "Quels événements notifient qui sera défini ici."
+        "tab": "Notifications"
       }
     },
     "projects": {
@@ -1304,6 +1302,44 @@
         "message": "Il quitte le brouillon. Le type pour lequel il était utilise de nouveau l’écran général.",
         "confirm": "Retirer"
       }
+    },
+    "notifications": {
+      "intro": "Pour chaque événement d’un ticket, qui il notifie sur les projets qui utilisent cette configuration. L’auteur d’une modification n’en est jamais notifié ; chaque membre peut couper des événements dans ses préférences.",
+      "caption": "Règles de notification, par événement",
+      "columns": {
+        "event": "Événement",
+        "recipients": "Notifie",
+        "actions": "Actions"
+      },
+      "events": {
+        "created": "Ticket créé",
+        "assigned": "Ticket assigné",
+        "status_changed": "Statut modifié",
+        "commented": "Commentaire ajouté",
+        "mentioned": "Mention d’une personne"
+      },
+      "kinds": {
+        "reporter": "Rapporteur",
+        "assignee": "Assigné",
+        "watchers": "Observateurs",
+        "mentioned": "Personnes mentionnées"
+      },
+      "nobody": "Personne",
+      "deleted": "Supprimé",
+      "editOf": "Modifier qui « {{event}} » notifie",
+      "editTitle": "Qui « {{event}} » notifie",
+      "authorNever": "L’auteur de la modification n’en est jamais notifié.",
+      "people": "Personnes du ticket",
+      "roles": "Rôles sur le projet",
+      "rolesHint": "Qui les détient sur le projet du ticket, attribués là ou au-dessus.",
+      "groupsChosen": "Groupes notifiés",
+      "addGroup": "Ajouter un groupe",
+      "removeGroup": "Retirer le groupe {{name}}",
+      "membersChosen": "Membres notifiés",
+      "addMember": "Ajouter un membre",
+      "removeMember": "Retirer {{name}}",
+      "save": "Enregistrer",
+      "saved": "Notifications de « {{event}} » enregistrées dans le brouillon."
     }
   }
 }

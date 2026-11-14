@@ -66,6 +66,14 @@ Fields (L04-US03: `domain::fields`, `infra::fields`, `api::config_fields`) are t
 - **List values keep their identity**, in `field_def.options` with an `active` flag. A value of the published version that a change leaves out is put back, deactivated (`domain::fields::keep_published`): tickets may hold it, and `Options::value` still resolves it. A value added in the draft and never published goes for good. The API marks each value `published` so the interface knows which.
 - **The key and the type of a field are set once.** A system field keeps its label and options too (409 `config_field.system`), and cannot be removed; its types and rules change like any field's.
 
+## Notification rules
+
+Notification rules (L04-US07: `domain::notifications`, `infra::notification_rules`, `api::notification_rules`) say whom each ticket event notifies:
+
+- **One rule per event and version, always there**: created, assigned, status changed, commented, mentioned (`notification_rule`, unique per version and event). No recipient: the event notifies nobody. A new configuration gets Jira's defaults (`app_seed_default_notifications`, in step with `domain::notifications::DEFAULT_RULES`). The draft counts a change per event (`ItemKind::Notification`, `Event::index`).
+- **Recipients**: people of the ticket (reporter, assignee, watchers, the people mentioned, the last for comments and mentions only), roles of the tenant, groups and members. The list names them in `references`, like the workflows.
+- **`domain::notifications::resolve`** is what the L05 dispatcher calls: from the rule, the people of the ticket, the holders of each role on the ticket's project (granted there or above) and the members of each group, it returns the accounts to notify, never the author of the change. Each member's own preferences filter them further (L05).
+
 ## Who does what
 
 - Tenant admins and configuration admins (`domain::configuration::manages_configurations`) manage configurations; the others get 403.

@@ -247,6 +247,29 @@ const SCREENS = [
   },
 ];
 
+const NOTIFICATION = (event: string, recipientKinds: string[], rest: object = {}) => ({
+  event,
+  recipientKinds,
+  roleIds: [],
+  groupIds: [],
+  accountIds: [],
+  version: 1,
+  ...rest,
+});
+
+/** Jira's defaults, "Ticket created" also notifying the reviewers and the quality group. */
+const NOTIFICATIONS = {
+  stage: 'published',
+  items: [
+    NOTIFICATION('created', ['reporter', 'assignee', 'watchers'], { roleIds: ['r1'], groupIds: ['g1'] }),
+    NOTIFICATION('assigned', ['assignee']),
+    NOTIFICATION('status_changed', ['reporter', 'assignee', 'watchers']),
+    NOTIFICATION('commented', ['reporter', 'assignee', 'watchers']),
+    NOTIFICATION('mentioned', ['mentioned']),
+  ],
+  references: REFERENCES,
+};
+
 /** The configurations' API for a configuration admin, recording what is created and published. */
 async function mockConfigurations(page: Page) {
   const sent: {
@@ -284,6 +307,7 @@ async function mockConfigurations(page: Page) {
   );
   await page.route(`**/api/v1/project-configs/transition-roles`, (route) => route.fulfill({ json: REFERENCES.roles }));
   await page.route(`**/api/v1/project-configs/*/screens`, (route) => route.fulfill({ json: { stage: 'published', items: SCREENS } }));
+  await page.route(`**/api/v1/project-configs/*/notification-rules`, (route) => route.fulfill({ json: NOTIFICATIONS }));
   await page.route(`**/api/v1/project-configs/*/screens/*`, (route) => {
     const body = route.request().postDataJSON() as object;
     sent.screens.push(body);
@@ -544,9 +568,14 @@ for (const theme of ['light', 'dark'] as const) {
         expect(await accessibilityViolations(page), 'screen editor').toEqual([]);
 
         await page.goto(`/admin/configurations/${SOFTWARE.id}/notifications`);
-        await expect(page.locator('app-config-section-tab')).toBeVisible();
+        await expect(page.locator('app-notifications-tab tr[mat-row]')).toHaveCount(5);
         await animationsDone(page);
-        expect(await accessibilityViolations(page), 'section').toEqual([]);
+        expect(await accessibilityViolations(page), 'notifications').toEqual([]);
+        await page.locator('app-notifications-tab button.edit').first().click();
+        await expect(page.getByRole('dialog').locator('mat-chip')).toHaveCount(1);
+        await animationsDone(page);
+        expect(await accessibilityViolations(page), 'notification dialog').toEqual([]);
+        await page.keyboard.press('Escape');
 
         await page.goto(`/nodes/${PROJECT.id}/configuration`);
         await expect(page.locator('app-node-configuration-tab .uses')).toBeVisible();

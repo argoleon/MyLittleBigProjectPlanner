@@ -1,21 +1,9 @@
-import { Route, Routes } from '@angular/router';
+import { Routes } from '@angular/router';
 import { authGuard, signedOutGuard, stageGuard } from 'ui';
 
 import { adminHomeGuard } from './admin/admin-tabs';
 import { MainLayout } from './layout/main-layout';
 import { NAVIGATION } from './navigation';
-
-/** The sections of a configuration still to be built by the next stories of L04, with their icon. */
-const CONFIG_SECTION_ROUTES: Route[] = (
-  [
-    ['notifications', 'notifications'],
-  ] as const
-).map(([section, icon]) => ({
-  path: section,
-  title: `config.sections.${section}.tab`,
-  data: { section, icon },
-  loadComponent: () => import('./configuration/config-section-tab').then((m) => m.ConfigSectionTab),
-}));
 
 /**
  * The pages before signing in, then every screen of signed-in members
@@ -138,7 +126,11 @@ export const routes: Routes = [
             title: 'config.sections.screens.tab',
             loadComponent: () => import('./configuration/screens-tab').then((m) => m.ScreensTab),
           },
-          ...CONFIG_SECTION_ROUTES,
+          {
+            path: 'notifications',
+            title: 'config.sections.notifications.tab',
+            loadComponent: () => import('./configuration/notifications-tab').then((m) => m.NotificationsTab),
+          },
           {
             path: 'projects',
             title: 'config.projects.tab',
