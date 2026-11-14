@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT app_seed_default_fields($1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "app_seed_default_fields",
+        "type_info": "Void",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "8d089c983dfc31f2d1272d9b1e12e7583068d235cce31b108ce665496d02d679"
+}

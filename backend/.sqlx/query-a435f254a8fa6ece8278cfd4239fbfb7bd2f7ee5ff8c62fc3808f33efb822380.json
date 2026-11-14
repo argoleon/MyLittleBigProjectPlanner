@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM field_rule r\n        WHERE r.version_id = $1 AND r.issue_type_id = $2 AND r.status_id IS NOT NULL\n          AND NOT EXISTS (\n              SELECT 1 FROM workflow_status s\n              WHERE s.version_id = $1 AND s.item_id = r.status_id AND s.workflow_id = $3\n          )\n        RETURNING r.field_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "field_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "field_rule",
+            "name": "field_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a435f254a8fa6ece8278cfd4239fbfb7bd2f7ee5ff8c62fc3808f33efb822380"
+}

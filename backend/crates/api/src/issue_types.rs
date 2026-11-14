@@ -552,10 +552,16 @@ pub async fn update(
         return Err(hierarchy_problem(refusal));
     }
     let workflow = workflow_of(&mut tx, draft, body.workflow_id.or(current.workflow_id)).await?;
+    let moved = current.workflow_id != Some(workflow);
     repo::update(&mut tx, draft, item, if_match.versions(), &body.fields(workflow))
         .await?
         .map_err(conflict_problem)?;
     changed(&mut tx, draft, item).await?;
+    if moved {
+        // The field rules on the statuses of its former workflow go.
+        let pruned = infra::fields::prune_rules(&mut tx, draft, item, workflow).await?;
+        crate::config_fields::fields_changed(&mut tx, draft, &pruned).await?;
+    }
     let types = repo::list(&mut tx, draft).await?;
     let language = Language::of(&tx, &accept);
     tx.commit().await?;
@@ -570,8 +576,8 @@ pub async fn update(
     tag = TAG,
     operation_id = "deleteIssueType",
     summary = "Remove an issue type from the draft of a configuration",
-    description = "Tenant admins and configuration admins. From the draft, opened if needed, and \
-                   from the parents of the other types. If tickets use it, publishing needs them \
+    description = "Tenant admins and configuration admins. From the draft, opened if needed, from \
+                   the parents of the other types and from the fields that apply to it. If tickets use it, publishing needs them \
                    moved to another type first (`needsMigration` of the publish impact).",
     params(
         ("id" = Uuid, Path, description = "Id of the configuration"),
@@ -611,6 +617,9 @@ pub async fn delete(
     for other in types.iter().filter(|t| t.parent_ids.contains(&item)) {
         changed(&mut tx, draft, other.item_id).await?;
     }
+    // Its field rules went with it; the fields that listed it no longer do.
+    let fields = infra::fields::forget_type(&mut tx, draft, item).await?;
+    crate::config_fields::fields_changed(&mut tx, draft, &fields).await?;
     tx.commit().await?;
     Ok(StatusCode::NO_CONTENT)
 }

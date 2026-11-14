@@ -112,11 +112,13 @@ pub enum ErrorCode {
     WorkflowInUse,
     WorkflowLast,
     WorkflowInvalid,
+    FieldKeyTaken,
+    FieldSystem,
 }
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 73] = [
+    pub const ALL: [Self; 75] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -190,6 +192,8 @@ impl ErrorCode {
         Self::WorkflowInUse,
         Self::WorkflowLast,
         Self::WorkflowInvalid,
+        Self::FieldKeyTaken,
+        Self::FieldSystem,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -267,6 +271,8 @@ impl ErrorCode {
             Self::WorkflowInUse => "workflow.in_use",
             Self::WorkflowLast => "workflow.last",
             Self::WorkflowInvalid => "workflow.invalid",
+            Self::FieldKeyTaken => "config_field.key_taken",
+            Self::FieldSystem => "config_field.system",
         }
     }
 
@@ -337,7 +343,9 @@ impl ErrorCode {
             | Self::WorkflowKeyTaken
             | Self::WorkflowInUse
             | Self::WorkflowLast
-            | Self::WorkflowInvalid => StatusCode::CONFLICT,
+            | Self::WorkflowInvalid
+            | Self::FieldKeyTaken
+            | Self::FieldSystem => StatusCode::CONFLICT,
             Self::PreconditionFailed => StatusCode::PRECONDITION_FAILED,
             Self::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -433,6 +441,10 @@ impl ErrorCode {
             Self::WorkflowInUse => "Issue types follow this workflow: move them to another one first",
             Self::WorkflowLast => "A configuration keeps at least one workflow",
             Self::WorkflowInvalid => "Workflows of the draft cannot be published as they are: see errors",
+            Self::FieldKeyTaken => "Another field of this configuration already has this identifier",
+            Self::FieldSystem => {
+                "A system field keeps its label and options and cannot be removed; only its types and rules change"
+            }
         }
     }
 
@@ -676,7 +688,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 73] = [
+        let expected: [(ErrorCode, u16); 75] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -750,6 +762,8 @@ mod tests {
             (ErrorCode::WorkflowInUse, 409),
             (ErrorCode::WorkflowLast, 409),
             (ErrorCode::WorkflowInvalid, 409),
+            (ErrorCode::FieldKeyTaken, 409),
+            (ErrorCode::FieldSystem, 409),
         ];
         for (code, status) in expected {
             assert_eq!(code.status().as_u16(), status, "{}", code.as_str());

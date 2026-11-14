@@ -19,6 +19,7 @@ use utoipa_axum::routes;
 
 use crate::account;
 use crate::auth;
+use crate::config_fields;
 use crate::configs;
 use crate::gdpr;
 use crate::grants;
@@ -138,6 +139,12 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
             issue_types::read,
             issue_types::update,
             issue_types::delete
+        ))
+        .routes(routes!(config_fields::list, config_fields::create))
+        .routes(routes!(
+            config_fields::read,
+            config_fields::update,
+            config_fields::delete
         ))
         .routes(routes!(workflows::list, workflows::create))
         .routes(routes!(workflows::update, workflows::delete))

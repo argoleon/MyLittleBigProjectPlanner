@@ -225,6 +225,8 @@ pub async fn insert(
     // The workflow first: the types follow it.
     crate::workflows::seed_default(conn, config.published.id).await?;
     crate::issue_types::seed_defaults(conn, config.published.id).await?;
+    // Then the system fields, on the types.
+    crate::fields::seed_defaults(conn, config.published.id).await?;
     found(conn, id).await
 }
 
@@ -493,9 +495,11 @@ pub async fn projects(conn: &mut PgConnection, id: Uuid) -> Result<Vec<ConfigPro
 /// content table of L04-US02 onwards adds its copy here, keeping the
 /// identifiers its items have across versions.
 async fn copy_content(conn: &mut PgConnection, from: Uuid, to: Uuid) -> Result<(), sqlx::Error> {
-    // Workflows first: the types refer to them.
+    // Workflows first: the types refer to them; then the fields, whose
+    // rules name both.
     crate::workflows::copy(conn, from, to).await?;
-    crate::issue_types::copy(conn, from, to).await
+    crate::issue_types::copy(conn, from, to).await?;
+    crate::fields::copy(conn, from, to).await
 }
 
 /// The configuration, its row locked until the end of the transaction, if
