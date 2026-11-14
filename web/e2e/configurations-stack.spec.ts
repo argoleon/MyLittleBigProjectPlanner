@@ -1,6 +1,6 @@
 /**
  * Project configurations on the production stack, nothing mocked
- * (L04-US01 to US06): the tenant admin creates a configuration, moves two projects
+ * (L04-US01 to US07): the tenant admin creates a configuration, moves two projects
  * to it from their settings, sees it shared by both, then detaches one,
  * which gets its own copy.
  *
@@ -375,6 +375,53 @@ test('a transition screen shown by Reject cannot be removed until Reject lets it
   await panel.getByRole('button', { name: 'Remove' }).click();
   await admin.getByRole('dialog').getByRole('button', { name: 'Remove' }).click();
   await expect(panel.getByRole('alert')).toContainText('Shown by: Reject (Standard workflow).');
+
+  await admin.context().close();
+});
+
+test('ticket created notifies the reporter and the project managers once published', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const run = Date.now().toString(36).toUpperCase().slice(-6);
+  const config = `Alerts ${run}`;
+
+  const admin = await signIn(browser, adminEmail!, adminSecret!);
+  await admin.goto('/admin/configurations');
+  await admin.getByRole('button', { name: 'New configuration' }).click();
+  const dialog = admin.getByRole('dialog', { name: 'New project configuration' });
+  await expect(dialog.getByLabel('Name (Français)')).toBeFocused();
+  await dialog.getByLabel('Name (Français)').fill(`Alertes ${run}`);
+  await dialog.getByLabel('Name (English)').fill(config);
+  await dialog.getByRole('button', { name: 'Create' }).click();
+  await expect(admin.getByRole('heading', { level: 1 })).toHaveText(config);
+
+  // The defaults.
+  await admin.getByRole('tab', { name: 'Notifications' }).click();
+  const created = admin.getByRole('row', { name: /Ticket created/ });
+  await expect(created).toContainText('Reporter');
+  await expect(created).toContainText('Watchers');
+
+  // The reporter and the project managers only.
+  await admin.getByRole('button', { name: 'Edit whom “Ticket created” notifies' }).click();
+  const edit = admin.getByRole('dialog', { name: 'Whom “Ticket created” notifies' });
+  await edit.getByRole('checkbox', { name: 'Assignee' }).uncheck();
+  await edit.getByRole('checkbox', { name: 'Watchers' }).uncheck();
+  await edit.getByRole('combobox', { name: 'Roles on the project' }).click();
+  await admin.getByRole('option', { name: 'Project manager' }).click();
+  await admin.keyboard.press('Tab');
+  await expect(admin.getByRole('listbox')).toHaveCount(0);
+  expect(await accessibilityViolations(admin), 'notification dialog').toEqual([]);
+  await edit.getByRole('button', { name: 'Save' }).click();
+  await expect(admin.getByRole('status')).toHaveText('Notifications of “Ticket created” saved in the draft.');
+  await expect(created).toContainText('Project manager');
+  await expect(created).not.toContainText('Watchers');
+
+  // Published: the projects' version has it.
+  await admin.getByRole('button', { name: 'Publish the changes' }).click();
+  const publish = admin.getByRole('dialog', { name: `Publish “${config}”?` });
+  await publish.getByRole('button', { name: 'Publish' }).click();
+  await expect(admin.getByText('Version 2 is published.', { exact: true })).toBeVisible();
+  await admin.reload();
+  await expect(admin.getByRole('row', { name: /Ticket created/ })).toContainText('Project manager');
 
   await admin.context().close();
 });

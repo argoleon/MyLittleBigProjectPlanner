@@ -31,7 +31,7 @@ import { NodeSettingsPage } from '../hierarchy/node-settings-page';
 import { copyName } from './config-dialog';
 import { ConfigPage } from './config-page';
 import { ConfigProjectsTab } from './config-projects-tab';
-import { ConfigSectionTab } from './config-section-tab';
+import { NotificationsTab } from './notifications-tab';
 import { ConfigurationsTab } from './configurations-tab';
 import { TypesTab } from './types-tab';
 
@@ -111,7 +111,7 @@ async function setUp(tenantRole = 'tenant_admin') {
             children: [
               { path: '', pathMatch: 'full', redirectTo: 'types' },
               { path: 'types', component: TypesTab },
-              { path: 'notifications', component: ConfigSectionTab, data: { section: 'notifications', icon: 'notifications' } },
+              { path: 'notifications', component: NotificationsTab },
               { path: 'projects', component: ConfigProjectsTab },
             ],
           },
@@ -298,8 +298,8 @@ describe('ConfigPage', () => {
     expect(texts('nav.eyebrow a')).toEqual(['Administration', 'Project configurations']);
     expect(texts('app-config-page .chip')).toEqual(['shareShared by 6 projects', 'edit_noteUnpublished draft · 2 changes']);
     expect(texts('a[mat-tab-link]')).toEqual(['Types', 'Fields', 'Workflows', 'Screens', 'Notifications', 'Projects (6)']);
-    // A section of a later story.
-    expect(text(root().querySelector('app-config-section-tab'))).toContain('Notifications come next');
+    // Every section is a tab of its own (the last one, L04-US07).
+    expect(root().querySelector('app-notifications-tab')).not.toBeNull();
     expect((root().querySelector('button.publish') as HTMLButtonElement).disabled).toBe(false);
     expect(await axeViolations(root().querySelector('app-config-page')!)).toEqual([]);
   });
