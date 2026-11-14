@@ -4,6 +4,39 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-14
+
+Work package **L04 Project configuration**: shared project configurations with their issue types, workflows, fields, transition rules, screens and notification rules, edited in a draft and published to every project at once, with the status and type mapping wizard.
+
+### Added
+
+- **Project configurations** (#95)
+  - A configuration gathers a project's issue types, fields, workflows, screens and notifications; several projects share one, each project has exactly one. Every tenant gets a default configuration, which existing and new projects use.
+  - Changes go to a draft shared by the configuration admins (tenant admins and configuration admins); publishing applies them to every project at once, after the list of the projects affected. A project detaches by duplicating its configuration.
+  - Administration › Project configurations, the configuration page with its tabs, and the Configuration tab of a project's settings. Labels are translatable (French and English) everywhere.
+- **Issue types** (#100)
+  - Epic, Story, Task, Bug and Sub-task by default, each with its icon, color and the types it may sit under; sub-tasks always have a parent. Types are reordered by drag and drop or with the keyboard.
+- **Workflows** (#109)
+  - Statuses in three categories (To do, In progress, Done) with a portal label, and transitions from a status or from any; a standard workflow (mockup 11) for every type, more workflows added or copied.
+  - Edited in tables, shown as a read-only graph. What keeps a workflow from being published (no initial status, a status nothing leads to…) is listed, and publishing waits for it (`workflow.invalid`).
+- **Custom fields** (#104)
+  - The 14 field types of the MVP with their options; the system fields Points and Remaining work.
+  - Hidden, visible or required per issue type and per workflow step, in one grid per workflow; a published list value is deactivated rather than removed.
+- **Transition rules** (#114)
+  - Who may take a transition (roles on the project or groups), the fields it requires, and post-functions run in order: assign, set or clear a field, add a comment. Tickets (L05) apply them.
+- **Screens** (#118)
+  - General creation and view screens, screens for one type, and named transition screens attached to transitions; the field rules win over a screen (hidden fields left out, required ones added).
+- **Notification rules** (#122)
+  - Whom ticket created, assigned, status changed, commented and mentioned notify: the reporter, the assignee, watchers, the people mentioned, roles, groups or members; never the author of the change. Jira-style defaults; tickets (L05) send them.
+- **Status and type mapping wizard** (#126, #128)
+  - When a draft removes statuses or types that tickets use, publishing maps each to one the draft keeps (mockup 13; `mapping_incomplete` until all are) and migrates in the background, publishing once done.
+  - Moving the tickets themselves comes with tickets in L05 (#125, #127, #129): until then no ticket needs moving.
+
+### Upgrading from 0.3.0
+
+- **Migrations** run at start-up (`migrate` service): the configuration tables (versions, types, workflows, fields and their rules, screens, notification rules, migrations), all protected by Row-Level Security. Every tenant gets its default configuration, which its projects use.
+- No new secret nor variable. The worker runs the new `config.migration` job; nothing to configure.
+
 ## [0.3.0] - 2026-11-13
 
 Work package **L03 Hierarchy**: portfolios, programs and projects, several weighted parents, roles granted on nodes and inherited, confidential projects, aggregated indicators, and archiving.
@@ -125,6 +158,7 @@ Work package **L01 Technical foundation**: the base every later work package bui
   - License policy enforced on Rust crates and npm packages, RustSec and npm advisories, secret scan of the git history.
   - CI: every step a `just` recipe (`just ci` locally), GitHub Actions only calls them; release workflow publishing the images to GitHub Container Registry.
 
+[0.4.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.4.0
 [0.3.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.3.0
 [0.2.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.2.0
 [0.1.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.1.0
