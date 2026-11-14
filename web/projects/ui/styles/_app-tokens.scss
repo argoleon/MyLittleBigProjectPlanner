@@ -24,6 +24,9 @@
   --app-auth-card-width: 448px;
   --app-page-padding: 24px 32px 40px;
 
+  // Code in rich text (M3 has no monospace typeface): the platform's own.
+  --app-font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+
   // ---------------------------------------------------------------------------
   // Success (not part of M3). Tonal palette of hue #006D3B, chroma 36.
   // ---------------------------------------------------------------------------

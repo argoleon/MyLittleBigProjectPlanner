@@ -1,0 +1,12 @@
+@use 'rich-text-content';
+
+.ui-rich-text {
+  font: var(--mat-sys-body-medium);
+  overflow-wrap: anywhere;
+
+  @include rich-text-content.content;
+
+  > :last-child {
+    margin-bottom: 0;
+  }
+}

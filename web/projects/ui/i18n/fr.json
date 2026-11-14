@@ -426,7 +426,12 @@
       "invalid_id": "Identifiant invalide.",
       "unknown_value": "Pas une valeur de cette liste.",
       "inactive_value": "Cette valeur est désactivée.",
-      "not_a_child": "Cette valeur n’est pas sous la première."
+      "not_a_child": "Cette valeur n’est pas sous la première.",
+      "other_project": "Doit appartenir au même projet.",
+      "unknown_group": "Ce groupe n’existe pas.",
+      "unknown_issue": "Ce ticket n’existe pas.",
+      "invalid": "Le contenu n’est pas valide.",
+      "too_deep": "Le contenu est trop imbriqué."
     },
     "invitation": {
       "invalid": "Ce lien d’invitation est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
@@ -1370,6 +1375,99 @@
       "removeMember": "Retirer {{name}}",
       "save": "Enregistrer",
       "saved": "Notifications de « {{event}} » enregistrées dans le brouillon."
+    }
+  },
+  "richText": {
+    "toolbar": "Mise en forme",
+    "bold": "Gras",
+    "italic": "Italique",
+    "strike": "Barré",
+    "code": "Code",
+    "heading": "Titre",
+    "bulletList": "Liste à puces",
+    "orderedList": "Liste numérotée",
+    "blockquote": "Citation",
+    "codeBlock": "Bloc de code",
+    "link": "Lien",
+    "linkAddress": "Adresse du lien",
+    "linkApply": "Appliquer",
+    "linkInvalid": "Saisissez une adresse web (http ou https) ou une adresse e-mail (mailto)."
+  },
+  "priority": {
+    "highest": "La plus haute",
+    "high": "Haute",
+    "medium": "Moyenne",
+    "low": "Basse",
+    "lowest": "La plus basse"
+  },
+  "issue": {
+    "people": {
+      "remove": "Retirer {{ name }}",
+      "search": "Rechercher un membre…",
+      "searchGroup": "Rechercher un groupe…",
+      "noMatch": "Aucun résultat."
+    },
+    "fields": {
+      "removeLabel": "Retirer l’étiquette {{ label }}",
+      "addLabel": "Ajouter une étiquette…",
+      "none": "Aucune",
+      "cascadeChild": "{{ label }} : précision",
+      "unit": {
+        "hours": "h",
+        "days": "j",
+        "percent": "%"
+      },
+      "issueLinkHint": "La clé d’un ticket, par exemple PLAT-12"
+    },
+    "dialog": {
+      "title": "Nouveau ticket",
+      "subtaskTitle": "Nouvelle sous-tâche de {{ key }}",
+      "project": "Projet",
+      "forbidden": "Vous ne pouvez pas créer de ticket dans ce projet.",
+      "type": "Type",
+      "summary": "Résumé",
+      "description": "Description",
+      "priority": "Priorité",
+      "assignee": "Responsable",
+      "startDate": "Début",
+      "dueDate": "Échéance",
+      "fields": "Champs de ce type",
+      "create": "Créer"
+    },
+    "page": {
+      "title": "Ticket",
+      "breadcrumb": "Rattachement du ticket",
+      "addSubtask": "Ajouter une sous-tâche",
+      "description": "Description",
+      "noDescription": "Aucune description.",
+      "details": "Détails",
+      "assignee": "Responsable",
+      "unassigned": "Non assigné",
+      "reporter": "Rapporteur",
+      "priority": "Priorité",
+      "startDate": "Début",
+      "dueDate": "Échéance",
+      "yes": "Oui",
+      "no": "Non",
+      "attachment": "Rattachement",
+      "project": "Projet",
+      "created": "Créé le {{ at }}"
+    },
+    "list": {
+      "create": "Nouveau ticket",
+      "intro": "Les tickets qui vous sont assignés ou que vous avez signalés, les plus récents d’abord.",
+      "empty": "Aucun ticket pour l’instant",
+      "emptyHint": "Les tickets qui vous sont assignés ou que vous signalez apparaissent ici.",
+      "caption": "Mes tickets",
+      "columns": {
+        "ticket": "Ticket",
+        "summary": "Résumé",
+        "project": "Projet",
+        "status": "Statut",
+        "priority": "Priorité",
+        "updated": "Mis à jour"
+      },
+      "loadMore": "Afficher plus"
     }
   }
 }

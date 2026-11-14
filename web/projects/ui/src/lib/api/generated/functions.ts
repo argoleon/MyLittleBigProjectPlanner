@@ -71,6 +71,16 @@ export type { LinkNodeParent$Params as LinkNodeParent$Params } from './fn/hierar
 export { linkNodeParent as linkNodeParent } from './fn/hierarchy/link-node-parent';
 export type { UnlinkNodeParent$Params as UnlinkNodeParent$Params } from './fn/hierarchy/unlink-node-parent';
 export { unlinkNodeParent as unlinkNodeParent } from './fn/hierarchy/unlink-node-parent';
+export type { GetIssue$Params as GetIssue$Params } from './fn/issues/get-issue';
+export { getIssue as getIssue } from './fn/issues/get-issue';
+export type { ListMyIssues$Params as ListMyIssues$Params } from './fn/issues/list-my-issues';
+export { listMyIssues as listMyIssues } from './fn/issues/list-my-issues';
+export type { GetIssueForm$Params as GetIssueForm$Params } from './fn/issues/get-issue-form';
+export { getIssueForm as getIssueForm } from './fn/issues/get-issue-form';
+export type { CreateIssue$Params as CreateIssue$Params } from './fn/issues/create-issue';
+export { createIssue as createIssue } from './fn/issues/create-issue';
+export type { ListProjectPeople$Params as ListProjectPeople$Params } from './fn/issues/list-project-people';
+export { listProjectPeople as listProjectPeople } from './fn/issues/list-project-people';
 export type { GetMe$Params as GetMe$Params } from './fn/me/get-me';
 export { getMe as getMe } from './fn/me/get-me';
 export type { EraseMyAccount$Params as EraseMyAccount$Params } from './fn/me/erase-my-account';

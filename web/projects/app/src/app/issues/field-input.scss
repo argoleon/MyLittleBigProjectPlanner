@@ -1,0 +1,27 @@
+:host {
+  display: block;
+}
+
+.field {
+  width: 100%;
+}
+
+.cascade {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--app-space-3);
+
+  .field {
+    flex: 1 1 200px;
+  }
+}
+
+.checkbox {
+  padding-block: var(--app-space-2);
+}
+
+.error {
+  margin: 0;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-error);
+}

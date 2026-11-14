@@ -40,6 +40,12 @@
         <mat-icon aria-hidden="true">settings</mat-icon>
         {{ 'hierarchy.view.settings' | transloco }}
       </a>
+      @if (canCreateTicket()) {
+        <button matButton="filled" type="button" class="new-ticket" (click)="newTicket(current)">
+          <mat-icon aria-hidden="true">add</mat-icon>
+          {{ 'issue.list.create' | transloco }}
+        </button>
+      }
       @if (canAddChild()) {
         <button matButton="filled" type="button" class="add-child" (click)="addChild(current)">
           <mat-icon aria-hidden="true">add</mat-icon>

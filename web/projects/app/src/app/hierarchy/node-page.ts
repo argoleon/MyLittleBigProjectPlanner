@@ -3,7 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import {
   Api,
@@ -18,6 +18,7 @@ import {
   listMyNodePermissions,
 } from 'ui';
 
+import { createIssueFlow } from '../issues/issue-flow';
 import { ArchivedBanner } from './archived-banner';
 import { PERCENT, hoursOf } from './hierarchy-rows';
 import { HierarchyTree } from './hierarchy-tree';
@@ -54,6 +55,7 @@ export class NodePage {
   private readonly api = inject(Api);
   private readonly auth = inject(AuthService);
   private readonly dialog = inject(MatDialog);
+  private readonly router = inject(Router);
   private readonly tree = viewChild(HierarchyTree);
 
   protected readonly percent = PERCENT;
@@ -81,6 +83,23 @@ export class NodePage {
       (this.auth.session()?.account.tenantRole === 'tenant_admin' ||
         (this.permissions.hasValue() && this.permissions.value().includes('administer_node'))),
   );
+
+  /**
+   * Tenant admins, and those with `create_ticket` on it, create tickets in
+   * an active project.
+   */
+  protected readonly canCreateTicket = computed(
+    () =>
+      this.node.hasValue() &&
+      this.node.value().type === 'project' &&
+      !this.node.value().archived &&
+      (this.auth.session()?.account.tenantRole === 'tenant_admin' ||
+        (this.permissions.hasValue() && this.permissions.value().includes('create_ticket'))),
+  );
+
+  protected newTicket(node: Node): void {
+    if (node.key) void createIssueFlow(this.dialog, this.router, { projectKey: node.key });
+  }
 
   protected ownersOf(node: Node): string {
     return node.owners.map((owner) => owner.displayName).join(', ');

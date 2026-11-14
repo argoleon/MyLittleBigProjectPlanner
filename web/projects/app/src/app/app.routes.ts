@@ -50,13 +50,24 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       // Screens not built yet show "coming soon".
-      ...NAVIGATION.filter((item) => !['/admin', '/portfolios'].includes(item.route)).map((item) => ({
+      ...NAVIGATION.filter((item) => !['/admin', '/portfolios', '/tickets'].includes(item.route)).map((item) => ({
         path: item.route.slice(1),
         pathMatch: 'full' as const,
         title: item.labelKey,
         data: { titleKey: item.labelKey, icon: item.icon },
         loadComponent: () => import('./coming-soon/coming-soon-page').then((m) => m.ComingSoonPage),
       })),
+      {
+        path: 'tickets',
+        title: 'nav.myTickets',
+        loadComponent: () => import('./issues/my-tickets-page').then((m) => m.MyTicketsPage),
+      },
+      {
+        // A ticket, by its key (or a former key, or its id).
+        path: 'issues/:key',
+        title: 'issue.page.title',
+        loadComponent: () => import('./issues/issue-page').then((m) => m.IssuePage),
+      },
       {
         path: 'portfolios',
         title: 'nav.portfolios',

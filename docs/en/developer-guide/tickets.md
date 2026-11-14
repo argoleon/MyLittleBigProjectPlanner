@@ -70,3 +70,18 @@ Follow [Adding an endpoint](new-endpoint.md), and:
 - Load the ticket with its project through `visible_issue`: a ticket of a project the member does not see answers 404, like one of another tenant.
 - Read the configuration through `Content::of(project)` (published version only).
 - Write the change's event to the outbox in the same transaction.
+
+## In the application
+
+| What | Where |
+| --- | --- |
+| Rich text editor (form control, Tiptap) | `web/projects/ui/src/lib/components/rich-text-editor.ts`, imported from `ui/rich-text` |
+| Rich text shown (`descriptionHtml`) | `ui-rich-text` in `ui` |
+| Priority label | `ui-priority` in `ui` |
+| Creation dialog, opened by `createIssueFlow` | `web/projects/app/src/app/issues/issue-dialog.ts`, `issue-flow.ts` |
+| A custom field by kind, people and groups | `field-input.ts`, `people-picker.ts`, values in `issue-fields.ts` |
+| Ticket page, "My tickets" | `issue-page.ts` (`/issues/:key`), `my-tickets-page.ts` (`/tickets`) |
+
+- **Keep Tiptap out of the initial bundle.** The editor is not exported from `ui` but from its own entry point, `ui/rich-text`: a barrel export would pull Tiptap and ProseMirror (about 430 kB) into every page. The creation dialog is loaded on first use by `createIssueFlow`; a new screen that edits rich text (comments, L05-US04) imports `ui/rich-text` from a lazily loaded component too.
+- The editor only offers what the server accepts (no underline, headings 1 to 4, links to `http`, `https` and `mailto`), so a document is never refused for its form.
+- The dialog reads the form for the type chosen (`GET …/issue-form?typeId=`) and keeps a value when the next type has the same field. Errors of the API go to their control (`fields.{id}` included) through `placeApiErrors`.

@@ -16,7 +16,8 @@
     "module": "preserve",
     "paths": {
       "ui": ["./projects/ui/src/public-api.ts"],
-      "ui/testing": ["./projects/ui/src/testing.ts"]
+      "ui/testing": ["./projects/ui/src/testing.ts"],
+      "ui/rich-text": ["./projects/ui/src/rich-text.ts"]
     }
   },
   "angularCompilerOptions": {

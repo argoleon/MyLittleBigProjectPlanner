@@ -1,0 +1,90 @@
+@use 'rich-text-content';
+
+// Not encapsulated (Tiptap renders the editable area itself): scoped by
+// the element instead.
+ui-rich-text-editor {
+  display: block;
+
+  .frame {
+    position: relative;
+    border: 1px solid var(--mat-sys-outline);
+    border-radius: var(--mat-sys-corner-extra-small);
+    background: var(--mat-sys-surface);
+    color: var(--mat-sys-on-surface);
+
+    &:focus-within {
+      outline: 2px solid var(--mat-sys-primary);
+      outline-offset: -1px;
+    }
+
+    &.invalid {
+      border-color: var(--mat-sys-error);
+    }
+
+    &.disabled {
+      color: var(--mat-sys-on-surface-variant);
+    }
+  }
+
+  .label {
+    display: block;
+    padding: var(--app-space-2) var(--app-space-3) 0;
+    font: var(--mat-sys-body-small);
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--app-space-1);
+    padding: var(--app-space-1) var(--app-space-2);
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+
+    .action[aria-pressed='true'] {
+      background: var(--mat-sys-secondary-container);
+      color: var(--mat-sys-on-secondary-container);
+    }
+  }
+
+  .link-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--app-space-2);
+    padding: var(--app-space-2) var(--app-space-3);
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+  }
+
+  .link-label {
+    font: var(--mat-sys-body-medium);
+  }
+
+  .link-input {
+    flex: 1 1 200px;
+    padding: var(--app-space-2);
+    border: 1px solid var(--mat-sys-outline);
+    border-radius: var(--mat-sys-corner-extra-small);
+    background: var(--mat-sys-surface);
+    color: var(--mat-sys-on-surface);
+    font: var(--mat-sys-body-medium);
+  }
+
+  .link-error {
+    flex-basis: 100%;
+    margin: 0;
+    font: var(--mat-sys-body-small);
+    color: var(--mat-sys-error);
+  }
+
+  // The editable area Tiptap renders, outside Angular's view.
+  .content {
+    min-height: 120px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: var(--app-space-2) var(--app-space-3);
+    font: var(--mat-sys-body-medium);
+    outline: none;
+
+    @include rich-text-content.content;
+  }
+}
