@@ -101,7 +101,13 @@ const SUMMARY = {
   updatedAt: ISSUE.updatedAt,
 };
 
+/**
+ * Animations finished and fonts loaded: axe then measures the final colors
+ * and tells icon ligatures (`dark_mode`) from text only once the icon font
+ * is applied.
+ */
 async function animationsDone(page: Page) {
+  await page.evaluate(() => document.fonts.ready);
   await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
 }
 
