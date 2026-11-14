@@ -186,7 +186,8 @@ async fn application_is_created_with_its_values_and_rules_then_its_values_deacti
     assert_eq!(list["stage"], "draft");
     assert_eq!(by_key(&list, "application")["id"], added["id"]);
     let read = get(&api, t, &base(&id)).await;
-    assert_eq!(read["draft"]["changeCount"], 1);
+    // The field, and the general creation and view screens it joined (L04-US06).
+    assert_eq!(read["draft"]["changeCount"], 3);
 
     // Published: its values are now the projects'.
     let publish = format!("{}/publish", base(&id));

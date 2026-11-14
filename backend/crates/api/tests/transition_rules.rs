@@ -99,7 +99,7 @@ async fn every_rule_type_is_saved_on_a_transition_and_named_in_the_list() {
     let validate = by(&workflow["transitions"], "name", "Validate").clone();
     assert_eq!(
         validate["rules"],
-        json!({"conditions": {"roleIds": [], "groupIds": []}, "validators": [], "postFunctions": []})
+        json!({"conditions": {"roleIds": [], "groupIds": []}, "validators": [], "postFunctions": [], "screenId": null})
     );
 
     // What the editor picks from.
@@ -134,6 +134,7 @@ async fn every_rule_type_is_saved_on_a_transition_and_named_in_the_list() {
             {"kind": "add_comment", "text": "Validated"},
             {"kind": "assign", "assignTo": "current_user"},
         ],
+        "screenId": null,
     });
     let path = transition_path(&id, &validate);
     let (status, saved) = send(
@@ -227,6 +228,7 @@ async fn every_rule_type_is_saved_on_a_transition_and_named_in_the_list() {
             "conditions": {"roleIds": [], "groupIds": []},
             "validators": [],
             "postFunctions": [{"kind": "assign", "assignTo": "nobody"}],
+            "screenId": null,
         })
     );
 }

@@ -37,6 +37,7 @@ pub mod rate_limit;
 pub mod reference_items;
 pub mod roles;
 pub mod rule_references;
+pub mod screens;
 pub mod sessions;
 pub mod shutdown;
 pub mod telemetry;

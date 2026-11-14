@@ -310,7 +310,7 @@ impl Language {
                     name_translations: t.name_translations.clone(),
                     from_id: t.from_status_id,
                     to_id: t.to_status_id,
-                    rules: RulesBody::of(&t.rules),
+                    rules: RulesBody::of(&t.rules, t.screen_id),
                     version: t.version,
                 })
                 .collect(),
@@ -937,15 +937,19 @@ pub async fn create_transition(
         return Err(not_found("no such workflow"));
     }
     check_ends(&all, workflow, &body)?;
-    let rules = match &body.rules {
-        Some(rules) => Some(checked(&mut tx, draft, rules).await?),
-        None => None,
+    let (rules, screen_id) = match &body.rules {
+        Some(rules) => {
+            let (rules, screen) = checked(&mut tx, draft, rules).await?;
+            (Some(rules), Some(screen))
+        }
+        None => (None, None),
     };
     let fields = TransitionFields {
         name_translations: &body.name_translations,
         from_status_id: body.from_id,
         to_status_id: body.to_id,
         rules: rules.as_ref(),
+        screen_id,
     };
     repo::insert_transition(&mut tx, draft, workflow, infra::id::new_id(), &fields).await?;
     changed(&mut tx, draft, workflow).await?;
@@ -1000,15 +1004,19 @@ pub async fn update_transition(
     let all = repo::load(&mut tx, draft).await?;
     let workflow = owner(&all, transition).ok_or_else(|| not_found("no such transition"))?;
     check_ends(&all, workflow, &body)?;
-    let rules = match &body.rules {
-        Some(rules) => Some(checked(&mut tx, draft, rules).await?),
-        None => None,
+    let (rules, screen_id) = match &body.rules {
+        Some(rules) => {
+            let (rules, screen) = checked(&mut tx, draft, rules).await?;
+            (Some(rules), Some(screen))
+        }
+        None => (None, None),
     };
     let fields = TransitionFields {
         name_translations: &body.name_translations,
         from_status_id: body.from_id,
         to_status_id: body.to_id,
         rules: rules.as_ref(),
+        screen_id,
     };
     repo::update_transition(&mut tx, draft, transition, if_match.versions(), &fields)
         .await?

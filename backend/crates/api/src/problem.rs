@@ -114,11 +114,14 @@ pub enum ErrorCode {
     WorkflowInvalid,
     FieldKeyTaken,
     FieldSystem,
+    ScreenExists,
+    ScreenGeneral,
+    ScreenInUse,
 }
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 75] = [
+    pub const ALL: [Self; 78] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -194,6 +197,9 @@ impl ErrorCode {
         Self::WorkflowInvalid,
         Self::FieldKeyTaken,
         Self::FieldSystem,
+        Self::ScreenExists,
+        Self::ScreenGeneral,
+        Self::ScreenInUse,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -273,6 +279,9 @@ impl ErrorCode {
             Self::WorkflowInvalid => "workflow.invalid",
             Self::FieldKeyTaken => "config_field.key_taken",
             Self::FieldSystem => "config_field.system",
+            Self::ScreenExists => "screen.exists",
+            Self::ScreenGeneral => "screen.general",
+            Self::ScreenInUse => "screen.in_use",
         }
     }
 
@@ -345,7 +354,10 @@ impl ErrorCode {
             | Self::WorkflowLast
             | Self::WorkflowInvalid
             | Self::FieldKeyTaken
-            | Self::FieldSystem => StatusCode::CONFLICT,
+            | Self::FieldSystem
+            | Self::ScreenExists
+            | Self::ScreenGeneral
+            | Self::ScreenInUse => StatusCode::CONFLICT,
             Self::PreconditionFailed => StatusCode::PRECONDITION_FAILED,
             Self::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -445,6 +457,9 @@ impl ErrorCode {
             Self::FieldSystem => {
                 "A system field keeps its label and options and cannot be removed; only its types and rules change"
             }
+            Self::ScreenExists => "This type, or the configuration, already has a screen of this kind",
+            Self::ScreenGeneral => "The general creation and view screens of a configuration stay",
+            Self::ScreenInUse => "Transitions show this screen: give them another one first",
         }
     }
 
@@ -688,7 +703,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 75] = [
+        let expected: [(ErrorCode, u16); 78] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -764,6 +779,9 @@ mod tests {
             (ErrorCode::WorkflowInvalid, 409),
             (ErrorCode::FieldKeyTaken, 409),
             (ErrorCode::FieldSystem, 409),
+            (ErrorCode::ScreenExists, 409),
+            (ErrorCode::ScreenGeneral, 409),
+            (ErrorCode::ScreenInUse, 409),
         ];
         for (code, status) in expected {
             assert_eq!(code.status().as_u16(), status, "{}", code.as_str());

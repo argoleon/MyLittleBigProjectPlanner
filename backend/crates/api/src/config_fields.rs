@@ -810,6 +810,9 @@ pub async fn create(
         .map_err(conflict_problem)?;
     repo::set_rules(&mut tx, draft, item, &checked.rules).await?;
     changed(&mut tx, draft, item).await?;
+    // At the end of the general creation and view screens.
+    let screens = infra::screens::append_field(&mut tx, draft, item).await?;
+    crate::screens::screens_changed(&mut tx, draft, &screens).await?;
     let language = Language::of(&tx, &accept);
     let (view, version) = field_response(&mut tx, &language, draft, published, item).await?;
     let mut response =
@@ -951,6 +954,9 @@ pub async fn delete(
         };
         configs_repo::record_change(&mut tx, draft, workflow).await?;
     }
+    // And off the screens.
+    let screens = infra::screens::forget_field(&mut tx, draft, item).await?;
+    crate::screens::screens_changed(&mut tx, draft, &screens).await?;
     tx.commit().await?;
     Ok(StatusCode::NO_CONTENT)
 }

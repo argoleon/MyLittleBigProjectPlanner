@@ -104,11 +104,15 @@ pub struct RulesBody {
     /// Run in their order, in the transaction of the transition.
     #[serde(default)]
     post_functions: Vec<PostFunctionBody>,
+    /// A transition screen of the configuration, shown before the
+    /// transition runs (L04-US06); `null`: none.
+    #[serde(default)]
+    screen_id: Option<Uuid>,
 }
 
 impl RulesBody {
-    /// The rules as an admin reads them.
-    pub(crate) fn of(rules: &Rules) -> Self {
+    /// The rules as an admin reads them, with the transition screen.
+    pub(crate) fn of(rules: &Rules, screen_id: Option<Uuid>) -> Self {
         let ids = |ids: &[u128]| ids.iter().map(|id| Uuid::from_u128(*id)).collect();
         Self {
             conditions: ConditionsBody {
@@ -117,6 +121,7 @@ impl RulesBody {
             },
             validators: ids(&rules.validators),
             post_functions: rules.post_functions.iter().map(post_function_body).collect(),
+            screen_id,
         }
     }
 
@@ -239,7 +244,13 @@ fn post_function(body: &PostFunctionBody) -> Result<PostFunction, (&'static str,
 
 /// The rules of `body`, checked against the roles, groups and members of
 /// the tenant and the fields of `version`.
-pub(crate) async fn checked(tx: &mut TenantTx, version: Uuid, body: &RulesBody) -> Result<Rules, Problem> {
+/// The rules of `body` and its transition screen, checked: the screen must
+/// be a transition screen of `version`.
+pub(crate) async fn checked(
+    tx: &mut TenantTx,
+    version: Uuid,
+    body: &RulesBody,
+) -> Result<(Rules, Option<Uuid>), Problem> {
     let rules = body.rules().map_err(Problem::validation)?;
     let uuids = |ids: &[u128]| ids.iter().map(|id| Uuid::from_u128(*id)).collect::<Vec<_>>();
     let members: Vec<u128> = rules
@@ -295,15 +306,22 @@ pub(crate) async fn checked(tx: &mut TenantTx, version: Uuid, body: &RulesBody) 
             })
             .collect(),
     };
-    validate_rules(&rules, &refs).map_err(|errors| {
-        Problem::validation(
-            errors
-                .into_iter()
-                .map(|e| FieldError::new(format!("rules.{}", e.field), e.code))
-                .collect(),
-        )
-    })?;
-    Ok(rules)
+    let mut errors: Vec<FieldError> = validate_rules(&rules, &refs)
+        .err()
+        .unwrap_or_default()
+        .into_iter()
+        .map(|e| FieldError::new(format!("rules.{}", e.field), e.code))
+        .collect();
+    if let Some(screen) = body.screen_id {
+        let found = infra::screens::find(tx, version, screen).await?;
+        if !found.is_some_and(|s| s.kind == domain::screens::Kind::Transition) {
+            errors.push(FieldError::new("rules.screenId", "not_found"));
+        }
+    }
+    if !errors.is_empty() {
+        return Err(Problem::validation(errors));
+    }
+    Ok((rules, body.screen_id))
 }
 
 /// A group or a member the rules name.

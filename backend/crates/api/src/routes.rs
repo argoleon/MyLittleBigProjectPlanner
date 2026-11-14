@@ -36,6 +36,7 @@ use crate::platform;
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
 use crate::reference_items;
 use crate::roles;
+use crate::screens;
 use crate::sso;
 use crate::tenant::{AppState, PublicTenantTx};
 use crate::transition_rules;
@@ -147,6 +148,9 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
             config_fields::update,
             config_fields::delete
         ))
+        .routes(routes!(screens::list, screens::create))
+        .routes(routes!(screens::update, screens::delete))
+        .routes(routes!(screens::resolved))
         .routes(routes!(transition_rules::roles))
         .routes(routes!(transition_rules::candidates))
         .routes(routes!(workflows::list, workflows::create))

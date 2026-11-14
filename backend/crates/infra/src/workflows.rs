@@ -60,6 +60,8 @@ pub struct Transition {
     pub to_status_id: Uuid,
     /// Who may take it, the fields it requires, what it does (L04-US05).
     pub rules: Rules,
+    /// Its transition screen (L04-US06), by `item_id`.
+    pub screen_id: Option<Uuid>,
     pub position: i32,
     pub version: i64,
 }
@@ -119,6 +121,7 @@ struct TransitionRow {
     from_status_id: Option<Uuid>,
     to_status_id: Uuid,
     rules: Json<RulesDoc>,
+    screen_id: Option<Uuid>,
     position: i32,
     version: i64,
 }
@@ -132,13 +135,16 @@ pub struct StatusFields<'a> {
     pub is_initial: bool,
 }
 
-/// What a transition is made of; its rules stay as they are when none.
+/// What a transition is made of; its rules and its screen stay as they are
+/// when none.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TransitionFields<'a> {
     pub name_translations: &'a Labels,
     pub from_status_id: Option<Uuid>,
     pub to_status_id: Uuid,
     pub rules: Option<&'a Rules>,
+    /// `Some(None)`: no transition screen.
+    pub screen_id: Option<Option<Uuid>>,
 }
 
 /// Why a write did not happen.
@@ -227,7 +233,7 @@ pub async fn load(conn: &mut PgConnection, version: Uuid) -> Result<Workflows, s
         TransitionRow,
         r#"
         SELECT item_id, workflow_id, name AS "name: Json<Labels>", from_status_id, to_status_id,
-               rules AS "rules: Json<RulesDoc>", position, version
+               rules AS "rules: Json<RulesDoc>", screen_id, position, version
         FROM workflow_transition WHERE version_id = $1 ORDER BY position, item_id
         "#,
         version
@@ -242,6 +248,7 @@ pub async fn load(conn: &mut PgConnection, version: Uuid) -> Result<Workflows, s
         from_status_id: r.from_status_id,
         to_status_id: r.to_status_id,
         rules: Rules::from(&r.rules.0),
+        screen_id: r.screen_id,
         position: r.position,
         version: r.version,
     })
@@ -328,8 +335,9 @@ pub async fn duplicate_workflow(
         sqlx::query!(
             r#"
             INSERT INTO workflow_transition
-                (id, tenant_id, version_id, item_id, workflow_id, name, from_status_id, to_status_id, rules, position)
-            VALUES ($1, app_current_tenant(), $2, $3, $4, $5, $6, $7, $8, $9)
+                (id, tenant_id, version_id, item_id, workflow_id, name, from_status_id, to_status_id, rules, screen_id,
+                 position)
+            VALUES ($1, app_current_tenant(), $2, $3, $4, $5, $6, $7, $8, $9, $10)
             "#,
             crate::id::new_id(),
             version,
@@ -339,6 +347,7 @@ pub async fn duplicate_workflow(
             from,
             to,
             Json(RulesDoc::from(&transition.rules)) as _,
+            transition.screen_id,
             transition.position
         )
         .execute(&mut *conn)
@@ -535,8 +544,8 @@ pub async fn insert_transition(
     sqlx::query!(
         r#"
         INSERT INTO workflow_transition
-            (id, tenant_id, version_id, item_id, workflow_id, name, from_status_id, to_status_id, rules, position)
-        SELECT $1, app_current_tenant(), $2, $3, $4, $5, $6, $7, $8,
+            (id, tenant_id, version_id, item_id, workflow_id, name, from_status_id, to_status_id, rules, screen_id, position)
+        SELECT $1, app_current_tenant(), $2, $3, $4, $5, $6, $7, $8, $9,
                coalesce((SELECT max(position) + 1 FROM workflow_transition WHERE version_id = $2 AND workflow_id = $4), 0)
         "#,
         crate::id::new_id(),
@@ -546,7 +555,8 @@ pub async fn insert_transition(
         Json(trimmed(fields.name_translations)) as _,
         fields.from_status_id,
         fields.to_status_id,
-        Json(fields.rules.map(RulesDoc::from).unwrap_or_default()) as _
+        Json(fields.rules.map(RulesDoc::from).unwrap_or_default()) as _,
+        fields.screen_id.flatten()
     )
     .execute(conn)
     .await?;
@@ -564,7 +574,8 @@ pub async fn update_transition(
     let updated = sqlx::query!(
         r#"
         UPDATE workflow_transition
-        SET name = $4, from_status_id = $5, to_status_id = $6, rules = coalesce($7, rules), version = version + 1
+        SET name = $4, from_status_id = $5, to_status_id = $6, rules = coalesce($7, rules),
+            screen_id = CASE WHEN $8 THEN $9 ELSE screen_id END, version = version + 1
         WHERE version_id = $1 AND item_id = $2 AND ($3::bigint[] IS NULL OR version = ANY($3))
         "#,
         version,
@@ -573,7 +584,9 @@ pub async fn update_transition(
         Json(trimmed(fields.name_translations)) as _,
         fields.from_status_id,
         fields.to_status_id,
-        fields.rules.map(|rules| Json(RulesDoc::from(rules))) as _
+        fields.rules.map(|rules| Json(RulesDoc::from(rules))) as _,
+        fields.screen_id.is_some(),
+        fields.screen_id.flatten()
     )
     .execute(&mut *conn)
     .await?;
@@ -656,8 +669,10 @@ pub async fn copy(conn: &mut PgConnection, from: Uuid, to: Uuid) -> Result<(), s
     sqlx::query!(
         r#"
         INSERT INTO workflow_transition
-            (id, tenant_id, version_id, item_id, workflow_id, name, from_status_id, to_status_id, rules, position)
-        SELECT uuidv7(), tenant_id, $2, item_id, workflow_id, name, from_status_id, to_status_id, rules, position
+            (id, tenant_id, version_id, item_id, workflow_id, name, from_status_id, to_status_id, rules, screen_id,
+             position)
+        SELECT uuidv7(), tenant_id, $2, item_id, workflow_id, name, from_status_id, to_status_id, rules, screen_id,
+               position
         FROM workflow_transition WHERE version_id = $1
         "#,
         from,
