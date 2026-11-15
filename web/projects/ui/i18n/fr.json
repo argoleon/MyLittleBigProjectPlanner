@@ -433,7 +433,9 @@
       "invalid": "Le contenu n’est pas valide.",
       "too_deep": "Le contenu est trop imbriqué.",
       "same_project": "Le ticket est déjà dans ce projet.",
-      "not_in_workflow": "Ce statut n’est pas dans le workflow de ce type."
+      "not_in_workflow": "Ce statut n’est pas dans le workflow de ce type.",
+      "self": "Un ticket ne peut pas être lié à lui-même.",
+      "cycle": "Ce ticket est rattaché sous celui que vous modifiez."
     },
     "invitation": {
       "invalid": "Ce lien d’invitation est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
@@ -506,6 +508,9 @@
     },
     "issue": {
       "subtask_moves_with_parent": "Une sous-tâche se déplace avec son parent : déplacez plutôt le parent."
+    },
+    "issue_link": {
+      "exists": "Les deux tickets ont déjà ce lien."
     }
   },
   "dialog": {
@@ -1493,6 +1498,40 @@
       "statusOf": "Le statut {{ label }} devient",
       "dropped": "Ces champs n’existent pas là-bas, ou ne s’appliquent pas : leurs valeurs seront perdues : {{ fields }}.",
       "confirm": "Déplacer"
+    },
+    "links": {
+      "title": "Sous-tâches et liens",
+      "addOpen": "Lier un ticket",
+      "addTitle": "Lier {{ key }} à un ticket",
+      "relation": "Ce ticket",
+      "other": "Ticket",
+      "add": "Lier",
+      "empty": "Aucune sous-tâche ni aucun lien.",
+      "remove": "Retirer",
+      "removeTitle": "Retirer le lien ?",
+      "removeMessage": "Le lien avec {{ key }} est retiré des deux tickets.",
+      "removeOf": "Retirer le lien avec {{ key }}",
+      "relations": {
+        "subtask": "Sous-tâche",
+        "blocks": "Bloque",
+        "blocked_by": "Bloqué par",
+        "depends_on": "Dépend de",
+        "required_by": "Requis par",
+        "duplicates": "Duplique",
+        "duplicated_by": "Dupliqué par",
+        "relates_to": "Lié à"
+      }
+    },
+    "picker": {
+      "placeholder": "PLAT-12, ou des mots de son résumé",
+      "hint": "Sa clé, ou des mots de son résumé.",
+      "noMatch": "Aucun ticket trouvé."
+    },
+    "parent": {
+      "open": "Changer de parent",
+      "title": "Parent de {{ key }}",
+      "top": "Au premier niveau, sous aucun ticket",
+      "parent": "Ticket parent"
     }
   }
 }

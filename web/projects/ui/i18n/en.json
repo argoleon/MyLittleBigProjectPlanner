@@ -433,7 +433,9 @@
       "invalid": "The content is invalid.",
       "too_deep": "The content is nested too deeply.",
       "same_project": "The ticket is already in this project.",
-      "not_in_workflow": "Not a status of this type’s workflow."
+      "not_in_workflow": "Not a status of this type’s workflow.",
+      "self": "A ticket cannot be linked to itself.",
+      "cycle": "This ticket sits under the one you are changing."
     },
     "invitation": {
       "invalid": "This invitation link is invalid, has expired or was already used. Ask for a new one.",
@@ -506,6 +508,9 @@
     },
     "issue": {
       "subtask_moves_with_parent": "A sub-task moves with its parent: move the parent instead."
+    },
+    "issue_link": {
+      "exists": "The two tickets already have this link."
     }
   },
   "dialog": {
@@ -1493,6 +1498,40 @@
       "statusOf": "Status {{ label }} becomes",
       "dropped": "These fields do not exist there, or do not apply: their values will be lost: {{ fields }}.",
       "confirm": "Move"
+    },
+    "links": {
+      "title": "Sub-tasks and links",
+      "addOpen": "Link a ticket",
+      "addTitle": "Link {{ key }} to a ticket",
+      "relation": "This ticket",
+      "other": "Ticket",
+      "add": "Link",
+      "empty": "No sub-task nor link.",
+      "remove": "Remove",
+      "removeTitle": "Remove the link?",
+      "removeMessage": "The link with {{ key }} is removed from both tickets.",
+      "removeOf": "Remove the link with {{ key }}",
+      "relations": {
+        "subtask": "Sub-task",
+        "blocks": "Blocks",
+        "blocked_by": "Blocked by",
+        "depends_on": "Depends on",
+        "required_by": "Required by",
+        "duplicates": "Duplicates",
+        "duplicated_by": "Duplicated by",
+        "relates_to": "Relates to"
+      }
+    },
+    "picker": {
+      "placeholder": "PLAT-12, or words of its summary",
+      "hint": "Its key, or words of its summary.",
+      "noMatch": "No ticket found."
+    },
+    "parent": {
+      "open": "Change parent",
+      "title": "Parent of {{ key }}",
+      "top": "At the top, under no ticket",
+      "parent": "Parent ticket"
     }
   }
 }

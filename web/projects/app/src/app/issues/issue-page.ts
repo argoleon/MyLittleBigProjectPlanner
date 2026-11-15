@@ -25,6 +25,8 @@ import {
 
 import type { EditOutcome } from './issue-edit-dialog';
 import { createIssueFlow } from './issue-flow';
+import { IssueParentDialog, ParentOutcome } from './issue-parent-dialog';
+import { IssueRelations } from './issue-relations';
 import type { MoveOutcome } from './issue-move-dialog';
 import { chipCategory, chipKind } from './issue-fields';
 
@@ -38,6 +40,7 @@ import { chipCategory, chipKind } from './issue-fields';
   imports: [
     ErrorState,
     InstantPipe,
+    IssueRelations,
     LocalDatePipe,
     LocalNumberPipe,
     MatButtonModule,
@@ -67,7 +70,7 @@ export class IssuePage {
 
   protected readonly issue = resource({
     params: () => this.key(),
-    loader: ({ params }) => this.api.invoke(getIssue, { idOrKey: params, expand: 'parent' }),
+    loader: ({ params }) => this.api.invoke(getIssue, { idOrKey: params, expand: 'parent,children,links' }),
   });
   private readonly projectId = computed(() => (this.issue.hasValue() ? this.issue.value().project.id : undefined));
   private readonly permissions = resource({
@@ -128,8 +131,12 @@ export class IssuePage {
       .open(IssueEditDialog, { data: issue, width: 'min(720px, 100vw)', autoFocus: 'first-tabbable' })
       .afterClosed()
       .subscribe((outcome?: EditOutcome) => {
-        if (outcome && 'saved' in outcome) this.issue.set(outcome.saved);
-        else if (outcome) this.issue.reload();
+        // An edit leaves the parent, sub-tasks and links as they were: kept from the ticket shown.
+        if (outcome && 'saved' in outcome) {
+          this.issue.set({ ...outcome.saved, parent: issue.parent, children: issue.children, links: issue.links });
+        } else if (outcome) {
+          this.issue.reload();
+        }
       });
   }
 
@@ -141,6 +148,16 @@ export class IssuePage {
       .subscribe((outcome?: MoveOutcome) => {
         if (outcome && 'moved' in outcome) void this.router.navigate(['/issues', outcome.moved.key]);
         else if (outcome) this.issue.reload();
+      });
+  }
+
+  protected changeParent(issue: Issue): void {
+    this.dialog
+      .open<IssueParentDialog, Issue, ParentOutcome>(IssueParentDialog, { data: issue, width: 'min(560px, 100vw)', autoFocus: 'first-tabbable' })
+      .afterClosed()
+      .subscribe((outcome) => {
+        // The page reads the ticket again: its parent, children and links with it.
+        if (outcome) this.issue.reload();
       });
   }
 
