@@ -1,0 +1,21 @@
+:host {
+  display: contents;
+}
+
+.target {
+  margin-inline-start: var(--app-space-2);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.message {
+  flex-basis: 100%;
+  margin: 0;
+  padding: var(--app-space-2) var(--app-space-4);
+  border-radius: var(--mat-sys-corner-small);
+  font: var(--mat-sys-body-medium);
+
+  &.error {
+    background: var(--mat-sys-error-container);
+    color: var(--mat-sys-on-error-container);
+  }
+}

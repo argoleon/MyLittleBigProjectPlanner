@@ -204,3 +204,38 @@ test('a ticket blocks one of another project, each side reading it its way; a st
   await expect(lines.getByRole('link')).toHaveText(`${one}-3`);
   await expect(lines.locator('.relation')).toHaveText('Sub-task');
 });
+
+test('a story goes through the standard workflow from its page', async ({ page }) => {
+  test.setTimeout(120_000);
+  const run = Date.now().toString(36).toUpperCase().slice(-5);
+  const code = `WF${run}`.slice(0, 10);
+  await signIn(page, adminEmail!, adminSecret!);
+  const url = await project(page, `Workflow ${run}`, code);
+  await page.goto(url);
+  await page.getByRole('button', { name: 'New ticket' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('combobox', { name: 'Type' }).click();
+  await page.getByRole('option', { name: 'Story', exact: true }).click();
+  await dialog.getByLabel('Summary').fill(`Workflow ${run}`);
+  await dialog.getByRole('button', { name: 'Create' }).click();
+  await expect(page).toHaveURL(new RegExp(`/issues/${code}-1$`));
+
+  // To do: Start is the first transition, offered as a button.
+  await expect(page.getByRole('button', { name: 'Status: To do. Change it' })).toBeVisible();
+  expect(await accessibilityViolations(page)).toEqual([]);
+  await page.getByRole('button', { name: 'Start', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Status: In progress. Change it' })).toBeVisible();
+
+  // From the menu: Send to review, then Validate.
+  for (const [transition, status] of [
+    ['Send to review', 'In review'],
+    ['Validate', 'Done'],
+  ]) {
+    await page.locator('button.status-menu').click();
+    await page.getByRole('menuitem', { name: new RegExp(`^${transition}`) }).click();
+    await expect(page.getByRole('button', { name: `Status: ${status}. Change it` }).or(page.locator('ui-status-chip', { hasText: status }))).toBeVisible();
+  }
+  // Read again: Done, stored.
+  await page.reload();
+  await expect(page.locator('app-issue-status')).toContainText('Done');
+});

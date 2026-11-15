@@ -89,6 +89,10 @@ export type { PlanIssueMove$Params as PlanIssueMove$Params } from './fn/issues/p
 export { planIssueMove as planIssueMove } from './fn/issues/plan-issue-move';
 export type { SetIssueParent$Params as SetIssueParent$Params } from './fn/issues/set-issue-parent';
 export { setIssueParent as setIssueParent } from './fn/issues/set-issue-parent';
+export type { ListIssueTransitions$Params as ListIssueTransitions$Params } from './fn/issues/list-issue-transitions';
+export { listIssueTransitions as listIssueTransitions } from './fn/issues/list-issue-transitions';
+export type { RunIssueTransition$Params as RunIssueTransition$Params } from './fn/issues/run-issue-transition';
+export { runIssueTransition as runIssueTransition } from './fn/issues/run-issue-transition';
 export type { ListMyIssues$Params as ListMyIssues$Params } from './fn/issues/list-my-issues';
 export { listMyIssues as listMyIssues } from './fn/issues/list-my-issues';
 export type { GetIssueForm$Params as GetIssueForm$Params } from './fn/issues/get-issue-form';

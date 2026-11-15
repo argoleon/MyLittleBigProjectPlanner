@@ -132,6 +132,8 @@ async function animationsDone(page: Page) {
 /** The API of tickets; what was posted, kept. */
 async function mockTickets(page: Page, mine = [SUMMARY]) {
   const posted: unknown[] = [];
+  // No transition unless a test offers some (mockTransitions, registered later, wins).
+  await page.route('**/api/v1/issues/*/transitions', (route) => route.fulfill({ json: [] }));
   await page.route('**/api/v1/me/issues**', (route) => route.fulfill({ json: { items: mine, nextCursor: null } }));
   await page.route('**/api/v1/nodes?**', (route) => route.fulfill({ json: { items: [PROJECT, CRM], nextCursor: null } }));
   await page.route('**/api/v1/projects/PLAT/issue-form**', (route) => route.fulfill({ json: FORM }));
@@ -309,6 +311,43 @@ test('a member links a ticket of another project, found by its summary', async (
   expect(posted).toEqual([{ relation: 'blocks', issue: RELATED.id }]);
 });
 
+const TRANSITIONS = [
+  { id: 'tr-start', name: 'Start', toStatus: { id: 's2', key: 'in_progress', label: 'In progress', category: 'in_progress' }, fields: [] },
+  {
+    id: 'tr-review',
+    name: 'Send to review',
+    toStatus: { id: 's3', key: 'in_review', label: 'In review', category: 'in_progress' },
+    fields: [{ fieldId: 'f-points', key: 'points', label: 'Estimate', kind: 'number', mode: 'required', decimals: 0 }],
+  },
+];
+
+/** The transitions of the ticket; what was run, kept. */
+async function mockTransitions(page: Page) {
+  const run: unknown[] = [];
+  await page.route(`**/api/v1/issues/${ISSUE.id}/transitions`, (route) => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: TRANSITIONS });
+    run.push(route.request().postDataJSON());
+    return route.fulfill({ json: { ...ISSUE, status: TRANSITIONS[1].toStatus, version: 2 } });
+  });
+  return run;
+}
+
+test('a member sends a ticket to review, filling the field the transition takes', async ({ page }) => {
+  await mockTickets(page);
+  const run = await mockTransitions(page);
+  await page.goto('/issues/PLAT-142');
+  await expect(page.getByRole('button', { name: 'Start', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Status: To do. Change it' }).click();
+  await page.getByRole('menuitem', { name: /Send to review/ }).click();
+  const dialog = page.getByRole('dialog', { name: 'Send to review' });
+  await expect(dialog.getByText('The ticket goes to “In review”.')).toBeVisible();
+  await dialog.getByLabel('Estimate').fill('5');
+  await dialog.getByRole('button', { name: 'Send to review' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(run).toEqual([{ transitionId: 'tr-review', fields: { 'f-points': 5 } }]);
+  await expect(page.getByRole('button', { name: 'Status: In review. Change it' })).toBeVisible();
+});
+
 for (const theme of ['light', 'dark'] as const) {
   for (const language of ['fr', 'en'] as const) {
     test.describe(`accessibility of tickets, ${theme} mode, ${language}`, () => {
@@ -335,6 +374,20 @@ for (const theme of ['light', 'dark'] as const) {
         await page.goto('/issues/PLAT-142');
         await expect(page.getByRole('heading', { level: 1 })).toHaveText('Migrate the authentication to OIDC');
         await expect(page.locator('ui-rich-text a')).toHaveText('OIDC');
+        await animationsDone(page);
+        expect(await accessibilityViolations(page)).toEqual([]);
+      });
+
+      test('the status menu and the transition dialog have no axe-core violation', async ({ page }) => {
+        await mockTickets(page);
+        await mockTransitions(page);
+        await page.goto('/issues/PLAT-142');
+        await page.locator('button.status-menu').click();
+        await expect(page.getByRole('menuitem')).toHaveCount(2);
+        await animationsDone(page);
+        expect(await accessibilityViolations(page)).toEqual([]);
+        await page.getByRole('menuitem').nth(1).click();
+        await expect(page.getByRole('dialog').locator('app-field-input')).toHaveCount(1);
         await animationsDone(page);
         expect(await accessibilityViolations(page)).toEqual([]);
       });
