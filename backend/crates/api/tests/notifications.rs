@@ -125,6 +125,7 @@ fn jobs(api: &TestApi) -> worker::jobs::Jobs {
         storage: None,
         clamav: None,
         public_url: Some("https://{tenant}.example.test".to_owned()),
+        events: None,
     }
 }
 

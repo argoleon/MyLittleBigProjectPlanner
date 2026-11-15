@@ -122,6 +122,7 @@ async fn run(config: WorkerConfig) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    let events = infra::events::EventLog::new(valkey.clone(), "mlbpp:");
     let exports = infra::exports::ExportStore::new(valkey, "mlbpp:");
     let storage = match config
         .storage
@@ -153,6 +154,7 @@ async fn run(config: WorkerConfig) -> ExitCode {
         storage,
         clamav: config.clamav.clone(),
         public_url: config.public_url.clone(),
+        events: Some(events),
     });
     tracing::info!(health = %config.health_addr, worker_id = runner.worker_id(), "worker started");
     let mut worker = tokio::spawn(worker::run_loop(token.clone(), config.poll_interval, move || {

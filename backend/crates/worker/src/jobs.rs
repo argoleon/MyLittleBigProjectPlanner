@@ -24,7 +24,7 @@ use infra::email::{EMAIL_JOB, EmailJob, MailError, Mailer, render};
 use infra::erasure::{ERASURE_JOB, ErasedMember};
 use infra::exports::{EXPORT_JOB, ExportJob, ExportStore};
 use infra::jobs::ClaimedJob;
-use infra::notifications::{DISPATCH_JOB, DispatchJob};
+use infra::notifications::{DISPATCH_JOB, DispatchJob, PUBLISH_JOB, PublishJob};
 use infra::platform::PURGE_TENANT_JOB;
 use infra::sqlx::postgres::{PgConnection, PgPool};
 
@@ -61,6 +61,8 @@ pub struct Jobs {
     /// `PUBLIC_URL` (with `{tenant}` in multi-tenant mode): links of
     /// notification emails.
     pub public_url: Option<String>,
+    /// The real-time event log; without it, signals are dropped.
+    pub events: Option<infra::events::EventLog>,
 }
 
 impl Jobs {
@@ -160,13 +162,24 @@ impl JobHandler for Jobs {
                     let dispatched = infra::notifications::dispatch(conn, event.event_id, &link)
                         .await
                         .map_err(retry)?;
-                    if dispatched.notified > 0 {
+                    if dispatched.notified > 0 || dispatched.signals > 0 {
                         tracing::info!(
                             event = %event.event_id,
                             notified = dispatched.notified,
                             emailed = dispatched.emailed,
-                            "notifications written"
+                            signals = dispatched.signals,
+                            "event dispatched"
                         );
+                    }
+                    Ok(())
+                }
+                PUBLISH_JOB => {
+                    let publish: PublishJob = payload(job)?;
+                    // Signals only: lost ones are read again by the browsers.
+                    if let Some(events) = &self.events {
+                        for signal in &publish.signals {
+                            events.append(job.tenant_id, signal).await.map_err(retry)?;
+                        }
                     }
                     Ok(())
                 }

@@ -21,6 +21,7 @@ use crate::account;
 use crate::auth;
 use crate::config_fields;
 use crate::configs;
+use crate::events;
 use crate::gdpr;
 use crate::grants;
 use crate::groups;
@@ -171,6 +172,7 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(issue_history::activity))
         .routes(routes!(notifications::watchers))
         .routes(routes!(notifications::watch, notifications::unwatch))
+        .routes(routes!(events::events))
         .routes(routes!(notifications::list))
         .routes(routes!(notifications::unread))
         .routes(routes!(notifications::mark_read))

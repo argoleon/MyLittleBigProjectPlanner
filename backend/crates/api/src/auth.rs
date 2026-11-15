@@ -65,6 +65,9 @@ pub const CSRF_HEADER: &str = "x-csrf-token";
 /// Sessions, rate limits and the settings of authentication.
 #[derive(Debug, Clone)]
 pub struct Auth {
+    /// The Valkey client and key prefix of every store, real time included.
+    pub(crate) valkey: Valkey,
+    pub(crate) key_prefix: String,
     pub(crate) sessions: SessionStore,
     pub(crate) limits: RateLimiter,
     public_url: PublicUrl,
@@ -102,6 +105,8 @@ impl Auth {
             max_age: settings.max_age,
         };
         Ok(Self {
+            valkey: valkey.clone(),
+            key_prefix: key_prefix.to_owned(),
             sessions: SessionStore::new(valkey.clone(), key_prefix, lifetime),
             limits: RateLimiter::new(valkey.clone(), key_prefix),
             logins: LoginStore::new(valkey.clone(), key_prefix),

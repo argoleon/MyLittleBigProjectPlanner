@@ -105,6 +105,32 @@ pub async fn start_with(
     build: impl FnOnce(AppState, &HttpSettings) -> axum::Router,
 ) -> TestApi {
     let (valkey, key_prefix) = testkit::valkey().await;
+    start_on(db, tenancy, valkey, key_prefix, build).await
+}
+
+/// Another instance of the API of `first`: the same database, Valkey and
+/// key prefix (sessions, real-time events), as instances behind a load
+/// balancer. Its members are its own sessions.
+#[allow(dead_code)]
+pub async fn another_instance(db: &TestDb, first: &TestApi) -> TestApi {
+    start_on(
+        db,
+        multi(),
+        first.valkey.clone(),
+        first.key_prefix.clone(),
+        api::app,
+    )
+    .await
+}
+
+/// [`start_with`], on the Valkey `valkey` with `key_prefix`.
+pub async fn start_on(
+    db: &TestDb,
+    tenancy: Tenancy,
+    valkey: infra::valkey::Valkey,
+    key_prefix: String,
+    build: impl FnOnce(AppState, &HttpSettings) -> axum::Router,
+) -> TestApi {
     let auth = Auth::new(
         valkey.clone(),
         &key_prefix,

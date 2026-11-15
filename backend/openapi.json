@@ -931,6 +931,52 @@
         ]
       }
     },
+    "/api/v1/events": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Real-time signals (Server-Sent Events)",
+        "description": "A `text/event-stream` of the changes of the member's tenant they may see: `issue` (a ticket of a project they see changed: `issueId`, `issueKey`, `kind`, `actorId`), `notifications` (they have new ones), `ready` (the stream is open; its id is where it starts), `resync` (signals were missed: read everything again). Signals carry no data: read it through the API. Send `Last-Event-ID` to resume. A comment line every 15 seconds keeps it open; it ends after 10 minutes, and the browser reconnects.",
+        "operationId": "streamEvents",
+        "parameters": [
+          {
+            "name": "Last-Event-ID",
+            "in": "header",
+            "description": "The id of the last event received",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The stream",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/RealtimeSignal"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/hierarchy": {
       "get": {
         "tags": [
@@ -21098,6 +21144,51 @@
             "type": "string",
             "description": "Where: `workflows.standard`, or a status of it\n(`workflows.standard.statuses.in_review`).",
             "example": "workflows.standard.statuses.in_review"
+          }
+        }
+      },
+      "RealtimeSignal": {
+        "type": "object",
+        "description": "What a browser receives: which ticket changed, or that the member has\nnew notifications.",
+        "required": [
+          "topic",
+          "kind",
+          "issueId",
+          "issueKey",
+          "actorId"
+        ],
+        "properties": {
+          "actorId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Who changed it; the member's own changes come back too."
+          },
+          "issueId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "issueKey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`issue.updated`, `comment.created`…"
+          },
+          "topic": {
+            "type": "string",
+            "description": "`issue` or `notifications`."
           }
         }
       },

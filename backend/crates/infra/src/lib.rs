@@ -17,6 +17,7 @@ pub mod crypto;
 pub mod db;
 pub mod email;
 pub mod erasure;
+pub mod events;
 pub mod exports;
 pub mod fields;
 pub mod grants;

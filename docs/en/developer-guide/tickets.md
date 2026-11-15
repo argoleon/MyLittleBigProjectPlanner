@@ -23,6 +23,7 @@ A ticket (`issue`) belongs to one project and follows the **published** version 
 | Tables | `backend/migrations/*_notifications.sql` | `issue_watcher`, `notification`, `notification_settings`, cross-tenant read functions |
 | SQL, dispatch | `backend/crates/infra/src/notifications.rs`, `watchers.rs` | `dispatch` (outbox → notifications and emails), reads, preferences, digest |
 | HTTP | `backend/crates/api/src/notifications.rs` | `/me/notifications…`, `/me/notification-preferences`, watchers |
+| Real time | `backend/crates/infra/src/events.rs`, `api/src/events.rs` | Event log per tenant (Valkey Stream), `GET /events` (SSE) |
 | HTTP | `backend/crates/api/src/issues.rs` | Creation, reading, the creation form, "my tickets", assignable people |
 
 ## What a ticket references
@@ -146,6 +147,17 @@ Every outbox event queues an `outbox.dispatch` job in its own transaction (`infr
 - **Daily digest**: the worker checks every 5 minutes (`worker::send_digests`); a member who asked for it gets, each working day from 8:00 in their time zone (else their first organization's), one email gathering the notifications waiting for email, of all their organizations. Emails then no longer go one by one.
 - **GDPR**: an erased member's notifications and watches are removed in the tenant (erasure step `notifications`).
 
+## Real time (L05-US08)
+
+A change reaches the browsers that follow it within seconds, whatever API instance they are connected to:
+
+1. The outbox dispatch (`infra::notifications::dispatch`) builds **signals**: which tickets changed (both ends of a link), and which members have new notifications in the application. It queues them as an `events.publish` job in its own transaction, so they go once it committed.
+2. The worker appends them to the tenant's **event log**, a Valkey Stream `<prefix>events:<tenant>` capped at `infra::events::MAX_LEN` entries (`XADD MAXLEN ~`). A stream rather than pub/sub: a browser that comes back resumes exactly where it was.
+3. Each API instance runs **one reader per tenant** its browsers follow (`api::events::Realtime`: a blocking `XREAD` on a connection of its own, handing entries to a broadcast channel), stopped when the last browser of that tenant leaves.
+4. `GET /api/v1/events` (Server-Sent Events, session cookie) gives each browser the signals it may see: tickets of projects it sees (permissions rechecked every minute), its own notifications. It starts with `ready` (its id is where the stream starts); with `Last-Event-ID`, it replays what was missed, or sends `resync` when the log no longer holds it. A comment every 15 s keeps proxies from closing it; it ends after 10 minutes, and the browser reconnects at once (its session checked again).
+
+Signals carry **no data**: the browser reads the ticket again through the API, with its rights and language. In the application, `Realtime` (`ui`) wraps `EventSource` (the browser reconnects by itself, `Last-Event-ID` included; when it gives up, the service opens the stream again after a growing delay and asks for a resync). The ticket page reads itself and its parts again on a signal for it; while a form is open (a dialog), it shows a warning instead and keeps the input. The bell reads its count again on `notifications`. Specs fake the stream with the `EVENT_SOURCE` token; mocked end-to-end tests get a quiet stream from `e2e/fixtures.ts`.
+
 ## Rich text
 
 The description is a Tiptap document. The server never stores HTML it received:
@@ -192,4 +204,4 @@ Follow [Adding an endpoint](new-endpoint.md), and:
 - The editor only offers what the server accepts (no underline, headings 1 to 4, links to `http`, `https` and `mailto`), so a document is never refused for its form.
 - The dialog reads the form for the type chosen (`GET …/issue-form?typeId=`) and keeps a value when the next type has the same field. Errors of the API go to their control (`fields.{id}` included) through `placeApiErrors`.
 - The Activity tab builds each sentence in the browser (`sentenceOf`) from the entry's action, field and values, in the current language and time zone: the API returns labels and names, never sentences. Planning dates go through `formatLocalDate`, instants through `formatInstant`. The tab reads the history again whenever the ticket is read again, or a comment changes (`IssueComments.changed`).
-- `AttachmentUploader` announces the file, `PUT`s it to the presigned URL, then completes the upload. It sends through its own `HttpClient` on an XMLHttpRequest backend (`UPLOAD_BACKEND`): the application's `fetch` backend cannot report upload progress, and the storage must not receive the session's CSRF header. Tests provide the testing backend for `UPLOAD_BACKEND`. The attachments card reads the list again every few seconds while a file is being scanned (real time comes with L05-US08); downloads are plain links to `…/content`, which redirects to the storage.
+- `AttachmentUploader` announces the file, `PUT`s it to the presigned URL, then completes the upload. It sends through its own `HttpClient` on an XMLHttpRequest backend (`UPLOAD_BACKEND`): the application's `fetch` backend cannot report upload progress, and the storage must not receive the session's CSRF header. Tests provide the testing backend for `UPLOAD_BACKEND`. The attachments card reads the list again every few seconds while a file is being scanned (real-time signals do not cover scans); downloads are plain links to `…/content`, which redirects to the storage.
