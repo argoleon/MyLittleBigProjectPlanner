@@ -5,5 +5,5 @@
 /**
  * What an entry records.
  */
-export type ActivityAction = 'created' | 'updated' | 'moved' | 'link_added' | 'link_removed' | 'comment_created' | 'comment_updated' | 'comment_deleted';
+export type ActivityAction = 'created' | 'updated' | 'moved' | 'link_added' | 'link_removed' | 'comment_created' | 'comment_updated' | 'comment_deleted' | 'attachment_added' | 'attachment_removed';
 

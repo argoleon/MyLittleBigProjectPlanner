@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE attachment\n        SET status = 'clean', sha256 = $2, object_key = $3, thumbnail_key = $4, served_type = $5,\n            scanned_at = now(), version = version + 1\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9ad53ec0a2dd6f37d3777a667093dad405e7b1b6265de35287c8f476512d74fd"
+}

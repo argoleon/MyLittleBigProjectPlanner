@@ -4,8 +4,8 @@
 //!
 //! A write compares the ticket before and after ([`diff`]) and records one
 //! entry per changed field, with its old and new values; other actions
-//! (creation, move, links, comments) record one entry each. The Activity
-//! tab turns the entries into sentences.
+//! (creation, move, links, comments, attachments) record one entry each.
+//! The Activity tab turns the entries into sentences.
 
 use std::collections::BTreeMap;
 
@@ -59,10 +59,13 @@ pub enum Action {
     CommentCreated,
     CommentUpdated,
     CommentDeleted,
+    /// A file was attached (new value) or removed (old one).
+    AttachmentAdded,
+    AttachmentRemoved,
 }
 
 impl Action {
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 10] = [
         Self::Created,
         Self::Updated,
         Self::Moved,
@@ -71,6 +74,8 @@ impl Action {
         Self::CommentCreated,
         Self::CommentUpdated,
         Self::CommentDeleted,
+        Self::AttachmentAdded,
+        Self::AttachmentRemoved,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -83,6 +88,8 @@ impl Action {
             Self::CommentCreated => "comment_created",
             Self::CommentUpdated => "comment_updated",
             Self::CommentDeleted => "comment_deleted",
+            Self::AttachmentAdded => "attachment_added",
+            Self::AttachmentRemoved => "attachment_removed",
         }
     }
 

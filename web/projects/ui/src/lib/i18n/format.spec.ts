@@ -1,4 +1,4 @@
-import { formatInstant, formatLocalDate, formatNumber, fromLocalDate, parseLocalDate, toLocalDate } from './format';
+import { formatFileSize, formatInstant, formatLocalDate, formatNumber, fromLocalDate, parseLocalDate, toLocalDate } from './format';
 
 // Time zones on both sides of UTC, with and without daylight saving time.
 const ZONES = ['Europe/Paris', 'America/Los_Angeles', 'Pacific/Kiritimati', 'Pacific/Pago_Pago', 'UTC'];
@@ -85,5 +85,15 @@ describe('toLocalDate and fromLocalDate', () => {
     expect(fromLocalDate(null)).toBeNull();
     expect(fromLocalDate('')).toBeNull();
     expect(fromLocalDate('2026-02-30')).toBeNull();
+  });
+});
+
+describe('formatFileSize', () => {
+  it('says sizes in the units people read, in their language', () => {
+    expect(formatFileSize(512, 'en')).toBe('512 bytes');
+    expect(formatFileSize(3_145_728, 'en')).toBe('3.1 MB');
+    expect(formatFileSize(3_145_728, 'fr')).toMatch(/^3,1\s?Mo$/);
+    expect(formatFileSize(52_428_800, 'en')).toBe('52.4 MB');
+    expect(formatFileSize(1500, 'en')).toBe('1.5 kB');
   });
 });

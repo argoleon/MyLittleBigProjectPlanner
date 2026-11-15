@@ -68,6 +68,10 @@ export function sentenceOf(entry: ActivityEntry, context: SentenceContext): Sent
       const relation = entry.relation ? t(`issue.links.relations.${entry.relation}`) : '';
       return sentence(t(`issue.activity.${entry.action === 'link_added' ? 'linkAdded' : 'linkRemoved'}`, { relation, key: valueText(other, context) }));
     }
+    case 'attachment_added':
+      return sentence(t('issue.activity.attached', { name: entry.new?.text ?? '' }));
+    case 'attachment_removed':
+      return sentence(t('issue.activity.fileRemoved', { name: entry.old?.text ?? '' }));
     case 'comment_created':
       return sentence(t('issue.activity.commented'));
     case 'comment_updated':

@@ -79,6 +79,18 @@ export type { UpdateIssue$Params as UpdateIssue$Params } from './fn/issues/updat
 export { updateIssue as updateIssue } from './fn/issues/update-issue';
 export type { ListIssueActivity$Params as ListIssueActivity$Params } from './fn/issues/list-issue-activity';
 export { listIssueActivity as listIssueActivity } from './fn/issues/list-issue-activity';
+export type { ListIssueAttachments$Params as ListIssueAttachments$Params } from './fn/issues/list-issue-attachments';
+export { listIssueAttachments as listIssueAttachments } from './fn/issues/list-issue-attachments';
+export type { CreateIssueAttachment$Params as CreateIssueAttachment$Params } from './fn/issues/create-issue-attachment';
+export { createIssueAttachment as createIssueAttachment } from './fn/issues/create-issue-attachment';
+export type { DeleteIssueAttachment$Params as DeleteIssueAttachment$Params } from './fn/issues/delete-issue-attachment';
+export { deleteIssueAttachment as deleteIssueAttachment } from './fn/issues/delete-issue-attachment';
+export type { DownloadIssueAttachment$Params as DownloadIssueAttachment$Params } from './fn/issues/download-issue-attachment';
+export { downloadIssueAttachment as downloadIssueAttachment } from './fn/issues/download-issue-attachment';
+export type { ReadIssueAttachmentThumbnail$Params as ReadIssueAttachmentThumbnail$Params } from './fn/issues/read-issue-attachment-thumbnail';
+export { readIssueAttachmentThumbnail as readIssueAttachmentThumbnail } from './fn/issues/read-issue-attachment-thumbnail';
+export type { CompleteIssueAttachment$Params as CompleteIssueAttachment$Params } from './fn/issues/complete-issue-attachment';
+export { completeIssueAttachment as completeIssueAttachment } from './fn/issues/complete-issue-attachment';
 export type { ListIssueComments$Params as ListIssueComments$Params } from './fn/issues/list-issue-comments';
 export { listIssueComments as listIssueComments } from './fn/issues/list-issue-comments';
 export type { CreateIssueComment$Params as CreateIssueComment$Params } from './fn/issues/create-issue-comment';

@@ -238,6 +238,8 @@ async fn jobs() -> Jobs {
     Jobs {
         mailer: Mailer::new(&smtp, "Planner <noreply@example.org>").unwrap(),
         exports: infra::exports::ExportStore::new(valkey, prefix),
+        storage: Some(testkit::storage().await),
+        clamav: Some(testkit::clamav_addr()),
     }
 }
 
@@ -302,6 +304,19 @@ async fn the_purge_job_removes_a_deleted_tenant_and_its_rows() {
         .add_member(&db.tenant_b, infra::accounts::TenantRole::Member)
         .await;
     enqueue(&db, db.tenant_b.id, "test.job", serde_json::json!({})).await;
+    // Files of both tenants in the storage.
+    let storage = testkit::storage().await;
+    let gone = [
+        infra::storage::upload_key(db.tenant_b.id, infra::id::new_id()),
+        format!("{}/thumbnails/x.png", db.tenant_b.id),
+    ];
+    let kept = infra::storage::upload_key(db.tenant_a.id, infra::id::new_id());
+    for key in gone.iter().chain([&kept]) {
+        storage
+            .write(key, b"x".to_vec().into(), "text/plain")
+            .await
+            .unwrap();
+    }
 
     let job_id = infra::id::new_id();
     let mut conn = db.app_pool.acquire().await.unwrap();
@@ -354,6 +369,113 @@ async fn the_purge_job_removes_a_deleted_tenant_and_its_rows() {
         .await,
         1
     );
+    assert!(
+        storage
+            .keys(&format!("{}/", db.tenant_b.id))
+            .await
+            .unwrap()
+            .is_empty(),
+        "the deleted tenant's files left the storage"
+    );
+    assert_eq!(
+        storage.size_of(&kept).await.unwrap(),
+        Some(1),
+        "the other tenant's stay"
+    );
+    storage.delete(&kept).await.unwrap();
+}
+
+#[tokio::test]
+async fn an_uploaded_file_is_scanned_by_the_queue_and_its_upload_removed_when_infected() {
+    use domain::attachments::Status;
+    use infra::attachments::{self, AttachmentJob, NewAttachment};
+
+    let db = TestDb::new().await;
+    let tenant = db.tenant_a.id;
+    let admin = db
+        .add_member(&db.tenant_a, infra::accounts::TenantRole::TenantAdmin)
+        .await
+        .account_id;
+    let storage = testkit::storage().await;
+    let mut tx = infra::db::begin_tenant_tx(&db.app_pool, tenant).await.unwrap();
+    let project = node(
+        &mut tx,
+        domain::hierarchy::NodeType::Project,
+        "PLAT",
+        Some("PLAT"),
+        None,
+        admin,
+    )
+    .await;
+    let fields = serde_json::json!({});
+    let issue = infra::issues::create(
+        &mut tx,
+        &infra::issues::NewIssue {
+            id: infra::id::new_id(),
+            project_id: project,
+            project_key: "PLAT",
+            type_id: Uuid::from_u128(1),
+            status_id: Uuid::from_u128(2),
+            parent_id: None,
+            summary: "Ticket",
+            description: None,
+            priority: "medium",
+            reporter_id: admin,
+            assignee_id: None,
+            start_date: None,
+            due_date: None,
+            fields: &fields,
+        },
+    )
+    .await
+    .unwrap();
+    let mut ids = Vec::new();
+    for content in [b"a clean file".to_vec(), testkit::eicar()] {
+        let id = infra::id::new_id();
+        let key = infra::storage::upload_key(tenant, id);
+        attachments::insert(
+            &mut tx,
+            &NewAttachment {
+                id,
+                issue_id: issue.id,
+                name: "file",
+                size: content.len() as i64,
+                media_type: "text/plain",
+                object_key: &key,
+                uploaded_by: admin,
+            },
+        )
+        .await
+        .unwrap();
+        storage.write(&key, content.into(), "text/plain").await.unwrap();
+        attachments::mark_uploaded(&mut tx, id).await.unwrap();
+        let payload = serde_json::to_value(AttachmentJob { attachment_id: id }).unwrap();
+        infra::jobs::enqueue(&mut tx, attachments::SCAN_JOB, &payload)
+            .await
+            .unwrap();
+        ids.push(id);
+    }
+    tx.commit().await.unwrap();
+
+    let runner = JobRunner::new(db.app_pool.clone());
+    while runner.next_batch(&jobs().await).await == Batch::Processed {}
+
+    let mut tx = infra::db::begin_tenant_tx(&db.app_pool, tenant).await.unwrap();
+    let clean = attachments::find(&mut tx, ids[0]).await.unwrap().unwrap();
+    let infected = attachments::find(&mut tx, ids[1]).await.unwrap().unwrap();
+    assert_eq!((clean.status, infected.status), (Status::Clean, Status::Infected));
+    assert_eq!(
+        storage.keys(&format!("{tenant}/")).await.unwrap(),
+        [clean.object_key],
+        "the infected upload was removed by its job"
+    );
+    let left: Vec<(String, String, Option<String>)> = sqlx::query_as(
+        "SELECT kind, status, last_error FROM job WHERE kind IN ('attachment.scan', 'storage.delete')",
+    )
+    .fetch_all(&db.owner_pool)
+    .await
+    .unwrap();
+    assert_eq!(left, [], "no scan nor removal left, none failed");
 }
 
 /// A node of `node_type` named `name`, under `parent`, in the tenant of `conn`.

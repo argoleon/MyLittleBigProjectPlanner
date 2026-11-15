@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE attachment SET status = $2, signature = $3, scanned_at = now(), version = version + 1\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b8e338ee5f03bb77154b6fed6a74fe33941c049d440be06bf6c5718228cf5b74"
+}

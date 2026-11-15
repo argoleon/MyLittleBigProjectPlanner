@@ -48,6 +48,8 @@ pub struct AppState {
     pub(crate) auth: Arc<Auth>,
     /// Grants of roles on nodes (`crate::permissions`): `node_role_grant`.
     pub(crate) grants: Arc<dyn GrantSource>,
+    /// The storage of attachments; none: attachments answer 503.
+    pub(crate) storage: Option<Arc<infra::storage::Storage>>,
 }
 
 impl AppState {
@@ -59,7 +61,15 @@ impl AppState {
             dependencies,
             auth: Arc::new(auth),
             grants: Arc::new(NodeGrants),
+            storage: None,
         }
+    }
+
+    /// Keeps attachments in `storage`.
+    #[must_use]
+    pub fn with_storage(mut self, storage: infra::storage::Storage) -> Self {
+        self.storage = Some(Arc::new(storage));
+        self
     }
 
     /// Takes the grants of roles from `grants` (tests of the engine).

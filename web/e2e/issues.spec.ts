@@ -139,6 +139,8 @@ async function mockTickets(page: Page, mine = [SUMMARY]) {
   await page.route('**/api/v1/issues/*/comments', (route) => route.fulfill({ json: [] }));
   // No history unless a test tells some (mockActivity, registered later, wins).
   await page.route('**/api/v1/issues/*/activity**', (route) => route.fulfill({ json: { items: [], nextCursor: null } }));
+  // No attachment unless a test adds some (mockAttachments, registered later, wins).
+  await page.route('**/api/v1/issues/*/attachments', (route) => route.fulfill({ json: [] }));
   await page.route('**/api/v1/me/issues**', (route) => route.fulfill({ json: { items: mine, nextCursor: null } }));
   await page.route('**/api/v1/nodes?**', (route) => route.fulfill({ json: { items: [PROJECT, CRM], nextCursor: null } }));
   await page.route('**/api/v1/projects/PLAT/issue-form**', (route) => route.fulfill({ json: FORM }));
@@ -432,6 +434,54 @@ test('the Activity tab tells who changed what, through MCP or not, and a descrip
   await expect(page.locator('app-issue-activity .change .side').nth(1)).toContainText('Use OIDC.');
 });
 
+/** The attachments of the ticket: a PDF and an image already there; a file sent is scanned on the next read. */
+async function mockAttachments(page: Page) {
+  const file = (id: string, rest: object) => ({
+    id,
+    name: `${id}.pdf`,
+    size: 3_145_728,
+    mediaType: 'application/pdf',
+    status: 'clean',
+    signature: null,
+    uploadedBy: { id: 'a1', name: 'Lucas Bernard' },
+    createdAt: '2026-11-10T09:00:00Z',
+    hasThumbnail: false,
+    canDelete: true,
+    ...rest,
+  });
+  const files = [file('plan', {}), file('infected', { name: 'invoice.exe', status: 'infected', signature: 'Eicar-Test-Signature', canDelete: false })];
+  const sent: { body: unknown; uploaded: string[] } = { body: null, uploaded: [] };
+  await page.route(`**/api/v1/issues/${ISSUE.id}/attachments`, (route) => {
+    if (route.request().method() === 'POST') {
+      sent.body = route.request().postDataJSON();
+      return route.fulfill({ status: 201, json: { attachment: file('notes', { name: 'notes.txt', status: 'pending' }), uploadUrl: '/mlbpp-attachments/t/uploads/notes?X-Amz-Signature=x' } });
+    }
+    return route.fulfill({ json: sent.uploaded.length ? [...files, file('notes', { name: 'notes.txt', mediaType: 'text/plain', size: 12, status: 'scanning' })] : files });
+  });
+  await page.route('**/mlbpp-attachments/**', (route) => {
+    sent.uploaded.push(route.request().method());
+    return route.fulfill({ status: 200, body: '' });
+  });
+  await page.route(`**/api/v1/issues/${ISSUE.id}/attachments/notes/uploaded`, (route) =>
+    route.fulfill({ json: file('notes', { name: 'notes.txt', status: 'scanning' }) }),
+  );
+  return sent;
+}
+
+test('a member attaches a file, sent straight to the storage, then scanned', async ({ page }) => {
+  await mockTickets(page);
+  const sent = await mockAttachments(page);
+  await page.goto('/issues/PLAT-142');
+  const card = page.locator('app-issue-attachments');
+  await expect(card.getByRole('heading', { name: 'Attachments (2)' })).toBeVisible();
+  await expect(card.getByRole('link', { name: 'plan.pdf' })).toHaveAttribute('href', `/api/v1/issues/${ISSUE.id}/attachments/plan/content`);
+  await expect(card.locator('[data-status="infected"] .scan')).toHaveText('Infected');
+  await card.locator('input[type="file"]').setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('Recette OK !') });
+  await expect(card.locator('[data-status="scanning"] .scan')).toHaveText('Scanning');
+  expect(sent.body).toEqual({ name: 'notes.txt', size: 12, mediaType: 'text/plain' });
+  expect(sent.uploaded).toEqual(['PUT']);
+});
+
 test('a member comments with a mention picked with the keyboard', async ({ page }) => {
   await mockTickets(page);
   const written = await mockComments(page);
@@ -510,6 +560,23 @@ for (const theme of ['light', 'dark'] as const) {
         await expect(page.locator('app-issue-activity .entry')).toHaveCount(4);
         await page.locator('app-issue-activity button.toggle').click();
         await expect(page.locator('app-issue-activity .change')).toBeVisible();
+        await animationsDone(page);
+        expect(await accessibilityViolations(page)).toEqual([]);
+      });
+
+      test('the attachments, a refused file among them, have no axe-core violation', async ({ page }) => {
+        await mockTickets(page);
+        await mockAttachments(page);
+        await page.route(`**/api/v1/issues/${ISSUE.id}/attachments`, (route) =>
+          route.request().method() === 'POST'
+            ? route.fulfill({ status: 413, json: { type: 'about:blank', title: 'Too large', status: 413, code: 'attachment.too_large' } })
+            : route.fallback(),
+        );
+        await page.goto('/issues/PLAT-142');
+        const card = page.locator('app-issue-attachments');
+        await expect(card.locator('.file')).toHaveCount(2);
+        await card.locator('input[type="file"]').setInputFiles({ name: 'video.mp4', mimeType: 'video/mp4', buffer: Buffer.from('x') });
+        await expect(card.locator('.upload [role="alert"]')).toBeVisible();
         await animationsDone(page);
         expect(await accessibilityViolations(page)).toEqual([]);
       });

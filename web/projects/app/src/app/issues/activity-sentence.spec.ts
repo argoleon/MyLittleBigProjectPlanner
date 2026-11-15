@@ -117,6 +117,16 @@ describe('sentences of the Activity tab', () => {
     expect(sentenceOf(entry({ action: 'comment_deleted' }), en).deleted).toBeNull();
   });
 
+  it('says files attached and removed', () => {
+    const en = context('en');
+    expect(say(entry({ action: 'attachment_added', new: value('text', 'plan.pdf') }), en)).toBe('Lucas Bernard attached plan.pdf');
+    expect(say(entry({ action: 'attachment_removed', old: value('text', 'plan.pdf') }), en)).toBe(
+      'Lucas Bernard removed the file plan.pdf',
+    );
+    TestBed.resetTestingModule();
+    expect(say(entry({ action: 'attachment_added', new: value('text', 'plan.pdf') }), context('fr'))).toBe('Lucas Bernard a joint plan.pdf');
+  });
+
   it('names the system and former members', () => {
     const en = context('en');
     expect(sentenceOf(entry({ action: 'created', actor: null, origin: 'system' }), en).who).toBe('The system');

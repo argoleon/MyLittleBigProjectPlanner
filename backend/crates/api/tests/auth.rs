@@ -474,6 +474,8 @@ async fn run_jobs(db: &TestDb) {
             let (valkey, prefix) = testkit::valkey().await;
             infra::exports::ExportStore::new(valkey, prefix)
         },
+        storage: None,
+        clamav: None,
     };
     while runner.next_batch(&jobs).await == worker::Batch::Processed {}
 }

@@ -335,6 +335,8 @@ async fn deleting_a_tenant_needs_its_slug_and_purges_it_in_the_background() {
     let jobs = worker::jobs::Jobs {
         mailer,
         exports: infra::exports::ExportStore::new(api.valkey.clone(), api.key_prefix.clone()),
+        storage: None,
+        clamav: None,
     };
     while runner.next_batch(&jobs).await == worker::Batch::Processed {}
     let (status, _) = send(&api, &db.tenant_a, Method::GET, &beta, None).await;

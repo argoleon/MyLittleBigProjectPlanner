@@ -45,7 +45,19 @@ write database_migration_url "postgres://mlbpp_owner:$(read_secret mlbpp_owner_p
 write pgbackrest_cipher_pass "$(random)"
 write valkey_password "$(random)"
 write valkey_url "redis://:$(read_secret valkey_password)@valkey:6379"
-write seaweedfs_s3_config "$(printf '{"identities":[{"name":"mlbpp","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","List","Tagging","Write"]}]}' "$(random)" "$(random)")"
+# The S3 keys of the services (attachments, L05), and SeaweedFS's identity
+# made of them. An installation made before L05 already has the identity:
+# its keys are taken from it.
+s3_key_of() {
+    if [ -e "$dir/seaweedfs_s3_config" ]; then
+        sed -n "s/.*\"$1\":\"\([A-Za-z0-9]*\)\".*/\1/p" "$dir/seaweedfs_s3_config"
+    else
+        random
+    fi
+}
+write s3_access_key "$(s3_key_of accessKey)"
+write s3_secret_key "$(s3_key_of secretKey)"
+write seaweedfs_s3_config "$(printf '{"identities":[{"name":"mlbpp","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","List","Tagging","Write"]}]}' "$(read_secret s3_access_key)" "$(read_secret s3_secret_key)")"
 write keycloak_db_password "$(random)"
 write keycloak_admin_password "$(random)"
 write grafana_admin_password "$(random)"

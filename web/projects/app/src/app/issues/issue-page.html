@@ -49,6 +49,7 @@
           <p class="empty">{{ 'issue.page.noDescription' | transloco }}</p>
         }
       </section>
+      <app-issue-attachments [issue]="current" [canAttach]="canEdit()" (changed)="activityRevision.update(bump)" />
       <app-issue-relations [issue]="current" [canEdit]="canEdit()" (changed)="issue.reload()" />
       <section class="card tabs" [attr.aria-label]="'issue.activity.tabs' | transloco">
         <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start" animationDuration="0ms">

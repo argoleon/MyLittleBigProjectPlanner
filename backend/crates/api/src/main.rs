@@ -256,8 +256,22 @@ async fn run(config: ApiConfig) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let state = api::AppState::new(pool, config.tenancy.clone(), auth)
+    let mut state = api::AppState::new(pool, config.tenancy.clone(), auth)
         .with_dependencies(config.shared.dependencies());
+    if let Some(storage_config) = &config.storage {
+        let storage = match infra::storage::Storage::new(storage_config) {
+            Ok(storage) => storage,
+            Err(err) => {
+                eprintln!("api: {err}");
+                return ExitCode::FAILURE;
+            }
+        };
+        // The storage may come later: attachments fail until it does.
+        if let Err(err) = storage.ensure_bucket().await {
+            tracing::warn!(error = %err, "the attachments' bucket is not ready");
+        }
+        state = state.with_storage(storage);
+    }
     let app = api::app(state, &api::HttpSettings::from(&config));
     match api::serve(
         listener,

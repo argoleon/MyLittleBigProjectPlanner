@@ -1,0 +1,143 @@
+:host {
+  display: block;
+}
+
+.card {
+  padding: var(--app-space-5);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-surface);
+}
+
+.card-title {
+  margin: 0 0 var(--app-space-3);
+  font: var(--mat-sys-title-medium);
+}
+
+.drop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--app-space-2) var(--app-space-3);
+  padding: var(--app-space-4);
+  border: 1px dashed var(--mat-sys-outline);
+  border-radius: var(--mat-sys-corner-medium);
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+
+  &.over {
+    border-style: solid;
+    border-color: var(--mat-sys-primary);
+    background: var(--mat-sys-primary-container);
+    color: var(--mat-sys-on-primary-container);
+  }
+}
+
+.file-input {
+  display: none;
+}
+
+.hint {
+  flex-basis: 100%;
+  margin: 0;
+  font: var(--mat-sys-body-small);
+}
+
+.empty {
+  margin: var(--app-space-3) 0 0;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.files {
+  margin: var(--app-space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.file {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-3);
+  padding: var(--app-space-2) 0;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.thumbnail {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: var(--mat-sys-corner-small);
+  background: var(--mat-sys-surface-container);
+}
+
+.icon {
+  flex: none;
+  width: 48px;
+  color: var(--mat-sys-on-surface-variant);
+  text-align: center;
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.name {
+  font: var(--mat-sys-body-medium);
+  overflow-wrap: anywhere;
+}
+
+a.name {
+  color: var(--mat-sys-primary);
+}
+
+.meta {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.scan {
+  flex: none;
+  padding: 0 var(--app-space-2);
+  border-radius: var(--mat-sys-corner-small);
+  background: var(--mat-sys-surface-container-highest);
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-small);
+}
+
+[data-status='clean'] .scan {
+  background: var(--app-success-container);
+  color: var(--mat-sys-on-surface);
+}
+
+[data-status='infected'] .scan,
+[data-status='rejected'] .scan {
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+}
+
+.upload mat-progress-bar {
+  margin-top: var(--app-space-1);
+}
+
+.upload-error {
+  margin: var(--app-space-1) 0 0;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-error);
+}
+
+.message {
+  margin: 0 0 var(--app-space-3);
+  padding: var(--app-space-3) var(--app-space-4);
+  border-radius: var(--mat-sys-corner-small);
+  font: var(--mat-sys-body-medium);
+
+  &.error {
+    background: var(--mat-sys-error-container);
+    color: var(--mat-sys-on-error-container);
+  }
+}
