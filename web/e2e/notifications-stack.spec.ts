@@ -18,6 +18,8 @@ const memberEmail = process.env['E2E_NOTIFIED_EMAIL'];
 const memberSecret = process.env['E2E_NOTIFIED_SECRET'];
 
 test.skip(!adminEmail || !adminSecret || !memberEmail || !memberSecret, 'needs the compose stack (just compose-e2e)');
+// The tests share the member and read their unread count: one after the other.
+test.describe.configure({ mode: 'serial' });
 
 /** A browser of their own for the member `email`, signed in, in English. */
 async function signIn(browser: Browser, email: string, secret: string): Promise<Page> {
@@ -30,6 +32,61 @@ async function signIn(browser: Browser, email: string, secret: string): Promise<
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Home');
   return page;
+}
+
+/**
+ * The admin's browser on a new story of a new project the member may read
+ * (Reader); the story's key.
+ */
+async function storyForTheMember(browser: Browser, run: string): Promise<{ admin: Page; key: string }> {
+  const code = `NT${run}`.slice(0, 10);
+  const name = `Notify ${run}`;
+  const admin = await signIn(browser, adminEmail!, adminSecret!);
+
+  // A project the member may read, and a story in it.
+  await admin.goto('/portfolios');
+  await admin.getByRole('button', { name: 'New node' }).click();
+  const dialog = admin.getByRole('dialog');
+  await dialog.getByRole('combobox', { name: 'Type' }).click();
+  await admin.getByRole('option', { name: 'Project', exact: true }).click();
+  await dialog.getByLabel('Name').fill(name);
+  await dialog.getByLabel('Key').fill(code);
+  await dialog.getByRole('button', { name: 'Create' }).click();
+  await expect(admin.getByRole('heading', { level: 1 })).toHaveText(`${name} · Settings`);
+  const projectUrl = admin.url().replace(/\/general$/, '');
+  await admin.getByRole('tab', { name: 'Attachments and permissions' }).click();
+  const access = admin.getByRole('region', { name: 'Effective access' });
+  await access.getByRole('button', { name: 'Add a role' }).click();
+  const grant = admin.getByRole('dialog', { name: `Grant a role on ${name}` });
+  await grant.getByLabel('Member or group').fill(memberEmail!);
+  await admin.getByRole('option', { name: memberEmail! }).click();
+  await grant.getByRole('combobox', { name: 'Role' }).click();
+  await admin.getByRole('option', { name: 'Reader', exact: true }).click();
+  await grant.getByRole('button', { name: 'Grant' }).click();
+  await expect(access.getByRole('status')).toHaveText('Role Reader granted to E2E Notified.');
+  await admin.goto(projectUrl);
+  await admin.getByRole('button', { name: 'New ticket' }).click();
+  await dialog.getByRole('combobox', { name: 'Type' }).click();
+  await admin.getByRole('option', { name: 'Story', exact: true }).click();
+  await dialog.getByLabel('Summary').fill(`Review ${run}`);
+  await dialog.getByRole('button', { name: 'Create' }).click();
+  await expect(admin).toHaveURL(new RegExp(`/issues/${code}-1$`));
+  return { admin, key: `${code}-1` };
+}
+
+/** In the admin's browser, on the ticket: a comment mentioning the member. */
+async function mentionTheMember(admin: Page, text: string): Promise<void> {
+  await admin.getByRole('tab', { name: /^Comments \(\d+\)$/ }).click();
+  const comments = admin.locator('app-issue-comments');
+  const before = await comments.locator('.comment').count();
+  await comments.getByRole('textbox', { name: 'Add a comment' }).click();
+  // By the start of their email: every run of the stack adds an "E2E Notified".
+  await admin.keyboard.type(`@${memberEmail!.split('@')[0]}`);
+  await expect(admin.getByRole('option')).toHaveCount(1);
+  await admin.getByRole('option', { name: 'E2E Notified' }).click();
+  await admin.keyboard.type(` ${text}`);
+  await comments.getByRole('button', { name: 'Comment', exact: true }).click();
+  await expect(comments.locator('.comment')).toHaveCount(before + 1);
 }
 
 test('a mention reaches the member on the bell, and opens the ticket', async ({ browser }) => {
@@ -107,4 +164,36 @@ test('a mention reaches the member on the bell, and opens the ticket', async ({ 
   expect((await saved).ok()).toBe(true);
   await member.reload();
   await expect(member.getByRole('checkbox', { name: 'New comment by email' })).toBeChecked({ checked: wanted });
+});
+
+test('two members on one ticket: one comments and starts it, the other sees both live and is told of the mention', async ({ browser }) => {
+  test.setTimeout(180_000);
+  const run = Date.now().toString(36).toUpperCase().slice(-5);
+  const { admin, key } = await storyForTheMember(browser, run);
+
+  // The member opens the ticket, and waits.
+  const member = await signIn(browser, memberEmail!, memberSecret!);
+  await member.goto(`/issues/${key}`);
+  await expect(member.getByRole('heading', { level: 1 })).toHaveText(`Review ${run}`);
+  await expect(member.locator('app-issue-status')).toContainText('To do');
+  await expect(member.getByRole('tab', { name: 'Comments (0)' })).toBeVisible();
+  const unreadBefore = await member.getByRole('link', { name: /^Notifications/ }).getAttribute('aria-label');
+
+  // The admin comments, mentioning them, then starts the ticket.
+  await mentionTheMember(admin, 'live from the other browser');
+  await admin.getByRole('button', { name: 'Start', exact: true }).click();
+  await expect(admin.getByRole('button', { name: 'Status: In progress. Change it' })).toBeVisible();
+
+  // Without reloading, the member sees both, and the bell tells the mention.
+  await expect(member.locator('app-issue-status')).toContainText('In progress', { timeout: 20_000 });
+  await expect(member.getByRole('tab', { name: 'Comments (1)' })).toBeVisible({ timeout: 20_000 });
+  await member.getByRole('tab', { name: 'Comments (1)' }).click();
+  await expect(member.locator('app-issue-comments .comment')).toContainText('live from the other browser');
+  await expect(member.getByRole('link', { name: /^Notifications, \d+ unread$/ })).not.toHaveAttribute(
+    'aria-label',
+    unreadBefore ?? '',
+    { timeout: 20_000 },
+  );
+  await member.getByRole('tab', { name: 'Activity' }).click();
+  await expect(member.locator('app-issue-activity .entry .sentence').first()).toContainText('changed the status: To do → In progress');
 });

@@ -1,4 +1,4 @@
-import { Component, computed, inject, resource } from '@angular/core';
+import { Component, DestroyRef, computed, inject, resource } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -6,6 +6,7 @@ import { Router, RouterOutlet } from '@angular/router';
 import { TranslocoService } from '@jsverse/transloco';
 import {
   AccountMenu,
+  Realtime,
   Api,
   AuthService,
   Language,
@@ -63,6 +64,10 @@ export class MainLayout {
   private readonly memberships = resource({ loader: () => this.api.invoke(listMyMemberships) });
 
   constructor() {
+    // Real-time signals while signed in (L05-US08).
+    const realtime = inject(Realtime);
+    realtime.start();
+    inject(DestroyRef).onDestroy(() => realtime.stop());
     // The account's language and time zone; the device's until loaded, or
     // if the API cannot answer.
     this.myAccount.load().catch(() => undefined);

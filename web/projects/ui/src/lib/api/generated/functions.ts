@@ -33,6 +33,8 @@ export type { SignOut$Params as SignOut$Params } from './fn/auth/sign-out';
 export { signOut as signOut } from './fn/auth/sign-out';
 export type { FinishTenantSwitch$Params as FinishTenantSwitch$Params } from './fn/auth/finish-tenant-switch';
 export { finishTenantSwitch as finishTenantSwitch } from './fn/auth/finish-tenant-switch';
+export type { StreamEvents$Params as StreamEvents$Params } from './fn/events/stream-events';
+export { streamEvents as streamEvents } from './fn/events/stream-events';
 export type { BrowseHierarchy$Params as BrowseHierarchy$Params } from './fn/hierarchy/browse-hierarchy';
 export { browseHierarchy as browseHierarchy } from './fn/hierarchy/browse-hierarchy';
 export type { ListNodes$Params as ListNodes$Params } from './fn/hierarchy/list-nodes';

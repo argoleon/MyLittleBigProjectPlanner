@@ -181,6 +181,7 @@ export type { ProjectConfigPage } from './models/project-config-page';
 export type { ProjectConfigPublished } from './models/project-config-published';
 export type { ProjectConfigPublishImpact } from './models/project-config-publish-impact';
 export type { PublishWorkflowProblem } from './models/publish-workflow-problem';
+export type { RealtimeSignal } from './models/realtime-signal';
 export type { ReferenceItem } from './models/reference-item';
 export type { ReferenceItemInput } from './models/reference-item-input';
 export type { ReferenceItemPage } from './models/reference-item-page';

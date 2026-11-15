@@ -1472,7 +1472,9 @@
       "no": "No",
       "attachment": "Belongs to",
       "project": "Project",
-      "created": "Created {{ at }}"
+      "created": "Created {{ at }}",
+      "remoteChange": "Someone else changed this ticket while your form was open: your input is kept. Reload to see the change.",
+      "reload": "Reload"
     },
     "list": {
       "create": "New ticket",

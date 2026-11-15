@@ -470,6 +470,31 @@ async function mockAttachments(page: Page) {
   return sent;
 }
 
+test('the ticket follows a change made elsewhere, live, without reloading the page', async ({ page }) => {
+  await mockTickets(page);
+  let changed = false;
+  await page.route(`**/api/v1/issues/${ISSUE.key}?**`, (route) =>
+    route.fulfill({
+      json: changed ? { ...ISSUE, status: { id: 's2', key: 'in_progress', label: 'In progress', category: 'in_progress' }, version: ISSUE.version + 1 } : ISSUE,
+    }),
+  );
+  // The stream: nothing until the change, then its signal.
+  await page.route('**/api/v1/events', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      body: changed
+        ? `retry: 60000\nid: 2-0\nevent: issue\ndata: ${JSON.stringify({ topic: 'issue', kind: 'issue.transitioned', issueId: ISSUE.id, issueKey: ISSUE.key, actorId: 'a2' })}\n\n`
+        : 'retry: 300\nid: 1-0\nevent: ready\ndata: {}\n\n',
+    }),
+  );
+  await page.goto('/issues/PLAT-142');
+  await expect(page.locator('app-issue-status')).toContainText('To do');
+  changed = true;
+  await expect(page.locator('app-issue-status')).toContainText('In progress');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Migrate the authentication to OIDC');
+});
+
 test('a member attaches a file, sent straight to the storage, then scanned', async ({ page }) => {
   await mockTickets(page);
   const sent = await mockAttachments(page);
