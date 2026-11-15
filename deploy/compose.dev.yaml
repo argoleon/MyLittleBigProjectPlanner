@@ -64,6 +64,10 @@ x-backend: &backend
       condition: service_healthy
     keycloak:
       condition: service_healthy
+    seaweedfs:
+      condition: service_healthy
+    clamav:
+      condition: service_healthy
 
 services:
   valkey:
