@@ -334,13 +334,26 @@ async fn erased_members_show_under_their_pseudonym_and_their_comments_can_be_pur
     let done = erasure::anonymize(&mut tx, &member, &erasure::steps())
         .await
         .unwrap();
-    assert_eq!(done, [("invitations_sent", 0), ("comments", 1), ("history", 1)]);
+    assert_eq!(
+        done,
+        [
+            ("invitations_sent", 0),
+            ("comments", 1),
+            ("history", 1),
+            ("notifications", 0)
+        ]
+    );
     let again = erasure::anonymize(&mut tx, &member, &erasure::steps())
         .await
         .unwrap();
     assert_eq!(
         again,
-        [("invitations_sent", 0), ("comments", 0), ("history", 0)],
+        [
+            ("invitations_sent", 0),
+            ("comments", 0),
+            ("history", 0),
+            ("notifications", 0)
+        ],
         "idempotent"
     );
     let comment_now = comments::find(&mut tx, comment.id).await.unwrap().unwrap();
@@ -382,7 +395,15 @@ async fn kept_comments_stay_in_the_history_when_not_purged() {
     let done = erasure::anonymize(&mut tx, &member, &erasure::steps())
         .await
         .unwrap();
-    assert_eq!(done, [("invitations_sent", 0), ("comments", 0), ("history", 0)]);
+    assert_eq!(
+        done,
+        [
+            ("invitations_sent", 0),
+            ("comments", 0),
+            ("history", 0),
+            ("notifications", 0)
+        ]
+    );
     let entries = audit::of_issue(&mut tx, issue.id, 10, None).await.unwrap().items;
     assert_eq!(
         entries[0].new,
