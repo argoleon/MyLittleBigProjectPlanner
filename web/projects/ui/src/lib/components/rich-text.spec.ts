@@ -6,12 +6,13 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { Router, provideRouter } from '@angular/router';
 
 import { axeViolations } from '../testing/axe';
 import { provideI18nTesting } from '../testing/i18n-testing';
 import { Priority } from './priority';
 import { RichText } from './rich-text';
-import { RichTextDoc, RichTextEditor, isAllowedHref } from './rich-text-editor';
+import { RichTextDoc, RichTextEditor, Suggestion, isAllowedHref } from './rich-text-editor';
 
 const settle = async () => {
   for (let i = 0; i < 3; i++) {
@@ -147,6 +148,98 @@ describe('RichTextEditor', () => {
   });
 });
 
+const PEOPLE: Suggestion[] = [
+  { id: 'a2', label: 'Camille Martin', detail: 'camille@acme.example' },
+  { id: 'a3', label: 'Hugo Leroy', detail: 'hugo@acme.example' },
+];
+const TICKETS: Suggestion[] = [{ id: 'PLAT-120', label: 'PLAT-120', detail: 'Directory scoping' }];
+
+@Component({
+  imports: [ReactiveFormsModule, RichTextEditor],
+  template: `<ui-rich-text-editor [formControl]="control" label="Comment" [mentions]="people" [issueRefs]="tickets" />`,
+})
+class SuggestingHost {
+  readonly control = new FormControl<RichTextDoc | null>(null);
+  readonly people = (query: string) => Promise.resolve(PEOPLE.filter((p) => p.label.toLowerCase().includes(query.toLowerCase())));
+  readonly tickets = (query: string) => Promise.resolve(TICKETS.filter((t) => t.id.includes(query.toUpperCase())));
+}
+
+describe('RichTextEditor suggestions', () => {
+  // jsdom lays nothing out: ProseMirror scrolls the caret into view with
+  // these, which its Range lacks.
+  beforeAll(() => {
+    const empty = { length: 0, item: () => null, [Symbol.iterator]: [][Symbol.iterator] } as unknown as DOMRectList;
+    Range.prototype.getClientRects ??= () => empty;
+    Range.prototype.getBoundingClientRect ??= () => new DOMRect();
+  });
+
+  async function suggesting() {
+    TestBed.configureTestingModule({ providers: [provideI18nTesting()] });
+    const fixture = TestBed.createComponent(SuggestingHost);
+    document.body.appendChild(fixture.nativeElement as HTMLElement);
+    await settle();
+    const root = fixture.nativeElement as HTMLElement;
+    const component = fixture.debugElement.children[0].componentInstance as RichTextEditor;
+    const tiptap = () => component['editor']!;
+    const type = async (text: string) => {
+      tiptap().chain().focus().insertContent(text).run();
+      await settle();
+    };
+    const key = async (name: string) => {
+      tiptap().view.dom.dispatchEvent(new KeyboardEvent('keydown', { key: name, bubbles: true, cancelable: true }));
+      await settle();
+    };
+    const options = () =>
+      Array.from(root.querySelectorAll('[role="option"]')).map((o) => (o.querySelector('.suggestion-label') ?? o).textContent?.trim());
+    return { root, host: fixture.componentInstance, tiptap, type, key, options };
+  }
+
+  afterEach(() => document.body.replaceChildren());
+
+  it('offers people after @, driven by the keyboard, the focus staying in the text', async () => {
+    const { root, host, tiptap, type, key, options } = await suggesting();
+    await type('Thanks @');
+    expect(options()).toEqual(['Camille Martin', 'Hugo Leroy']);
+    expect(root.querySelector('.suggestion-detail')?.textContent).toBe('camille@acme.example');
+    const box = tiptap().view.dom;
+    const list = root.querySelector('[role="listbox"]')!;
+    expect(box.getAttribute('aria-autocomplete')).toBe('list');
+    expect(box.getAttribute('aria-controls')).toBe(list.id);
+    expect(box.getAttribute('aria-activedescendant')).toBe(list.querySelectorAll('[role="option"]')[0].id);
+    expect(await axeViolations(root)).toEqual([]);
+    await key('ArrowDown');
+    expect(list.querySelectorAll('[role="option"]')[1].getAttribute('aria-selected')).toBe('true');
+    expect(box.getAttribute('aria-activedescendant')).toBe(list.querySelectorAll('[role="option"]')[1].id);
+    await key('Enter');
+    expect(root.querySelector('[role="listbox"]')).toBeNull();
+    expect(box.hasAttribute('aria-activedescendant')).toBe(false);
+    const inserted = host.control.value?.content?.[0].content?.[1];
+    expect(inserted).toEqual(expect.objectContaining({ type: 'mention', attrs: expect.objectContaining({ id: 'a3', label: 'Hugo Leroy' }) }));
+    expect(root.querySelector('.mention')?.textContent).toBe('@Hugo Leroy');
+  });
+
+  it('narrows the people as one types, says when none matches, and closes with Escape', async () => {
+    const { root, type, key, options } = await suggesting();
+    await type('@cam');
+    expect(options()).toEqual(['Camille Martin']);
+    await type('zz');
+    expect(options()).toEqual(['No match.']);
+    await key('Escape');
+    expect(root.querySelector('[role="listbox"]')).toBeNull();
+  });
+
+  it('offers tickets after #, picked with the mouse, shown by their key', async () => {
+    const { root, host, type } = await suggesting();
+    await type('See #pla');
+    const option = root.querySelector('[role="option"]')!;
+    option.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    await settle();
+    const inserted = host.control.value?.content?.[0].content?.[1];
+    expect(inserted).toEqual(expect.objectContaining({ type: 'issueRef', attrs: expect.objectContaining({ id: 'PLAT-120', label: 'PLAT-120' }) }));
+    expect(root.querySelector('.issue-ref')?.textContent).toBe('PLAT-120');
+  });
+});
+
 describe('RichText', () => {
   it('shows the HTML the server rendered', async () => {
     TestBed.configureTestingModule({ providers: [provideI18nTesting()] });
@@ -157,6 +250,29 @@ describe('RichText', () => {
     expect(root.querySelector('strong')?.textContent).toBe('local');
     expect(root.querySelector('p')?.textContent).toBe('Replace local <now>');
     expect(root.querySelectorAll('li')).toHaveLength(1);
+  });
+
+  it('opens a ticket it links in the application, a modified click left to the browser', async () => {
+    TestBed.configureTestingModule({ providers: [provideI18nTesting(), provideRouter([])] });
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    const fixture = TestBed.createComponent(RichText);
+    fixture.componentRef.setInput(
+      'html',
+      '<p>See <a class="issue-ref" href="/issues/PLAT-120">PLAT-120</a> and <a href="https://example.org">docs</a></p>',
+    );
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    const click = (link: Element, init: MouseEventInit = {}) => {
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true, ...init });
+      link.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    expect(click(root.querySelector('a.issue-ref')!)).toBe(true);
+    expect(navigate).toHaveBeenCalledWith('/issues/PLAT-120');
+    expect(click(root.querySelector('a.issue-ref')!, { ctrlKey: true })).toBe(false);
+    expect(click(root.querySelector('a:not(.issue-ref)')!)).toBe(false);
+    expect(navigate).toHaveBeenCalledTimes(1);
   });
 });
 

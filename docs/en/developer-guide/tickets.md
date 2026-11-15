@@ -83,8 +83,18 @@ A ticket changes status only through a transition of its type's workflow (`api::
   2. `domain::transitions::evaluate`: the condition (403 if not met), the validators (`fields.{id}` `required`), then the post-functions in order.
   3. `domain::issues::missing_required`: the fields required at the target status must hold a value once the screen and post-functions have applied.
   4. The status, assignee and values are written (`infra::issues::transition`), and `issue.transitioned` goes to the outbox with `fromStatusId`, `toStatusId`, the changes (`{field, old, new}`) and the comments of "add a comment" post-functions.
-- **Until comments exist (L05-US04, #145)**, "add a comment" is only carried by the event: US04 writes it as a comment in the same transaction, the member who ran the transition as its author.
+- "Add a comment" post-functions write internal comments (`source = 'transition'`) in the same transaction, the member who ran the transition as their author (`issue_comments::write`).
 - The board card transition (L06, #185) uses this endpoint.
+
+## Comments (L05-US04)
+
+`comment` (`api::issue_comments`, `infra::comments`, `domain::comments`) holds the comments of a ticket: the document (Tiptap JSON), its HTML rendered when written, the accounts it mentions, internal or public.
+
+- **Rights**: writing takes `comment` on the project (tenant admins always). The author edits and deletes their own while they still hold `comment`; those who administer the project (`administer_node`, tenant admins) delete anyone's, for moderation, never edit them. Each comment tells the reader `canEdit` and `canDelete`.
+- **Deleted**: a placeholder stays (author, date), its content goes; the database keeps that consistent (`comment_content_or_deleted`).
+- **Visibility**: internal by default. Members see both; the portal (L13) must only ever read public ones (`infra::comments::of_issue(…, public_only: true)`).
+- **Mentions and references**: `mention` nodes name accounts, which must be active members (`content` `unknown_member`). Ticket keys typed in text (`PLAT-120`, whole words, not in code nor in a link) or picked (`issueRef` node) become links to `/issues/{key}` (`domain::rich_text::key_spans`).
+- **Events**: `comment.created` (mentions, ticket references, text), `comment.updated` (text before and after, `addedMentions`: only those newly mentioned are to be notified), `comment.deleted` (the text it had). Notifications (L05-US07) and the history (L05-US05) read them.
 
 ## Rich text
 
@@ -95,7 +105,7 @@ The description is a Tiptap document. The server never stores HTML it received:
 3. The document is stored as it is written back (`to_json`), so what is stored is exactly what is rendered.
 4. `Doc::to_html` renders escaped HTML, links with `rel="noopener noreferrer nofollow"`; the API returns it as `descriptionHtml`.
 
-Comments (L05-US04) reuse the same pipeline.
+Comments (L05-US04) reuse the same pipeline, with two more inline nodes: `mention` (`attrs.id`: an account) rendered as `<span class="mention">@Name</span>`, and `issueRef` (`attrs.id`: a ticket key) rendered as a link. Ticket keys typed as text are linked too.
 
 ## The event outbox
 

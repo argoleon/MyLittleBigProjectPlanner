@@ -1,0 +1,95 @@
+<section class="card" aria-labelledby="issue-comments">
+  <h2 class="card-title" id="issue-comments">{{ 'issue.comments.title' | transloco: { count: count() } }}</h2>
+  @if (errorKey(); as key) {
+    <p class="message error" role="alert">{{ key | transloco }}</p>
+  }
+
+  @if (comments.error()) {
+    <ui-error-state [error]="comments.error()" [headingLevel]="3" (retry)="comments.reload()" />
+  } @else if (!comments.hasValue()) {
+    <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+  } @else if (comments.value().length === 0) {
+    <p class="empty">{{ 'issue.comments.empty' | transloco }}</p>
+  } @else {
+    <ol class="comments">
+      @for (comment of comments.value(); track comment.id) {
+        <li class="comment" [attr.data-visibility]="comment.visibility">
+          <div class="meta">
+            <span class="author">{{ comment.author?.name ?? ('issue.comments.formerMember' | transloco) }}</span>
+            <span class="date">{{ comment.createdAt | instant: { dateStyle: 'medium', timeStyle: 'short' } }}</span>
+            @if (comment.editedAt && !comment.deleted) {
+              <span class="note">{{ 'issue.comments.edited' | transloco }}</span>
+            }
+            @if (comment.byTransition) {
+              <span class="note">{{ 'issue.comments.byTransition' | transloco }}</span>
+            }
+            @if (!comment.deleted) {
+              <span class="visibility">{{ 'issue.comments.' + comment.visibility | transloco }}</span>
+            }
+            <span class="actions">
+              @if (comment.canEdit && editing() !== comment.id) {
+                <button matIconButton type="button" class="edit" [attr.aria-label]="'issue.comments.editOf' | transloco: { author: comment.author?.name ?? '' }" (click)="edit(comment)">
+                  <mat-icon aria-hidden="true">edit</mat-icon>
+                </button>
+              }
+              @if (comment.canDelete) {
+                <button matIconButton type="button" class="remove" [attr.aria-label]="'issue.comments.removeOf' | transloco: { author: comment.author?.name ?? '' }" (click)="remove(comment)">
+                  <mat-icon aria-hidden="true">delete</mat-icon>
+                </button>
+              }
+            </span>
+          </div>
+          @if (comment.deleted) {
+            <p class="deleted">{{ 'issue.comments.deleted' | transloco }}</p>
+          } @else if (editing() === comment.id) {
+            <div class="editor">
+              @if (editError(); as key) {
+                <p class="message error" role="alert">{{ key | transloco }}</p>
+              }
+              <ui-rich-text-editor [formControl]="editContent" [label]="'issue.comments.editLabel' | transloco" [mentions]="people" [issueRefs]="tickets" />
+              <div class="row">
+                <mat-button-toggle-group
+                  hideSingleSelectionIndicator
+                  [attr.aria-label]="'issue.comments.visibility' | transloco"
+                  [value]="editVisibility()"
+                  (change)="editVisibility.set($event.value)"
+                >
+                  <mat-button-toggle value="internal">{{ 'issue.comments.internal' | transloco }}</mat-button-toggle>
+                  <mat-button-toggle value="public">{{ 'issue.comments.public' | transloco }}</mat-button-toggle>
+                </mat-button-toggle-group>
+                <span class="buttons">
+                  <button matButton type="button" class="cancel" (click)="editing.set(null)">{{ 'dialog.cancel' | transloco }}</button>
+                  <button matButton="filled" type="button" class="save" [disabled]="saving()" (click)="save(comment)">{{ 'issue.edit.save' | transloco }}</button>
+                </span>
+              </div>
+            </div>
+          } @else if (comment.contentHtml; as html) {
+            <ui-rich-text [html]="html" />
+          }
+        </li>
+      }
+    </ol>
+  }
+
+  @if (canComment()) {
+    <div class="new">
+      <ui-rich-text-editor [formControl]="content" [label]="'issue.comments.add' | transloco" [mentions]="people" [issueRefs]="tickets" />
+      <p class="hint">{{ 'issue.comments.hint' | transloco }}</p>
+      <div class="row">
+        <mat-button-toggle-group
+          hideSingleSelectionIndicator
+          [attr.aria-label]="'issue.comments.visibility' | transloco"
+          [value]="visibility()"
+          (change)="visibility.set($event.value)"
+        >
+          <mat-button-toggle value="internal">{{ 'issue.comments.internal' | transloco }}</mat-button-toggle>
+          <mat-button-toggle value="public">{{ 'issue.comments.publicPortal' | transloco }}</mat-button-toggle>
+        </mat-button-toggle-group>
+        <button matButton="filled" type="button" class="write" [disabled]="saving()" (click)="write()">
+          <mat-icon aria-hidden="true">send</mat-icon>
+          {{ 'issue.comments.write' | transloco }}
+        </button>
+      </div>
+    </div>
+  }
+</section>

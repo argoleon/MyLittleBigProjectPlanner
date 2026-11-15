@@ -76,6 +76,46 @@ ui-rich-text-editor {
     color: var(--mat-sys-error);
   }
 
+  // Under the caret, over what follows.
+  .suggestions {
+    position: absolute;
+    z-index: 2;
+    min-width: 220px;
+    max-width: min(360px, 100%);
+    max-height: 240px;
+    overflow-y: auto;
+    margin: 0;
+    padding: var(--app-space-1) 0;
+    list-style: none;
+    border-radius: var(--mat-sys-corner-extra-small);
+    background: var(--mat-sys-surface-container);
+    color: var(--mat-sys-on-surface);
+    box-shadow: var(--mat-sys-level2);
+  }
+
+  .suggestion {
+    display: flex;
+    flex-direction: column;
+    padding: var(--app-space-2) var(--app-space-3);
+    font: var(--mat-sys-body-medium);
+    cursor: pointer;
+
+    &[aria-selected='true'] {
+      background: var(--mat-sys-secondary-container);
+      color: var(--mat-sys-on-secondary-container);
+    }
+
+    &.empty {
+      color: var(--mat-sys-on-surface-variant);
+      cursor: default;
+    }
+  }
+
+  .suggestion-detail {
+    font: var(--mat-sys-body-small);
+    color: var(--mat-sys-on-surface-variant);
+  }
+
   // The editable area Tiptap renders, outside Angular's view.
   .content {
     min-height: 120px;

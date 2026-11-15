@@ -90,6 +90,27 @@ fn inlines(nodes: &[Value]) -> Read<Vec<Inline>> {
         .iter()
         .map(|node| match kind(node)? {
             "hardBreak" => Ok(Inline::HardBreak),
+            "mention" => {
+                let id = attr(node, "id")
+                    .and_then(Value::as_str)
+                    .and_then(domain::fields::parse_uuid);
+                match id {
+                    Some(id) => Ok(Inline::Mention {
+                        id,
+                        label: attr(node, "label")
+                            .and_then(Value::as_str)
+                            .unwrap_or_default()
+                            .to_owned(),
+                    }),
+                    None => invalid("a mention without an account"),
+                }
+            }
+            "issueRef" => match attr(node, "id").and_then(Value::as_str) {
+                Some(key) if domain::issues::parse_key(key).is_some() => {
+                    Ok(Inline::IssueRef { key: key.to_owned() })
+                }
+                _ => invalid("a ticket reference without a key"),
+            },
             "text" => Ok(Inline::Text {
                 text: node
                     .get("text")
@@ -176,6 +197,10 @@ fn inlines_json(inlines: &[Inline]) -> Vec<Value> {
         .iter()
         .map(|inline| match inline {
             Inline::HardBreak => json!({"type": "hardBreak"}),
+            Inline::Mention { id, label } => {
+                json!({"type": "mention", "attrs": {"id": domain::fields::format_uuid(*id), "label": label}})
+            }
+            Inline::IssueRef { key } => json!({"type": "issueRef", "attrs": {"id": key, "label": key}}),
             Inline::Text { text, marks } if marks.is_empty() => json!({"type": "text", "text": text}),
             Inline::Text { text, marks } => json!({
                 "type": "text",
@@ -229,9 +254,24 @@ mod tests {
             json!({"type": "doc", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "x", "marks": [{"type": "link", "attrs": {"href": "javascript:alert(1)"}}]}]}]}),
             json!({"type": "doc", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "x", "marks": [{"type": "textStyle", "attrs": {"color": "red"}}]}]}]}),
             json!({"type": "doc", "content": [{"content": []}]}),
+            json!({"type": "doc", "content": [{"type": "paragraph", "content": [{"type": "mention", "attrs": {"id": "admin", "label": "x"}}]}]}),
+            json!({"type": "doc", "content": [{"type": "paragraph", "content": [{"type": "issueRef", "attrs": {"id": "<b>"}}]}]}),
         ] {
             assert!(parse(&hostile).is_err(), "{hostile}");
         }
         assert_eq!(parse(&json!({"type": "doc"})).unwrap(), Doc::default());
+    }
+
+    #[test]
+    fn mentions_and_ticket_references_read_and_write_back_the_same() {
+        let json = json!({"type": "doc", "content": [{"type": "paragraph", "content": [
+            {"type": "mention", "attrs": {"id": "0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7a8c", "label": "Camille Martin"}},
+            {"type": "text", "text": " see "},
+            {"type": "issueRef", "attrs": {"id": "PLAT-120", "label": "PLAT-120"}}
+        ]}]});
+        let doc = parse(&json).unwrap();
+        assert_eq!(to_json(&doc), json);
+        assert_eq!(doc.mentions(), [0x0194_f0a2_7c1e_7d3a_9b2f_3c4d_5e6f_7a8c]);
+        assert_eq!(doc.issue_refs(), ["PLAT-120"]);
     }
 }

@@ -1401,7 +1401,9 @@
     "link": "Lien",
     "linkAddress": "Adresse du lien",
     "linkApply": "Appliquer",
-    "linkInvalid": "Saisissez une adresse web (http ou https) ou une adresse e-mail (mailto)."
+    "linkInvalid": "Saisissez une adresse web (http ou https) ou une adresse e-mail (mailto).",
+    "suggestions": "Suggestions",
+    "noMatch": "Aucun résultat."
   },
   "priority": {
     "highest": "La plus haute",
@@ -1536,6 +1538,28 @@
     "transition": {
       "menu": "Statut : {{ status }}. Le changer",
       "to": "Le ticket passe en « {{ status }} »."
+    },
+    "comments": {
+      "title": "Commentaires ({{ count }})",
+      "empty": "Aucun commentaire pour l’instant.",
+      "add": "Ajouter un commentaire",
+      "hint": "@ pour mentionner, # pour citer un ticket.",
+      "visibility": "Qui le voit",
+      "internal": "Interne",
+      "public": "Public",
+      "publicPortal": "Public (portail)",
+      "write": "Commenter",
+      "editLabel": "Commentaire",
+      "editOf": "Modifier le commentaire de {{ author }}",
+      "removeOf": "Supprimer le commentaire de {{ author }}",
+      "removeTitle": "Supprimer le commentaire ?",
+      "removeMessage": "Son texte est retiré ; le ticket garde la trace de sa suppression.",
+      "remove": "Supprimer",
+      "deleted": "Commentaire supprimé.",
+      "edited": "modifié",
+      "byTransition": "via le workflow",
+      "formerMember": "Ancien membre",
+      "conflict": "Ce commentaire a changé depuis que vous l’avez ouvert : annulez et modifiez-le à nouveau."
     }
   }
 }

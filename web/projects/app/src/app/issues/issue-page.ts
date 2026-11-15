@@ -23,6 +23,7 @@ import {
 } from 'ui';
 
 import type { EditOutcome } from './issue-edit-dialog';
+import { IssueComments } from './issue-comments';
 import { createIssueFlow } from './issue-flow';
 import { IssueParentDialog, ParentOutcome } from './issue-parent-dialog';
 import { IssueRelations } from './issue-relations';
@@ -40,6 +41,7 @@ import { chipCategory, chipKind } from './issue-fields';
   imports: [
     ErrorState,
     InstantPipe,
+    IssueComments,
     IssueRelations,
     IssueStatus,
     LocalDatePipe,
@@ -88,6 +90,12 @@ export class IssuePage {
     () =>
       this.auth.session()?.account.tenantRole === 'tenant_admin' ||
       (this.permissions.hasValue() && this.permissions.value().includes('edit')),
+  );
+  /** Tenant admins, and those with `comment` on the project, write comments. */
+  protected readonly canComment = computed(
+    () =>
+      this.auth.session()?.account.tenantRole === 'tenant_admin' ||
+      (this.permissions.hasValue() && this.permissions.value().includes('comment')),
   );
   /** The types of the project, read only when the member may create. */
   private readonly form = resource({

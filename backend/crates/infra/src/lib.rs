@@ -5,6 +5,7 @@ pub mod accounts;
 pub mod aggregates;
 pub mod auth_policy;
 pub mod bootstrap;
+pub mod comments;
 pub mod config;
 pub mod config_migrations;
 pub mod configs;
