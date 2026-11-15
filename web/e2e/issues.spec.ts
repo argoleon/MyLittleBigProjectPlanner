@@ -64,6 +64,8 @@ const FORM = {
   ],
 };
 
+const CRM = { ...PROJECT, id: '0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7c09', name: 'Customer relations', key: 'CRM' };
+
 const ISSUE = {
   id: '0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7e01',
   key: 'PLAT-142',
@@ -87,6 +89,22 @@ const ISSUE = {
   createdAt: '2026-11-06T09:12:00Z',
   updatedAt: '2026-11-06T18:20:00Z',
   version: 1,
+};
+
+const MOVE_PLAN = {
+  project: { id: CRM.id, key: 'CRM', name: CRM.name },
+  sameConfiguration: false,
+  tickets: [{ id: ISSUE.id, key: ISSUE.key, summary: ISSUE.summary }],
+  parentCleared: null,
+  targets: [
+    { id: 'c-story', label: 'User story', isSubtask: false, parentIds: [], statusIds: ['c-open'] },
+    { id: 'c-incident', label: 'Incident', isSubtask: false, parentIds: [], statusIds: ['c-open'] },
+  ],
+  statusTargets: [{ id: 'c-open', label: 'Open', category: 'todo' }],
+  types: [{ id: 't-story', key: 'story', label: 'Story', isSubtask: false, suggestedId: 'c-story' }],
+  statuses: [{ id: 's1', key: 'todo', label: 'To do', category: 'todo', typeIds: ['t-story'], suggestedId: 'c-open' }],
+  droppedFields: [{ fieldId: 'f-app', label: 'Application' }],
+  problems: [],
 };
 
 const SUMMARY = {
@@ -115,7 +133,7 @@ async function animationsDone(page: Page) {
 async function mockTickets(page: Page, mine = [SUMMARY]) {
   const posted: unknown[] = [];
   await page.route('**/api/v1/me/issues**', (route) => route.fulfill({ json: { items: mine, nextCursor: null } }));
-  await page.route('**/api/v1/nodes?**', (route) => route.fulfill({ json: { items: [PROJECT], nextCursor: null } }));
+  await page.route('**/api/v1/nodes?**', (route) => route.fulfill({ json: { items: [PROJECT, CRM], nextCursor: null } }));
   await page.route('**/api/v1/projects/PLAT/issue-form**', (route) => route.fulfill({ json: FORM }));
   await page.route('**/api/v1/projects/PLAT/people**', (route) => route.fulfill({ json: [{ id: 'a2', name: 'Camille Martin' }] }));
   await page.route('**/api/v1/projects/PLAT/issues', (route) => {
@@ -124,7 +142,9 @@ async function mockTickets(page: Page, mine = [SUMMARY]) {
     return body.fields['f-app'] ? route.fulfill({ status: 201, json: ISSUE }) : route.fulfill(problem(400, 'validation_failed', [{ field: 'fields.f-app', code: 'required' }]));
   });
   await page.route('**/api/v1/issues/PLAT-142**', (route) => route.fulfill({ json: ISSUE }));
-  await page.route(`**/api/v1/nodes/${PROJECT.id}/my-permissions`, (route) => route.fulfill({ json: ['view', 'create_ticket'] }));
+  await page.route(`**/api/v1/nodes/${PROJECT.id}/my-permissions`, (route) => route.fulfill({ json: ['view', 'create_ticket', 'edit'] }));
+  await page.route(`**/api/v1/issues/${ISSUE.id}/edit-form`, (route) => route.fulfill({ json: { fields: FORM.fields } }));
+  await page.route(`**/api/v1/issues/${ISSUE.id}/move-plan`, (route) => route.fulfill({ json: MOVE_PLAN }));
   return posted;
 }
 
@@ -186,6 +206,64 @@ test('a link in the description cannot point to a script', async ({ page }) => {
   await expect(dialog.getByRole('textbox', { name: 'Description' }).locator('a')).toHaveAttribute('href', 'https://example.org/docs');
 });
 
+test('a member edits a ticket, is told someone saved first, reloads and saves again', async ({ page }) => {
+  await mockTickets(page);
+  const sent: { ifMatch: string | undefined; body: unknown }[] = [];
+  await page.route(`**/api/v1/issues/${ISSUE.id}`, (route) => {
+    sent.push({ ifMatch: route.request().headers()['if-match'], body: route.request().postDataJSON() });
+    return sent.length === 1
+      ? route.fulfill(problem(412, 'precondition_failed'))
+      : route.fulfill({ json: { ...ISSUE, summary: 'Migrate to OIDC', priority: 'highest', version: 3 } });
+  });
+  await page.goto('/issues/PLAT-142');
+  await page.getByRole('button', { name: 'Edit' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Edit PLAT-142' });
+  await expect(dialog.getByLabel('Summary')).toHaveValue('Migrate the authentication to OIDC');
+  await expect(dialog.getByRole('combobox', { name: 'Application' })).toContainText('Directory');
+  await dialog.getByLabel('Summary').fill('Migrate to OIDC');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(dialog.getByRole('alert')).toContainText('Someone changed this ticket since you opened it');
+  await dialog.getByRole('button', { name: 'Reload' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Edit' }).click();
+  await dialog.getByLabel('Summary').fill('Migrate to OIDC');
+  await dialog.getByRole('combobox', { name: 'Priority' }).click();
+  await page.getByRole('option', { name: 'Highest' }).click();
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Migrate to OIDC');
+  expect(sent).toEqual([
+    { ifMatch: '"1"', body: { summary: 'Migrate to OIDC' } },
+    { ifMatch: '"1"', body: { summary: 'Migrate to OIDC', priority: 'highest' } },
+  ]);
+});
+
+test('a member moves a ticket to another project, its type and status mapped', async ({ page }) => {
+  await mockTickets(page);
+  let moved: unknown;
+  await page.route(`**/api/v1/issues/${ISSUE.id}/move`, (route) => {
+    moved = route.request().postDataJSON();
+    return route.fulfill({ json: { ...ISSUE, key: 'CRM-7', project: MOVE_PLAN.project, version: 2 } });
+  });
+  await page.route('**/api/v1/issues/CRM-7**', (route) => route.fulfill({ json: { ...ISSUE, key: 'CRM-7', project: MOVE_PLAN.project } }));
+  await page.goto('/issues/PLAT-142');
+  await page.getByRole('button', { name: 'Move' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Move PLAT-142 to another project' });
+  await dialog.getByRole('combobox', { name: 'Target project' }).click();
+  await expect(page.getByRole('option')).toHaveText(['Customer relations (CRM)']);
+  await page.getByRole('option', { name: 'Customer relations (CRM)' }).click();
+  await expect(dialog.getByRole('combobox', { name: 'Story becomes' })).toContainText('User story');
+  await expect(dialog.getByRole('combobox', { name: 'Status To do becomes' })).toContainText('Open');
+  await expect(dialog.getByText('their values will be lost: Application')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Move' }).click();
+  await expect(page).toHaveURL(/\/issues\/CRM-7$/);
+  expect(moved).toEqual({
+    projectKey: 'CRM',
+    typeMappings: [{ fromId: 't-story', toId: 'c-story' }],
+    statusMappings: [{ fromId: 's1', toId: 'c-open' }],
+  });
+});
+
 for (const theme of ['light', 'dark'] as const) {
   for (const language of ['fr', 'en'] as const) {
     test.describe(`accessibility of tickets, ${theme} mode, ${language}`, () => {
@@ -212,6 +290,25 @@ for (const theme of ['light', 'dark'] as const) {
         await page.goto('/issues/PLAT-142');
         await expect(page.getByRole('heading', { level: 1 })).toHaveText('Migrate the authentication to OIDC');
         await expect(page.locator('ui-rich-text a')).toHaveText('OIDC');
+        await animationsDone(page);
+        expect(await accessibilityViolations(page)).toEqual([]);
+      });
+
+      test('the edit and move dialogs have no axe-core violation', async ({ page }) => {
+        await mockTickets(page);
+        await page.goto('/issues/PLAT-142');
+        await page.locator('button.edit').click();
+        await expect(page.getByRole('dialog').locator('app-field-input')).toHaveCount(3);
+        await animationsDone(page);
+        expect(await accessibilityViolations(page)).toEqual([]);
+        await page.keyboard.press('Escape');
+        await expect(page.getByRole('dialog')).toHaveCount(0);
+
+        await page.locator('button.move').click();
+        const dialog = page.getByRole('dialog');
+        await dialog.locator('mat-select').first().click();
+        await page.getByRole('option').first().click();
+        await expect(dialog.locator('.dropped')).toBeVisible();
         await animationsDone(page);
         expect(await accessibilityViolations(page)).toEqual([]);
       });

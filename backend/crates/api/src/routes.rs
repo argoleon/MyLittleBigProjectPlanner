@@ -26,6 +26,7 @@ use crate::grants;
 use crate::groups;
 use crate::hierarchy;
 use crate::invitations;
+use crate::issue_changes;
 use crate::issue_types;
 use crate::issues;
 use crate::me;
@@ -152,7 +153,10 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
             config_fields::delete
         ))
         .routes(routes!(issues::create))
-        .routes(routes!(issues::read))
+        .routes(routes!(issues::read, issue_changes::update))
+        .routes(routes!(issue_changes::edit_form))
+        .routes(routes!(issue_changes::move_plan))
+        .routes(routes!(issue_changes::move_issue))
         .routes(routes!(issues::form))
         .routes(routes!(issues::mine))
         .routes(routes!(issues::people))

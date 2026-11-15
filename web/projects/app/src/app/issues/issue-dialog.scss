@@ -40,3 +40,37 @@
     color: var(--mat-sys-on-error-container);
   }
 }
+
+.conflict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--app-space-2);
+
+  p {
+    margin: 0;
+  }
+}
+
+.plan {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-2);
+}
+
+.note {
+  margin: 0;
+  font: var(--mat-sys-body-medium);
+}
+
+.tickets {
+  margin: 0 0 var(--app-space-2);
+  padding-inline-start: var(--app-space-5);
+  font: var(--mat-sys-body-medium);
+}
+
+.message.warning {
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+}

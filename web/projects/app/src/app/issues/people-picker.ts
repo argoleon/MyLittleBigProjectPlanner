@@ -30,17 +30,19 @@ import { Api, IssuePerson, listProjectPeople } from 'ui';
             </button>
           </mat-chip-row>
         }
+      </mat-chip-grid>
+      <!-- Out of the grid, which holds only its rows (axe); linked by matChipInputFor. -->
+      @if (!disabled() && !full()) {
         <input
           #search
           [placeholder]="(kind() === 'group' ? 'issue.people.searchGroup' : 'issue.people.search') | transloco"
           [matChipInputFor]="grid"
           [matAutocomplete]="auto"
-          [disabled]="disabled() || full()"
           (input)="query.set(search.value)"
           (focus)="active.set(true)"
           (blur)="onTouched()"
         />
-      </mat-chip-grid>
+      }
       <mat-autocomplete #auto="matAutocomplete" (optionSelected)="add($event)">
         @for (person of suggestions(); track person.id) {
           <mat-option [value]="person">{{ person.name }}</mat-option>

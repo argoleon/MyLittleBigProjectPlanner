@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO issue_key_alias (id, tenant_id, key, issue_id)\n        SELECT $1, tenant_id, key, id FROM issue WHERE id = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0e2bcd3a5a49c7e390d41dbecf91c836db5b5a535964b1ada0a1a665e39f9691"
+}

@@ -150,6 +150,11 @@ pub struct FieldValueView {
     /// projects the member sees); `null` when the value shows as is.
     #[schema(required = true)]
     display: Option<String>,
+    /// The members, groups or tickets the value names, each with its name
+    /// (a ticket: its key), in the order of the value; empty for other
+    /// kinds. Those that no longer exist, or tickets of projects the
+    /// member does not see, are left out.
+    references: Vec<PersonView>,
 }
 
 /// Another ticket, in a few words.
@@ -385,15 +390,15 @@ pub struct FormView {
 }
 
 /// The published configuration of a project, as tickets read it.
-struct Content {
-    types: Vec<IssueType>,
-    workflows: Workflows,
-    fields: Vec<Field>,
-    screens: Vec<infra::screens::Screen>,
+pub(crate) struct Content {
+    pub(crate) types: Vec<IssueType>,
+    pub(crate) workflows: Workflows,
+    pub(crate) fields: Vec<Field>,
+    pub(crate) screens: Vec<infra::screens::Screen>,
 }
 
 impl Content {
-    async fn of(tx: &mut TenantTx, project: Uuid) -> Result<Self, Problem> {
+    pub(crate) async fn of(tx: &mut TenantTx, project: Uuid) -> Result<Self, Problem> {
         let config = infra::configs::of_project(tx, project)
             .await?
             .ok_or(Problem::new(ErrorCode::NotFound))?;
@@ -410,13 +415,13 @@ impl Content {
         })
     }
 
-    fn type_nodes(&self) -> Vec<TypeNode> {
+    pub(crate) fn type_nodes(&self) -> Vec<TypeNode> {
         self.types.iter().map(IssueType::node).collect()
     }
 }
 
 /// The fields with their rules, borrowing `fields` and `types`.
-fn field_defs<'a>(fields: &'a [Field], type_ids: &'a [Vec<u128>]) -> Vec<FieldDef<'a>> {
+pub(crate) fn field_defs<'a>(fields: &'a [Field], type_ids: &'a [Vec<u128>]) -> Vec<FieldDef<'a>> {
     fields
         .iter()
         .zip(type_ids)
@@ -433,14 +438,14 @@ fn field_defs<'a>(fields: &'a [Field], type_ids: &'a [Vec<u128>]) -> Vec<FieldDe
         .collect()
 }
 
-fn type_ids_of(fields: &[Field]) -> Vec<Vec<u128>> {
+pub(crate) fn type_ids_of(fields: &[Field]) -> Vec<Vec<u128>> {
     fields
         .iter()
         .map(|f| f.issue_type_ids.iter().map(Uuid::as_u128).collect())
         .collect()
 }
 
-fn project_view(node: &Node) -> ProjectView {
+pub(crate) fn project_view(node: &Node) -> ProjectView {
     ProjectView {
         id: node.id,
         key: node.key.clone().unwrap_or_default(),
@@ -449,7 +454,7 @@ fn project_view(node: &Node) -> ProjectView {
 }
 
 impl Language {
-    fn type_view(&self, t: &IssueType) -> TypeView {
+    pub(crate) fn type_view(&self, t: &IssueType) -> TypeView {
         TypeView {
             id: t.item_id,
             key: t.key.clone(),
@@ -462,7 +467,7 @@ impl Language {
         }
     }
 
-    fn status_view(&self, content: &Content, id: Uuid) -> StatusView {
+    pub(crate) fn status_view(&self, content: &Content, id: Uuid) -> StatusView {
         let status = content.workflows.statuses.iter().find(|s| s.item_id == id);
         StatusView {
             id,
@@ -472,7 +477,7 @@ impl Language {
         }
     }
 
-    fn type_of(&self, content: &Content, id: Uuid) -> TypeView {
+    pub(crate) fn type_of(&self, content: &Content, id: Uuid) -> TypeView {
         content.types.iter().find(|t| t.item_id == id).map_or_else(
             || TypeView {
                 id,
@@ -521,7 +526,7 @@ impl Language {
 }
 
 /// The identifiers a value holds: list values, users, groups, tickets.
-fn ids_in(value: &Value) -> Vec<Uuid> {
+pub(crate) fn ids_in(value: &Value) -> Vec<Uuid> {
     let one = |value: &Value| match value {
         Value::Text(text) => domain::fields::parse_uuid(text).map(Uuid::from_u128),
         _ => None,
@@ -535,7 +540,7 @@ fn ids_in(value: &Value) -> Vec<Uuid> {
 /// Field errors for the users, groups and tickets that `values` name and
 /// that do not exist (`validate_value` checks their form only). Fields
 /// already in error are left alone.
-async fn unknown_references(
+pub(crate) async fn unknown_references(
     tx: &mut TenantTx,
     fields: &[Field],
     values: &BTreeMap<u128, Value>,
@@ -582,7 +587,7 @@ async fn unknown_references(
 }
 
 /// The custom field values of `issue`, in the order of the configuration.
-fn field_values(
+pub(crate) fn field_values(
     language: &Language,
     content: &Content,
     issue: &Issue,
@@ -597,6 +602,18 @@ fn field_values(
             if value.is_empty() {
                 return None;
             }
+            let references = match field.kind {
+                Kind::User | Kind::Group | Kind::IssueLink => ids_in(&value)
+                    .into_iter()
+                    .filter_map(|id| {
+                        people.get(&id).map(|name| PersonView {
+                            id,
+                            name: name.clone(),
+                        })
+                    })
+                    .collect(),
+                _ => Vec::new(),
+            };
             Some(FieldValueView {
                 field_id: field.item_id,
                 key: field.key.clone(),
@@ -604,13 +621,14 @@ fn field_values(
                 kind: field.kind.into(),
                 display: language.display(field, &value, people),
                 value: json.clone(),
+                references,
             })
         })
         .collect()
 }
 
 /// The identifiers that fields of `kind` of `issue` hold.
-fn ids_of_kind(content: &Content, issue: &Issue, kind: Kind) -> Vec<Uuid> {
+pub(crate) fn ids_of_kind(content: &Content, issue: &Issue, kind: Kind) -> Vec<Uuid> {
     content
         .fields
         .iter()
@@ -630,7 +648,7 @@ fn ids_of_kind(content: &Content, issue: &Issue, kind: Kind) -> Vec<Uuid> {
 
 /// What the user, group and ticket fields of `issue` name, by id: names of
 /// members and groups, keys of the tickets whose project the member sees.
-async fn names_of(
+pub(crate) async fn names_of(
     state: &AppState,
     tx: &mut TenantTx,
     content: &Content,
@@ -652,15 +670,30 @@ async fn names_of(
     Ok(names)
 }
 
-fn person(id: Option<Uuid>, name: Option<&String>) -> Option<PersonView> {
+pub(crate) fn person(id: Option<Uuid>, name: Option<&String>) -> Option<PersonView> {
     id.map(|id| PersonView {
         id,
         name: name.cloned().unwrap_or_default(),
     })
 }
 
+impl IssueView {
+    pub(crate) const fn version(&self) -> i64 {
+        self.version
+    }
+}
+
+/// `issue` in a few words.
+pub(crate) fn issue_ref(issue: &Issue) -> IssueRefView {
+    IssueRefView {
+        id: issue.id,
+        key: issue.key.clone(),
+        summary: issue.summary.clone(),
+    }
+}
+
 /// The view of `issue`, with its parent if `expand` asks for it.
-async fn issue_view(
+pub(crate) async fn issue_view(
     state: &AppState,
     tx: &mut TenantTx,
     language: &Language,
@@ -706,7 +739,7 @@ async fn issue_view(
 }
 
 /// The project `key`, if the member sees it; else 404.
-async fn project_of_key(state: &AppState, tx: &mut TenantTx, key: &str) -> Result<Node, Problem> {
+pub(crate) async fn project_of_key(state: &AppState, tx: &mut TenantTx, key: &str) -> Result<Node, Problem> {
     let not_found = || Problem::new(ErrorCode::NotFound).with_detail("no such project");
     let id = infra::nodes::project_of_key(tx, key)
         .await?
@@ -715,7 +748,11 @@ async fn project_of_key(state: &AppState, tx: &mut TenantTx, key: &str) -> Resul
 }
 
 /// 403 `permission.denied` unless the member may create tickets in `project`.
-async fn require_create(state: &AppState, tx: &mut TenantTx, project: Uuid) -> Result<(), Problem> {
+pub(crate) async fn require_create(
+    state: &AppState,
+    tx: &mut TenantTx,
+    project: Uuid,
+) -> Result<(), Problem> {
     if is_tenant_admin(tx) {
         return Ok(());
     }
@@ -725,7 +762,7 @@ async fn require_create(state: &AppState, tx: &mut TenantTx, project: Uuid) -> R
 
 /// The ticket `id_or_key` (a key, a former key, or an id), if the member
 /// sees its project; else 404.
-async fn visible_issue(
+pub(crate) async fn visible_issue(
     state: &AppState,
     tx: &mut TenantTx,
     id_or_key: &str,
@@ -747,7 +784,9 @@ async fn visible_issue(
 
 /// The custom field values of `body`, read as the fields take them; the
 /// field errors otherwise.
-fn read_fields(fields: &BTreeMap<Uuid, serde_json::Value>) -> Result<BTreeMap<u128, Value>, Vec<FieldError>> {
+pub(crate) fn read_fields(
+    fields: &BTreeMap<Uuid, serde_json::Value>,
+) -> Result<BTreeMap<u128, Value>, Vec<FieldError>> {
     let mut values = BTreeMap::new();
     let mut errors = Vec::new();
     for (id, json) in fields {
@@ -1040,13 +1079,43 @@ pub async fn form(
             .or(content.types.first()),
     }
     .ok_or_else(|| Problem::new(ErrorCode::NotFound).with_detail("no such type"))?;
-    let type_id = chosen.item_id.as_u128();
+    let fields = screen_fields(
+        &language,
+        &content,
+        ScreenKind::Creation,
+        chosen.item_id.as_u128(),
+        Step::Creation,
+        &BTreeSet::new(),
+    );
+    let view = FormView {
+        project: project_view(&project),
+        types: content.types.iter().map(|t| language.type_view(t)).collect(),
+        type_id: chosen.item_id,
+        fields,
+    };
+    let mut response = ApiJson(view).into_response();
+    language.headers(&mut response);
+    Ok(response)
+}
+
+/// The fields of the screen of `kind` for a ticket of `type_id` at `step`,
+/// the rules applied: hidden ones left out, required ones marked (added if
+/// the screen lacks them). List fields offer their active values, and
+/// those of `held` (the ticket's own) even if deactivated.
+pub(crate) fn screen_fields(
+    language: &Language,
+    content: &Content,
+    kind: ScreenKind,
+    type_id: u128,
+    step: Step,
+    held: &BTreeSet<u128>,
+) -> Vec<FormFieldView> {
     let screens: Vec<domain::screens::Screen> = content
         .screens
         .iter()
         .map(infra::screens::Screen::domain)
         .collect();
-    let on_screen = pick(&screens, ScreenKind::Creation, type_id)
+    let on_screen = pick(&screens, kind, type_id)
         .map(|s| s.fields.clone())
         .unwrap_or_default();
     let type_ids = type_ids_of(&content.fields);
@@ -1063,13 +1132,14 @@ pub async fn form(
             },
         })
         .collect();
+    let offered = |v: &ListValue| v.active || held.contains(&v.id);
     let value_view = |v: &ListValue| FormValueView {
         id: Uuid::from_u128(v.id),
         label: language.label(&v.labels),
         children: v
             .children
             .iter()
-            .filter(|c| c.active)
+            .filter(|c| offered(c))
             .map(|c| FormValueView {
                 id: Uuid::from_u128(c.id),
                 label: language.label(&c.labels),
@@ -1077,7 +1147,7 @@ pub async fn form(
             })
             .collect(),
     };
-    let fields = resolve(&on_screen, &rules, type_id, Step::Creation)
+    resolve(&on_screen, &rules, type_id, step)
         .into_iter()
         .filter_map(|shown| {
             let field = content
@@ -1104,19 +1174,10 @@ pub async fn form(
                 values: o
                     .values
                     .as_ref()
-                    .map(|values| values.iter().filter(|v| v.active).map(value_view).collect()),
+                    .map(|values| values.iter().filter(|v| offered(v)).map(value_view).collect()),
             })
         })
-        .collect();
-    let view = FormView {
-        project: project_view(&project),
-        types: content.types.iter().map(|t| language.type_view(t)).collect(),
-        type_id: chosen.item_id,
-        fields,
-    };
-    let mut response = ApiJson(view).into_response();
-    language.headers(&mut response);
-    Ok(response)
+        .collect()
 }
 
 /// `GET /api/v1/me/issues`.

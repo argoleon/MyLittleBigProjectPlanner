@@ -431,7 +431,9 @@
       "unknown_group": "This group does not exist.",
       "unknown_issue": "This ticket does not exist.",
       "invalid": "The content is invalid.",
-      "too_deep": "The content is nested too deeply."
+      "too_deep": "The content is nested too deeply.",
+      "same_project": "The ticket is already in this project.",
+      "not_in_workflow": "Not a status of this type’s workflow."
     },
     "invitation": {
       "invalid": "This invitation link is invalid, has expired or was already used. Ask for a new one.",
@@ -501,6 +503,9 @@
       "exists": "This type, or the configuration, already has a screen of this kind.",
       "general": "The general creation and view screens of a configuration stay.",
       "in_use": "Transitions show this screen: give them another one first."
+    },
+    "issue": {
+      "subtask_moves_with_parent": "A sub-task moves with its parent: move the parent instead."
     }
   },
   "dialog": {
@@ -1468,6 +1473,26 @@
         "updated": "Updated"
       },
       "loadMore": "Show more"
+    },
+    "edit": {
+      "open": "Edit",
+      "title": "Edit {{ key }}",
+      "save": "Save",
+      "conflict": "Someone changed this ticket since you opened it. Reload it to see their changes, then make yours again.",
+      "reload": "Reload"
+    },
+    "move": {
+      "open": "Move",
+      "title": "Move {{ key }} to another project",
+      "project": "Target project",
+      "tickets": "Tickets that move ({{ count }}), with new keys; their current keys keep leading to them:",
+      "parentCleared": "It no longer sits under {{ parent }}, which stays in its project.",
+      "sameConfiguration": "Both projects use the same configuration: types and statuses stay as they are.",
+      "mapping": "Types and statuses of the target project",
+      "typeOf": "{{ label }} becomes",
+      "statusOf": "Status {{ label }} becomes",
+      "dropped": "These fields do not exist there, or do not apply: their values will be lost: {{ fields }}.",
+      "confirm": "Move"
     }
   }
 }

@@ -86,5 +86,6 @@ export const ERROR_CODE: ErrorCode[] = [
   'screen.general',
   'screen.in_use',
   'mapping_incomplete',
-  'config.migration_running'
+  'config.migration_running',
+  'issue.subtask_moves_with_parent'
 ];

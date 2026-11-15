@@ -42,6 +42,26 @@ The ticket gets the initial status of its type's workflow. The creation is idemp
 
 `GET /projects/{key}/issue-form?typeId=` returns what the creation dialog shows: the types, and the fields of the type's creation screen resolved with its rules (`domain::screens::resolve`), hidden ones left out, required ones marked.
 
+## Editing (L05-US02)
+
+`PATCH /api/v1/issues/{idOrKey}` (`api::issue_changes`) takes only what changes; `null` clears a nullable value (`present` tells an absent field from `null`). It requires `If-Match` (428 without it): the ticket row is locked (`infra::issues::lock`, `FOR UPDATE`) and its version compared with the one read (412 when stale), so two edits never overwrite each other silently.
+
+- The rules are those of the type **at the ticket's status** (`domain::issues::validate_changes`, step `Status`): a hidden field takes no value, a required one is not cleared, a deactivated list value is accepted only if the ticket already holds it. Only the fields given are checked: a rule added later does not block other edits.
+- Type, status and parent are not edited here: status changes are transitions (L05-US09, #515), sub-tasks are L05-US03.
+- `issue.updated` goes to the outbox with each changed field, `{field, old, new}` (`summary`, `priority`, `assigneeId`, `fields.{id}`…): the history of L05-US05 reads these. Nothing changed: nothing written, same version.
+- `GET …/edit-form` returns the fields of the type's **view** screen at the ticket's status (`screen_fields`), with the deactivated values the ticket holds still offered.
+- Field values carry `references` (id and name of the members, groups or tickets they name), so the client can show and edit them without another lookup.
+
+## Moving (L05-US02)
+
+`POST /api/v1/issues/{idOrKey}/move` (with `If-Match`) moves a ticket to another project; `POST …/move-plan` (same body, changes nothing) tells the dialog what it takes.
+
+- `edit` on the ticket's project and `create_ticket` on the target; both active.
+- A sub-task does not move alone (409 `issue.subtask_moves_with_parent`): its parent moves, **with its sub-tasks**. The ticket moved leaves the one it sat under (an epic stays in its project).
+- Each ticket gets the next key of the target project (`infra::issues::move_to`, same counter as creation); its former key goes to `issue_key_alias`, so every former key keeps resolving.
+- Types and statuses are stable identities: those the target configuration has keep their identity (same configuration: nothing to map). Others are mapped (`typeMappings`, `statusMappings`), checked by `domain::issues::plan_move`: the ticket lands on a type that is no sub-task, its sub-tasks on sub-task types allowed under it, each status in the workflow of its new type. The plan suggests a mapping (same key, else same category) and reports what the move would refuse.
+- Values of fields the target lacks, that do not apply to the new type, or no longer fit, are dropped (`kept_values`); the plan lists them, and `issue.moved` (one per ticket) carries `droppedFieldIds` with the former and new keys and projects.
+
 ## Rich text
 
 The description is a Tiptap document. The server never stores HTML it received:

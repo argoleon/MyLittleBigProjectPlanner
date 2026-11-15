@@ -1,0 +1,74 @@
+<h2 mat-dialog-title>{{ 'issue.edit.title' | transloco: { key: ticket.key } }}</h2>
+<form [formGroup]="form" (ngSubmit)="save()" novalidate>
+  <mat-dialog-content class="fields">
+    @if (conflict()) {
+      <div class="message error conflict" role="alert">
+        <p>{{ 'issue.edit.conflict' | transloco }}</p>
+        <button matButton="tonal" type="button" class="reload" (click)="reload()">{{ 'issue.edit.reload' | transloco }}</button>
+      </div>
+    }
+    @if (errorKey(); as key) {
+      <p class="message error" role="alert">{{ key | transloco }}</p>
+    }
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'issue.dialog.summary' | transloco }}</mat-label>
+      <input matInput formControlName="summary" required [maxlength]="summaryMax" />
+      <mat-hint align="end">{{ form.controls.summary.value.length }} / {{ summaryMax }}</mat-hint>
+      <mat-error>{{ error(form.controls.summary) ?? '' | transloco }}</mat-error>
+    </mat-form-field>
+    <div class="description">
+      <ui-rich-text-editor formControlName="description" [label]="'issue.dialog.description' | transloco" [invalid]="!!error(form.controls.description)" />
+      @if (error(form.controls.description); as key) {
+        <p class="field-error" role="alert">{{ key | transloco }}</p>
+      }
+    </div>
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'issue.dialog.priority' | transloco }}</mat-label>
+        <mat-select formControlName="priority" [aria-label]="'issue.dialog.priority' | transloco">
+          @for (priority of priorities; track priority) {
+            <mat-option [value]="priority">{{ 'priority.' + priority | transloco }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <app-people-picker
+        formControlName="assignee"
+        [projectKey]="ticket.project.key"
+        [label]="'issue.dialog.assignee' | transloco"
+        [error]="error(form.controls.assignee)"
+      />
+    </div>
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'issue.dialog.startDate' | transloco }}</mat-label>
+        <input matInput [matDatepicker]="start" formControlName="startDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="start" />
+        <mat-datepicker #start />
+        <mat-error>{{ error(form.controls.startDate) ?? '' | transloco }}</mat-error>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'issue.dialog.dueDate' | transloco }}</mat-label>
+        <input matInput [matDatepicker]="due" formControlName="dueDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="due" />
+        <mat-datepicker #due />
+        <mat-error>{{ error(form.controls.dueDate) ?? '' | transloco }}</mat-error>
+      </mat-form-field>
+    </div>
+    @if (editForm.error()) {
+      <ui-error-state [error]="editForm.error()" [headingLevel]="3" (retry)="editForm.reload()" />
+    } @else if (!editForm.hasValue()) {
+      <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+    } @else if (fields().length > 0) {
+      <h3 class="section">{{ 'issue.dialog.fields' | transloco }}</h3>
+      @for (field of fields(); track field.fieldId) {
+        <app-field-input [field]="field" [control]="controlOf(field)" [projectKey]="ticket.project.key" />
+      }
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button matButton type="button" mat-dialog-close>{{ 'dialog.cancel' | transloco }}</button>
+    <button matButton="filled" type="submit" class="confirm" [disabled]="saving() || conflict() || !editForm.hasValue()">
+      {{ 'issue.edit.save' | transloco }}
+    </button>
+  </mat-dialog-actions>
+</form>

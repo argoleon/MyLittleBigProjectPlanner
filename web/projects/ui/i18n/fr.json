@@ -431,7 +431,9 @@
       "unknown_group": "Ce groupe n’existe pas.",
       "unknown_issue": "Ce ticket n’existe pas.",
       "invalid": "Le contenu n’est pas valide.",
-      "too_deep": "Le contenu est trop imbriqué."
+      "too_deep": "Le contenu est trop imbriqué.",
+      "same_project": "Le ticket est déjà dans ce projet.",
+      "not_in_workflow": "Ce statut n’est pas dans le workflow de ce type."
     },
     "invitation": {
       "invalid": "Ce lien d’invitation est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
@@ -501,6 +503,9 @@
       "exists": "Ce type, ou la configuration, a déjà un écran de ce genre.",
       "general": "Les écrans généraux de création et de consultation d’une configuration restent.",
       "in_use": "Des transitions affichent cet écran : donnez-leur-en un autre d’abord."
+    },
+    "issue": {
+      "subtask_moves_with_parent": "Une sous-tâche se déplace avec son parent : déplacez plutôt le parent."
     }
   },
   "dialog": {
@@ -1468,6 +1473,26 @@
         "updated": "Mis à jour"
       },
       "loadMore": "Afficher plus"
+    },
+    "edit": {
+      "open": "Modifier",
+      "title": "Modifier {{ key }}",
+      "save": "Enregistrer",
+      "conflict": "Quelqu’un a modifié ce ticket depuis que vous l’avez ouvert. Rechargez-le pour voir ses changements, puis refaites les vôtres.",
+      "reload": "Recharger"
+    },
+    "move": {
+      "open": "Déplacer",
+      "title": "Déplacer {{ key }} vers un autre projet",
+      "project": "Projet cible",
+      "tickets": "Tickets déplacés ({{ count }}), avec de nouvelles clés ; leurs clés actuelles y mènent toujours :",
+      "parentCleared": "Il n’est plus rattaché à {{ parent }}, qui reste dans son projet.",
+      "sameConfiguration": "Les deux projets utilisent la même configuration : types et statuts restent les mêmes.",
+      "mapping": "Types et statuts du projet cible",
+      "typeOf": "{{ label }} devient",
+      "statusOf": "Le statut {{ label }} devient",
+      "dropped": "Ces champs n’existent pas là-bas, ou ne s’appliquent pas : leurs valeurs seront perdues : {{ fields }}.",
+      "confirm": "Déplacer"
     }
   }
 }

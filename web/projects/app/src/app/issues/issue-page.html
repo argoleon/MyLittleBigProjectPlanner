@@ -17,6 +17,16 @@
   <h1 class="title">{{ current.summary }}</h1>
   <div class="actions">
     <ui-status-chip [category]="chipCategory(current.status.category)" [label]="current.status.label ?? current.status.key" />
+    @if (canEdit()) {
+      <button matButton="outlined" type="button" class="edit" (click)="edit(current)">
+        <mat-icon aria-hidden="true">edit</mat-icon>
+        {{ 'issue.edit.open' | transloco }}
+      </button>
+      <button matButton="outlined" type="button" class="move" (click)="move(current)">
+        <mat-icon aria-hidden="true">drive_file_move</mat-icon>
+        {{ 'issue.move.open' | transloco }}
+      </button>
+    }
     @if (canAddSubtask()) {
       <button matButton="tonal" type="button" class="add-subtask" (click)="addSubtask(current)">
         <mat-icon aria-hidden="true">add</mat-icon>

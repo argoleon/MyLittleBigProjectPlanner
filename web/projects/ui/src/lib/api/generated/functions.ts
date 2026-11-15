@@ -73,6 +73,14 @@ export type { UnlinkNodeParent$Params as UnlinkNodeParent$Params } from './fn/hi
 export { unlinkNodeParent as unlinkNodeParent } from './fn/hierarchy/unlink-node-parent';
 export type { GetIssue$Params as GetIssue$Params } from './fn/issues/get-issue';
 export { getIssue as getIssue } from './fn/issues/get-issue';
+export type { UpdateIssue$Params as UpdateIssue$Params } from './fn/issues/update-issue';
+export { updateIssue as updateIssue } from './fn/issues/update-issue';
+export type { GetIssueEditForm$Params as GetIssueEditForm$Params } from './fn/issues/get-issue-edit-form';
+export { getIssueEditForm as getIssueEditForm } from './fn/issues/get-issue-edit-form';
+export type { MoveIssue$Params as MoveIssue$Params } from './fn/issues/move-issue';
+export { moveIssue as moveIssue } from './fn/issues/move-issue';
+export type { PlanIssueMove$Params as PlanIssueMove$Params } from './fn/issues/plan-issue-move';
+export { planIssueMove as planIssueMove } from './fn/issues/plan-issue-move';
 export type { ListMyIssues$Params as ListMyIssues$Params } from './fn/issues/list-my-issues';
 export { listMyIssues as listMyIssues } from './fn/issues/list-my-issues';
 export type { GetIssueForm$Params as GetIssueForm$Params } from './fn/issues/get-issue-form';

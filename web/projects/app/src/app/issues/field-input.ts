@@ -80,17 +80,22 @@ export class FieldInput {
     const [parent] = this.list();
     const value = level === 0 ? (id ? [id] : []) : parent ? (id ? [parent, id] : [parent]) : [];
     this.control().setValue(value);
+    this.control().markAsDirty();
     this.control().markAsTouched();
   }
 
   protected addLabel(event: MatChipInputEvent): void {
     const label = event.value.trim();
-    if (label && !this.list().includes(label)) this.control().setValue([...this.list(), label]);
+    if (label && !this.list().includes(label)) {
+      this.control().setValue([...this.list(), label]);
+      this.control().markAsDirty();
+    }
     event.chipInput.clear();
   }
 
   protected removeLabel(label: string): void {
     this.control().setValue(this.list().filter((l) => l !== label));
+    this.control().markAsDirty();
     this.control().markAsTouched();
   }
 }
