@@ -116,6 +116,10 @@ describe('comments on the ticket page', () => {
     await reply((url) => url === '/api/v1/nodes/p1/my-permissions', permissions);
     await reply(isList, COMMENTS);
     const root = () => document.body;
+    // The comments are in their tab, next to the activity (L05-US06).
+    const commentsTab = Array.from(root().querySelectorAll<HTMLElement>('[role="tab"]')).find((tab) => tab.textContent?.includes('Comments'));
+    commentsTab!.click();
+    await settle();
     const section = () => root().querySelector('app-issue-comments')!;
     const component = () => harness.fixture.debugElement.query(By.directive(IssueComments)).componentInstance as IssueComments;
     const text = (element: Element | null | undefined) => element?.textContent?.replace(/\s+/g, ' ').trim();
@@ -130,8 +134,8 @@ describe('comments on the ticket page', () => {
   afterEach(() => TestBed.inject(MatDialog).closeAll());
 
   it('lists the comments with their author, visibility and content, a placeholder once deleted', async () => {
-    const { section, texts, text } = await openTicket();
-    expect(text(section().querySelector('h2'))).toBe('Comments (3)');
+    const { section, texts, text, root } = await openTicket();
+    expect(text(root().querySelector('[role="tab"][aria-selected="true"]'))).toBe('Comments (3)');
     expect(texts('.comment .author')).toEqual(['Camille Martin', 'Lucas Bernard', 'Lucas Bernard', 'Lucas Bernard']);
     expect(texts('.comment .visibility')).toEqual(['Internal', 'Public', 'Internal']);
     expect(text(section().querySelector('.comment .mention'))).toBe('@Lucas Bernard');

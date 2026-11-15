@@ -259,8 +259,9 @@ test('a comment mentions a member and refers to a ticket, then is edited and del
   }
 
   // On the second: a mention of the admin (picked with the keyboard) and the first by its key.
+  // The comments are in their tab, next to the activity (L05-US06).
+  await page.getByRole('tab', { name: 'Comments (0)' }).click();
   const section = page.locator('app-issue-comments');
-  await expect(section.getByRole('heading', { name: 'Comments (0)' })).toBeVisible();
   await section.getByRole('textbox', { name: 'Add a comment' }).click();
   await page.keyboard.type('Thanks @');
   await expect(section.getByRole('option').first()).toBeVisible();
@@ -271,7 +272,7 @@ test('a comment mentions a member and refers to a ticket, then is edited and del
   await expect(comment).toHaveCount(1);
   await expect(comment.locator('.mention')).toContainText('@');
   await expect(comment.getByRole('link', { name: `${code}-1` })).toHaveAttribute('href', `/issues/${code}-1`);
-  await expect(section.getByRole('heading', { name: 'Comments (1)' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Comments (1)' })).toBeVisible();
   expect(await accessibilityViolations(page)).toEqual([]);
 
   // Edited, made public; then deleted: a placeholder stays.
@@ -290,6 +291,7 @@ test('a comment mentions a member and refers to a ticket, then is edited and del
 
   // Read again: the placeholder is stored.
   await page.reload();
+  await page.getByRole('tab', { name: 'Comments (0)' }).click();
   await expect(section.locator('.comment .deleted')).toBeVisible();
 });
 

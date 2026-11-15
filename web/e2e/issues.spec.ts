@@ -436,8 +436,9 @@ test('a member comments with a mention picked with the keyboard', async ({ page 
   await mockTickets(page);
   const written = await mockComments(page);
   await page.goto('/issues/PLAT-142');
+  // The comments are in their tab, next to the activity (L05-US06).
+  await page.getByRole('tab', { name: 'Comments (1)' }).click();
   const section = page.locator('app-issue-comments');
-  await expect(section.getByRole('heading', { name: 'Comments (1)' })).toBeVisible();
   await expect(section.locator('.mention')).toHaveText('@Lucas Bernard');
   const editor = section.getByRole('textbox', { name: 'Add a comment' });
   await editor.click();
@@ -517,6 +518,7 @@ for (const theme of ['light', 'dark'] as const) {
         await mockTickets(page);
         await mockComments(page);
         await page.goto('/issues/PLAT-142');
+        await page.getByRole('tab', { name: /^(Comments|Commentaires) \(1\)$/ }).click();
         await expect(page.locator('app-issue-comments .comment')).toHaveCount(1);
         await page.locator('app-issue-comments .new [role="textbox"]').click();
         await page.keyboard.type('@');
