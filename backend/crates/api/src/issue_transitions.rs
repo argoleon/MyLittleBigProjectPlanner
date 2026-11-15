@@ -408,6 +408,9 @@ pub async fn run(
         &crate::issue_history::snapshot(&moved, &content),
     );
     crate::issue_history::record(&mut tx, moved.id, &entries).await?;
+    if let Some(assignee) = moved.assignee_id.filter(|a| Some(*a) != issue.assignee_id) {
+        infra::watchers::watch(&mut tx, moved.id, assignee).await?;
+    }
     for text in &comments {
         let doc = Doc(vec![Block::Paragraph(vec![Inline::Text {
             text: text.clone(),

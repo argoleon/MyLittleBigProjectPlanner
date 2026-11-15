@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO issue_watcher (tenant_id, issue_id, account_id)\n        VALUES (app_current_tenant(), $1, $2)\n        ON CONFLICT DO NOTHING\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ef448e947c4674de93bebcf42e18d706438028686ae1b6e139ce5ccb23ae4626"
+}

@@ -216,11 +216,44 @@ impl ErasureStep for History {
     }
 }
 
+/// The member's notifications and the tickets they watched: personal,
+/// removed in the tenant whatever `purge_comments` says.
+struct Notifications;
+
+impl ErasureStep for Notifications {
+    fn name(&self) -> &'static str {
+        "notifications"
+    }
+
+    fn run<'a>(&'a self, conn: &'a mut PgConnection, member: &'a ErasedMember) -> StepFuture<'a> {
+        Box::pin(async move {
+            let notifications = sqlx::query!(
+                "DELETE FROM notification WHERE account_id = $1",
+                member.account_id
+            )
+            .execute(&mut *conn)
+            .await?;
+            let watched = sqlx::query!(
+                "DELETE FROM issue_watcher WHERE account_id = $1",
+                member.account_id
+            )
+            .execute(&mut *conn)
+            .await?;
+            Ok(notifications.rows_affected() + watched.rows_affected())
+        })
+    }
+}
+
 /// The steps of the product. Tables holding a member's content add theirs
 /// here: comments (purged when `purge_comments`, else kept under the
 /// pseudonym), history, attachments' uploader…
 pub fn steps() -> Vec<Box<dyn ErasureStep>> {
-    vec![Box::new(InvitationsSent), Box::new(Comments), Box::new(History)]
+    vec![
+        Box::new(InvitationsSent),
+        Box::new(Comments),
+        Box::new(History),
+        Box::new(Notifications),
+    ]
 }
 
 /// Runs `steps` for `member` in the current tenant: each step's name and the

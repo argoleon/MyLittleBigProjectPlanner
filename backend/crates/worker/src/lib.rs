@@ -40,8 +40,8 @@ where
 /// How often the partitions of the coming months are checked.
 pub const PARTITIONS_EVERY: Duration = Duration::from_secs(12 * 60 * 60);
 
-/// Keeps the monthly partitions of the event outbox (`infra::outbox`) and
-/// of the history (`infra::audit`) ready: at start, then every `every`,
+/// Keeps the monthly partitions of the event outbox (`infra::outbox`), of
+/// the history (`infra::audit`) and of notifications ready: at start, then every `every`,
 /// until `token` is cancelled. A failure is logged and tried again next
 /// time; the default partitions take the rows meanwhile.
 pub async fn keep_partitions(pool: infra::sqlx::PgPool, token: CancellationToken, every: Duration) {
@@ -58,8 +58,107 @@ pub async fn keep_partitions(pool: infra::sqlx::PgPool, token: CancellationToken
                     Ok(created) => tracing::info!(created, "history partitions created"),
                     Err(err) => tracing::warn!(error = %err, "history partitions not checked"),
                 }
+                match infra::notifications::ensure_partitions(&mut conn).await {
+                    Ok(0) => {}
+                    Ok(created) => tracing::info!(created, "notification partitions created"),
+                    Err(err) => tracing::warn!(error = %err, "notification partitions not checked"),
+                }
             }
             Err(err) => tracing::warn!(error = %err, "partitions not checked"),
+        }
+        tokio::select! {
+            () = token.cancelled() => {}
+            () = tokio::time::sleep(every) => {}
+        }
+    }
+}
+
+/// How often the daily digests are checked.
+pub const DIGESTS_EVERY: Duration = Duration::from_secs(5 * 60);
+
+/// Sends the daily digests that are due now (`domain::notify::digest_due`):
+/// one email per member gathering the notifications of all their
+/// organizations waiting for it, then marks them sent. How many went; a
+/// digest that fails to go is tried again next time.
+pub async fn send_due_digests(
+    pool: &infra::sqlx::PgPool,
+    mailer: &infra::email::Mailer,
+    public_url: Option<&str>,
+) -> Result<usize, infra::sqlx::Error> {
+    send_due_digests_where(pool, mailer, public_url, &|candidate| {
+        domain::notify::digest_due(
+            candidate.local_weekday,
+            candidate.local_hour,
+            candidate.sent_today,
+        )
+    })
+    .await
+}
+
+/// [`send_due_digests`], `is_due` telling whose digest is due (tests send
+/// them whatever the time).
+pub async fn send_due_digests_where(
+    pool: &infra::sqlx::PgPool,
+    mailer: &infra::email::Mailer,
+    public_url: Option<&str>,
+    is_due: &(dyn Fn(&infra::notifications::DigestCandidate) -> bool + Sync),
+) -> Result<usize, infra::sqlx::Error> {
+    use infra::email::{DigestLine, EmailMessage, render};
+    use infra::notifications;
+
+    let mut conn = pool.acquire().await?;
+    let mut sent = 0;
+    for candidate in notifications::digest_candidates(&mut conn).await? {
+        if !is_due(&candidate) {
+            continue;
+        }
+        let waiting = notifications::waiting_for_digest(&mut conn, candidate.account_id).await?;
+        if waiting.is_empty() {
+            continue;
+        }
+        let lines = waiting
+            .iter()
+            .map(|w| {
+                let line = notifications::line_of(w);
+                DigestLine {
+                    tenant_name: w.tenant_name.clone(),
+                    link: public_url.map(|url| {
+                        format!("{}/issues/{}", url.replace("{tenant}", &w.tenant_slug), line.key)
+                    }),
+                    line,
+                }
+            })
+            .collect();
+        let email = render(
+            &EmailMessage::Digest {
+                display_name: candidate.display_name.clone(),
+                lines,
+            },
+            &candidate.locale,
+        );
+        if let Err(err) = mailer.send(&candidate.email, &email).await {
+            tracing::warn!(error = %err, account = %candidate.account_id, "digest not sent");
+            continue;
+        }
+        let ids: Vec<_> = waiting.iter().map(|w| w.id).collect();
+        notifications::digest_sent(&mut conn, candidate.account_id, candidate.local_date, &ids).await?;
+        tracing::info!(account = %candidate.account_id, notifications = ids.len(), "daily digest sent");
+        sent += 1;
+    }
+    Ok(sent)
+}
+
+/// Sends the due digests every `every`, until `token` is cancelled.
+pub async fn send_digests(
+    pool: infra::sqlx::PgPool,
+    mailer: infra::email::Mailer,
+    public_url: Option<String>,
+    token: CancellationToken,
+    every: Duration,
+) {
+    while !token.is_cancelled() {
+        if let Err(err) = send_due_digests(&pool, &mailer, public_url.as_deref()).await {
+            tracing::warn!(error = %err, "digests not checked");
         }
         tokio::select! {
             () = token.cancelled() => {}

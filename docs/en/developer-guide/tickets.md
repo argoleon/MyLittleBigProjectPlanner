@@ -19,6 +19,10 @@ A ticket (`issue`) belongs to one project and follows the **published** version 
 | SQL, scan | `backend/crates/infra/src/attachments.rs` | Metadata, quota, deduplication, `scan`, `expire`, `delete_objects` |
 | Storage | `backend/crates/infra/src/storage.rs`, `antivirus.rs` | S3 (presigned URLs, `rusty-s3` over hyper), ClamAV (`INSTREAM`) |
 | HTTP | `backend/crates/api/src/issue_attachments.rs` | Announce, uploaded, list, download, thumbnail, remove |
+| Rules | `backend/crates/domain/src/notify.rs` | Notifications: events of a change, one per recipient, preferences and defaults, digest time |
+| Tables | `backend/migrations/*_notifications.sql` | `issue_watcher`, `notification`, `notification_settings`, cross-tenant read functions |
+| SQL, dispatch | `backend/crates/infra/src/notifications.rs`, `watchers.rs` | `dispatch` (outbox → notifications and emails), reads, preferences, digest |
+| HTTP | `backend/crates/api/src/notifications.rs` | `/me/notifications…`, `/me/notification-preferences`, watchers |
 | HTTP | `backend/crates/api/src/issues.rs` | Creation, reading, the creation form, "my tickets", assignable people |
 
 ## What a ticket references
@@ -126,6 +130,21 @@ Files never go through the API: the browser uploads and downloads them directly 
 4. `GET …/{id}/content` redirects (303) to the file once `clean`, served as bytes (an image as itself) and always as a download (`Content-Disposition: attachment`); `…/thumbnail` likewise, inline.
 
 Integration tests use the SeaweedFS and ClamAV of `deploy/compose.dev.yaml` (`testkit::storage`, `testkit::clamav_addr`); the development ClamAV knows the EICAR test signature only (`deploy/dev/clamav.Dockerfile`), so it starts in seconds; `testkit::eicar()` builds the test file. A test reaching a presigned URL sends it to the storage with the Host it was signed for, as the proxy does.
+
+## Notifications (L05-US07)
+
+Every outbox event queues an `outbox.dispatch` job in its own transaction (`infra::outbox::record`). The worker's `infra::notifications::dispatch`, in the tenant's transaction:
+
+1. turns the event into a change, **as of the event** (`change_of`: the assignee the event set, not the ticket's current one; the worker may run after later changes), then into its events (`domain::notify::events_of`: mentioned, assigned, status changed, commented, created);
+2. resolves each event's recipients with the rule of the project's **published** configuration (`domain::notifications::resolve`: reporter, assignee, watchers, people mentioned, role holders on the project or above, groups, chosen members), never the author; at creation, only the reporter and assignee watch;
+3. keeps one notification per recipient, the event that concerns them most (`one_per_recipient`: a mention before a comment), drops those who do not see the project (tenant admin, or a role with `view`), and applies each one's preferences (`Preferences`: in the application, by email, daily digest);
+4. writes the notifications, queues the emails (`email.send`, in the recipient's language, with a link to the ticket when the worker knows `PUBLIC_URL`), and marks the event processed. Running it again does nothing.
+
+- **Watchers** (`issue_watcher`): the reporter and the assignee at creation, a new assignee, and whoever comments start watching; anyone who sees the ticket watches or stops (`PUT`/`DELETE …/watch`).
+- **Preferences** belong to the account, for every organization (`notification_settings`, row-level security on `app.account_id`). Absent choices take the defaults of `domain::notify` (mockup 16).
+- **Reading across organizations**: `app_my_notifications`, `app_my_unread_notifications`, `app_mark_my_notifications_read` are `SECURITY DEFINER` and answer for the signed-in account only, in the tenants where it is an active member; the `notification_platform` policy lets them (owned by `mlbpp_owner`) read past the tenant policy. Nothing else reads notifications across tenants.
+- **Daily digest**: the worker checks every 5 minutes (`worker::send_digests`); a member who asked for it gets, each working day from 8:00 in their time zone (else their first organization's), one email gathering the notifications waiting for email, of all their organizations. Emails then no longer go one by one.
+- **GDPR**: an erased member's notifications and watches are removed in the tenant (erasure step `notifications`).
 
 ## Rich text
 

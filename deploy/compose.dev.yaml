@@ -249,6 +249,8 @@ services:
       S3_ACCESS_KEY: mlbpp-dev
       S3_SECRET_KEY: mlbpp-dev-only # gitleaks:allow (development only)
       CLAMAV_ADDR: clamav:3310
+      # Links of notification emails.
+      PUBLIC_URL: http://127.0.0.1:4200
       SMTP_URL: smtp://mailpit:1025
       MAIL_FROM: My Little Big Project Planner <noreply@mlbpp.localhost>
       LOG_FORMAT: text

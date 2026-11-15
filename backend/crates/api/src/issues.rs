@@ -989,7 +989,12 @@ pub async fn create(
             kind: "issue.created",
             aggregate_type: "issue",
             aggregate_id: issue.id,
-            payload: serde_json::json!({"key": issue.key, "projectId": project.id, "typeId": issue.type_id}),
+            payload: serde_json::json!({
+                "key": issue.key,
+                "projectId": project.id,
+                "typeId": issue.type_id,
+                "assigneeId": issue.assignee_id,
+            }),
             actor_id: Some(actor),
         },
     )
@@ -1000,6 +1005,11 @@ pub async fn create(
         &[infra::audit::Entry::action(domain::audit::Action::Created)],
     )
     .await?;
+    // Its reporter and its assignee follow it.
+    infra::watchers::watch(&mut tx, issue.id, actor).await?;
+    if let Some(assignee) = issue.assignee_id {
+        infra::watchers::watch(&mut tx, issue.id, assignee).await?;
+    }
     tracing::info!(target: "audit", actor = %actor, issue = %issue.id, key = %issue.key, "ticket created");
     let language = Language::of(&tx, &accept);
     let location = format!("/api/v1/issues/{}", issue.key);

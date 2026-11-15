@@ -40,6 +40,7 @@ use crate::mfa;
 use crate::migrations;
 use crate::nodes;
 use crate::notification_rules;
+use crate::notifications;
 use crate::openapi;
 use crate::platform;
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
@@ -168,6 +169,15 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(issue_comments::list, issue_comments::create))
         .routes(routes!(issue_comments::update, issue_comments::delete))
         .routes(routes!(issue_history::activity))
+        .routes(routes!(notifications::watchers))
+        .routes(routes!(notifications::watch, notifications::unwatch))
+        .routes(routes!(notifications::list))
+        .routes(routes!(notifications::unread))
+        .routes(routes!(notifications::mark_read))
+        .routes(routes!(
+            notifications::preferences,
+            notifications::set_preferences
+        ))
         .routes(routes!(issue_attachments::list, issue_attachments::create))
         .routes(routes!(issue_attachments::uploaded))
         .routes(routes!(issue_attachments::content))

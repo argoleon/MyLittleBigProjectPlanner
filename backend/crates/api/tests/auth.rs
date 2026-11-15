@@ -476,6 +476,7 @@ async fn run_jobs(db: &TestDb) {
         },
         storage: None,
         clamav: None,
+        public_url: None,
     };
     while runner.next_batch(&jobs).await == worker::Batch::Processed {}
 }

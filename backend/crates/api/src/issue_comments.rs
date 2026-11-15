@@ -190,6 +190,8 @@ pub(crate) async fn write(
     doc: &Doc,
 ) -> Result<Comment, Problem> {
     let author = tx.account_id();
+    // Those who comment follow the ticket.
+    infra::watchers::watch(tx, issue.id, author).await?;
     let content = infra::rich_text::to_json(doc);
     let html = doc.to_html();
     let mentions: Vec<Uuid> = doc.mentions().into_iter().map(Uuid::from_u128).collect();
