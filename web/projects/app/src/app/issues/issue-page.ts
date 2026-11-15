@@ -23,7 +23,9 @@ import {
   listMyNodePermissions,
 } from 'ui';
 
+import type { EditOutcome } from './issue-edit-dialog';
 import { createIssueFlow } from './issue-flow';
+import type { MoveOutcome } from './issue-move-dialog';
 import { chipCategory, chipKind } from './issue-fields';
 
 /**
@@ -78,6 +80,12 @@ export class IssuePage {
       this.auth.session()?.account.tenantRole === 'tenant_admin' ||
       (this.permissions.hasValue() && this.permissions.value().includes('create_ticket')),
   );
+  /** Tenant admins, and those with `edit` on the project, edit and move its tickets. */
+  protected readonly canEdit = computed(
+    () =>
+      this.auth.session()?.account.tenantRole === 'tenant_admin' ||
+      (this.permissions.hasValue() && this.permissions.value().includes('edit')),
+  );
   /** The types of the project, read only when the member may create. */
   private readonly form = resource({
     params: () => (this.canCreate() && this.issue.hasValue() ? this.issue.value().project.key : undefined),
@@ -112,6 +120,28 @@ export class IssuePage {
   protected textOf(value: IssueFieldValue): string {
     if (value.display != null) return value.display;
     return Array.isArray(value.value) ? (value.value as unknown[]).join(', ') : String(value.value);
+  }
+
+  protected async edit(issue: Issue): Promise<void> {
+    const { IssueEditDialog } = await import('./issue-edit-dialog');
+    this.dialog
+      .open(IssueEditDialog, { data: issue, width: 'min(720px, 100vw)', autoFocus: 'first-tabbable' })
+      .afterClosed()
+      .subscribe((outcome?: EditOutcome) => {
+        if (outcome && 'saved' in outcome) this.issue.set(outcome.saved);
+        else if (outcome) this.issue.reload();
+      });
+  }
+
+  protected async move(issue: Issue): Promise<void> {
+    const { IssueMoveDialog } = await import('./issue-move-dialog');
+    this.dialog
+      .open(IssueMoveDialog, { data: issue, width: 'min(640px, 100vw)', autoFocus: 'first-tabbable' })
+      .afterClosed()
+      .subscribe((outcome?: MoveOutcome) => {
+        if (outcome && 'moved' in outcome) void this.router.navigate(['/issues', outcome.moved.key]);
+        else if (outcome) this.issue.reload();
+      });
   }
 
   protected addSubtask(issue: Issue): void {

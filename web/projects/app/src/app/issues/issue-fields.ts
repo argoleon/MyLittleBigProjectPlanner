@@ -1,5 +1,5 @@
 import { FormControl, ValidatorFn, Validators } from '@angular/forms';
-import { IssueFormField, IssuePerson, IssueTypeRef, StatusCategory, WorkItemKind, toLocalDate } from 'ui';
+import { IssueFieldValue, IssueFormField, IssuePerson, IssueTypeRef, StatusCategory, WorkItemKind, fromLocalDate, toLocalDate } from 'ui';
 
 /** What the control of a custom field holds, by kind. */
 export type FieldRaw = string | number | boolean | Date | readonly string[] | readonly IssuePerson[] | null;
@@ -65,6 +65,37 @@ export function apiValue(field: IssueFormField, raw: FieldRaw | undefined): unkn
       return [...(raw as readonly string[])];
     default:
       return typeof raw === 'string' ? raw.trim() : raw;
+  }
+}
+
+/** A date-time as a `datetime-local` input takes it, in the browser's time zone. */
+function localDateTime(iso: string): string {
+  const date = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/** The control value of `field` for the value a ticket holds (none: empty). */
+export function rawOf(field: IssueFormField, held: IssueFieldValue | undefined): FieldRaw {
+  if (!held || held.value === null || held.value === undefined) return emptyOf(field);
+  const value: unknown = held.value;
+  switch (field.kind) {
+    case 'date':
+      return fromLocalDate(value as string);
+    case 'date_time':
+      return localDateTime(value as string);
+    case 'user':
+    case 'group':
+      return held.references;
+    case 'issue_link':
+      // Its key; a ticket out of sight shows empty and stays as it is.
+      return held.references[0]?.name ?? null;
+    case 'multi_select':
+    case 'cascading_select':
+    case 'labels':
+      return Array.isArray(value) ? (value as string[]) : [];
+    default:
+      return value as FieldRaw;
   }
 }
 

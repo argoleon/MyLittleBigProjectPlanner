@@ -40,13 +40,14 @@
             </button>
           </mat-chip-row>
         }
-        <input
-          [placeholder]="'issue.fields.addLabel' | transloco"
-          [matChipInputFor]="grid"
-          [matChipInputSeparatorKeyCodes]="separators"
-          (matChipInputTokenEnd)="addLabel($event)"
-        />
       </mat-chip-grid>
+      <!-- Out of the grid, which holds only its rows (axe); linked by matChipInputFor. -->
+      <input
+        [placeholder]="'issue.fields.addLabel' | transloco"
+        [matChipInputFor]="grid"
+        [matChipInputSeparatorKeyCodes]="separators"
+        (matChipInputTokenEnd)="addLabel($event)"
+      />
       <mat-error>{{ errorKey() ?? '' | transloco }}</mat-error>
     </mat-form-field>
   }

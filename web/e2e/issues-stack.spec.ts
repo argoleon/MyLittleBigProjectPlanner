@@ -96,3 +96,57 @@ test('a story is created from its project with a rich description, then a sub-ta
     `${code}-1 Migrate the authentication to OIDC`,
   );
 });
+
+test('a story is edited with the version read, then moved with its sub-task; its former key still opens it', async ({ page }) => {
+  test.setTimeout(120_000);
+  const run = Date.now().toString(36).toUpperCase().slice(-5);
+  const [from, to] = [`MA${run}`.slice(0, 10), `MB${run}`.slice(0, 10)];
+  await signIn(page, adminEmail!, adminSecret!);
+  const url = await project(page, `Mail ${run}`, from);
+  await project(page, `Billing ${run}`, to);
+
+  // A story with a sub-task, from the project's page.
+  await page.goto(url);
+  await page.getByRole('button', { name: 'New ticket' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('combobox', { name: 'Type' }).click();
+  await page.getByRole('option', { name: 'Story', exact: true }).click();
+  await dialog.getByLabel('Summary').fill('Archive old mailboxes');
+  await dialog.getByRole('button', { name: 'Create' }).click();
+  await expect(page).toHaveURL(new RegExp(`/issues/${from}-1$`));
+  await page.getByRole('button', { name: 'Add a sub-task' }).click();
+  await dialog.getByLabel('Summary').fill('List the mailboxes');
+  await dialog.getByRole('button', { name: 'Create' }).click();
+  await expect(page).toHaveURL(new RegExp(`/issues/${from}-2$`));
+
+  // Edited: the summary and the priority.
+  await page.goto(`/issues/${from}-1`);
+  await page.getByRole('button', { name: 'Edit' }).click();
+  await dialog.getByLabel('Summary').fill('Archive the mailboxes of former staff');
+  await dialog.getByRole('combobox', { name: 'Priority' }).click();
+  await page.getByRole('option', { name: 'Highest', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Archive the mailboxes of former staff');
+  await expect(page.locator('.detail', { hasText: 'Priority' })).toContainText('Highest');
+
+  // Moved, with its sub-task: the same configuration, nothing to map.
+  await page.getByRole('button', { name: 'Move' }).click();
+  await dialog.getByRole('combobox', { name: 'Target project' }).click();
+  await page.getByRole('option', { name: `Billing ${run} (${to})` }).click();
+  await expect(dialog.locator('.tickets li')).toHaveText([
+    `${from}-1 Archive the mailboxes of former staff`,
+    `${from}-2 List the mailboxes`,
+  ]);
+  await expect(dialog.getByText('Both projects use the same configuration')).toBeVisible();
+  expect(await accessibilityViolations(page)).toEqual([]);
+  await dialog.getByRole('button', { name: 'Move' }).click();
+  await expect(page).toHaveURL(new RegExp(`/issues/${to}-1$`));
+  await expect(page.locator('.identity')).toContainText(`${to}-1`);
+
+  // Former keys still open the tickets, under their new keys.
+  await page.goto(`/issues/${from}-2`);
+  await expect(page.locator('.identity')).toContainText(`${to}-2`);
+  await expect(page.getByRole('navigation', { name: 'Where the ticket belongs' })).toContainText(
+    `${to}-1 Archive the mailboxes of former staff`,
+  );
+});

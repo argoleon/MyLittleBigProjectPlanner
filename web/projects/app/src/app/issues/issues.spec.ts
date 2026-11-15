@@ -88,10 +88,10 @@ const ISSUE: Issue = {
   startDate: '2026-11-09',
   dueDate: '2026-12-04',
   fields: [
-    { fieldId: 'f-app', key: 'application', label: 'Application', kind: 'single_select', value: 'v-dir', display: 'Directory' },
-    { fieldId: 'f-points', key: 'points', label: 'Estimate', kind: 'number', value: 8, display: null },
-    { fieldId: 'f-labels', key: 'labels', label: 'Labels', kind: 'labels', value: ['security', 'directory'], display: null },
-    { fieldId: 'f-ok', key: 'approved', label: 'Approved', kind: 'checkbox', value: true, display: null },
+    { fieldId: 'f-app', key: 'application', label: 'Application', kind: 'single_select', value: 'v-dir', display: 'Directory', references: [] },
+    { fieldId: 'f-points', key: 'points', label: 'Estimate', kind: 'number', value: 8, display: null, references: [] },
+    { fieldId: 'f-labels', key: 'labels', label: 'Labels', kind: 'labels', value: ['security', 'directory'], display: null, references: [] },
+    { fieldId: 'f-ok', key: 'approved', label: 'Approved', kind: 'checkbox', value: true, display: null, references: [] },
   ],
   parent: { id: 'i100', key: 'PLAT-100', summary: 'Unified authentication' },
   parentId: 'i100',
@@ -361,7 +361,7 @@ describe('tickets in the application', () => {
 
     await type(dialog().querySelector('input[formcontrolname="summary"]'), 'Every field');
     // Labels: typed, each ended by Enter.
-    const labels = dialog().querySelector('app-field-input mat-chip-grid input') as HTMLInputElement;
+    const labels = dialog().querySelector('app-field-input .mat-mdc-chip-input') as HTMLInputElement;
     labels.value = 'security';
     labels.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true }));
     await settle();
