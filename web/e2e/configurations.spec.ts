@@ -563,6 +563,9 @@ for (const theme of ['light', 'dark'] as const) {
       test('the list, the creation dialog, a configuration, its publication and a project tab have no axe-core violation', async ({
         page,
       }) => {
+        // Five screens, each checked by axe-core: about 22 s alone, more when
+        // its four variants run side by side.
+        test.setTimeout(60_000);
         await mockConfigurations(page);
         await page.goto('/admin/configurations');
         await expect(page.getByRole('row')).toHaveCount(3);
