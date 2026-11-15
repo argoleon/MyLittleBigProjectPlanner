@@ -1532,6 +1532,10 @@
       "title": "Parent de {{ key }}",
       "top": "Au premier niveau, sous aucun ticket",
       "parent": "Ticket parent"
+    },
+    "transition": {
+      "menu": "Statut : {{ status }}. Le changer",
+      "to": "Le ticket passe en « {{ status }} »."
     }
   }
 }

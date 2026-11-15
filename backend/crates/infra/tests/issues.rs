@@ -388,3 +388,24 @@ async fn a_move_takes_the_next_key_of_its_project_and_keeps_the_former_one() {
     assert_eq!(create(&mut tx, plat, "PLAT", admin, "Next").await.key, "PLAT-3");
     tx.commit().await.unwrap();
 }
+
+#[tokio::test]
+async fn a_transition_writes_the_status_assignee_and_values_and_bumps_the_version() {
+    let db = TestDb::new().await;
+    let (plat, admin) = project(&db, &db.tenant_a, "PLAT").await;
+    let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+    let issue = create(&mut tx, plat, "PLAT", admin, "Draft").await;
+    let fields = json!({"f": 3});
+    let moved = issues::transition(&mut tx, issue.id, Uuid::from_u128(9), Some(admin), &fields)
+        .await
+        .unwrap();
+    assert_eq!(
+        (moved.status_id, moved.assignee_id, &moved.fields, moved.version),
+        (Uuid::from_u128(9), Some(admin), &fields, 2)
+    );
+    let unassigned = issues::transition(&mut tx, issue.id, Uuid::from_u128(10), None, &fields)
+        .await
+        .unwrap();
+    assert_eq!((unassigned.assignee_id, unassigned.version), (None, 3));
+    tx.commit().await.unwrap();
+}

@@ -1532,6 +1532,10 @@
       "title": "Parent of {{ key }}",
       "top": "At the top, under no ticket",
       "parent": "Parent ticket"
+    },
+    "transition": {
+      "menu": "Status: {{ status }}. Change it",
+      "to": "The ticket goes to “{{ status }}”."
     }
   }
 }

@@ -16,7 +16,6 @@ import {
   LocalNumberPipe,
   Priority,
   RichText,
-  StatusChip,
   TypeChip,
   getIssue,
   getIssueForm,
@@ -27,6 +26,7 @@ import type { EditOutcome } from './issue-edit-dialog';
 import { createIssueFlow } from './issue-flow';
 import { IssueParentDialog, ParentOutcome } from './issue-parent-dialog';
 import { IssueRelations } from './issue-relations';
+import { IssueStatus } from './issue-status';
 import type { MoveOutcome } from './issue-move-dialog';
 import { chipCategory, chipKind } from './issue-fields';
 
@@ -41,6 +41,7 @@ import { chipCategory, chipKind } from './issue-fields';
     ErrorState,
     InstantPipe,
     IssueRelations,
+    IssueStatus,
     LocalDatePipe,
     LocalNumberPipe,
     MatButtonModule,
@@ -49,7 +50,6 @@ import { chipCategory, chipKind } from './issue-fields';
     Priority,
     RichText,
     RouterLink,
-    StatusChip,
     TranslocoPipe,
     TypeChip,
   ],
@@ -133,11 +133,19 @@ export class IssuePage {
       .subscribe((outcome?: EditOutcome) => {
         // An edit leaves the parent, sub-tasks and links as they were: kept from the ticket shown.
         if (outcome && 'saved' in outcome) {
-          this.issue.set({ ...outcome.saved, parent: issue.parent, children: issue.children, links: issue.links });
+          this.keepRelations(outcome.saved, issue);
         } else if (outcome) {
           this.issue.reload();
         }
       });
+  }
+
+  /**
+   * Shows `saved` (an edit or a transition) with the parent, sub-tasks and
+   * links of the ticket shown, which they leave as they were.
+   */
+  protected keepRelations(saved: Issue, shown: Issue): void {
+    this.issue.set({ ...saved, parent: shown.parent, children: shown.children, links: shown.links });
   }
 
   protected async move(issue: Issue): Promise<void> {

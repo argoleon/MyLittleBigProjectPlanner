@@ -1958,6 +1958,224 @@
         }
       }
     },
+    "/api/v1/issues/{idOrKey}/transitions": {
+      "get": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "The transitions a member may run on a ticket",
+        "description": "Members with `edit` on its project. Those of the workflow of its type that leave its status (or any status) and whose role or group condition the member meets (tenant admins meet all), in the order of the workflow, each with the fields of its transition screen.",
+        "operationId": "listIssueTransitions",
+        "parameters": [
+          {
+            "name": "idOrKey",
+            "in": "path",
+            "description": "Id, key or former key of the ticket",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of the labels",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The transitions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IssueTransition"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`permission.denied`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such ticket visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Move a ticket through its workflow",
+        "description": "Members with `edit` on its project who meet the transition's condition (tenant admins always). The values of its transition screen follow the rules of the target status; its validators need their fields filled; its post-functions (assign, set or clear a field) apply in order; then the fields required at the target status must hold a value. Writes `issue.transitioned` to the event outbox, with the changes and the comments its post-functions add.",
+        "operationId": "runIssueTransition",
+        "parameters": [
+          {
+            "name": "idOrKey",
+            "in": "path",
+            "description": "Id, key or former key of the ticket",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the version moved, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of the labels",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueTransitionRun"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The ticket in its new status",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the ticket"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Issue"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`: `transitionId` `not_found` (not offered from its status), `fields.{id}` (`required`, `not_applicable`, a value code, `unknown_member`, `unknown_group`, `unknown_issue`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`permission.denied`: no `edit`, or the transition's condition is not met; or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such ticket visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`node.archived`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "`precondition_failed`: the ticket changed since this version",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`precondition_required`: `If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me": {
       "get": {
         "tags": [
@@ -15969,6 +16187,66 @@
             "type": "string",
             "format": "date-time"
           }
+        }
+      },
+      "IssueTransition": {
+        "type": "object",
+        "description": "A transition the member may run on a ticket.",
+        "required": [
+          "id",
+          "toStatus",
+          "fields"
+        ],
+        "properties": {
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueFormField"
+            },
+            "description": "The fields it takes, shown before it runs: those of its transition\nscreen, its validators (required), and those required at the\ntarget status; the rules of the target status applied. Empty: it\nruns at once."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Send to review"
+          },
+          "toStatus": {
+            "$ref": "#/components/schemas/IssueStatusRef",
+            "description": "The status it leads to."
+          }
+        }
+      },
+      "IssueTransitionRun": {
+        "type": "object",
+        "description": "A transition to run.",
+        "required": [
+          "transitionId"
+        ],
+        "properties": {
+          "fields": {
+            "type": "object",
+            "description": "Values of the fields of its transition screen, by field id; `null`\nclears one.",
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "transitionId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "fields": {},
+          "transitionId": "01933b2e-7c4a-7b9e-8f3d-2a6c5e1f0b9a"
         }
       },
       "IssueType": {

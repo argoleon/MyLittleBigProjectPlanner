@@ -209,6 +209,23 @@ pub fn validate_changes(
     v.into_result()
 }
 
+/// The fields required for a ticket of `type_id` at `step` that `values`
+/// leave empty, in the order of the configuration (L05-US09: entering a
+/// status takes them).
+pub fn missing_required(
+    fields: &[FieldDef<'_>],
+    type_id: u128,
+    step: Step,
+    values: &BTreeMap<u128, Value>,
+) -> Vec<u128> {
+    fields
+        .iter()
+        .filter(|f| mode(&f.rules, type_id, step) == Mode::Required)
+        .filter(|f| values.get(&f.id).is_none_or(Value::is_empty))
+        .map(|f| f.id)
+        .collect()
+}
+
 /// A ticket that moves to another project: the one asked for, then its
 /// sub-tasks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -865,5 +882,61 @@ mod tests {
         let unknown: BTreeMap<u128, Value> = [(APPLICATION, Value::Text(format_uuid(999)))].into();
         assert_eq!(kept_values(&values, BUG, &fields).1, [POINTS, ENVIRONMENT]);
         assert_eq!(kept_values(&unknown, STORY, &fields).1, [APPLICATION]);
+    }
+
+    #[test]
+    fn entering_a_status_takes_the_fields_required_there() {
+        let options = application_options();
+        let none = Options::default();
+        let required_done = [Rule {
+            issue_type: STORY,
+            step: Step::Status(DONE),
+            mode: Mode::Required,
+        }];
+        let stories = [STORY];
+        let fields = [
+            FieldDef {
+                id: APPLICATION,
+                kind: Kind::SingleSelect,
+                options: &options,
+                rules: Rules {
+                    all_types: true,
+                    issue_types: &[],
+                    rules: &required_done,
+                },
+            },
+            FieldDef {
+                id: POINTS,
+                kind: Kind::Number,
+                options: &none,
+                rules: Rules {
+                    all_types: false,
+                    issue_types: &stories,
+                    rules: &required_done,
+                },
+            },
+        ];
+        let empty = BTreeMap::new();
+        assert_eq!(
+            missing_required(&fields, STORY, Step::Status(DONE), &empty),
+            [APPLICATION, POINTS]
+        );
+        assert_eq!(
+            missing_required(&fields, STORY, Step::Status(IN_PROGRESS), &empty),
+            Vec::<u128>::new()
+        );
+        assert_eq!(
+            missing_required(&fields, BUG, Step::Status(DONE), &empty),
+            Vec::<u128>::new()
+        );
+        let filled: BTreeMap<u128, Value> = [
+            (APPLICATION, Value::Text(format_uuid(DIRECTORY))),
+            (POINTS, Value::Text("  ".into())),
+        ]
+        .into();
+        assert_eq!(
+            missing_required(&fields, STORY, Step::Status(DONE), &filled),
+            [POINTS]
+        );
     }
 }

@@ -199,6 +199,31 @@ pub async fn set_parent(
     find(conn, id).await?.ok_or(sqlx::Error::RowNotFound)
 }
 
+/// Takes the ticket `id` to `status_id` with what the transition left of
+/// its assignee and values, and bumps its version (L05-US09); it as stored.
+pub async fn transition(
+    conn: &mut PgConnection,
+    id: Uuid,
+    status_id: Uuid,
+    assignee_id: Option<Uuid>,
+    fields: &serde_json::Value,
+) -> Result<Issue, sqlx::Error> {
+    sqlx::query!(
+        r#"
+        UPDATE issue
+        SET status_id = $2, assignee_id = $3, fields = $4, version = version + 1, updated_at = now()
+        WHERE id = $1
+        "#,
+        id,
+        status_id,
+        assignee_id,
+        fields
+    )
+    .execute(&mut *conn)
+    .await?;
+    find(conn, id).await?.ok_or(sqlx::Error::RowNotFound)
+}
+
 /// Whether `candidate` sits, at any depth, under the ticket `ancestor`.
 pub async fn is_below(conn: &mut PgConnection, ancestor: Uuid, candidate: Uuid) -> Result<bool, sqlx::Error> {
     sqlx::query_scalar!(

@@ -75,6 +75,8 @@ export type { IssueRelated } from './models/issue-related';
 export type { IssueRelation } from './models/issue-relation';
 export type { IssueStatusRef } from './models/issue-status-ref';
 export type { IssueSummary } from './models/issue-summary';
+export type { IssueTransition } from './models/issue-transition';
+export type { IssueTransitionRun } from './models/issue-transition-run';
 export type { IssueType } from './models/issue-type';
 export type { IssueTypeColor } from './models/issue-type-color';
 export type { IssueTypeFields } from './models/issue-type-fields';

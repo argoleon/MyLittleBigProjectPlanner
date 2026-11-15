@@ -685,6 +685,17 @@ pub(crate) fn person(id: Option<Uuid>, name: Option<&String>) -> Option<PersonVi
     })
 }
 
+impl FormFieldView {
+    pub(crate) const fn field_id(&self) -> Uuid {
+        self.field_id
+    }
+
+    /// Marks it required (a transition's validator).
+    pub(crate) fn require(&mut self) {
+        self.mode = ModeView::Required;
+    }
+}
+
 impl IssueView {
     pub(crate) const fn version(&self) -> i64 {
         self.version
@@ -1139,6 +1150,19 @@ pub(crate) fn screen_fields(
     let on_screen = pick(&screens, kind, type_id)
         .map(|s| s.fields.clone())
         .unwrap_or_default();
+    fields_shown(language, content, &on_screen, type_id, step, held)
+}
+
+/// The fields `on_screen` for a ticket of `type_id` at `step`, the rules
+/// applied (see [`screen_fields`]).
+pub(crate) fn fields_shown(
+    language: &Language,
+    content: &Content,
+    on_screen: &[u128],
+    type_id: u128,
+    step: Step,
+    held: &BTreeSet<u128>,
+) -> Vec<FormFieldView> {
     let type_ids = type_ids_of(&content.fields);
     let rules: Vec<FieldRules<'_>> = content
         .fields
@@ -1168,7 +1192,7 @@ pub(crate) fn screen_fields(
             })
             .collect(),
     };
-    resolve(&on_screen, &rules, type_id, step)
+    resolve(on_screen, &rules, type_id, step)
         .into_iter()
         .filter_map(|shown| {
             let field = content
