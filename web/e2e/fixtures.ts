@@ -73,6 +73,8 @@ export const test = base.extend<{ language: 'fr' | 'en'; theme: 'system' | 'ligh
     await page.route('**/api/v1/me', (route) => route.fulfill({ json: ME }));
     // Languages picked in the menu are saved for the account.
     await page.route('**/api/v1/me/preferences', (route) => route.fulfill({ json: route.request().postDataJSON() }));
+    // The bell of the top app bar: nothing unread unless a test says so.
+    await page.route('**/api/v1/me/notifications/unread', (route) => route.fulfill({ json: { total: 0, byTenant: [] } }));
     await page.route('**/api/v1/auth/session', (route) =>
       signedIn ? route.fulfill({ json: SESSION }) : route.fulfill(problem(401, 'unauthenticated')),
     );

@@ -1,0 +1,10 @@
+:host {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--app-space-2);
+}
+
+.error {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-error);
+}

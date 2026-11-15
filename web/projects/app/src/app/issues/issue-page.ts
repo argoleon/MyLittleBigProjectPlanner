@@ -31,6 +31,7 @@ import { createIssueFlow } from './issue-flow';
 import { IssueParentDialog, ParentOutcome } from './issue-parent-dialog';
 import { IssueRelations } from './issue-relations';
 import { IssueStatus } from './issue-status';
+import { IssueWatch } from './issue-watch';
 import type { MoveOutcome } from './issue-move-dialog';
 import { chipCategory, chipKind } from './issue-fields';
 
@@ -50,6 +51,7 @@ import { chipCategory, chipKind } from './issue-fields';
     IssueComments,
     IssueRelations,
     IssueStatus,
+    IssueWatch,
     LocalDatePipe,
     LocalNumberPipe,
     MatButtonModule,

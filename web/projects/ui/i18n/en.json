@@ -1644,6 +1644,66 @@
       "removeTitle": "Remove the file?",
       "removeMessage": "{{ name }} is removed from the ticket; the ticket keeps a trace of it in its activity.",
       "remove": "Remove"
+    },
+    "watch": {
+      "watch": "Watch",
+      "watching": "Watching ({{ count }})"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "bell": "Notifications",
+    "bellUnread": "Notifications, {{ count }} unread",
+    "unread": "{{ count }} unread",
+    "allTenants": "all organizations",
+    "oneTenant": "one organization",
+    "markAll": "Mark all as read",
+    "listLabel": "Your notifications",
+    "kindFilter": "Kind of notification",
+    "tenantFilter": "Organization",
+    "all": "All",
+    "allTenantsChip": "All organizations",
+    "kinds": {
+      "mentioned": "Mentions",
+      "assigned": "Assignments",
+      "status_changed": "Status changes",
+      "commented": "Comments",
+      "created": "New tickets"
+    },
+    "empty": "No notification.",
+    "more": "Show older notifications",
+    "someone": "Someone",
+    "unreadMark": "(unread)",
+    "opensIn": "opens in {{ tenant }}",
+    "periods": {
+      "today": "Today",
+      "week": "This week",
+      "earlier": "Earlier"
+    },
+    "events": {
+      "mentioned": "{{ actor }} mentioned you on {{ key }}",
+      "assigned": "{{ actor }} assigned {{ key }} to you",
+      "status_changed": "{{ actor }} moved {{ key }} to {{ status }}",
+      "commented": "{{ actor }} commented on {{ key }}",
+      "created": "{{ actor }} created {{ key }}"
+    },
+    "preferences": {
+      "title": "Notification preferences",
+      "everywhere": "They apply in all your organizations.",
+      "event": "Event",
+      "inApp": "In the app",
+      "email": "Email",
+      "inAppOf": "{{ event }} in the app",
+      "emailOf": "{{ event }} by email",
+      "events": {
+        "created": "New ticket",
+        "assigned": "Ticket assigned",
+        "status_changed": "Status change",
+        "commented": "New comment",
+        "mentioned": "Mentions"
+      },
+      "digest": "Daily email digest",
+      "digestHint": "Each working day at 8:00, instead of one email per event."
     }
   }
 }
