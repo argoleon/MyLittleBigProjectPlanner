@@ -73,6 +73,19 @@ The ticket gets the initial status of its type's workflow. The creation is idemp
 - **Parents**: `PUT /issues/{idOrKey}/parent` (with `If-Match`) changes the parent within the project: a type the ticket's type may sit under, never the ticket itself or one below it (`infra::issues::is_below` walks up the parents), and a sub-task always keeps one. It writes `issue.updated` with `{field: "parentId", old, new}`.
 - **Finding a ticket**: `GET /issues?search=&projectKey=` returns at most ten tickets of projects the member sees: its key or a former key first, then summaries holding the text, most recently updated first. It is a stopgap until the query language of L06.
 
+## Status changes (L05-US09)
+
+A ticket changes status only through a transition of its type's workflow (`api::issue_transitions`); `PATCH` never changes it.
+
+- `GET /issues/{idOrKey}/transitions` lists the transitions that leave the ticket's status (or any status, `fromId` null) and whose condition the member meets: one of its roles on the project (`GrantSource::roles_of`, inheritance included) or one of its groups. Tenant admins meet every condition. Each comes with the fields it takes, resolved at the **target** status: those of its transition screen, its validators (marked required), then those required at the target status. With none, the client runs it at once; otherwise it shows them first, so that a missing value is named next to its field.
+- `POST /issues/{idOrKey}/transitions` (`edit` and `If-Match`) runs one, in this order:
+  1. The values given: only fields the transition takes (`not_applicable` otherwise), checked with the rules of the target status (`validate_changes`).
+  2. `domain::transitions::evaluate`: the condition (403 if not met), the validators (`fields.{id}` `required`), then the post-functions in order.
+  3. `domain::issues::missing_required`: the fields required at the target status must hold a value once the screen and post-functions have applied.
+  4. The status, assignee and values are written (`infra::issues::transition`), and `issue.transitioned` goes to the outbox with `fromStatusId`, `toStatusId`, the changes (`{field, old, new}`) and the comments of "add a comment" post-functions.
+- **Until comments exist (L05-US04, #145)**, "add a comment" is only carried by the event: US04 writes it as a comment in the same transaction, the member who ran the transition as its author.
+- The board card transition (L06, #185) uses this endpoint.
+
 ## Rich text
 
 The description is a Tiptap document. The server never stores HTML it received:

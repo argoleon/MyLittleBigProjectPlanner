@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE issue\n        SET status_id = $2, assignee_id = $3, fields = $4, version = version + 1, updated_at = now()\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "544963927d0b8344cc0a4ecff2e2c10454f83e6dc6795fa148f115354407efa3"
+}
