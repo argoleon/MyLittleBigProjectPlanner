@@ -4,4 +4,4 @@
 # seconds and never reaches the ClamAV mirrors. Production runs the full
 # image (deploy/compose.yaml).
 FROM clamav/clamav:1.5_base
-COPY clamav/test.hdb /var/lib/clamav/test.hdb
+COPY dev/clamav/test.hdb /var/lib/clamav/test.hdb
