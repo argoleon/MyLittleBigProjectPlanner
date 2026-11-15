@@ -5,6 +5,9 @@
 #   valkey    Valkey: sessions, rate limits (host port 56379)
 #   mailpit   SMTP catcher: every email sent in development lands here,
 #             readable on http://127.0.0.1:18025
+#   seaweedfs S3-compatible storage of attachments (host port 58333;
+#             development keys in deploy/dev/seaweedfs/s3.json)
+#   clamav    ClamAV with a test signature only (EICAR): attachments' scans
 #   backend   Rust toolchain for one-off commands: build, lint, test, migrate
 #   api       REST API with live reload, on http://127.0.0.1:18080
 #   worker    background jobs (emails…) with live reload
@@ -46,6 +49,12 @@ x-backend: &backend
     TEST_MAILPIT_URL: http://mailpit:8025
     # OIDC provider of the integration tests.
     TEST_OIDC_ISSUER: http://keycloak:8080/realms/mlbpp-test
+    # S3 storage and antivirus of the integration tests (keys are unique per
+    # test: every object sits under its tenant's id).
+    TEST_S3_ENDPOINT: http://seaweedfs:8333
+    TEST_S3_ACCESS_KEY: mlbpp-dev
+    TEST_S3_SECRET_KEY: mlbpp-dev-only # gitleaks:allow (development only)
+    TEST_CLAMAV_ADDR: clamav:3310
   depends_on:
     postgres:
       condition: service_healthy
@@ -76,6 +85,52 @@ services:
       interval: 2s
       timeout: 3s
       retries: 30
+
+  # S3-compatible storage of attachments, as in production (deploy/compose.yaml),
+  # with the development keys of deploy/dev/seaweedfs/s3.json.
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.05
+    command:
+      - server
+      - -dir=/data
+      - -ip=seaweedfs
+      - -ip.bind=0.0.0.0
+      - -master.volumeSizeLimitMB=256
+      - -volume.max=0
+      - -filer
+      - -s3
+      - -s3.port=8333
+      - -s3.config=/etc/seaweedfs/s3.json
+    volumes:
+      - ./dev/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+      - seaweedfs-data:/data
+    ports:
+      - "127.0.0.1:58333:8333"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          wget -q -O /dev/null http://127.0.0.1:9333/cluster/healthz &&
+          wget -q -O /dev/null http://127.0.0.1:8888/ &&
+          wget -q -O /dev/null http://127.0.0.1:8333/healthz
+      interval: 2s
+      timeout: 5s
+      retries: 60
+
+  # ClamAV with the EICAR test signature only (deploy/dev/clamav.Dockerfile):
+  # starts in seconds, never downloads the signature databases.
+  clamav:
+    build:
+      context: .
+      dockerfile: dev/clamav.Dockerfile
+    image: mlbpp-dev-clamav
+    environment:
+      CLAMAV_NO_FRESHCLAMD: "true"
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 2s
+      timeout: 5s
+      retries: 90
 
   # OIDC provider of the integration tests: realm "mlbpp-test" (client
   # "mlbpp", users alice, bob, carol; deploy/dev/keycloak/). Reached as
@@ -148,6 +203,9 @@ services:
       TENANCY_MODE: single
       TENANT_DEFAULT_SLUG: default
       VALKEY_URL: redis://valkey:6379
+      S3_ENDPOINT: http://seaweedfs:8333
+      S3_ACCESS_KEY: mlbpp-dev
+      S3_SECRET_KEY: mlbpp-dev-only # gitleaks:allow (development only)
       # Links in emails open the development front end.
       PUBLIC_URL: http://127.0.0.1:4200
       # The development front end is served over plain http.
@@ -183,6 +241,10 @@ services:
       <<: *backend-env
       DATABASE_URL: postgres://mlbpp_app:mlbpp_app_dev@postgres:5432/mlbpp # gitleaks:allow
       VALKEY_URL: redis://valkey:6379
+      S3_ENDPOINT: http://seaweedfs:8333
+      S3_ACCESS_KEY: mlbpp-dev
+      S3_SECRET_KEY: mlbpp-dev-only # gitleaks:allow (development only)
+      CLAMAV_ADDR: clamav:3310
       SMTP_URL: smtp://mailpit:1025
       MAIL_FROM: My Little Big Project Planner <noreply@mlbpp.localhost>
       LOG_FORMAT: text
@@ -226,6 +288,7 @@ services:
 
 volumes:
   postgres-data:
+  seaweedfs-data:
   cargo-home:
   cargo-target:
   api-target:

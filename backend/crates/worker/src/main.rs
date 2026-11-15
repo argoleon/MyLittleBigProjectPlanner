@@ -123,7 +123,29 @@ async fn run(config: WorkerConfig) -> ExitCode {
         }
     };
     let exports = infra::exports::ExportStore::new(valkey, "mlbpp:");
-    let handler = std::sync::Arc::new(worker::jobs::Jobs { mailer, exports });
+    let storage = match config
+        .storage
+        .as_ref()
+        .map(infra::storage::Storage::new)
+        .transpose()
+    {
+        Ok(storage) => storage,
+        Err(err) => {
+            eprintln!("worker: {err}");
+            return ExitCode::FAILURE;
+        }
+    };
+    if let Some(storage) = &storage
+        && let Err(err) = storage.ensure_bucket().await
+    {
+        tracing::warn!(error = %err, "the attachments' bucket is not ready");
+    }
+    let handler = std::sync::Arc::new(worker::jobs::Jobs {
+        mailer,
+        exports,
+        storage,
+        clamav: config.clamav.clone(),
+    });
     tracing::info!(health = %config.health_addr, worker_id = runner.worker_id(), "worker started");
     let mut worker = tokio::spawn(worker::run_loop(token.clone(), config.poll_interval, move || {
         let (runner, handler) = (runner.clone(), handler.clone());

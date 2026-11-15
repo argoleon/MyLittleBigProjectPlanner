@@ -16,6 +16,9 @@ use std::time::Duration;
 use chrono::Utc;
 use domain::jobs::{AfterFailure, after_failure};
 use infra::aggregates::AGGREGATE_JOB;
+use infra::attachments::{
+    AttachmentJob, DELETE_OBJECTS_JOB, DeleteObjects, EXPIRE_JOB, SCAN_JOB, ScanError, Scanned,
+};
 use infra::config_migrations::{MIGRATION_JOB, MigrationJob, Outcome};
 use infra::email::{EMAIL_JOB, EmailJob, MailError, Mailer, render};
 use infra::erasure::{ERASURE_JOB, ErasedMember};
@@ -50,6 +53,22 @@ pub struct Jobs {
     pub mailer: Mailer,
     /// Exports of personal data, in Valkey.
     pub exports: ExportStore,
+    /// The storage of attachments; without it, their jobs wait.
+    pub storage: Option<infra::storage::Storage>,
+    /// `host:port` of clamd; without it, scans wait.
+    pub clamav: Option<String>,
+}
+
+impl Jobs {
+    fn storage(&self) -> Result<&infra::storage::Storage, JobError> {
+        self.storage
+            .as_ref()
+            .ok_or_else(|| JobError::Retry("no storage configured (S3_ENDPOINT)".to_owned()))
+    }
+}
+
+fn retry(error: impl std::fmt::Display) -> JobError {
+    JobError::Retry(error.to_string())
 }
 
 fn payload<T: serde::de::DeserializeOwned>(job: &ClaimedJob) -> Result<T, JobError> {
@@ -74,10 +93,61 @@ impl JobHandler for Jobs {
                     })
                 }
                 PURGE_TENANT_JOB => {
+                    // The files first: the tenant's rows go with the purge.
+                    if let Some(storage) = &self.storage {
+                        let files = storage
+                            .delete_prefix(&format!("{}/", job.tenant_id))
+                            .await
+                            .map_err(retry)?;
+                        tracing::info!(files, "tenant's files removed");
+                    }
                     let removed = infra::platform::purge(conn, job.tenant_id)
                         .await
                         .map_err(|e| JobError::Retry(e.to_string()))?;
                     tracing::info!(removed, "tenant purged");
+                    Ok(())
+                }
+                SCAN_JOB => {
+                    let scan: AttachmentJob = payload(job)?;
+                    let clamav = self
+                        .clamav
+                        .as_deref()
+                        .ok_or_else(|| JobError::Retry("no antivirus configured (CLAMAV_ADDR)".to_owned()))?;
+                    let scanned = infra::attachments::scan(conn, self.storage()?, clamav, scan.attachment_id)
+                        .await
+                        .map_err(|e: ScanError| retry(e))?;
+                    match &scanned {
+                        Scanned::Infected(signature) => tracing::warn!(
+                            target: "audit",
+                            attachment = %scan.attachment_id,
+                            signature,
+                            "infected file removed"
+                        ),
+                        Scanned::Rejected => {
+                            tracing::warn!(attachment = %scan.attachment_id, "uploaded file rejected");
+                        }
+                        Scanned::Clean { .. } | Scanned::Skipped => {
+                            tracing::info!(attachment = %scan.attachment_id, outcome = ?scanned, "attachment scanned");
+                        }
+                    }
+                    Ok(())
+                }
+                EXPIRE_JOB => {
+                    let expire: AttachmentJob = payload(job)?;
+                    if infra::attachments::expire(conn, expire.attachment_id)
+                        .await
+                        .map_err(retry)?
+                    {
+                        tracing::info!(attachment = %expire.attachment_id, "upload never came: forgotten");
+                    }
+                    Ok(())
+                }
+                DELETE_OBJECTS_JOB => {
+                    let objects: DeleteObjects = payload(job)?;
+                    let removed = infra::attachments::delete_objects(conn, self.storage()?, &objects.keys)
+                        .await
+                        .map_err(retry)?;
+                    tracing::info!(removed, "files removed from the storage");
                     Ok(())
                 }
                 EXPORT_JOB => {

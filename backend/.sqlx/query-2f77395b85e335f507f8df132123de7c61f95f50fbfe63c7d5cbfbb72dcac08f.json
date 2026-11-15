@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT app_current_tenant() AS \"tenant!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "tenant!",
+        "type_info": "Uuid",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "2f77395b85e335f507f8df132123de7c61f95f50fbfe63c7d5cbfbb72dcac08f"
+}

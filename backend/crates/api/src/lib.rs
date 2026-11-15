@@ -19,6 +19,7 @@ pub mod groups;
 pub mod hierarchy;
 pub mod idempotency;
 pub mod invitations;
+pub mod issue_attachments;
 pub mod issue_changes;
 pub mod issue_comments;
 pub mod issue_history;

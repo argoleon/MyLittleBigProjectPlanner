@@ -5,6 +5,7 @@
 
 pub mod account;
 pub mod aggregates;
+pub mod attachments;
 pub mod audit;
 pub mod auth_policy;
 pub mod comments;

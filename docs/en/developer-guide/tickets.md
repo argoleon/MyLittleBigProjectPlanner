@@ -14,6 +14,11 @@ A ticket (`issue`) belongs to one project and follows the **published** version 
 | Tables | `backend/migrations/*_audit_log.sql` | `audit_log`, `app_member_name` |
 | SQL | `backend/crates/infra/src/audit.rs` | `record`, `of_issue`, `names`, `ensure_partitions` |
 | Job | `backend/crates/worker/src/lib.rs` | `keep_partitions` (outbox and history), every 12 hours |
+| Rules | `backend/crates/domain/src/attachments.rs` | Attachments: statuses, size and quota, names, images, who removes |
+| Tables | `backend/migrations/*_attachments.sql` | `attachment` |
+| SQL, scan | `backend/crates/infra/src/attachments.rs` | Metadata, quota, deduplication, `scan`, `expire`, `delete_objects` |
+| Storage | `backend/crates/infra/src/storage.rs`, `antivirus.rs` | S3 (presigned URLs, `rusty-s3` over hyper), ClamAV (`INSTREAM`) |
+| HTTP | `backend/crates/api/src/issue_attachments.rs` | Announce, uploaded, list, download, thumbnail, remove |
 | HTTP | `backend/crates/api/src/issues.rs` | Creation, reading, the creation form, "my tickets", assignable people |
 
 ## What a ticket references
@@ -111,6 +116,17 @@ A ticket changes status only through a transition of its type's workflow (`api::
 - **Names and erasure**: names come from `app_member_name(account)`: "Deleted user #N" once erased in the tenant, null for an account no longer a member. Tickets (reporter, assignee) and comments use it too. The erasure job's `comments` and `history` steps empty the member's comments and strip their content from the history when `purgeComments` is asked; their other entries stay, under the pseudonym.
 - **Partitions**: by month on `created_at`, like the outbox (`app_ensure_audit_partitions`, a default partition), with the index `(tenant_id, entity_id, created_at)`.
 
+## Attachments (L05-US05)
+
+Files never go through the API: the browser uploads and downloads them directly with presigned URLs (`infra::storage`), signed in path style for the tenant's public address (`PUBLIC_URL`), so they stay on the application's origin: `https://<tenant>/mlbpp-attachments/<tenant id>/uploads/<attachment id>`. The reverse proxy routes `/<bucket>/` to the storage, keeping the Host header the signature covers (Traefik in `deploy/compose.yaml`, the Angular dev server's proxy in development). Every object sits under its tenant's id: purging a tenant removes its prefix.
+
+1. `POST …/attachments` (`edit`): the name keeps its last path component (`domain::attachments::clean_name`); the size is checked against `ATTACHMENT_MAX_BYTES` and the tenant's quota (`check_upload`; the quota counts each object once, pending uploads included). The row is `pending`; the answer holds the upload URL, whose signature covers the size (the storage refuses another). An `attachment.expire` job forgets it after an hour if the upload never comes.
+2. `POST …/{id}/uploaded` (its uploader): the storage must hold the file whole (`size_of`); the row turns `scanning`, `attachment.scan` is queued, the history and the outbox record it.
+3. The scan job (`infra::attachments::scan`, worker) streams the upload to ClamAV while hashing it (SHA-256) and counting its bytes. Another size: `rejected`. A signature: `infected`. Clean: if the tenant already stores that content, the attachment points to that object (and thumbnail) and its own upload is removed; otherwise an image (told by its bytes: PNG, JPEG, GIF, WebP; SVG never) gets a 320 px PNG thumbnail (`image` crate, bounded size and dimensions). Objects are removed by `storage.delete` jobs queued in the same transaction, and only once no attachment holding content refers to them.
+4. `GET …/{id}/content` redirects (303) to the file once `clean`, served as bytes (an image as itself) and always as a download (`Content-Disposition: attachment`); `…/thumbnail` likewise, inline.
+
+Integration tests use the SeaweedFS and ClamAV of `deploy/compose.dev.yaml` (`testkit::storage`, `testkit::clamav_addr`); the development ClamAV knows the EICAR test signature only (`deploy/dev/clamav.Dockerfile`), so it starts in seconds; `testkit::eicar()` builds the test file. A test reaching a presigned URL sends it to the storage with the URL's Host, as the proxy does.
+
 ## Rich text
 
 The description is a Tiptap document. The server never stores HTML it received:
@@ -138,7 +154,7 @@ Follow [Adding an endpoint](new-endpoint.md), and:
 
 - Load the ticket with its project through `visible_issue`: a ticket of a project the member does not see answers 404, like one of another tenant.
 - Read the configuration through `Content::of(project)` (published version only).
-- Write the change's event to the outbox and its history entries (`issue_history::record`) in the same transaction.
+- Write the change's event to the outbox and its history entries (`issue_history::record`) in the same transaction; queue storage removals (`delete_objects_later`) there too, never delete files before the transaction commits.
 
 ## In the application
 

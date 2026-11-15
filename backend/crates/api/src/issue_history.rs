@@ -3,7 +3,8 @@
 //! Every ticket write records its entries in `audit_log` in its own
 //! transaction ([`record`]): the fields it changed, compared before and
 //! after ([`snapshot`], `domain::audit::diff`), one entry each with the old
-//! and new values; or its action (creation, move, link, comment). Who wrote
+//! and new values; or its action (creation, move, link, comment,
+//! attachment). Who wrote
 //! and from where come from the request ([`TenantTx::author`]).
 //!
 //! Values are stored as the ticket holds them, except types and statuses,
@@ -134,6 +135,22 @@ pub(crate) fn comment(action: Action, id: Uuid, old: Option<&Json>, new: Option<
     }
 }
 
+/// The entry of a file attached or removed: its id and name.
+pub(crate) fn attachment(added: bool, id: Uuid, name: &str) -> Entry {
+    let value = json!({"attachmentId": id, "name": name});
+    if added {
+        Entry {
+            new: Some(value),
+            ..Entry::action(Action::AttachmentAdded)
+        }
+    } else {
+        Entry {
+            old: Some(value),
+            ..Entry::action(Action::AttachmentRemoved)
+        }
+    }
+}
+
 /// Records `entries` in the history of the ticket `issue`, as the member
 /// of `tx` from where they write.
 pub(crate) async fn record(tx: &mut TenantTx, issue: Uuid, entries: &[Entry]) -> Result<(), Problem> {
@@ -157,6 +174,8 @@ pub enum ActionView {
     CommentCreated,
     CommentUpdated,
     CommentDeleted,
+    AttachmentAdded,
+    AttachmentRemoved,
 }
 
 impl From<Action> for ActionView {
@@ -170,6 +189,8 @@ impl From<Action> for ActionView {
             Action::CommentCreated => Self::CommentCreated,
             Action::CommentUpdated => Self::CommentUpdated,
             Action::CommentDeleted => Self::CommentDeleted,
+            Action::AttachmentAdded => Self::AttachmentAdded,
+            Action::AttachmentRemoved => Self::AttachmentRemoved,
         }
     }
 }
@@ -454,6 +475,15 @@ impl Reading<'_> {
                     .as_ref()
                     .and_then(|j| j.get("content"))
                     .map(ValueView::rich_text);
+            }
+            Action::AttachmentAdded | Action::AttachmentRemoved => {
+                let name = |json: Option<&Json>| {
+                    json.and_then(|j| j.get("name"))
+                        .and_then(plain)
+                        .map(|name| ValueView::text(ValueKind::Text, Some(name)))
+                };
+                old = name(entry.old.as_ref());
+                new = name(entry.new.as_ref());
             }
             Action::Created | Action::CommentCreated | Action::CommentUpdated | Action::CommentDeleted => {}
         }

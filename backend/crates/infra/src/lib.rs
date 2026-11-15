@@ -3,6 +3,8 @@
 
 pub mod accounts;
 pub mod aggregates;
+pub mod antivirus;
+pub mod attachments;
 pub mod audit;
 pub mod auth_policy;
 pub mod bootstrap;
@@ -48,6 +50,7 @@ pub mod rule_references;
 pub mod screens;
 pub mod sessions;
 pub mod shutdown;
+pub mod storage;
 pub mod telemetry;
 pub mod tenant_switch;
 pub mod transition_rules;

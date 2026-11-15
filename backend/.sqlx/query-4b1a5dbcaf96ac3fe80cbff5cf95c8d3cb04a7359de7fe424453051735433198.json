@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT coalesce(sum(size), 0)::bigint AS \"used!\"\n        FROM (SELECT DISTINCT ON (object_key) size FROM attachment\n              WHERE status IN ('pending', 'scanning', 'clean')\n              ORDER BY object_key) AS objects\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "used!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "4b1a5dbcaf96ac3fe80cbff5cf95c8d3cb04a7359de7fe424453051735433198"
+}

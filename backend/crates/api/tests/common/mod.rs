@@ -121,7 +121,8 @@ pub async fn start_with(
         request_timeout: Duration::from_secs(10),
         body_limit_bytes: 16 * 1024,
     };
-    let app = build(AppState::new(db.app_pool.clone(), tenancy, auth), &settings);
+    let state = AppState::new(db.app_pool.clone(), tenancy, auth).with_storage(testkit::storage().await);
+    let app = build(state, &settings);
     let (stop, stopped) = oneshot::channel::<()>();
     tokio::spawn(api::serve(
         listener,

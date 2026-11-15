@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT object_key, thumbnail_key, served_type AS \"served_type!\"\n        FROM attachment\n        WHERE sha256 = $1 AND status = 'clean' AND id <> $2\n        ORDER BY created_at, id\n        LIMIT 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "object_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "attachment",
+            "name": "object_key"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "thumbnail_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "attachment",
+            "name": "thumbnail_key"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "served_type!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "attachment",
+            "name": "served_type"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "00389d00048de0099066de2e8e0229792331c781a01b96de3d5d973b052813ba"
+}
