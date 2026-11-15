@@ -120,11 +120,12 @@ pub enum ErrorCode {
     MappingIncomplete,
     ConfigMigrationRunning,
     IssueSubtaskMoves,
+    IssueLinkExists,
 }
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 81] = [
+    pub const ALL: [Self; 82] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -206,6 +207,7 @@ impl ErrorCode {
         Self::MappingIncomplete,
         Self::ConfigMigrationRunning,
         Self::IssueSubtaskMoves,
+        Self::IssueLinkExists,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -291,6 +293,7 @@ impl ErrorCode {
             Self::MappingIncomplete => "mapping_incomplete",
             Self::ConfigMigrationRunning => "config.migration_running",
             Self::IssueSubtaskMoves => "issue.subtask_moves_with_parent",
+            Self::IssueLinkExists => "issue_link.exists",
         }
     }
 
@@ -369,7 +372,8 @@ impl ErrorCode {
             | Self::ScreenGeneral
             | Self::ScreenInUse
             | Self::ConfigMigrationRunning
-            | Self::IssueSubtaskMoves => StatusCode::CONFLICT,
+            | Self::IssueSubtaskMoves
+            | Self::IssueLinkExists => StatusCode::CONFLICT,
             Self::PreconditionFailed => StatusCode::PRECONDITION_FAILED,
             Self::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -477,6 +481,7 @@ impl ErrorCode {
             }
             Self::ConfigMigrationRunning => "A migration of this configuration is already under way",
             Self::IssueSubtaskMoves => "A sub-task moves with its parent: move the parent instead",
+            Self::IssueLinkExists => "The two tickets already have this link",
         }
     }
 
@@ -720,7 +725,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 81] = [
+        let expected: [(ErrorCode, u16); 82] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -802,6 +807,7 @@ mod tests {
             (ErrorCode::MappingIncomplete, 400),
             (ErrorCode::ConfigMigrationRunning, 409),
             (ErrorCode::IssueSubtaskMoves, 409),
+            (ErrorCode::IssueLinkExists, 409),
         ];
         for (code, status) in expected {
             assert_eq!(code.status().as_u16(), status, "{}", code.as_str());

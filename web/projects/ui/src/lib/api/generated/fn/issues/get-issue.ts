@@ -17,7 +17,9 @@ export interface GetIssue$Params {
   idOrKey: string;
 
 /**
- * `parent`: the ticket it sits under, in a few words.
+ * Comma-separated: `parent` (the ticket it sits under, in a few
+ * words), `children` (its sub-tasks), `links` (its links to tickets
+ * the member sees).
  */
   expand?: string;
 

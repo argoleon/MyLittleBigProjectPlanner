@@ -46,7 +46,7 @@ use crate::tenant::{AppState, TenantTx};
 
 /// Reads a field that may be absent (`None`), `null` (`Some(None)`) or a
 /// value (`Some(Some(…))`).
-fn present<'de, D: Deserializer<'de>, T: Deserialize<'de>>(
+pub(crate) fn present<'de, D: Deserializer<'de>, T: Deserialize<'de>>(
     deserializer: D,
 ) -> Result<Option<Option<T>>, D::Error> {
     Option::<T>::deserialize(deserializer).map(Some)
@@ -223,7 +223,7 @@ pub struct MovePlanView {
 }
 
 /// 403 `permission.denied` unless the member may edit tickets of `project`.
-async fn require_edit(state: &AppState, tx: &mut TenantTx, project: Uuid) -> Result<(), Problem> {
+pub(crate) async fn require_edit(state: &AppState, tx: &mut TenantTx, project: Uuid) -> Result<(), Problem> {
     if is_tenant_admin(tx) {
         return Ok(());
     }
@@ -233,7 +233,7 @@ async fn require_edit(state: &AppState, tx: &mut TenantTx, project: Uuid) -> Res
 
 /// The ticket `id`, locked until the transaction ends, if its version is
 /// one of `versions` (`None`: any); else 412.
-async fn locked(tx: &mut TenantTx, id: Uuid, versions: Option<&[i64]>) -> Result<Issue, Problem> {
+pub(crate) async fn locked(tx: &mut TenantTx, id: Uuid, versions: Option<&[i64]>) -> Result<Issue, Problem> {
     let not_found = || Problem::new(ErrorCode::NotFound).with_detail("no such ticket");
     let version = repo::lock(tx, id).await?.ok_or_else(not_found)?;
     if versions.is_some_and(|v| !v.contains(&version)) {
@@ -269,7 +269,7 @@ fn read_description(json: &serde_json::Value) -> Result<Option<serde_json::Value
 }
 
 /// The response of a ticket: its view, `ETag`, language.
-fn ticket_response(view: IssueView, language: &Language) -> Response {
+pub(crate) fn ticket_response(view: IssueView, language: &Language) -> Response {
     let version = view.version();
     let mut response = ApiJson(view).into_response();
     response.headers_mut().insert(header::ETAG, etag(version));

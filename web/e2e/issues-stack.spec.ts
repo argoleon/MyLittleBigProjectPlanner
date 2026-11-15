@@ -150,3 +150,57 @@ test('a story is edited with the version read, then moved with its sub-task; its
     `${to}-1 Archive the mailboxes of former staff`,
   );
 });
+
+test('a ticket blocks one of another project, each side reading it its way; a story changes epic', async ({ page }) => {
+  test.setTimeout(120_000);
+  const run = Date.now().toString(36).toUpperCase().slice(-5);
+  const [one, two] = [`LA${run}`.slice(0, 10), `LB${run}`.slice(0, 10)];
+  await signIn(page, adminEmail!, adminSecret!);
+  const first = await project(page, `Links ${run}`, one);
+  const second = await project(page, `Other ${run}`, two);
+  const dialog = page.getByRole('dialog');
+  const create = async (url: string, type: string, summary: string) => {
+    await page.goto(url);
+    await page.getByRole('button', { name: 'New ticket' }).click();
+    await dialog.getByRole('combobox', { name: 'Type' }).click();
+    await page.getByRole('option', { name: type, exact: true }).click();
+    await dialog.getByLabel('Summary').fill(summary);
+    await dialog.getByRole('button', { name: 'Create' }).click();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(summary);
+  };
+  await create(first, 'Epic', `Sign-in ${run}`);
+  await create(first, 'Epic', `Security ${run}`);
+  await create(first, 'Story', `Migrate to OIDC ${run}`);
+  await create(second, 'Story', `Portal forms ${run}`);
+
+  // From the story: it blocks the ticket of the other project.
+  await page.goto(`/issues/${one}-3`);
+  await page.getByRole('button', { name: 'Link a ticket' }).click();
+  await dialog.getByRole('combobox', { name: 'This ticket' }).click();
+  await page.getByRole('option', { name: 'Blocks', exact: true }).click();
+  await dialog.getByRole('combobox', { name: 'Ticket', exact: true }).fill(`Portal forms ${run}`);
+  await page.getByRole('option', { name: new RegExp(`${two}-1`) }).click();
+  await dialog.getByRole('button', { name: 'Link', exact: true }).click();
+  const lines = page.locator('app-issue-relations .line');
+  await expect(lines).toHaveCount(1);
+  await expect(lines.locator('.relation')).toHaveText('Blocks');
+  await expect(lines.getByRole('link')).toHaveText(`${two}-1`);
+  expect(await accessibilityViolations(page)).toEqual([]);
+
+  // The other side reads it the other way.
+  await lines.getByRole('link', { name: `${two}-1` }).click();
+  await expect(page.locator('app-issue-relations .line .relation')).toHaveText('Blocked by');
+
+  // The story goes under an epic, then another.
+  for (const epic of [`${one}-1`, `${one}-2`]) {
+    await page.goto(`/issues/${one}-3`);
+    await page.getByRole('button', { name: 'Change parent' }).click();
+    await dialog.getByRole('combobox', { name: 'Parent ticket' }).fill(epic);
+    await page.getByRole('option', { name: new RegExp(epic) }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByRole('navigation', { name: 'Where the ticket belongs' })).toContainText(epic);
+  }
+  await page.goto(`/issues/${one}-2`);
+  await expect(lines.getByRole('link')).toHaveText(`${one}-3`);
+  await expect(lines.locator('.relation')).toHaveText('Sub-task');
+});

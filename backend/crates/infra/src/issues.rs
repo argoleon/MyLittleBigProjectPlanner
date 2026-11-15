@@ -182,6 +182,106 @@ pub async fn children(conn: &mut PgConnection, id: Uuid) -> Result<Vec<Issue>, s
     .map(|rows| rows.into_iter().map(Issue::from).collect())
 }
 
+/// Puts the ticket `id` under `parent` (`None`: at the top) and bumps its
+/// version (L05-US03); it as stored.
+pub async fn set_parent(
+    conn: &mut PgConnection,
+    id: Uuid,
+    parent: Option<Uuid>,
+) -> Result<Issue, sqlx::Error> {
+    sqlx::query!(
+        "UPDATE issue SET parent_id = $2, version = version + 1, updated_at = now() WHERE id = $1",
+        id,
+        parent
+    )
+    .execute(&mut *conn)
+    .await?;
+    find(conn, id).await?.ok_or(sqlx::Error::RowNotFound)
+}
+
+/// Whether `candidate` sits, at any depth, under the ticket `ancestor`.
+pub async fn is_below(conn: &mut PgConnection, ancestor: Uuid, candidate: Uuid) -> Result<bool, sqlx::Error> {
+    sqlx::query_scalar!(
+        r#"
+        WITH RECURSIVE up (id, parent_id, depth) AS (
+            SELECT id, parent_id, 0 FROM issue WHERE id = $2
+            UNION ALL
+            SELECT i.id, i.parent_id, up.depth + 1 FROM issue i JOIN up ON i.id = up.parent_id
+            WHERE up.depth < 50
+        )
+        SELECT EXISTS (SELECT 1 FROM up WHERE parent_id = $1) AS "below!"
+        "#,
+        ancestor,
+        candidate
+    )
+    .fetch_one(conn)
+    .await
+}
+
+/// The tickets `ids` that exist, in no given order.
+pub async fn find_many(conn: &mut PgConnection, ids: &[Uuid]) -> Result<Vec<Issue>, sqlx::Error> {
+    if ids.is_empty() {
+        return Ok(Vec::new());
+    }
+    sqlx::query_as!(
+        Row,
+        r#"
+        SELECT i.id, i.project_id, i.key, i.key_number, i.type_id, i.status_id, i.parent_id, i.summary,
+               i.description, i.priority, i.reporter_id, r.display_name AS "reporter_name?", i.assignee_id,
+               a.display_name AS "assignee_name?", i.start_date, i.due_date, i.fields, i.created_at, i.updated_at,
+               i.version
+        FROM issue i
+        LEFT JOIN account r ON r.id = i.reporter_id
+        LEFT JOIN account a ON a.id = i.assignee_id
+        WHERE i.id = ANY($1)
+        "#,
+        ids
+    )
+    .fetch_all(conn)
+    .await
+    .map(|rows| rows.into_iter().map(Issue::from).collect())
+}
+
+/// Tickets matching `text` (L05-US03, until the query language of L06):
+/// the one whose key or former key it is first, then those whose summary
+/// holds it, most recently updated first; in `project` if given. At most
+/// `limit`, before the caller keeps those whose project the member sees.
+pub async fn search(
+    conn: &mut PgConnection,
+    text: &str,
+    project: Option<Uuid>,
+    limit: usize,
+) -> Result<Vec<Issue>, sqlx::Error> {
+    let key = text.trim().to_uppercase();
+    let pattern = crate::invitations::like_pattern(text);
+    sqlx::query_as!(
+        Row,
+        r#"
+        SELECT i.id, i.project_id, i.key, i.key_number, i.type_id, i.status_id, i.parent_id, i.summary,
+               i.description, i.priority, i.reporter_id, r.display_name AS "reporter_name?", i.assignee_id,
+               a.display_name AS "assignee_name?", i.start_date, i.due_date, i.fields, i.created_at, i.updated_at,
+               i.version
+        FROM issue i
+        LEFT JOIN account r ON r.id = i.reporter_id
+        LEFT JOIN account a ON a.id = i.assignee_id
+        WHERE ($3::uuid IS NULL OR i.project_id = $3)
+          AND (i.key = $1
+               OR EXISTS (SELECT 1 FROM issue_key_alias k WHERE k.issue_id = i.id AND k.key = $1)
+               OR lower(i.summary) LIKE $2)
+        ORDER BY (i.key = $1 OR EXISTS (SELECT 1 FROM issue_key_alias k WHERE k.issue_id = i.id AND k.key = $1)) DESC,
+                 i.updated_at DESC, i.id
+        LIMIT $4
+        "#,
+        key,
+        pattern,
+        project,
+        i64::try_from(limit).unwrap_or(i64::MAX)
+    )
+    .fetch_all(conn)
+    .await
+    .map(|rows| rows.into_iter().map(Issue::from).collect())
+}
+
 /// Where a ticket moves (L05-US02).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Move<'a> {

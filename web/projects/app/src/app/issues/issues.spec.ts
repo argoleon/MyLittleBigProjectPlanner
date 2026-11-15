@@ -470,7 +470,7 @@ describe('tickets in the application', () => {
     const { harness, reply, root, text, texts } = await setUp();
     await harness.navigateByUrl('/issues/PLAT-142');
     const read = await reply((url) => url.startsWith('/api/v1/issues/PLAT-142'), ISSUE);
-    expect(read.request.params.get('expand')).toBe('parent');
+    expect(read.request.params.get('expand')).toBe('parent,children,links');
     await reply((url) => url === '/api/v1/nodes/p1/my-permissions', ['view', 'create_ticket']);
     await reply(isForm, FORM);
     const page = root().querySelector('app-issue-page')!;

@@ -264,6 +264,51 @@ test('a member moves a ticket to another project, its type and status mapped', a
   });
 });
 
+const RELATED = {
+  id: '0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7e24',
+  key: 'CRM-224',
+  summary: 'Customer portal forms',
+  project: { id: CRM.id, key: 'CRM', name: CRM.name },
+  type: TYPES[1],
+  status: { id: 's2', key: 'in_progress', label: 'In progress', category: 'in_progress' },
+};
+
+/** The ticket with a sub-task and a link, and the link API; what was posted, kept. */
+async function mockLinks(page: Page) {
+  const posted: unknown[] = [];
+  const subtask = { ...RELATED, id: 'sub', key: 'PLAT-143', summary: 'Configure the client', project: FORM.project, type: TYPES[3] };
+  const withRelations = {
+    ...ISSUE,
+    children: [subtask],
+    links: [{ id: 'l1', relation: 'depends_on', issue: { ...RELATED, id: 'dep', key: 'PLAT-120', summary: 'Directory scoping', project: FORM.project } }],
+  };
+  await page.route('**/api/v1/issues/PLAT-142**', (route) => route.fulfill({ json: withRelations }));
+  await page.route('**/api/v1/issues?**', (route) => route.fulfill({ json: [RELATED] }));
+  await page.route(`**/api/v1/issues/${ISSUE.id}/links`, (route) => {
+    posted.push(route.request().postDataJSON());
+    return route.fulfill({ status: 201, json: { id: 'l2', relation: 'blocks', issue: RELATED } });
+  });
+  return posted;
+}
+
+test('a member links a ticket of another project, found by its summary', async ({ page }) => {
+  await mockTickets(page);
+  const posted = await mockLinks(page);
+  await page.goto('/issues/PLAT-142');
+  const card = page.locator('app-issue-relations');
+  await expect(card.locator('.line .key')).toHaveText(['PLAT-143', 'PLAT-120']);
+  await expect(card.locator('.line .relation')).toHaveText(['Sub-task', 'Depends on']);
+  await page.getByRole('button', { name: 'Link a ticket' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Link PLAT-142 to a ticket' });
+  await dialog.getByRole('combobox', { name: 'This ticket' }).click();
+  await page.getByRole('option', { name: 'Blocks', exact: true }).click();
+  await dialog.getByRole('combobox', { name: 'Ticket', exact: true }).fill('portal');
+  await page.getByRole('option', { name: /CRM-224 Customer portal forms/ }).click();
+  await dialog.getByRole('button', { name: 'Link', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(posted).toEqual([{ relation: 'blocks', issue: RELATED.id }]);
+});
+
 for (const theme of ['light', 'dark'] as const) {
   for (const language of ['fr', 'en'] as const) {
     test.describe(`accessibility of tickets, ${theme} mode, ${language}`, () => {
@@ -290,6 +335,21 @@ for (const theme of ['light', 'dark'] as const) {
         await page.goto('/issues/PLAT-142');
         await expect(page.getByRole('heading', { level: 1 })).toHaveText('Migrate the authentication to OIDC');
         await expect(page.locator('ui-rich-text a')).toHaveText('OIDC');
+        await animationsDone(page);
+        expect(await accessibilityViolations(page)).toEqual([]);
+      });
+
+      test('the sub-tasks and links card and the link dialog have no axe-core violation', async ({ page }) => {
+        await mockTickets(page);
+        await mockLinks(page);
+        await page.goto('/issues/PLAT-142');
+        await expect(page.locator('app-issue-relations .line')).toHaveCount(2);
+        await animationsDone(page);
+        expect(await accessibilityViolations(page)).toEqual([]);
+        await page.locator('button.add-link').click();
+        const dialog = page.getByRole('dialog');
+        await dialog.locator('app-issue-picker input').fill('portal');
+        await expect(page.getByRole('option')).toHaveCount(1);
         await animationsDone(page);
         expect(await accessibilityViolations(page)).toEqual([]);
       });

@@ -26,6 +26,10 @@
         <mat-icon aria-hidden="true">drive_file_move</mat-icon>
         {{ 'issue.move.open' | transloco }}
       </button>
+      <button matButton="outlined" type="button" class="change-parent" (click)="changeParent(current)">
+        <mat-icon aria-hidden="true">account_tree</mat-icon>
+        {{ 'issue.parent.open' | transloco }}
+      </button>
     }
     @if (canAddSubtask()) {
       <button matButton="tonal" type="button" class="add-subtask" (click)="addSubtask(current)">
@@ -45,6 +49,7 @@
           <p class="empty">{{ 'issue.page.noDescription' | transloco }}</p>
         }
       </section>
+      <app-issue-relations [issue]="current" [canEdit]="canEdit()" (changed)="issue.reload()" />
     </div>
 
     <aside class="side">
