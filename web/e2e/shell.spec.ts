@@ -42,6 +42,8 @@ test.describe('application shell', () => {
   });
 
   test('can be used with the keyboard alone', async ({ page }) => {
+    // "My tickets", reached at the end, lists them (L05-US01).
+    await page.route('**/api/v1/me/issues**', (route) => route.fulfill({ json: { items: [], nextCursor: null } }));
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Home');
 
