@@ -50,7 +50,21 @@
         }
       </section>
       <app-issue-relations [issue]="current" [canEdit]="canEdit()" (changed)="issue.reload()" />
-      <app-issue-comments [issue]="current" [canComment]="canComment()" />
+      <section class="card tabs" [attr.aria-label]="'issue.activity.tabs' | transloco">
+        <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start" animationDuration="0ms">
+          <mat-tab [label]="'issue.activity.title' | transloco">
+            <app-issue-activity [issue]="current" [revision]="activityRevision()" />
+          </mat-tab>
+          <mat-tab [label]="'issue.comments.title' | transloco: { count: commentCount() }">
+            <app-issue-comments
+              [issue]="current"
+              [canComment]="canComment()"
+              (countChange)="commentCount.set($event)"
+              (changed)="activityRevision.update(bump)"
+            />
+          </mat-tab>
+        </mat-tab-group>
+      </section>
     </div>
 
     <aside class="side">

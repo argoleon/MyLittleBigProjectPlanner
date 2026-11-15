@@ -1560,6 +1560,56 @@
       "byTransition": "via le workflow",
       "formerMember": "Ancien membre",
       "conflict": "Ce commentaire a changé depuis que vous l’avez ouvert : annulez et modifiez-le à nouveau."
+    },
+    "activity": {
+      "title": "Activité",
+      "tabs": "Activité et commentaires",
+      "empty": "Aucune activité pour l’instant.",
+      "more": "Voir l’activité plus ancienne",
+      "system": "Le système",
+      "formerMember": "Un ancien membre",
+      "created": "a créé le ticket",
+      "changed": "a changé {{ field }} : {{ old }} → {{ new }}",
+      "set": "a renseigné {{ field }} : {{ new }}",
+      "cleared": "a vidé {{ field }} (auparavant {{ old }})",
+      "changedText": "a modifié {{ field }}",
+      "moved": "a déplacé le ticket : {{ old }} → {{ new }}",
+      "linkAdded": "a ajouté un lien : {{ relation }} {{ key }}",
+      "linkRemoved": "a retiré un lien : {{ relation }} {{ key }}",
+      "commented": "a commenté",
+      "commentEdited": "a modifié un commentaire",
+      "commentDeleted": "a supprimé un commentaire",
+      "showChange": "Voir avant et après",
+      "hideChange": "Masquer avant et après",
+      "before": "Avant",
+      "after": "Après",
+      "showDeleted": "Voir le commentaire supprimé",
+      "hideDeleted": "Masquer le commentaire supprimé",
+      "via": {
+        "mcp": "via MCP",
+        "api": "via l’API",
+        "import": "par import"
+      },
+      "fields": {
+        "type": "le type",
+        "status": "le statut",
+        "summary": "le résumé",
+        "description": "la description",
+        "priority": "la priorité",
+        "reporter": "le rapporteur",
+        "assignee": "le responsable",
+        "startDate": "la date de début",
+        "dueDate": "l’échéance",
+        "parent": "le parent",
+        "removed": "un champ supprimé"
+      },
+      "values": {
+        "none": "rien",
+        "formerMember": "un ancien membre",
+        "deletedIssue": "un ticket supprimé",
+        "yes": "oui",
+        "no": "non"
+      }
     }
   }
 }

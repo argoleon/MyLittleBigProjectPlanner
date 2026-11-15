@@ -137,6 +137,8 @@ async function mockTickets(page: Page, mine = [SUMMARY]) {
   await page.route(`**/api/v1/nodes/${CRM.id}/my-permissions`, (route) => route.fulfill({ json: ['view'] }));
   // No comment unless a test writes some (mockComments, registered later, wins).
   await page.route('**/api/v1/issues/*/comments', (route) => route.fulfill({ json: [] }));
+  // No history unless a test tells some (mockActivity, registered later, wins).
+  await page.route('**/api/v1/issues/*/activity**', (route) => route.fulfill({ json: { items: [], nextCursor: null } }));
   await page.route('**/api/v1/me/issues**', (route) => route.fulfill({ json: { items: mine, nextCursor: null } }));
   await page.route('**/api/v1/nodes?**', (route) => route.fulfill({ json: { items: [PROJECT, CRM], nextCursor: null } }));
   await page.route('**/api/v1/projects/PLAT/issue-form**', (route) => route.fulfill({ json: FORM }));
@@ -380,6 +382,56 @@ async function mockComments(page: Page) {
   return written;
 }
 
+/** The history of the ticket: a change through MCP, a status, a description, the creation. */
+async function mockActivity(page: Page) {
+  const entry = (id: string, rest: object) => ({
+    id,
+    changeId: `c-${id}`,
+    action: 'updated',
+    field: null,
+    fieldLabel: null,
+    relation: null,
+    old: null,
+    new: null,
+    actor: { id: 'a1', name: 'Lucas Bernard' },
+    origin: 'interface',
+    createdAt: '2026-11-06T08:12:00Z',
+    ...rest,
+  });
+  const text = (value: string) => ({ kind: 'text', text: value, html: null });
+  await page.route(`**/api/v1/issues/${ISSUE.id}/activity**`, (route) =>
+    route.fulfill({
+      json: {
+        items: [
+          entry('e4', { field: 'priority', old: { kind: 'priority', text: 'medium', html: null }, new: { kind: 'priority', text: 'high', html: null }, actor: { id: 'a2', name: 'Camille Martin' }, origin: 'mcp' }),
+          entry('e3', { field: 'status', old: text('To do'), new: text('In progress') }),
+          entry('e2', { field: 'description', new: { kind: 'richText', text: null, html: '<p>Use <strong>OIDC</strong>.</p>' } }),
+          entry('e1', { action: 'created', createdAt: '2026-11-02T08:00:00Z' }),
+        ],
+        nextCursor: null,
+      },
+    }),
+  );
+}
+
+test('the Activity tab tells who changed what, through MCP or not, and a description before and after', async ({ page }) => {
+  await mockTickets(page);
+  await mockActivity(page);
+  await page.goto('/issues/PLAT-142');
+  await expect(page.getByRole('tab', { name: 'Activity' })).toHaveAttribute('aria-selected', 'true');
+  const entries = page.locator('app-issue-activity .entry .sentence');
+  await expect(entries).toHaveText([
+    /^Camille Martin changed the priority: Medium → High\s+smart_toy\s+via MCP\s*$/,
+    'Lucas Bernard changed the status: To do → In progress',
+    'Lucas Bernard changed the description',
+    'Lucas Bernard created the ticket',
+  ]);
+  const toggle = page.getByRole('button', { name: 'Show before and after' });
+  await toggle.click();
+  await expect(page.getByRole('button', { name: 'Hide before and after' })).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('app-issue-activity .change .side').nth(1)).toContainText('Use OIDC.');
+});
+
 test('a member comments with a mention picked with the keyboard', async ({ page }) => {
   await mockTickets(page);
   const written = await mockComments(page);
@@ -446,6 +498,17 @@ for (const theme of ['light', 'dark'] as const) {
         await page.goto('/issues/PLAT-142');
         await expect(page.getByRole('heading', { level: 1 })).toHaveText('Migrate the authentication to OIDC');
         await expect(page.locator('ui-rich-text a')).toHaveText('OIDC');
+        await animationsDone(page);
+        expect(await accessibilityViolations(page)).toEqual([]);
+      });
+
+      test('the Activity tab, a description before and after open, has no axe-core violation', async ({ page }) => {
+        await mockTickets(page);
+        await mockActivity(page);
+        await page.goto('/issues/PLAT-142');
+        await expect(page.locator('app-issue-activity .entry')).toHaveCount(4);
+        await page.locator('app-issue-activity button.toggle').click();
+        await expect(page.locator('app-issue-activity .change')).toBeVisible();
         await animationsDone(page);
         expect(await accessibilityViolations(page)).toEqual([]);
       });

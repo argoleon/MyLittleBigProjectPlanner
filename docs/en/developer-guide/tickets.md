@@ -150,7 +150,9 @@ Follow [Adding an endpoint](new-endpoint.md), and:
 | Creation dialog, opened by `createIssueFlow` | `web/projects/app/src/app/issues/issue-dialog.ts`, `issue-flow.ts` |
 | A custom field by kind, people and groups | `field-input.ts`, `people-picker.ts`, values in `issue-fields.ts` |
 | Ticket page, "My tickets" | `issue-page.ts` (`/issues/:key`), `my-tickets-page.ts` (`/tickets`) |
+| Activity and Comments tabs of the ticket page | `issue-activity.ts`, sentences in `activity-sentence.ts`; `issue-comments.ts` |
 
 - **Keep Tiptap out of the initial bundle.** The editor is not exported from `ui` but from its own entry point, `ui/rich-text`: a barrel export would pull Tiptap and ProseMirror (about 430 kB) into every page. The creation dialog is loaded on first use by `createIssueFlow`; a new screen that edits rich text (comments, L05-US04) imports `ui/rich-text` from a lazily loaded component too.
 - The editor only offers what the server accepts (no underline, headings 1 to 4, links to `http`, `https` and `mailto`), so a document is never refused for its form.
 - The dialog reads the form for the type chosen (`GET …/issue-form?typeId=`) and keeps a value when the next type has the same field. Errors of the API go to their control (`fields.{id}` included) through `placeApiErrors`.
+- The Activity tab builds each sentence in the browser (`sentenceOf`) from the entry's action, field and values, in the current language and time zone: the API returns labels and names, never sentences. Planning dates go through `formatLocalDate`, instants through `formatInstant`. The tab reads the history again whenever the ticket is read again, or a comment changes (`IssueComments.changed`).

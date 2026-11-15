@@ -77,6 +77,8 @@ export type { GetIssue$Params as GetIssue$Params } from './fn/issues/get-issue';
 export { getIssue as getIssue } from './fn/issues/get-issue';
 export type { UpdateIssue$Params as UpdateIssue$Params } from './fn/issues/update-issue';
 export { updateIssue as updateIssue } from './fn/issues/update-issue';
+export type { ListIssueActivity$Params as ListIssueActivity$Params } from './fn/issues/list-issue-activity';
+export { listIssueActivity as listIssueActivity } from './fn/issues/list-issue-activity';
 export type { ListIssueComments$Params as ListIssueComments$Params } from './fn/issues/list-issue-comments';
 export { listIssueComments as listIssueComments } from './fn/issues/list-issue-comments';
 export type { CreateIssueComment$Params as CreateIssueComment$Params } from './fn/issues/create-issue-comment';
