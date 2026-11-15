@@ -10,6 +10,7 @@ export { ISSUE_PRIORITY } from './lib/api/generated/models/issue-priority-array'
 export { ISSUE_RELATION } from './lib/api/generated/models/issue-relation-array';
 export * from './lib/api/api-problem';
 export * from './lib/api/provide-api';
+export * from './lib/api/attachment-uploader';
 
 // Authentication: session, route guards, sign-in page frame.
 export * from './lib/auth/auth.service';

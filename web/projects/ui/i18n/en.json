@@ -511,6 +511,15 @@
     },
     "issue_link": {
       "exists": "The two tickets already have this link."
+    },
+    "attachment": {
+      "too_large": "The file is larger than the maximum allowed.",
+      "quota_exceeded": "The organization's storage space is full: remove files or ask an administrator.",
+      "not_uploaded": "The file was not sent whole. Try again.",
+      "not_scanned": "The file is not available: it is still being scanned, or the antivirus refused it."
+    },
+    "storage": {
+      "unavailable": "File storage is not available right now. Try again later."
     }
   },
   "dialog": {
@@ -1609,7 +1618,32 @@
         "deletedIssue": "a deleted ticket",
         "yes": "yes",
         "no": "no"
-      }
+      },
+      "attached": "attached {{ name }}",
+      "fileRemoved": "removed the file {{ name }}"
+    },
+    "attachments": {
+      "title": "Attachments ({{ count }})",
+      "drop": "Drop files here, or",
+      "pick": "Choose files",
+      "hint": "Each file is scanned by the antivirus before it can be downloaded.",
+      "sending": "Files being sent",
+      "progressOf": "Sending {{ name }}",
+      "dismissOf": "Dismiss {{ name }}",
+      "uploadFailed": "The file could not be sent. Try again.",
+      "empty": "No file attached.",
+      "signature": "Virus found: {{ signature }}",
+      "status": {
+        "pending": "Waiting",
+        "scanning": "Scanning",
+        "clean": "Clean",
+        "infected": "Infected",
+        "rejected": "Rejected"
+      },
+      "removeOf": "Remove the file {{ name }}",
+      "removeTitle": "Remove the file?",
+      "removeMessage": "{{ name }} is removed from the ticket; the ticket keeps a trace of it in its activity.",
+      "remove": "Remove"
     }
   }
 }

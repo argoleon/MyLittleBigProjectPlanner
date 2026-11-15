@@ -511,6 +511,15 @@
     },
     "issue_link": {
       "exists": "Les deux tickets ont déjà ce lien."
+    },
+    "attachment": {
+      "too_large": "Le fichier dépasse la taille maximale autorisée.",
+      "quota_exceeded": "L’espace de stockage de l’organisation est plein : retirez des fichiers ou contactez un administrateur.",
+      "not_uploaded": "Le fichier n’a pas été envoyé en entier. Réessayez.",
+      "not_scanned": "Le fichier n’est pas disponible : il est encore en cours d’analyse, ou l’antivirus l’a refusé."
+    },
+    "storage": {
+      "unavailable": "Le stockage des fichiers n’est pas disponible pour le moment. Réessayez plus tard."
     }
   },
   "dialog": {
@@ -1609,7 +1618,32 @@
         "deletedIssue": "un ticket supprimé",
         "yes": "oui",
         "no": "non"
-      }
+      },
+      "attached": "a joint {{ name }}",
+      "fileRemoved": "a retiré le fichier {{ name }}"
+    },
+    "attachments": {
+      "title": "Pièces jointes ({{ count }})",
+      "drop": "Déposez des fichiers ici, ou",
+      "pick": "Choisir des fichiers",
+      "hint": "Chaque fichier est analysé par l’antivirus avant de pouvoir être téléchargé.",
+      "sending": "Fichiers en cours d’envoi",
+      "progressOf": "Envoi de {{ name }}",
+      "dismissOf": "Fermer {{ name }}",
+      "uploadFailed": "Le fichier n’a pas pu être envoyé. Réessayez.",
+      "empty": "Aucun fichier joint.",
+      "signature": "Virus détecté : {{ signature }}",
+      "status": {
+        "pending": "En attente",
+        "scanning": "Analyse en cours",
+        "clean": "Sain",
+        "infected": "Infecté",
+        "rejected": "Refusé"
+      },
+      "removeOf": "Retirer le fichier {{ name }}",
+      "removeTitle": "Retirer le fichier ?",
+      "removeMessage": "{{ name }} est retiré du ticket ; le ticket en garde la trace dans son activité.",
+      "remove": "Retirer"
     }
   }
 }

@@ -14,5 +14,7 @@ export const ACTIVITY_ACTION: ActivityAction[] = [
   'link_removed',
   'comment_created',
   'comment_updated',
-  'comment_deleted'
+  'comment_deleted',
+  'attachment_added',
+  'attachment_removed'
 ];

@@ -346,3 +346,46 @@ test('the Activity tab tells who changed what on a ticket, a deleted comment for
   await expect(page.locator('app-issue-activity .deleted')).toContainText('Wrong ticket');
   expect(await accessibilityViolations(page)).toEqual([]);
 });
+
+test('a file is attached, scanned by the antivirus, then downloaded; the test virus is refused', async ({ page }) => {
+  // ClamAV may still be loading its signatures right after the stack started.
+  test.setTimeout(300_000);
+  const run = Date.now().toString(36).toUpperCase().slice(-5);
+  const code = `AT${run}`.slice(0, 10);
+  await signIn(page, adminEmail!, adminSecret!);
+  const url = await project(page, `Attachments ${run}`, code);
+  await page.goto(url);
+  await page.getByRole('button', { name: 'New ticket' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('combobox', { name: 'Type' }).click();
+  await page.getByRole('option', { name: 'Story', exact: true }).click();
+  await dialog.getByLabel('Summary').fill(`Files ${run}`);
+  await dialog.getByRole('button', { name: 'Create' }).click();
+  await expect(page).toHaveURL(new RegExp(`/issues/${code}-1$`));
+
+  const card = page.locator('app-issue-attachments');
+  const input = card.locator('input[type="file"]');
+  await input.setInputFiles({ name: 'recette.txt', mimeType: 'text/plain', buffer: Buffer.from(`Recette ${run}: OK`) });
+  // The list is read again while the file is scanned.
+  await expect(card.locator('[data-status="clean"] .scan')).toHaveText('Clean', { timeout: 240_000 });
+  const download = page.waitForEvent('download');
+  await card.getByRole('link', { name: 'recette.txt' }).click();
+  const file = await download;
+  expect(file.suggestedFilename()).toBe('recette.txt');
+  const content = await file.createReadStream().then(async (stream) => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) chunks.push(chunk as Buffer);
+    return Buffer.concat(chunks).toString();
+  });
+  expect(content).toBe(`Recette ${run}: OK`);
+
+  // The EICAR test file, built here so that no file of the repository holds it whole.
+  const eicar = ['X5O!P%@AP[4\\PZX54(P^)7CC)7}', '$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!', '$H+H*'].join('');
+  await input.setInputFiles({ name: 'invoice.exe', mimeType: 'application/octet-stream', buffer: Buffer.from(eicar) });
+  await expect(card.locator('[data-status="infected"] .scan')).toHaveText('Infected', { timeout: 120_000 });
+  await expect(card.getByRole('link', { name: 'invoice.exe' })).toHaveCount(0);
+  expect(await accessibilityViolations(page)).toEqual([]);
+
+  // The activity tells both.
+  await expect(page.locator('app-issue-activity .entry .sentence').first()).toContainText('attached invoice.exe');
+});
