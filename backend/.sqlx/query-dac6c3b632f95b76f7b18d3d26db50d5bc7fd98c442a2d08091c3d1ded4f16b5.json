@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT i.id, i.project_id, i.key, i.key_number, i.type_id, i.status_id, i.parent_id, i.summary,\n               i.description, i.priority, i.reporter_id, r.display_name AS \"reporter_name?\", i.assignee_id,\n               a.display_name AS \"assignee_name?\", i.start_date, i.due_date, i.fields, i.created_at, i.updated_at,\n               i.version\n        FROM issue i\n        LEFT JOIN account r ON r.id = i.reporter_id\n        LEFT JOIN account a ON a.id = i.assignee_id\n        WHERE ($3::uuid IS NULL OR i.project_id = $3)\n          AND (i.key = $1\n               OR EXISTS (SELECT 1 FROM issue_key_alias k WHERE k.issue_id = i.id AND k.key = $1)\n               OR lower(i.summary) LIKE $2)\n        ORDER BY (i.key = $1 OR EXISTS (SELECT 1 FROM issue_key_alias k WHERE k.issue_id = i.id AND k.key = $1)) DESC,\n                 i.updated_at DESC, i.id\n        LIMIT $4\n        ",
+  "query": "\n        SELECT i.id, i.project_id, i.key, i.key_number, i.type_id, i.status_id, i.parent_id, i.summary,\n               i.description, i.priority, i.reporter_id, app_member_name(i.reporter_id) AS \"reporter_name?\", i.assignee_id,\n               app_member_name(i.assignee_id) AS \"assignee_name?\", i.start_date, i.due_date, i.fields, i.created_at, i.updated_at,\n               i.version\n        FROM issue i\n        WHERE (i.assignee_id = $1 OR i.reporter_id = $1)\n          AND ($2::timestamptz IS NULL OR (i.created_at, i.id) < ($2, $3))\n        ORDER BY i.created_at DESC, i.id DESC\n        LIMIT $4\n        ",
   "describe": {
     "columns": [
       {
@@ -128,12 +128,7 @@
         "ordinal": 11,
         "name": "reporter_name?",
         "type_info": "Text",
-        "origin": {
-          "Table": {
-            "table": "account",
-            "name": "display_name"
-          }
-        }
+        "origin": "Expression"
       },
       {
         "ordinal": 12,
@@ -150,12 +145,7 @@
         "ordinal": 13,
         "name": "assignee_name?",
         "type_info": "Text",
-        "origin": {
-          "Table": {
-            "table": "account",
-            "name": "display_name"
-          }
-        }
+        "origin": "Expression"
       },
       {
         "ordinal": 14,
@@ -226,8 +216,8 @@
     ],
     "parameters": {
       "Left": [
-        "Text",
-        "Text",
+        "Uuid",
+        "Timestamptz",
         "Uuid",
         "Int8"
       ]
@@ -244,9 +234,9 @@
       true,
       false,
       true,
-      false,
+      null,
       true,
-      false,
+      null,
       true,
       true,
       false,
@@ -255,5 +245,5 @@
       false
     ]
   },
-  "hash": "6ee30d21df5b0c91daa0fc888aef85ebd518d610d0c4eb18032f8af0f4e381ba"
+  "hash": "dac6c3b632f95b76f7b18d3d26db50d5bc7fd98c442a2d08091c3d1ded4f16b5"
 }

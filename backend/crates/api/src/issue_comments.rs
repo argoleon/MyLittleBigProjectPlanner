@@ -7,12 +7,14 @@
 //! administer the project delete anyone's (`domain::comments`). A deleted
 //! comment stays as a placeholder. Each change writes its event to the
 //! outbox, with the accounts mentioned (L05-US07 notifies them) and, for an
-//! edit or a deletion, the text before it (the history of L05-US05).
+//! edit or a deletion, the text before it; and its entry to the ticket's
+//! history (L05-US06), with the content before and after.
 
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use chrono::{DateTime, Utc};
+use domain::audit::Action;
 use domain::comments::{Acting, Visibility, can_delete, can_edit};
 use domain::permissions::Permission;
 use domain::rich_text::Doc;
@@ -110,7 +112,7 @@ pub struct CommentBody {
 }
 
 /// What the member acting may do with comments on `project`.
-async fn acting(state: &AppState, tx: &mut TenantTx, project: &Node) -> Result<Acting, Problem> {
+pub(crate) async fn acting(state: &AppState, tx: &mut TenantTx, project: &Node) -> Result<Acting, Problem> {
     let account = tx.account_id().as_u128();
     if is_tenant_admin(tx) {
         return Ok(Acting {
@@ -203,6 +205,17 @@ pub(crate) async fn write(
             content_html: &html,
             mentions: &mentions,
         },
+    )
+    .await?;
+    crate::issue_history::record(
+        tx,
+        issue.id,
+        &[crate::issue_history::comment(
+            Action::CommentCreated,
+            comment.id,
+            None,
+            Some(&content),
+        )],
     )
     .await?;
     infra::outbox::record(
@@ -394,6 +407,17 @@ pub async fn update(
         },
     )
     .await?;
+    crate::issue_history::record(
+        &mut tx,
+        issue.id,
+        &[crate::issue_history::comment(
+            Action::CommentUpdated,
+            edited.id,
+            comment.content.as_ref(),
+            Some(&content),
+        )],
+    )
+    .await?;
     tracing::info!(target: "audit", actor = %actor, issue = %issue.id, comment = %edited.id, "comment edited");
     tx.commit().await?;
     let version = edited.version;
@@ -478,6 +502,17 @@ pub async fn delete(
             }),
             actor_id: Some(actor),
         },
+    )
+    .await?;
+    crate::issue_history::record(
+        &mut tx,
+        issue.id,
+        &[crate::issue_history::comment(
+            Action::CommentDeleted,
+            comment.id,
+            comment.content.as_ref(),
+            None,
+        )],
     )
     .await?;
     tracing::info!(target: "audit", actor = %actor, issue = %issue.id, comment = %comment.id, "comment deleted");

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT i.id, i.project_id, i.key, i.key_number, i.type_id, i.status_id, i.parent_id, i.summary,\n               i.description, i.priority, i.reporter_id, r.display_name AS \"reporter_name?\", i.assignee_id,\n               a.display_name AS \"assignee_name?\", i.start_date, i.due_date, i.fields, i.created_at, i.updated_at,\n               i.version\n        FROM issue i\n        LEFT JOIN account r ON r.id = i.reporter_id\n        LEFT JOIN account a ON a.id = i.assignee_id\n        WHERE i.id = $1\n        ",
+  "query": "\n        SELECT i.id, i.project_id, i.key, i.key_number, i.type_id, i.status_id, i.parent_id, i.summary,\n               i.description, i.priority, i.reporter_id, app_member_name(i.reporter_id) AS \"reporter_name?\", i.assignee_id,\n               app_member_name(i.assignee_id) AS \"assignee_name?\", i.start_date, i.due_date, i.fields, i.created_at, i.updated_at,\n               i.version\n        FROM issue i\n        WHERE i.parent_id = $1\n        ORDER BY i.created_at, i.id\n        ",
   "describe": {
     "columns": [
       {
@@ -128,12 +128,7 @@
         "ordinal": 11,
         "name": "reporter_name?",
         "type_info": "Text",
-        "origin": {
-          "Table": {
-            "table": "account",
-            "name": "display_name"
-          }
-        }
+        "origin": "Expression"
       },
       {
         "ordinal": 12,
@@ -150,12 +145,7 @@
         "ordinal": 13,
         "name": "assignee_name?",
         "type_info": "Text",
-        "origin": {
-          "Table": {
-            "table": "account",
-            "name": "display_name"
-          }
-        }
+        "origin": "Expression"
       },
       {
         "ordinal": 14,
@@ -241,9 +231,9 @@
       true,
       false,
       true,
+      null,
       true,
-      true,
-      true,
+      null,
       true,
       true,
       false,
@@ -252,5 +242,5 @@
       false
     ]
   },
-  "hash": "cab5b6435816f29c2b6bbf553f9c28470e464155d29df0c3b59b28dfb1534908"
+  "hash": "02814e0fd8e240499bc9d0d4d701c5f7120e701fcd4ec18f68dd10d6fad8876e"
 }

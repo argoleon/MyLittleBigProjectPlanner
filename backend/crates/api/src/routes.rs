@@ -28,6 +28,7 @@ use crate::hierarchy;
 use crate::invitations;
 use crate::issue_changes;
 use crate::issue_comments;
+use crate::issue_history;
 use crate::issue_links;
 use crate::issue_transitions;
 use crate::issue_types;
@@ -165,6 +166,7 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(issue_transitions::list, issue_transitions::run))
         .routes(routes!(issue_comments::list, issue_comments::create))
         .routes(routes!(issue_comments::update, issue_comments::delete))
+        .routes(routes!(issue_history::activity))
         .routes(routes!(issue_changes::move_plan))
         .routes(routes!(issue_changes::move_issue))
         .routes(routes!(issues::form))

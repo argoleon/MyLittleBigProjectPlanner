@@ -37,22 +37,29 @@ where
     tracing::info!("worker loop stopped");
 }
 
-/// How often the outbox partitions of the coming months are checked.
+/// How often the partitions of the coming months are checked.
 pub const PARTITIONS_EVERY: Duration = Duration::from_secs(12 * 60 * 60);
 
-/// Keeps the partitions of the event outbox ready (`infra::outbox`): at
-/// start, then every `every`, until `token` is cancelled. A failure is
-/// logged and tried again next time; the default partition takes the
-/// events meanwhile.
-pub async fn keep_outbox_partitions(pool: infra::sqlx::PgPool, token: CancellationToken, every: Duration) {
+/// Keeps the monthly partitions of the event outbox (`infra::outbox`) and
+/// of the history (`infra::audit`) ready: at start, then every `every`,
+/// until `token` is cancelled. A failure is logged and tried again next
+/// time; the default partitions take the rows meanwhile.
+pub async fn keep_partitions(pool: infra::sqlx::PgPool, token: CancellationToken, every: Duration) {
     while !token.is_cancelled() {
         match pool.acquire().await {
-            Ok(mut conn) => match infra::outbox::ensure_partitions(&mut conn).await {
-                Ok(0) => {}
-                Ok(created) => tracing::info!(created, "outbox partitions created"),
-                Err(err) => tracing::warn!(error = %err, "outbox partitions not checked"),
-            },
-            Err(err) => tracing::warn!(error = %err, "outbox partitions not checked"),
+            Ok(mut conn) => {
+                match infra::outbox::ensure_partitions(&mut conn).await {
+                    Ok(0) => {}
+                    Ok(created) => tracing::info!(created, "outbox partitions created"),
+                    Err(err) => tracing::warn!(error = %err, "outbox partitions not checked"),
+                }
+                match infra::audit::ensure_partitions(&mut conn).await {
+                    Ok(0) => {}
+                    Ok(created) => tracing::info!(created, "history partitions created"),
+                    Err(err) => tracing::warn!(error = %err, "history partitions not checked"),
+                }
+            }
+            Err(err) => tracing::warn!(error = %err, "partitions not checked"),
         }
         tokio::select! {
             () = token.cancelled() => {}

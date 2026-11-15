@@ -123,10 +123,9 @@ pub async fn find(conn: &mut PgConnection, id: Uuid) -> Result<Option<Comment>, 
     sqlx::query_as!(
         Row,
         r#"
-        SELECT c.id, c.issue_id, c.author_id, a.display_name AS "author_name?", c.visibility, c.source, c.content,
+        SELECT c.id, c.issue_id, c.author_id, app_member_name(c.author_id) AS "author_name?", c.visibility, c.source, c.content,
                c.content_html, c.mentions, c.edited_at, c.deleted_at, c.created_at, c.version
         FROM comment c
-        LEFT JOIN account a ON a.id = c.author_id
         WHERE c.id = $1
         "#,
         id
@@ -146,10 +145,9 @@ pub async fn of_issue(
     sqlx::query_as!(
         Row,
         r#"
-        SELECT c.id, c.issue_id, c.author_id, a.display_name AS "author_name?", c.visibility, c.source, c.content,
+        SELECT c.id, c.issue_id, c.author_id, app_member_name(c.author_id) AS "author_name?", c.visibility, c.source, c.content,
                c.content_html, c.mentions, c.edited_at, c.deleted_at, c.created_at, c.version
         FROM comment c
-        LEFT JOIN account a ON a.id = c.author_id
         WHERE c.issue_id = $1 AND (NOT $2 OR c.visibility = 'public')
         ORDER BY c.created_at, c.id
         "#,

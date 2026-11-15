@@ -21,6 +21,7 @@ pub mod idempotency;
 pub mod invitations;
 pub mod issue_changes;
 pub mod issue_comments;
+pub mod issue_history;
 pub mod issue_links;
 pub mod issue_transitions;
 pub mod issue_types;

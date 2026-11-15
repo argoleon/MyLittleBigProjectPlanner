@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT c.id, c.issue_id, c.author_id, a.display_name AS \"author_name?\", c.visibility, c.source, c.content,\n               c.content_html, c.mentions, c.edited_at, c.deleted_at, c.created_at, c.version\n        FROM comment c\n        LEFT JOIN account a ON a.id = c.author_id\n        WHERE c.id = $1\n        ",
+  "query": "\n        SELECT c.id, c.issue_id, c.author_id, app_member_name(c.author_id) AS \"author_name?\", c.visibility, c.source, c.content,\n               c.content_html, c.mentions, c.edited_at, c.deleted_at, c.created_at, c.version\n        FROM comment c\n        WHERE c.id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -40,12 +40,7 @@
         "ordinal": 3,
         "name": "author_name?",
         "type_info": "Text",
-        "origin": {
-          "Table": {
-            "table": "account",
-            "name": "display_name"
-          }
-        }
+        "origin": "Expression"
       },
       {
         "ordinal": 4,
@@ -156,7 +151,7 @@
       false,
       false,
       true,
-      true,
+      null,
       false,
       false,
       true,
@@ -168,5 +163,5 @@
       false
     ]
   },
-  "hash": "07448ffb2d477dacec5e870138946dd92eabc54ef6b5484c2292b30bc00fedd5"
+  "hash": "d04a619a4146aad2925ddf4ab4702be429db3a8ecfeee107ff989bdf72ef5890"
 }

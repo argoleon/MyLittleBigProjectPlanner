@@ -326,6 +326,27 @@ pub async fn create(
         },
     )
     .await?;
+    let from_source = stored.source_id == issue.id;
+    crate::issue_history::record(
+        &mut tx,
+        issue.id,
+        &[crate::issue_history::link(
+            true,
+            Relation::of(stored.link_type, from_source),
+            other.id,
+        )],
+    )
+    .await?;
+    crate::issue_history::record(
+        &mut tx,
+        other.id,
+        &[crate::issue_history::link(
+            true,
+            Relation::of(stored.link_type, !from_source),
+            issue.id,
+        )],
+    )
+    .await?;
     tracing::info!(target: "audit", actor = %actor, link = %stored.id, source = %source_key, target = %target_key, "tickets linked");
     let language = Language::of(&tx, &accept);
     let view = link_view(&state, &mut tx, &language, issue.id, &stored, other).await?;
@@ -392,6 +413,27 @@ pub async fn delete(
             }),
             actor_id: Some(actor),
         },
+    )
+    .await?;
+    let from_source = link.source_id == issue.id;
+    crate::issue_history::record(
+        &mut tx,
+        issue.id,
+        &[crate::issue_history::link(
+            false,
+            Relation::of(link.link_type, from_source),
+            other.id,
+        )],
+    )
+    .await?;
+    crate::issue_history::record(
+        &mut tx,
+        other.id,
+        &[crate::issue_history::link(
+            false,
+            Relation::of(link.link_type, !from_source),
+            issue.id,
+        )],
     )
     .await?;
     tracing::info!(target: "audit", actor = %actor, link = %link.id, "tickets unlinked");
@@ -487,6 +529,16 @@ pub async fn set_parent(
             }),
             actor_id: Some(actor),
         },
+    )
+    .await?;
+    crate::issue_history::record(
+        &mut tx,
+        updated.id,
+        &[infra::audit::Entry::field(
+            "parent",
+            serde_json::json!(former),
+            serde_json::json!(wanted),
+        )],
     )
     .await?;
     tracing::info!(target: "audit", actor = %actor, issue = %updated.id, key = %updated.key, "ticket parent changed");

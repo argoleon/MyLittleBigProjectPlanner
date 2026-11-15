@@ -499,8 +499,9 @@ pub fn validate_rules(
 }
 
 /// A value of a field on a ticket, as the API receives it (JSON).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub enum Value {
+    #[default]
     Null,
     Bool(bool),
     Number(f64),

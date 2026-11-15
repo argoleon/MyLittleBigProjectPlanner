@@ -166,12 +166,10 @@ pub async fn children(conn: &mut PgConnection, id: Uuid) -> Result<Vec<Issue>, s
         Row,
         r#"
         SELECT i.id, i.project_id, i.key, i.key_number, i.type_id, i.status_id, i.parent_id, i.summary,
-               i.description, i.priority, i.reporter_id, r.display_name AS "reporter_name?", i.assignee_id,
-               a.display_name AS "assignee_name?", i.start_date, i.due_date, i.fields, i.created_at, i.updated_at,
+               i.description, i.priority, i.reporter_id, app_member_name(i.reporter_id) AS "reporter_name?", i.assignee_id,
+               app_member_name(i.assignee_id) AS "assignee_name?", i.start_date, i.due_date, i.fields, i.created_at, i.updated_at,
                i.version
         FROM issue i
-        LEFT JOIN account r ON r.id = i.reporter_id
-        LEFT JOIN account a ON a.id = i.assignee_id
         WHERE i.parent_id = $1
         ORDER BY i.created_at, i.id
         "#,
@@ -252,12 +250,10 @@ pub async fn find_many(conn: &mut PgConnection, ids: &[Uuid]) -> Result<Vec<Issu
         Row,
         r#"
         SELECT i.id, i.project_id, i.key, i.key_number, i.type_id, i.status_id, i.parent_id, i.summary,
-               i.description, i.priority, i.reporter_id, r.display_name AS "reporter_name?", i.assignee_id,
-               a.display_name AS "assignee_name?", i.start_date, i.due_date, i.fields, i.created_at, i.updated_at,
+               i.description, i.priority, i.reporter_id, app_member_name(i.reporter_id) AS "reporter_name?", i.assignee_id,
+               app_member_name(i.assignee_id) AS "assignee_name?", i.start_date, i.due_date, i.fields, i.created_at, i.updated_at,
                i.version
         FROM issue i
-        LEFT JOIN account r ON r.id = i.reporter_id
-        LEFT JOIN account a ON a.id = i.assignee_id
         WHERE i.id = ANY($1)
         "#,
         ids
@@ -283,12 +279,10 @@ pub async fn search(
         Row,
         r#"
         SELECT i.id, i.project_id, i.key, i.key_number, i.type_id, i.status_id, i.parent_id, i.summary,
-               i.description, i.priority, i.reporter_id, r.display_name AS "reporter_name?", i.assignee_id,
-               a.display_name AS "assignee_name?", i.start_date, i.due_date, i.fields, i.created_at, i.updated_at,
+               i.description, i.priority, i.reporter_id, app_member_name(i.reporter_id) AS "reporter_name?", i.assignee_id,
+               app_member_name(i.assignee_id) AS "assignee_name?", i.start_date, i.due_date, i.fields, i.created_at, i.updated_at,
                i.version
         FROM issue i
-        LEFT JOIN account r ON r.id = i.reporter_id
-        LEFT JOIN account a ON a.id = i.assignee_id
         WHERE ($3::uuid IS NULL OR i.project_id = $3)
           AND (i.key = $1
                OR EXISTS (SELECT 1 FROM issue_key_alias k WHERE k.issue_id = i.id AND k.key = $1)
@@ -414,12 +408,10 @@ pub async fn find(conn: &mut PgConnection, id: Uuid) -> Result<Option<Issue>, sq
         Row,
         r#"
         SELECT i.id, i.project_id, i.key, i.key_number, i.type_id, i.status_id, i.parent_id, i.summary,
-               i.description, i.priority, i.reporter_id, r.display_name AS "reporter_name?", i.assignee_id,
-               a.display_name AS "assignee_name?", i.start_date, i.due_date, i.fields, i.created_at, i.updated_at,
+               i.description, i.priority, i.reporter_id, app_member_name(i.reporter_id) AS "reporter_name?", i.assignee_id,
+               app_member_name(i.assignee_id) AS "assignee_name?", i.start_date, i.due_date, i.fields, i.created_at, i.updated_at,
                i.version
         FROM issue i
-        LEFT JOIN account r ON r.id = i.reporter_id
-        LEFT JOIN account a ON a.id = i.assignee_id
         WHERE i.id = $1
         "#,
         id
@@ -456,12 +448,10 @@ pub async fn of_account(
         Row,
         r#"
         SELECT i.id, i.project_id, i.key, i.key_number, i.type_id, i.status_id, i.parent_id, i.summary,
-               i.description, i.priority, i.reporter_id, r.display_name AS "reporter_name?", i.assignee_id,
-               a.display_name AS "assignee_name?", i.start_date, i.due_date, i.fields, i.created_at, i.updated_at,
+               i.description, i.priority, i.reporter_id, app_member_name(i.reporter_id) AS "reporter_name?", i.assignee_id,
+               app_member_name(i.assignee_id) AS "assignee_name?", i.start_date, i.due_date, i.fields, i.created_at, i.updated_at,
                i.version
         FROM issue i
-        LEFT JOIN account r ON r.id = i.reporter_id
-        LEFT JOIN account a ON a.id = i.assignee_id
         WHERE (i.assignee_id = $1 OR i.reporter_id = $1)
           AND ($2::timestamptz IS NULL OR (i.created_at, i.id) < ($2, $3))
         ORDER BY i.created_at DESC, i.id DESC
