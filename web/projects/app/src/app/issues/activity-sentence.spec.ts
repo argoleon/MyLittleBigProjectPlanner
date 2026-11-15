@@ -43,6 +43,9 @@ describe('sentences of the Activity tab', () => {
     };
   }
 
+  // `use('fr')` remembers the language in the browser: forget it, for the specs that follow.
+  afterEach(() => localStorage.clear());
+
   const say = (e: ActivityEntry, c: SentenceContext) => {
     const sentence = sentenceOf(e, c);
     return `${sentence.who} ${sentence.what}`;
