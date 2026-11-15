@@ -3,12 +3,12 @@
 //! otherwise.
 //!
 //! Browsers upload and download directly, through presigned URLs: files
-//! never go through the API. Those URLs are signed for the tenant's public
-//! address (`PUBLIC_URL`) in path style, `https://<tenant host>/<bucket>/<key>`,
-//! and the reverse proxy routes `/<bucket>/` to the storage, so the browser
-//! stays on the application's origin (no CORS, the CSP unchanged). The
-//! services themselves reach the storage at `S3_ENDPOINT`, plain HTTP inside
-//! the backend network.
+//! never go through the API. Those URLs are relative, `/<bucket>/<key>?…`
+//! (path style), signed for the host through which the browser reached the
+//! API; the reverse proxy routes `/<bucket>/` to the storage keeping that
+//! Host, so the browser stays on the application's origin (no CORS, the CSP
+//! unchanged), whatever address it uses. The services themselves reach the
+//! storage at `S3_ENDPOINT`, plain HTTP inside the backend network.
 //!
 //! Every object of a tenant sits under its id: `<tenant>/uploads/<id>`,
 //! `<tenant>/thumbnails/<id>.png`, so a tenant's files are removed with its
@@ -124,9 +124,14 @@ impl Storage {
         self.bucket.name()
     }
 
-    /// The bucket as browsers of `public_origin` reach it.
-    fn public_bucket(&self, public_origin: &str) -> Result<Bucket, StorageError> {
-        let origin = url::Url::parse(public_origin).map_err(|e| StorageError::Address(e.to_string()))?;
+    /// The bucket as browsers reach it through `host` (`acme.example.org`,
+    /// `localhost:18443`).
+    fn public_bucket(&self, host: &str) -> Result<Bucket, StorageError> {
+        // The scheme is not signed: any will do.
+        let origin = url::Url::parse(&format!("http://{host}"))
+            .ok()
+            .filter(|url| url.path() == "/" && url.query().is_none())
+            .ok_or_else(|| StorageError::Address(format!("invalid host {host}")))?;
         Bucket::new(
             origin,
             UrlStyle::Path,
@@ -136,25 +141,34 @@ impl Storage {
         .map_err(|e| StorageError::Address(e.to_string()))
     }
 
-    /// A URL to upload `size` bytes to `key` with `PUT`, for the browser of
-    /// `public_origin`: the storage refuses any other size.
-    pub fn upload_url(&self, public_origin: &str, key: &str, size: u64) -> Result<url::Url, StorageError> {
-        let bucket = self.public_bucket(public_origin)?;
-        let mut action = bucket.put_object(Some(&self.credentials), key);
-        action.headers_mut().insert("content-length", size.to_string());
-        Ok(action.sign(URL_LIFETIME))
+    /// `url` without its scheme and host: the browser resolves it on its own
+    /// origin.
+    fn relative(url: &url::Url) -> String {
+        match url.query() {
+            Some(query) => format!("{}?{query}", url.path()),
+            None => url.path().to_owned(),
+        }
     }
 
-    /// A URL to read `key` for the browser of `public_origin`, served with
+    /// A relative URL to upload `size` bytes to `key` with `PUT`, for a
+    /// browser on `host`: the storage refuses any other size.
+    pub fn upload_url(&self, host: &str, key: &str, size: u64) -> Result<String, StorageError> {
+        let bucket = self.public_bucket(host)?;
+        let mut action = bucket.put_object(Some(&self.credentials), key);
+        action.headers_mut().insert("content-length", size.to_string());
+        Ok(Self::relative(&action.sign(URL_LIFETIME)))
+    }
+
+    /// A relative URL to read `key` for a browser on `host`, served with
     /// `content_type` and `disposition` whatever was uploaded.
     pub fn download_url(
         &self,
-        public_origin: &str,
+        host: &str,
         key: &str,
         content_type: &str,
         disposition: &str,
-    ) -> Result<url::Url, StorageError> {
-        let bucket = self.public_bucket(public_origin)?;
+    ) -> Result<String, StorageError> {
+        let bucket = self.public_bucket(host)?;
         let mut action = bucket.get_object(Some(&self.credentials), key);
         action
             .query_mut()
@@ -162,7 +176,7 @@ impl Storage {
         action
             .query_mut()
             .insert("response-content-disposition", disposition.to_owned());
-        Ok(action.sign(URL_LIFETIME))
+        Ok(Self::relative(&action.sign(URL_LIFETIME)))
     }
 
     async fn send(&self, request: Request<Full<Bytes>>) -> Result<hyper::Response<Incoming>, StorageError> {

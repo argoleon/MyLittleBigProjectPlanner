@@ -15138,7 +15138,7 @@
           },
           "uploadUrl": {
             "type": "string",
-            "description": "`PUT` the file here, with its exact size, within 15 minutes. Same\norigin as the application."
+            "description": "`PUT` the file here, with its exact size, within 15 minutes: a path\non the application's origin (`/mlbpp-attachments/…`)."
           }
         }
       },

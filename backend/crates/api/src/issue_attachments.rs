@@ -17,7 +17,7 @@
 //! attachment takes its uploader (still holding `edit`) or a moderator.
 
 use axum::extract::State;
-use axum::http::{HeaderValue, StatusCode, header};
+use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use chrono::{DateTime, Utc};
 use domain::attachments::{Acting, Status, UploadRefusal, can_delete, check_upload, clean_name};
@@ -112,8 +112,8 @@ pub struct NewAttachmentBody {
 #[schema(as = AttachmentUpload)]
 pub struct UploadView {
     attachment: AttachmentView,
-    /// `PUT` the file here, with its exact size, within 15 minutes. Same
-    /// origin as the application.
+    /// `PUT` the file here, with its exact size, within 15 minutes: a path
+    /// on the application's origin (`/mlbpp-attachments/…`).
     upload_url: String,
 }
 
@@ -174,9 +174,22 @@ async fn attachment_of(
         .ok_or_else(|| Problem::new(ErrorCode::NotFound).with_detail("no such attachment"))
 }
 
-/// The tenant's address, as browsers reach it.
-fn public_origin(state: &AppState, tx: &TenantTx) -> String {
-    state.auth.public_url().for_tenant(tx.slug())
+/// The host through which the browser reached the API (`acme.example.org`,
+/// `localhost:18443`): presigned URLs are signed for it, so that the browser
+/// reaches the storage on its own origin. Only ever given back to the same
+/// browser; the tenant was already resolved from it.
+fn browser_host(state: &AppState, tx: &TenantTx, headers: &HeaderMap) -> String {
+    headers
+        .get(header::HOST)
+        .and_then(|host| host.to_str().ok())
+        .map(str::to_owned)
+        .or_else(|| {
+            // `https://acme.example.org:8443` → `acme.example.org:8443`.
+            let public = state.auth.public_url().for_tenant(tx.slug());
+            let rest = public.split_once("://").map_or(public.as_str(), |(_, rest)| rest);
+            rest.split('/').next().map(str::to_owned)
+        })
+        .unwrap_or_default()
 }
 
 fn redirect(url: &str) -> Result<Response, Problem> {
@@ -247,6 +260,7 @@ pub async fn list(
 pub async fn create(
     State(state): State<AppState>,
     mut tx: TenantTx,
+    headers: HeaderMap,
     ApiPath(id_or_key): ApiPath<String>,
     ApiJson(body): ApiJson<NewAttachmentBody>,
 ) -> Result<Response, Problem> {
@@ -302,13 +316,13 @@ pub async fn create(
     let payload =
         serde_json::to_value(AttachmentJob { attachment_id: id }).map_err(|e| Problem::internal(&e))?;
     infra::jobs::enqueue_in(&mut tx, repo::EXPIRE_JOB, &payload, repo::UPLOAD_WINDOW).await?;
-    let upload_url = storage.upload_url(&public_origin(&state, &tx), &key, body.size)?;
+    let upload_url = storage.upload_url(&browser_host(&state, &tx, &headers), &key, body.size)?;
     tx.commit().await?;
     Ok((
         StatusCode::CREATED,
         ApiJson(UploadView {
             attachment: view(attachment, &acting),
-            upload_url: upload_url.to_string(),
+            upload_url,
         }),
     )
         .into_response())
@@ -424,6 +438,7 @@ pub async fn uploaded(
 pub async fn content(
     State(state): State<AppState>,
     mut tx: TenantTx,
+    headers: HeaderMap,
     ApiPath((id_or_key, attachment_id)): ApiPath<(String, Uuid)>,
 ) -> Result<Response, Problem> {
     let storage = storage_of(&state)?;
@@ -433,7 +448,7 @@ pub async fn content(
         return Err(Problem::new(ErrorCode::AttachmentNotScanned));
     }
     let url = storage.download_url(
-        &public_origin(&state, &tx),
+        &browser_host(&state, &tx, &headers),
         &attachment.object_key,
         attachment
             .served_type
@@ -442,7 +457,7 @@ pub async fn content(
         &infra::storage::content_disposition("attachment", &attachment.name),
     )?;
     tx.commit().await?;
-    redirect(url.as_str())
+    redirect(&url)
 }
 
 /// `GET /api/v1/issues/{idOrKey}/attachments/{attachmentId}/thumbnail`.
@@ -468,6 +483,7 @@ pub async fn content(
 pub async fn thumbnail(
     State(state): State<AppState>,
     mut tx: TenantTx,
+    headers: HeaderMap,
     ApiPath((id_or_key, attachment_id)): ApiPath<(String, Uuid)>,
 ) -> Result<Response, Problem> {
     let storage = storage_of(&state)?;
@@ -480,13 +496,13 @@ pub async fn thumbnail(
         return Err(Problem::new(ErrorCode::NotFound).with_detail("no thumbnail"));
     };
     let url = storage.download_url(
-        &public_origin(&state, &tx),
+        &browser_host(&state, &tx, &headers),
         &key,
         "image/png",
         &infra::storage::content_disposition("inline", "thumbnail.png"),
     )?;
     tx.commit().await?;
-    redirect(url.as_str())
+    redirect(&url)
 }
 
 /// `DELETE /api/v1/issues/{idOrKey}/attachments/{attachmentId}`.

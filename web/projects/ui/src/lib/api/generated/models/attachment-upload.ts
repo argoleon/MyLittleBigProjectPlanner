@@ -10,8 +10,8 @@ export interface AttachmentUpload {
   attachment: IssueAttachment;
 
   /**
-   * `PUT` the file here, with its exact size, within 15 minutes. Same
-   * origin as the application.
+   * `PUT` the file here, with its exact size, within 15 minutes: a path
+   * on the application's origin (`/mlbpp-attachments/…`).
    */
   uploadUrl: string;
 }

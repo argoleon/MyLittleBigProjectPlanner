@@ -106,17 +106,13 @@ async fn plat(api: &TestApi, tenant: &SeedTenant) -> String {
 
 const ATTACHMENTS: &str = "/api/v1/issues/PLAT-1/attachments";
 
-/// Sends the presigned `url` to the storage, with the Host the browser would
-/// send (the reverse proxy forwards `/<bucket>/` as is).
-fn to_storage(method: Method, url: &str) -> reqwest::RequestBuilder {
-    let url = url::Url::parse(url).unwrap();
+/// Sends the relative presigned `url` to the storage, with the Host the
+/// browser of `tenant` sends (the reverse proxy forwards `/<bucket>/` as is).
+fn to_storage(tenant: &SeedTenant, method: Method, url: &str) -> reqwest::RequestBuilder {
     let endpoint = std::env::var("TEST_S3_ENDPOINT").unwrap_or_else(|_| "http://127.0.0.1:58333".to_owned());
     reqwest::Client::new()
-        .request(
-            method,
-            format!("{endpoint}{}?{}", url.path(), url.query().unwrap_or_default()),
-        )
-        .header("host", url.host_str().unwrap())
+        .request(method, format!("{endpoint}{url}"))
+        .header("host", format!("{}.example.test", tenant.slug))
 }
 
 /// Announces `content` as `name`, uploads it and says so: the attachment.
@@ -137,7 +133,7 @@ async fn upload(
     )
     .await;
     assert_eq!(status, 201, "{announced}");
-    let put = to_storage(Method::PUT, announced["uploadUrl"].as_str().unwrap())
+    let put = to_storage(tenant, Method::PUT, announced["uploadUrl"].as_str().unwrap())
         .body(content.to_vec())
         .send()
         .await
@@ -214,13 +210,8 @@ async fn a_file_goes_to_the_storage_is_scanned_then_downloads_as_an_attachment()
     assert_eq!(status, 201, "{announced}");
     let url = announced["uploadUrl"].as_str().unwrap();
     assert!(
-        url.starts_with(&format!(
-            "https://{}.example.test/{}/{}/uploads/",
-            t.slug,
-            testkit::TEST_BUCKET,
-            t.id
-        )),
-        "{url}"
+        url.starts_with(&format!("/{}/{}/uploads/", testkit::TEST_BUCKET, t.id)),
+        "a path on the origin the browser uses: {url}"
     );
     assert_eq!(
         (
@@ -241,7 +232,7 @@ async fn a_file_goes_to_the_storage_is_scanned_then_downloads_as_an_attachment()
     ))
     .await;
     assert_problem(status, &early, 409, "attachment.not_uploaded");
-    let put = to_storage(Method::PUT, url)
+    let put = to_storage(t, Method::PUT, url)
         .body(content.clone())
         .send()
         .await
@@ -298,7 +289,7 @@ async fn a_file_goes_to_the_storage_is_scanned_then_downloads_as_an_attachment()
     assert_eq!(redirected.status(), 303);
     assert_eq!(redirected.headers()["cache-control"], "no-store");
     let location = redirected.headers()["location"].to_str().unwrap().to_owned();
-    let file = to_storage(Method::GET, &location).send().await.unwrap();
+    let file = to_storage(t, Method::GET, &location).send().await.unwrap();
     assert_eq!(
         file.headers()["content-type"],
         "application/octet-stream",
@@ -334,7 +325,7 @@ async fn a_file_goes_to_the_storage_is_scanned_then_downloads_as_an_attachment()
     .await
     .unwrap();
     assert_eq!(thumbnail.status(), 303);
-    let png = to_storage(Method::GET, thumbnail.headers()["location"].to_str().unwrap())
+    let png = to_storage(t, Method::GET, thumbnail.headers()["location"].to_str().unwrap())
         .send()
         .await
         .unwrap();

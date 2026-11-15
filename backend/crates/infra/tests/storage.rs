@@ -10,26 +10,22 @@ use infra::antivirus::{self, Verdict};
 use infra::id::new_id;
 use infra::storage::{content_disposition, upload_key};
 
-/// The public address presigned URLs are signed for: the reverse proxy
-/// keeps the browser's Host when it forwards `/<bucket>/` to the storage.
-const PUBLIC: &str = "https://planner.example.test";
+/// The host the browser reached the application through: presigned URLs
+/// are signed for it, and the reverse proxy keeps it when it forwards
+/// `/<bucket>/` to the storage.
+const HOST: &str = "planner.example.test:8443";
 
-/// Sends a request for the presigned `url` (signed for [`PUBLIC`]) to the
-/// storage itself, with the Host the browser would send.
-fn through_proxy(
-    client: &reqwest::Client,
-    method: reqwest::Method,
-    url: &url::Url,
-) -> reqwest::RequestBuilder {
+/// Sends a request for the relative presigned `url` to the storage itself,
+/// with the Host the browser would send.
+fn through_proxy(client: &reqwest::Client, method: reqwest::Method, url: &str) -> reqwest::RequestBuilder {
     let endpoint = std::env::var("TEST_S3_ENDPOINT").unwrap_or_else(|_| "http://127.0.0.1:58333".to_owned());
-    let target = format!("{endpoint}{}?{}", url.path(), url.query().unwrap_or_default());
     client
-        .request(method, target)
-        .header("host", url.host_str().unwrap())
+        .request(method, format!("{endpoint}{url}"))
+        .header("host", HOST)
 }
 
 #[tokio::test]
-async fn files_go_up_and_down_through_presigned_urls_of_the_public_origin() {
+async fn files_go_up_and_down_through_presigned_urls_of_the_browsers_origin() {
     let storage = testkit::storage().await;
     storage.ensure_bucket().await.unwrap();
     let client = reqwest::Client::new();
@@ -37,10 +33,10 @@ async fn files_go_up_and_down_through_presigned_urls_of_the_public_origin() {
     let key = upload_key(tenant, new_id());
     let content = b"Recette OIDC: OK".to_vec();
 
-    let url = storage.upload_url(PUBLIC, &key, content.len() as u64).unwrap();
+    let url = storage.upload_url(HOST, &key, content.len() as u64).unwrap();
     assert!(
-        url.as_str()
-            .starts_with(&format!("{PUBLIC}/{}/{tenant}/uploads/", testkit::TEST_BUCKET))
+        url.starts_with(&format!("/{}/{tenant}/uploads/", testkit::TEST_BUCKET)),
+        "a path on the browser's origin: {url}"
     );
     // Another size than the one signed: refused.
     let refused = through_proxy(&client, reqwest::Method::PUT, &url)
@@ -65,7 +61,7 @@ async fn files_go_up_and_down_through_presigned_urls_of_the_public_origin() {
     // Read back as a download, whatever was uploaded.
     let disposition = content_disposition("attachment", "Recette été.txt");
     let url = storage
-        .download_url(PUBLIC, &key, "application/octet-stream", &disposition)
+        .download_url(HOST, &key, "application/octet-stream", &disposition)
         .unwrap();
     let read = through_proxy(&client, reqwest::Method::GET, &url)
         .send()
@@ -76,13 +72,21 @@ async fn files_go_up_and_down_through_presigned_urls_of_the_public_origin() {
     assert_eq!(read.headers()["content-type"], "application/octet-stream");
     assert_eq!(read.bytes().await.unwrap().as_ref(), content.as_slice());
     // A tampered URL is refused.
-    let mut tampered = url.clone();
-    tampered.set_path(&url.path().replace("/uploads/", "/thumbnails/"));
+    let tampered = url.replace("/uploads/", "/thumbnails/");
     let forbidden = through_proxy(&client, reqwest::Method::GET, &tampered)
         .send()
         .await
         .unwrap();
     assert_eq!(forbidden.status(), 403);
+    // Signed for another host than the one used: refused.
+    let endpoint = std::env::var("TEST_S3_ENDPOINT").unwrap_or_else(|_| "http://127.0.0.1:58333".to_owned());
+    let elsewhere = client
+        .get(format!("{endpoint}{url}"))
+        .header("host", "other.example.test")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(elsewhere.status(), 403);
 
     // The services write and read directly; a tenant's files go by prefix.
     let other = format!("{tenant}/thumbnails/x.png");
