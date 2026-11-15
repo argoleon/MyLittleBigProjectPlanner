@@ -1,0 +1,172 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT c.id, c.issue_id, c.author_id, a.display_name AS \"author_name?\", c.visibility, c.source, c.content,\n               c.content_html, c.mentions, c.edited_at, c.deleted_at, c.created_at, c.version\n        FROM comment c\n        LEFT JOIN account a ON a.id = c.author_id\n        WHERE c.id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "comment",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "issue_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "comment",
+            "name": "issue_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "author_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "comment",
+            "name": "author_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "author_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "account",
+            "name": "display_name"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "visibility",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comment",
+            "name": "visibility"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "source",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comment",
+            "name": "source"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "content",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "comment",
+            "name": "content"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "content_html",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comment",
+            "name": "content_html"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "mentions",
+        "type_info": "UuidArray",
+        "origin": {
+          "Table": {
+            "table": "comment",
+            "name": "mentions"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "edited_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "comment",
+            "name": "edited_at"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "deleted_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "comment",
+            "name": "deleted_at"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "comment",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "version",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "comment",
+            "name": "version"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "07448ffb2d477dacec5e870138946dd92eabc54ef6b5484c2292b30bc00fedd5"
+}

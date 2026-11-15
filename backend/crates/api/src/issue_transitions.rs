@@ -10,18 +10,21 @@
 //! fields required at the target status must then hold a value. The ticket
 //! takes the target status and writes `issue.transitioned` to the outbox.
 //!
-//! The "add a comment" post-function is carried by the event only until
-//! comments exist (L05-US04, #145).
+//! Its "add a comment" post-functions write internal comments (L05-US04),
+//! by the member who ran it, in the same transaction.
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use axum::extract::State;
 use axum::http::HeaderMap;
 use axum::response::{IntoResponse, Response};
+use domain::comments::Visibility;
 use domain::fields::{Step, Value};
 use domain::issues::{Current, IssueChanges, missing_required, validate_changes};
+use domain::rich_text::{Block, Doc, Inline};
 use domain::transitions::{Actor, Change, Condition, Refusal, Rules, Ticket, allowed, apply, evaluate};
 use domain::validation::FieldError;
+use infra::comments::Source;
 use infra::issues::{self as repo, Issue};
 use infra::uuid::Uuid;
 use infra::workflows::Transition;
@@ -400,6 +403,13 @@ pub async fn run(
     let stored = serde_json::Value::Object(stored);
     let from = issue.status_id;
     let moved = repo::transition(&mut tx, issue.id, to, assignee, &stored).await?;
+    for text in &comments {
+        let doc = Doc(vec![Block::Paragraph(vec![Inline::Text {
+            text: text.clone(),
+            marks: Vec::new(),
+        }])]);
+        crate::issue_comments::write(&mut tx, &moved, Source::Transition, Visibility::Internal, &doc).await?;
+    }
     let actor_id = tx.account_id();
     infra::outbox::record(
         &mut tx,

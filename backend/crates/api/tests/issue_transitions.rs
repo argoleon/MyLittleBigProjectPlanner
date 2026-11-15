@@ -436,6 +436,21 @@ async fn a_ticket_goes_through_its_workflow_with_the_rules_of_each_transition() 
         json!([{"field": "assigneeId", "old": null, "new": hugo}])
     );
     assert_eq!(moves[2]["comments"], json!(["Validated"]));
+    // Its "add a comment" is an internal comment by whoever ran it (L05-US04).
+    let comments = get(&api, t, "/api/v1/issues/PLAT-1/comments").await;
+    assert_eq!(comments.as_array().unwrap().len(), 1);
+    assert_eq!(
+        (
+            &comments[0]["contentHtml"],
+            &comments[0]["visibility"],
+            &comments[0]["byTransition"]
+        ),
+        (&json!("<p>Validated</p>"), &json!("internal"), &json!(true))
+    );
+    assert_eq!(
+        comments[0]["author"]["id"],
+        json!(api.session(t).member.account_id)
+    );
     assert_eq!(
         moves[2]["changes"],
         json!([{"field": format!("fields.{}", setup.remaining), "old": 4, "new": null}])

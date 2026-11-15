@@ -18,8 +18,20 @@ pub enum Mark {
 /// What a paragraph or a heading holds.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Inline {
-    Text { text: String, marks: Vec<Mark> },
+    Text {
+        text: String,
+        marks: Vec<Mark>,
+    },
     HardBreak,
+    /// `@person` (L05-US04): an account, with its name when written.
+    Mention {
+        id: u128,
+        label: String,
+    },
+    /// A ticket picked by its key (L05-US04, `#` in the editor).
+    IssueRef {
+        key: String,
+    },
 }
 
 /// A block of a document.
@@ -101,6 +113,40 @@ impl Doc {
         out.trim_end().to_owned()
     }
 
+    /// The accounts it mentions, once each, in order.
+    pub fn mentions(&self) -> Vec<u128> {
+        let mut found = Vec::new();
+        for_each_inline(&self.0, &mut |inline| {
+            if let Inline::Mention { id, .. } = inline
+                && !found.contains(id)
+            {
+                found.push(*id);
+            }
+        });
+        found
+    }
+
+    /// The ticket keys it refers to, picked or typed (`PLAT-120`, not in
+    /// code nor in a link), once each, in order.
+    pub fn issue_refs(&self) -> Vec<String> {
+        let mut found: Vec<String> = Vec::new();
+        let mut add = |key: &str| {
+            if !found.iter().any(|k| k == key) {
+                found.push(key.to_owned());
+            }
+        };
+        for_each_inline(&self.0, &mut |inline| match inline {
+            Inline::IssueRef { key } => add(key),
+            Inline::Text { text, marks } if links_keys(marks) => {
+                for (start, end) in key_spans(text) {
+                    add(&text[start..end]);
+                }
+            }
+            _ => {}
+        });
+        found
+    }
+
     /// Its HTML, safe to show: escaped text, allowed elements only.
     pub fn to_html(&self) -> String {
         let mut out = String::new();
@@ -126,8 +172,69 @@ fn plain_inlines(inlines: &[Inline], out: &mut String) {
         match inline {
             Inline::Text { text, .. } => out.push_str(text),
             Inline::HardBreak => out.push('\n'),
+            Inline::Mention { label, .. } => {
+                out.push('@');
+                out.push_str(label);
+            }
+            Inline::IssueRef { key } => out.push_str(key),
         }
     }
+}
+
+/// Calls `f` with every inline of `blocks`, in order.
+fn for_each_inline(blocks: &[Block], f: &mut impl FnMut(&Inline)) {
+    for block in blocks {
+        match block {
+            Block::Paragraph(content) | Block::Heading { content, .. } => content.iter().for_each(&mut *f),
+            Block::BulletList(items) | Block::OrderedList { items, .. } => {
+                for item in items {
+                    for_each_inline(item, f);
+                }
+            }
+            Block::Blockquote(blocks) => for_each_inline(blocks, f),
+            Block::CodeBlock(_) | Block::HorizontalRule => {}
+        }
+    }
+}
+
+/// Whether ticket keys typed in text with `marks` become links: not in
+/// code, not already in a link.
+fn links_keys(marks: &[Mark]) -> bool {
+    !marks.iter().any(|m| matches!(m, Mark::Code | Mark::Link(_)))
+}
+
+/// Where `text` holds ticket keys (`PLAT-120`), whole words only: byte
+/// ranges.
+pub fn key_spans(text: &str) -> Vec<(usize, usize)> {
+    let bytes = text.as_bytes();
+    let word = |b: u8| b.is_ascii_alphanumeric() || b == b'_' || b == b'-';
+    let mut spans = Vec::new();
+    let mut i = 0;
+    while i < bytes.len() {
+        let starts_word = i == 0 || !word(bytes[i - 1]);
+        if starts_word && bytes[i].is_ascii_uppercase() {
+            let mut end = i;
+            while end < bytes.len() && word(bytes[end]) {
+                end += 1;
+            }
+            if crate::issues::parse_key(&text[i..end]).is_some() {
+                spans.push((i, end));
+            }
+            i = end.max(i + 1);
+        } else {
+            i += 1;
+        }
+    }
+    spans
+}
+
+/// A link to the ticket `key` in the application.
+fn issue_link(key: &str, out: &mut String) {
+    out.push_str("<a class=\"issue-ref\" href=\"/issues/");
+    out.push_str(&escape(key));
+    out.push_str("\">");
+    out.push_str(&escape(key));
+    out.push_str("</a>");
 }
 
 fn plain_block(block: &Block, out: &mut String) {
@@ -176,6 +283,14 @@ fn html_inlines(inlines: &[Inline], out: &mut String) {
     for inline in inlines {
         match inline {
             Inline::HardBreak => out.push_str("<br>"),
+            Inline::Mention { id, label } => {
+                out.push_str("<span class=\"mention\" data-id=\"");
+                out.push_str(&crate::fields::format_uuid(*id));
+                out.push_str("\">@");
+                out.push_str(&escape(label));
+                out.push_str("</span>");
+            }
+            Inline::IssueRef { key } => issue_link(key, out),
             Inline::Text { text, marks } => {
                 let mut closing = Vec::new();
                 for mark in marks {
@@ -205,7 +320,17 @@ fn html_inlines(inlines: &[Inline], out: &mut String) {
                         Mark::Link(_) => {}
                     }
                 }
-                out.push_str(&escape(text));
+                if links_keys(marks) {
+                    let mut from = 0;
+                    for (start, end) in key_spans(text) {
+                        out.push_str(&escape(&text[from..start]));
+                        issue_link(&text[start..end], out);
+                        from = end;
+                    }
+                    out.push_str(&escape(&text[from..]));
+                } else {
+                    out.push_str(&escape(text));
+                }
                 for close in closing.iter().rev() {
                     out.push_str(close);
                 }
@@ -372,5 +497,92 @@ mod tests {
         }
         assert_eq!(Doc(vec![deep]).validate(), Err(Refusal::TooDeep));
         assert_eq!(Refusal::TooDeep.code(), "too_deep");
+    }
+
+    #[test]
+    fn mentions_and_ticket_references_are_found_once_each() {
+        let doc = Doc(vec![
+            Block::Paragraph(vec![
+                Inline::Mention {
+                    id: 7,
+                    label: "Camille Martin".into(),
+                },
+                text(" see PLAT-120 and CRM-2, and PLAT-120 again"),
+                Inline::IssueRef { key: "OPS-9".into() },
+            ]),
+            Block::BulletList(vec![vec![Block::Paragraph(vec![
+                Inline::Mention {
+                    id: 7,
+                    label: "Camille".into(),
+                },
+                Inline::Mention {
+                    id: 8,
+                    label: "Hugo".into(),
+                },
+                Inline::Text {
+                    text: "not CODE-1".into(),
+                    marks: vec![Mark::Code],
+                },
+            ])]]),
+            Block::CodeBlock("LOG-3 in code".into()),
+        ]);
+        assert_eq!(doc.mentions(), [7, 8]);
+        assert_eq!(doc.issue_refs(), ["PLAT-120", "CRM-2", "OPS-9"]);
+        assert_eq!(
+            doc.plain_text(),
+            "@Camille Martin see PLAT-120 and CRM-2, and PLAT-120 againOPS-9\n@Camille@Hugonot CODE-1\nLOG-3 in code"
+        );
+    }
+
+    #[test]
+    fn ticket_keys_are_whole_words() {
+        let keys = |text: &str| {
+            key_spans(text)
+                .into_iter()
+                .map(|(s, e)| text[s..e].to_owned())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(keys("PLAT-120, (CRM-2) and AB-1."), ["PLAT-120", "CRM-2", "AB-1"]);
+        for none in [
+            "xPLAT-120",
+            "PLAT-120x",
+            "plat-120",
+            "PLAT-0",
+            "P-1",
+            "PLAT_1",
+            "PLAT-120-3",
+            "été PLAT-",
+        ] {
+            assert_eq!(keys(none), Vec::<String>::new(), "{none}");
+        }
+        assert_eq!(keys("é PLAT-1 à"), ["PLAT-1"]);
+    }
+
+    #[test]
+    fn mentions_and_keys_are_rendered_escaped_and_linked() {
+        let doc = Doc(vec![Block::Paragraph(vec![
+            Inline::Mention {
+                id: 0x1f,
+                label: "<img src=x onerror=alert(1)>".into(),
+            },
+            text(" fixed in PLAT-120 <script>"),
+            Inline::Text {
+                text: "PLAT-121".into(),
+                marks: vec![Mark::Code],
+            },
+            Inline::Text {
+                text: "PLAT-122".into(),
+                marks: vec![Mark::Link("https://example.org".into())],
+            },
+            Inline::IssueRef { key: "OPS-9".into() },
+        ])]);
+        assert_eq!(
+            doc.to_html(),
+            "<p><span class=\"mention\" data-id=\"00000000-0000-0000-0000-00000000001f\">@&lt;img src=x onerror=alert(1)&gt;</span> \
+             fixed in <a class=\"issue-ref\" href=\"/issues/PLAT-120\">PLAT-120</a> &lt;script&gt;\
+             <code>PLAT-121</code>\
+             <a href=\"https://example.org\" rel=\"noopener noreferrer nofollow\" target=\"_blank\">PLAT-122</a>\
+             <a class=\"issue-ref\" href=\"/issues/OPS-9\">OPS-9</a></p>"
+        );
     }
 }

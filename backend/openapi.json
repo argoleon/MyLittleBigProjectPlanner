@@ -1307,6 +1307,387 @@
         }
       }
     },
+    "/api/v1/issues/{idOrKey}/comments": {
+      "get": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "The comments of a ticket",
+        "description": "Whoever sees its project: internal and public comments, oldest first, deleted ones as placeholders. The portal (L13) will only ever return public ones.",
+        "operationId": "listIssueComments",
+        "parameters": [
+          {
+            "name": "idOrKey",
+            "in": "path",
+            "description": "Id, key or former key of the ticket",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The comments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IssueComment"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such ticket visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Comment on a ticket",
+        "description": "Members with `comment` on its project (tenant admins always). Writes `comment.created` to the event outbox, with the accounts mentioned.",
+        "operationId": "createIssueComment",
+        "parameters": [
+          {
+            "name": "idOrKey",
+            "in": "path",
+            "description": "Id, key or former key of the ticket",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of the labels",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "The comment",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the comment"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueComment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`: `content` (`required`, `invalid`, `too_long`, `too_deep`, `unknown_member`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`permission.denied`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such ticket visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`node.archived`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/issues/{idOrKey}/comments/{commentId}": {
+      "put": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Edit a comment",
+        "description": "Its author, while they hold `comment` on the project. Writes `comment.updated` to the event outbox with the text before and after, and the accounts mentioned.",
+        "operationId": "updateIssueComment",
+        "parameters": [
+          {
+            "name": "idOrKey",
+            "in": "path",
+            "description": "Id, key or former key of the ticket",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "commentId",
+            "in": "path",
+            "description": "Id of the comment",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the version edited, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The comment",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the comment"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueComment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`: `content`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`permission.denied`: not its author, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such ticket visible to the member, or comment of it (deleted included)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`node.archived`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "`precondition_failed`: the comment changed since this version",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`precondition_required`: `If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Delete a comment",
+        "description": "Its author while they hold `comment`, or those who administer the project (moderation). Its content goes; a placeholder stays. Writes `comment.deleted` to the event outbox with the text it had.",
+        "operationId": "deleteIssueComment",
+        "parameters": [
+          {
+            "name": "idOrKey",
+            "in": "path",
+            "description": "Id, key or former key of the ticket",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "commentId",
+            "in": "path",
+            "description": "Id of the comment",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`permission.denied`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such ticket visible to the member, or comment of it (deleted included)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`node.archived`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/issues/{idOrKey}/edit-form": {
       "get": {
         "tags": [
@@ -13980,6 +14361,48 @@
           "type": "string"
         }
       },
+      "CommentBody": {
+        "type": "object",
+        "description": "A comment to write, or what an edit makes of it.",
+        "required": [
+          "content"
+        ],
+        "properties": {
+          "content": {
+            "description": "A rich text document (Tiptap JSON): the description's nodes and\nmarks, `mention` (`attrs.id`: an active member) and `issueRef`\n(`attrs.id`: a ticket key). Ticket keys typed in text become links."
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/CommentVisibility",
+            "description": "`internal` by default."
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "content": {
+            "content": [
+              {
+                "content": [
+                  {
+                    "text": "Done in PLAT-120",
+                    "type": "text"
+                  }
+                ],
+                "type": "paragraph"
+              }
+            ],
+            "type": "doc"
+          },
+          "visibility": "internal"
+        }
+      },
+      "CommentVisibility": {
+        "type": "string",
+        "description": "Who sees a comment.",
+        "enum": [
+          "internal",
+          "public"
+        ]
+      },
       "ConfigField": {
         "type": "object",
         "description": "A field of a configuration.",
@@ -15392,6 +15815,84 @@
           "fields": {},
           "priority": "highest",
           "summary": "Migrate to OIDC"
+        }
+      },
+      "IssueComment": {
+        "type": "object",
+        "description": "A comment of a ticket.",
+        "required": [
+          "id",
+          "author",
+          "visibility",
+          "byTransition",
+          "content",
+          "contentHtml",
+          "deleted",
+          "createdAt",
+          "editedAt",
+          "version",
+          "canEdit",
+          "canDelete"
+        ],
+        "properties": {
+          "author": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/IssuePerson",
+                "description": "None: an erased account."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "byTransition": {
+            "type": "boolean",
+            "description": "Written by a workflow transition (its \"add a comment\")."
+          },
+          "canDelete": {
+            "type": "boolean",
+            "description": "The member reading may delete it."
+          },
+          "canEdit": {
+            "type": "boolean",
+            "description": "The member reading may edit it."
+          },
+          "content": {
+            "description": "The rich text document, as the editor reads it; `null` once deleted."
+          },
+          "contentHtml": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Sanitized HTML to show; `null` once deleted."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "editedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/CommentVisibility"
+          }
         }
       },
       "IssueEditForm": {
