@@ -63,6 +63,20 @@
   background: var(--mat-sys-surface);
 }
 
+.tabs {
+  padding-top: 0;
+
+  // The tab bar spans the card, as in mockup 03; the panels keep its padding.
+  mat-tab-group {
+    margin: 0 calc(-1 * var(--app-space-5));
+  }
+
+  app-issue-activity,
+  app-issue-comments {
+    padding: var(--app-space-3) var(--app-space-5) 0;
+  }
+}
+
 .card-title {
   margin: 0 0 var(--app-space-3);
   font: var(--mat-sys-title-medium);

@@ -1307,6 +1307,101 @@
         }
       }
     },
+    "/api/v1/issues/{idOrKey}/activity": {
+      "get": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "The history of a ticket",
+        "description": "Whoever sees its project. Newest first: each field a change set with its old and new values, creation, moves, links (those to tickets the member sees), comments written, edited or deleted (the content of a deleted one for moderators only); who and from where (`origin`).",
+        "operationId": "listIssueActivity",
+        "parameters": [
+          {
+            "name": "idOrKey",
+            "in": "path",
+            "description": "Id, key or former key of the ticket",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, from 1 to 200 (default 50).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "`nextCursor` of the previous page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of the labels",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid `limit` or `cursor`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such ticket visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/issues/{idOrKey}/comments": {
       "get": {
         "tags": [
@@ -14305,6 +14400,212 @@
         "enum": [
           "internal",
           "external"
+        ]
+      },
+      "ActivityAction": {
+        "type": "string",
+        "description": "What an entry records.",
+        "enum": [
+          "created",
+          "updated",
+          "moved",
+          "link_added",
+          "link_removed",
+          "comment_created",
+          "comment_updated",
+          "comment_deleted"
+        ]
+      },
+      "ActivityEntry": {
+        "type": "object",
+        "description": "An entry of the history of a ticket.",
+        "required": [
+          "id",
+          "changeId",
+          "action",
+          "field",
+          "fieldLabel",
+          "relation",
+          "old",
+          "new",
+          "actor",
+          "origin",
+          "createdAt"
+        ],
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/ActivityAction"
+          },
+          "actor": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/IssuePerson",
+                "description": "Who made the change; `null`: the system (`origin` `system`) or an\naccount no longer a member. Erased members show as \"Deleted user #N\"."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "changeId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Entries written by one change share it."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "field": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ActivityField",
+                "description": "The field an `updated` entry changed."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fieldLabel": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The label of a custom field, in the request's language; `null` for\nsystem fields, or a field no longer in the ticket's configuration."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "new": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ActivityValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "old": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ActivityValue",
+                "description": "The value before; `null`: nothing, or not shown (comments)."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "origin": {
+            "$ref": "#/components/schemas/ActivityOrigin"
+          },
+          "relation": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/IssueRelation",
+                "description": "How a link added or removed reads from this ticket."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "ActivityField": {
+        "type": "string",
+        "description": "The field an `updated` entry changed.",
+        "enum": [
+          "type",
+          "status",
+          "summary",
+          "description",
+          "priority",
+          "reporter",
+          "assignee",
+          "startDate",
+          "dueDate",
+          "parent",
+          "custom"
+        ]
+      },
+      "ActivityOrigin": {
+        "type": "string",
+        "description": "Where a change came from.",
+        "enum": [
+          "interface",
+          "api",
+          "mcp",
+          "import",
+          "system"
+        ]
+      },
+      "ActivityPage": {
+        "type": "object",
+        "description": "A page of the history of a ticket.",
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityEntry"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cursor of the next (older) page, `null` on the last page."
+          }
+        }
+      },
+      "ActivityValue": {
+        "type": "object",
+        "description": "A value of an entry.",
+        "required": [
+          "kind",
+          "text",
+          "html"
+        ],
+        "properties": {
+          "html": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Sanitized HTML of a rich text value."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ActivityValueKind"
+          },
+          "text": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ActivityValueKind": {
+        "type": "string",
+        "description": "How to show a value.",
+        "enum": [
+          "text",
+          "richText",
+          "date",
+          "dateTime",
+          "priority",
+          "boolean",
+          "number",
+          "person",
+          "issue"
         ]
       },
       "AssignTarget": {

@@ -1,8 +1,9 @@
-import { Component, computed, inject, input, resource } from '@angular/core';
+import { Component, computed, inject, input, resource, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatTabsModule } from '@angular/material/tabs';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import {
@@ -23,6 +24,7 @@ import {
 } from 'ui';
 
 import type { EditOutcome } from './issue-edit-dialog';
+import { IssueActivity } from './issue-activity';
 import { IssueComments } from './issue-comments';
 import { createIssueFlow } from './issue-flow';
 import { IssueParentDialog, ParentOutcome } from './issue-parent-dialog';
@@ -34,13 +36,15 @@ import { chipCategory, chipKind } from './issue-fields';
 /**
  * A ticket (mockup 03, L05-US01): its type and key, summary, status,
  * description, details and custom fields, and the project it belongs to.
- * Those who create tickets in the project add sub-tasks from here.
+ * Those who create tickets in the project add sub-tasks from here. Its
+ * history and comments share a card, in tabs (L05-US06).
  */
 @Component({
   selector: 'app-issue-page',
   imports: [
     ErrorState,
     InstantPipe,
+    IssueActivity,
     IssueComments,
     IssueRelations,
     IssueStatus,
@@ -49,6 +53,7 @@ import { chipCategory, chipKind } from './issue-fields';
     MatButtonModule,
     MatIconModule,
     MatProgressBarModule,
+    MatTabsModule,
     Priority,
     RichText,
     RouterLink,
@@ -68,6 +73,11 @@ export class IssuePage {
   private readonly router = inject(Router);
 
   protected readonly chipCategory = chipCategory;
+  /** The number of comments, for their tab's label. */
+  protected readonly commentCount = signal(0);
+  /** Bumped when a comment changes, for the history to read it. */
+  protected readonly activityRevision = signal(0);
+  protected readonly bump = (n: number) => n + 1;
   protected readonly chipKind = chipKind;
 
   protected readonly issue = resource({

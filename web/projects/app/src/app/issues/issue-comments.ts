@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, resource, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, output, resource, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -39,7 +39,8 @@ function refusalOf(error: unknown): string {
  * The comments of a ticket (mockup 03, L05-US04): oldest first, each with
  * its author, date, visibility and rendered content, a placeholder once
  * deleted; written, edited and deleted here, with `@` mentions and `#`
- * ticket references, internal or public.
+ * ticket references, internal or public. Shown in the Comments tab of the
+ * ticket page, which tells their number (`countChange`).
  */
 @Component({
   selector: 'app-issue-comments',
@@ -70,7 +71,15 @@ export class IssueComments {
     params: () => this.issue().id,
     loader: ({ params }) => this.api.invoke(listIssueComments, { idOrKey: params }),
   });
-  protected readonly count = computed(() => (this.comments.hasValue() ? this.comments.value().filter((c) => !c.deleted).length : 0));
+  private readonly count = computed(() => (this.comments.hasValue() ? this.comments.value().filter((c) => !c.deleted).length : 0));
+  /** The number of comments not deleted, for the tab's label. */
+  readonly countChange = output<number>();
+  /** A comment was written, edited or deleted: the history changed. */
+  readonly changed = output<void>();
+
+  constructor() {
+    effect(() => this.countChange.emit(this.count()));
+  }
 
   /** The people `@` offers: members, from the ticket's project. */
   protected readonly people: SuggestionSource = async (query) =>
@@ -107,6 +116,7 @@ export class IssueComments {
       this.content.reset(null);
       this.visibility.set('internal');
       this.comments.reload();
+      this.changed.emit();
     } catch (error) {
       this.errorKey.set(refusalOf(error));
     } finally {
@@ -138,6 +148,7 @@ export class IssueComments {
       });
       this.editing.set(null);
       this.comments.reload();
+      this.changed.emit();
     } catch (error) {
       this.editError.set(isApiProblem(error) && error.status === 412 ? 'issue.comments.conflict' : refusalOf(error));
     } finally {
@@ -160,6 +171,7 @@ export class IssueComments {
         try {
           await this.api.invoke(deleteIssueComment, { idOrKey: this.issue().id, commentId: comment.id });
           this.comments.reload();
+          this.changed.emit();
         } catch (error) {
           this.errorKey.set(refusalOf(error));
         }

@@ -168,11 +168,59 @@ impl ErasureStep for InvitationsSent {
     }
 }
 
+/// The member's comments: emptied (the "Comment deleted" placeholder) when
+/// `purge_comments`, else kept, shown under the pseudonym.
+struct Comments;
+
+impl ErasureStep for Comments {
+    fn name(&self) -> &'static str {
+        "comments"
+    }
+
+    fn run<'a>(&'a self, conn: &'a mut PgConnection, member: &'a ErasedMember) -> StepFuture<'a> {
+        Box::pin(async move {
+            if !member.purge_comments {
+                return Ok(0);
+            }
+            let done = sqlx::query!(
+                r#"
+                UPDATE comment
+                SET content = NULL, content_html = NULL, mentions = '{}', deleted_at = now(), version = version + 1
+                WHERE author_id = $1 AND deleted_at IS NULL
+                "#,
+                member.account_id
+            )
+            .execute(conn)
+            .await?;
+            Ok(done.rows_affected())
+        })
+    }
+}
+
+/// The history of tickets: the member's changes stay, shown under the
+/// pseudonym; the content of their comments goes when `purge_comments`.
+struct History;
+
+impl ErasureStep for History {
+    fn name(&self) -> &'static str {
+        "history"
+    }
+
+    fn run<'a>(&'a self, conn: &'a mut PgConnection, member: &'a ErasedMember) -> StepFuture<'a> {
+        Box::pin(async move {
+            if !member.purge_comments {
+                return Ok(0);
+            }
+            crate::audit::purge_comments_of(conn, member.account_id).await
+        })
+    }
+}
+
 /// The steps of the product. Tables holding a member's content add theirs
 /// here: comments (purged when `purge_comments`, else kept under the
 /// pseudonym), history, attachments' uploader…
 pub fn steps() -> Vec<Box<dyn ErasureStep>> {
-    vec![Box::new(InvitationsSent)]
+    vec![Box::new(InvitationsSent), Box::new(Comments), Box::new(History)]
 }
 
 /// Runs `steps` for `member` in the current tenant: each step's name and the

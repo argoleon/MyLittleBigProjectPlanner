@@ -2,7 +2,8 @@
  * Tickets on the production stack, nothing mocked (L05-US01): the tenant
  * admin creates a project, then a story from the project's page with a
  * rich description, lands on its page with the project's first key, finds
- * it in "My tickets", and adds a sub-task under it.
+ * it in "My tickets", and adds a sub-task under it. Later stories: edits,
+ * moves, links, transitions, comments, and the history of a ticket.
  *
  * Runs with `just compose-e2e` only: deploy/tests/e2e.sh creates the admin
  * and passes E2E_ADMIN_EMAIL and E2E_ADMIN_SECRET.
@@ -258,8 +259,9 @@ test('a comment mentions a member and refers to a ticket, then is edited and del
   }
 
   // On the second: a mention of the admin (picked with the keyboard) and the first by its key.
+  // The comments are in their tab, next to the activity (L05-US06).
+  await page.getByRole('tab', { name: 'Comments (0)' }).click();
   const section = page.locator('app-issue-comments');
-  await expect(section.getByRole('heading', { name: 'Comments (0)' })).toBeVisible();
   await section.getByRole('textbox', { name: 'Add a comment' }).click();
   await page.keyboard.type('Thanks @');
   await expect(section.getByRole('option').first()).toBeVisible();
@@ -270,7 +272,7 @@ test('a comment mentions a member and refers to a ticket, then is edited and del
   await expect(comment).toHaveCount(1);
   await expect(comment.locator('.mention')).toContainText('@');
   await expect(comment.getByRole('link', { name: `${code}-1` })).toHaveAttribute('href', `/issues/${code}-1`);
-  await expect(section.getByRole('heading', { name: 'Comments (1)' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Comments (1)' })).toBeVisible();
   expect(await accessibilityViolations(page)).toEqual([]);
 
   // Edited, made public; then deleted: a placeholder stays.
@@ -289,5 +291,58 @@ test('a comment mentions a member and refers to a ticket, then is edited and del
 
   // Read again: the placeholder is stored.
   await page.reload();
+  await page.getByRole('tab', { name: 'Comments (0)' }).click();
   await expect(section.locator('.comment .deleted')).toBeVisible();
+});
+
+test('the Activity tab tells who changed what on a ticket, a deleted comment for its moderator', async ({ page }) => {
+  test.setTimeout(120_000);
+  const run = Date.now().toString(36).toUpperCase().slice(-5);
+  const code = `HI${run}`.slice(0, 10);
+  await signIn(page, adminEmail!, adminSecret!);
+  const url = await project(page, `History ${run}`, code);
+  await page.goto(url);
+  await page.getByRole('button', { name: 'New ticket' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('combobox', { name: 'Type' }).click();
+  await page.getByRole('option', { name: 'Story', exact: true }).click();
+  await dialog.getByLabel('Summary').fill(`Draft ${run}`);
+  await dialog.getByRole('button', { name: 'Create' }).click();
+  await expect(page).toHaveURL(new RegExp(`/issues/${code}-1$`));
+
+  // Edited, started, commented on; the comment deleted.
+  await page.getByRole('button', { name: 'Edit' }).click();
+  await dialog.getByLabel('Summary').fill(`History ${run}`);
+  await dialog.getByRole('combobox', { name: 'Priority' }).click();
+  await page.getByRole('option', { name: 'Highest', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(`History ${run}`);
+  await page.getByRole('button', { name: 'Start', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Status: In progress. Change it' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Comments (0)' }).click();
+  const comments = page.locator('app-issue-comments');
+  await comments.getByRole('textbox', { name: 'Add a comment' }).click();
+  await page.keyboard.type('Wrong ticket');
+  await comments.getByRole('button', { name: 'Comment', exact: true }).click();
+  await comments.getByRole('button', { name: /^Delete the comment/ }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
+  await expect(comments.locator('.deleted')).toHaveText('Comment deleted.');
+
+  // The activity, newest first; the admin moderates, so sees what was deleted.
+  await page.getByRole('tab', { name: 'Activity' }).click();
+  const entries = page.locator('app-issue-activity .entry .sentence');
+  await expect(entries.first()).toContainText('deleted a comment');
+  const said = (await entries.allTextContents()).map((s) => s.replace(/\s+/g, ' ').trim());
+  expect(said[1]).toContain('commented');
+  for (const change of [
+    'changed the status: To do → In progress',
+    `changed the summary: Draft ${run} → History ${run}`,
+    'changed the priority: Medium → Highest',
+  ]) {
+    expect(said.filter((s) => s.includes(change)), change).toHaveLength(1);
+  }
+  expect(said.at(-1)).toContain('created the ticket');
+  await page.getByRole('button', { name: 'Show the deleted comment' }).click();
+  await expect(page.locator('app-issue-activity .deleted')).toContainText('Wrong ticket');
+  expect(await accessibilityViolations(page)).toEqual([]);
 });

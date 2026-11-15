@@ -3,6 +3,7 @@
 
 pub mod accounts;
 pub mod aggregates;
+pub mod audit;
 pub mod auth_policy;
 pub mod bootstrap;
 pub mod comments;

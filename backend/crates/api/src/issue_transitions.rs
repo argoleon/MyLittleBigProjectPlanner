@@ -403,6 +403,11 @@ pub async fn run(
     let stored = serde_json::Value::Object(stored);
     let from = issue.status_id;
     let moved = repo::transition(&mut tx, issue.id, to, assignee, &stored).await?;
+    let entries = crate::issue_history::changes(
+        &crate::issue_history::snapshot(&issue, &content),
+        &crate::issue_history::snapshot(&moved, &content),
+    );
+    crate::issue_history::record(&mut tx, moved.id, &entries).await?;
     for text in &comments {
         let doc = Doc(vec![Block::Paragraph(vec![Inline::Text {
             text: text.clone(),

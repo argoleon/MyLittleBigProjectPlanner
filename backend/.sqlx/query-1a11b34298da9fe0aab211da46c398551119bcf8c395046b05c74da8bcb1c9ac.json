@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT c.id, c.issue_id, c.author_id, a.display_name AS \"author_name?\", c.visibility, c.source, c.content,\n               c.content_html, c.mentions, c.edited_at, c.deleted_at, c.created_at, c.version\n        FROM comment c\n        LEFT JOIN account a ON a.id = c.author_id\n        WHERE c.issue_id = $1 AND (NOT $2 OR c.visibility = 'public')\n        ORDER BY c.created_at, c.id\n        ",
+  "query": "\n        SELECT c.id, c.issue_id, c.author_id, app_member_name(c.author_id) AS \"author_name?\", c.visibility, c.source, c.content,\n               c.content_html, c.mentions, c.edited_at, c.deleted_at, c.created_at, c.version\n        FROM comment c\n        WHERE c.issue_id = $1 AND (NOT $2 OR c.visibility = 'public')\n        ORDER BY c.created_at, c.id\n        ",
   "describe": {
     "columns": [
       {
@@ -40,12 +40,7 @@
         "ordinal": 3,
         "name": "author_name?",
         "type_info": "Text",
-        "origin": {
-          "Table": {
-            "table": "account",
-            "name": "display_name"
-          }
-        }
+        "origin": "Expression"
       },
       {
         "ordinal": 4,
@@ -157,7 +152,7 @@
       false,
       false,
       true,
-      true,
+      null,
       false,
       false,
       true,
@@ -169,5 +164,5 @@
       false
     ]
   },
-  "hash": "7e9a137baf5602c1fb53d328c9f33d713df31c8610b37bee19bc35e684895bd6"
+  "hash": "1a11b34298da9fe0aab211da46c398551119bcf8c395046b05c74da8bcb1c9ac"
 }

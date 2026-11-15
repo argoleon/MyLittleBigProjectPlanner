@@ -184,6 +184,16 @@ impl TenantTx {
         self.member.account_id
     }
 
+    /// Who writes, and from where, for the history of tickets: the member,
+    /// from the interface (a session cookie). API tokens (L15) and the MCP server
+    /// (L16) will set their own origin here.
+    pub fn author(&self) -> infra::audit::Author {
+        infra::audit::Author {
+            actor_id: Some(self.member.account_id),
+            origin: domain::audit::Origin::Interface,
+        }
+    }
+
     pub(crate) fn session(&self) -> &Session {
         &self.session
     }

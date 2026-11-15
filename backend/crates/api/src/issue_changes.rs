@@ -33,6 +33,7 @@ use utoipa::ToSchema;
 
 use crate::etag::{etag, require_if_match};
 use crate::extract::{AcceptLanguage, ApiJson, ApiPath};
+use crate::issue_history;
 use crate::issues::{
     Content, FormFieldView, IssueRefView, IssueView, PriorityView, ProjectView, TAG, field_defs, ids_in,
     issue_ref, issue_view, project_of_key, project_view, read_fields, require_create, screen_fields,
@@ -451,6 +452,11 @@ pub async fn update(
         },
     )
     .await?;
+    let entries = issue_history::changes(
+        &issue_history::snapshot(&issue, &content),
+        &issue_history::snapshot(&updated, &content),
+    );
+    issue_history::record(&mut tx, updated.id, &entries).await?;
     let actor = tx.account_id();
     infra::outbox::record(
         &mut tx,
@@ -981,6 +987,12 @@ pub async fn move_issue(
             },
         )
         .await?;
+        let mut entries = vec![issue_history::moved(&issue.key, &moved.key)];
+        entries.extend(issue_history::changes(
+            &issue_history::snapshot(issue, &prepared.source_content),
+            &issue_history::snapshot(&moved, &prepared.target_content),
+        ));
+        issue_history::record(&mut tx, moved.id, &entries).await?;
         infra::outbox::record(
             &mut tx,
             &infra::outbox::Event {

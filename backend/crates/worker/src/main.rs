@@ -109,7 +109,7 @@ async fn run(config: WorkerConfig) -> ExitCode {
 
     let token = CancellationToken::new();
     let health = tokio::spawn(worker::serve_health(listener, token.clone(), dependencies.into()));
-    tokio::spawn(worker::keep_outbox_partitions(
+    tokio::spawn(worker::keep_partitions(
         pool.clone(),
         token.clone(),
         worker::PARTITIONS_EVERY,

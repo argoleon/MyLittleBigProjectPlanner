@@ -10,7 +10,10 @@ A ticket (`issue`) belongs to one project and follows the **published** version 
 | SQL | `backend/crates/infra/src/issues.rs` | `create` (with its key), `find`, `id_of_key`, `of_account` |
 | SQL | `backend/crates/infra/src/rich_text.rs` | Tiptap JSON read into the document, with an allow-list |
 | SQL | `backend/crates/infra/src/outbox.rs` | `record`, `ensure_partitions` |
-| Job | `backend/crates/worker/src/lib.rs` | `keep_outbox_partitions`, every 12 hours |
+| Rules | `backend/crates/domain/src/audit.rs` | History: origins, actions, fields, `diff` |
+| Tables | `backend/migrations/*_audit_log.sql` | `audit_log`, `app_member_name` |
+| SQL | `backend/crates/infra/src/audit.rs` | `record`, `of_issue`, `names`, `ensure_partitions` |
+| Job | `backend/crates/worker/src/lib.rs` | `keep_partitions` (outbox and history), every 12 hours |
 | HTTP | `backend/crates/api/src/issues.rs` | Creation, reading, the creation form, "my tickets", assignable people |
 
 ## What a ticket references
@@ -48,7 +51,7 @@ The ticket gets the initial status of its type's workflow. The creation is idemp
 
 - The rules are those of the type **at the ticket's status** (`domain::issues::validate_changes`, step `Status`): a hidden field takes no value, a required one is not cleared, a deactivated list value is accepted only if the ticket already holds it. Only the fields given are checked: a rule added later does not block other edits.
 - Type, status and parent are not edited here: status changes are transitions (L05-US09, #515), sub-tasks are L05-US03.
-- `issue.updated` goes to the outbox with each changed field, `{field, old, new}` (`summary`, `priority`, `assigneeId`, `fields.{id}`…): the history of L05-US05 reads these. Nothing changed: nothing written, same version.
+- `issue.updated` goes to the outbox with each changed field, `{field, old, new}` (`summary`, `priority`, `assigneeId`, `fields.{id}`…): the history (L05-US06) records the same changes in `audit_log`. Nothing changed: nothing written, same version.
 - `GET …/edit-form` returns the fields of the type's **view** screen at the ticket's status (`screen_fields`), with the deactivated values the ticket holds still offered.
 - Field values carry `references` (id and name of the members, groups or tickets they name), so the client can show and edit them without another lookup.
 
@@ -94,7 +97,19 @@ A ticket changes status only through a transition of its type's workflow (`api::
 - **Deleted**: a placeholder stays (author, date), its content goes; the database keeps that consistent (`comment_content_or_deleted`).
 - **Visibility**: internal by default. Members see both; the portal (L13) must only ever read public ones (`infra::comments::of_issue(…, public_only: true)`).
 - **Mentions and references**: `mention` nodes name accounts, which must be active members (`content` `unknown_member`). Ticket keys typed in text (`PLAT-120`, whole words, not in code nor in a link) or picked (`issueRef` node) become links to `/issues/{key}` (`domain::rich_text::key_spans`).
-- **Events**: `comment.created` (mentions, ticket references, text), `comment.updated` (text before and after, `addedMentions`: only those newly mentioned are to be notified), `comment.deleted` (the text it had). Notifications (L05-US07) and the history (L05-US05) read them.
+- **Events**: `comment.created` (mentions, ticket references, text), `comment.updated` (text before and after, `addedMentions`: only those newly mentioned are to be notified), `comment.deleted` (the text it had). Notifications (L05-US07) read them; the history (L05-US06) records each with its content.
+
+## History (L05-US06)
+
+`audit_log` (`infra::audit`, `api::issue_history`) records who changed what on a ticket, when and from where, **in the transaction of the write**: a refused or failed write records nothing.
+
+- **Entries**: `updated`, one per changed field, with its old and new values (`field`: `status`, `summary`, `dueDate`, `fields.{id}`…); `created`; `moved` (old and new keys); `link_added` / `link_removed` (on both tickets, each with its own reading: `blocks` on one, `blocked_by` on the other); `comment_created` / `comment_updated` / `comment_deleted` (the comment's id and content). Entries of one write share `change_id`.
+- **Diff**: a write takes a snapshot of the ticket before and after (`issue_history::snapshot`) and records what `domain::audit::diff` finds; a field absent or null is the same. Types and statuses are stored with their labels of the time, since the configuration may change or the ticket move; other values as the ticket holds them, resolved when read (names, keys, list labels of the current configuration).
+- **Origin**: `TenantTx::author()` gives the actor and the origin: `interface` for a session today; API tokens (L15) and the MCP server (L16) will set `api` and `mcp`; jobs record `system` with no actor.
+- **Every write path calls it**: creation, edit, move (each ticket moved, sub-tasks included), transition, parent, links, comments. A new write path must call `issue_history::record` too.
+- **Reading**: `GET /api/v1/issues/{idOrKey}/activity`, newest first, keyset pagination on `(created_at, id)` (ids of one change are generated in reverse so that its fields read in order). Links to tickets the reader does not see are left out; the content of a deleted comment shows to moderators only.
+- **Names and erasure**: names come from `app_member_name(account)`: "Deleted user #N" once erased in the tenant, null for an account no longer a member. Tickets (reporter, assignee) and comments use it too. The erasure job's `comments` and `history` steps empty the member's comments and strip their content from the history when `purgeComments` is asked; their other entries stay, under the pseudonym.
+- **Partitions**: by month on `created_at`, like the outbox (`app_ensure_audit_partitions`, a default partition), with the index `(tenant_id, entity_id, created_at)`.
 
 ## Rich text
 
@@ -109,13 +124,13 @@ Comments (L05-US04) reuse the same pipeline, with two more inline nodes: `mentio
 
 ## The event outbox
 
-Every change writes its event with `infra::outbox::record` **in its own transaction** (`issue.created` today). Real time, notifications and webhooks will read this one stream (L05-US06, US07), so it never misses nor invents a change.
+Every change writes its event with `infra::outbox::record` **in its own transaction** (`issue.created` today). Real time, notifications and webhooks will read this one stream (L05-US07, US08), so it never misses nor invents a change.
 
 `outbox_event` is partitioned by month on `created_at`:
 
 - `app_ensure_outbox_partitions(months_ahead)` creates the missing partitions of the current month and of the next ones, each secured like a business table (`app_secure_partition`: row-level security forced, `tenant_isolation` policy). It is `SECURITY DEFINER` so the application role can run it.
-- The migration creates three months ahead; the worker checks again at start and every 12 hours (`keep_outbox_partitions`). A default partition takes the events if a month is ever missing.
-- Old partitions will be dropped once their events are processed (L05-US06).
+- The migration creates three months ahead; the worker checks again at start and every 12 hours (`keep_partitions`). A default partition takes the events if a month is ever missing.
+- Old partitions will be dropped once their events are processed.
 
 ## Adding a ticket endpoint
 
@@ -123,7 +138,7 @@ Follow [Adding an endpoint](new-endpoint.md), and:
 
 - Load the ticket with its project through `visible_issue`: a ticket of a project the member does not see answers 404, like one of another tenant.
 - Read the configuration through `Content::of(project)` (published version only).
-- Write the change's event to the outbox in the same transaction.
+- Write the change's event to the outbox and its history entries (`issue_history::record`) in the same transaction.
 
 ## In the application
 
@@ -135,7 +150,9 @@ Follow [Adding an endpoint](new-endpoint.md), and:
 | Creation dialog, opened by `createIssueFlow` | `web/projects/app/src/app/issues/issue-dialog.ts`, `issue-flow.ts` |
 | A custom field by kind, people and groups | `field-input.ts`, `people-picker.ts`, values in `issue-fields.ts` |
 | Ticket page, "My tickets" | `issue-page.ts` (`/issues/:key`), `my-tickets-page.ts` (`/tickets`) |
+| Activity and Comments tabs of the ticket page | `issue-activity.ts`, sentences in `activity-sentence.ts`; `issue-comments.ts` |
 
 - **Keep Tiptap out of the initial bundle.** The editor is not exported from `ui` but from its own entry point, `ui/rich-text`: a barrel export would pull Tiptap and ProseMirror (about 430 kB) into every page. The creation dialog is loaded on first use by `createIssueFlow`; a new screen that edits rich text (comments, L05-US04) imports `ui/rich-text` from a lazily loaded component too.
 - The editor only offers what the server accepts (no underline, headings 1 to 4, links to `http`, `https` and `mailto`), so a document is never refused for its form.
 - The dialog reads the form for the type chosen (`GET …/issue-form?typeId=`) and keeps a value when the next type has the same field. Errors of the API go to their control (`fields.{id}` included) through `placeApiErrors`.
+- The Activity tab builds each sentence in the browser (`sentenceOf`) from the entry's action, field and values, in the current language and time zone: the API returns labels and names, never sentences. Planning dates go through `formatLocalDate`, instants through `formatInstant`. The tab reads the history again whenever the ticket is read again, or a comment changes (`IssueComments.changed`).

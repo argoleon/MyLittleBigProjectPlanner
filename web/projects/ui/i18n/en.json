@@ -1560,6 +1560,56 @@
       "byTransition": "via the workflow",
       "formerMember": "Former member",
       "conflict": "This comment changed since you opened it: cancel and edit it again."
+    },
+    "activity": {
+      "title": "Activity",
+      "tabs": "Activity and comments",
+      "empty": "No activity yet.",
+      "more": "Show older activity",
+      "system": "The system",
+      "formerMember": "A former member",
+      "created": "created the ticket",
+      "changed": "changed {{ field }}: {{ old }} → {{ new }}",
+      "set": "set {{ field }} to {{ new }}",
+      "cleared": "cleared {{ field }} (was {{ old }})",
+      "changedText": "changed {{ field }}",
+      "moved": "moved the ticket: {{ old }} → {{ new }}",
+      "linkAdded": "added a link: {{ relation }} {{ key }}",
+      "linkRemoved": "removed a link: {{ relation }} {{ key }}",
+      "commented": "commented",
+      "commentEdited": "edited a comment",
+      "commentDeleted": "deleted a comment",
+      "showChange": "Show before and after",
+      "hideChange": "Hide before and after",
+      "before": "Before",
+      "after": "After",
+      "showDeleted": "Show the deleted comment",
+      "hideDeleted": "Hide the deleted comment",
+      "via": {
+        "mcp": "via MCP",
+        "api": "via the API",
+        "import": "by import"
+      },
+      "fields": {
+        "type": "the type",
+        "status": "the status",
+        "summary": "the summary",
+        "description": "the description",
+        "priority": "the priority",
+        "reporter": "the reporter",
+        "assignee": "the assignee",
+        "startDate": "the start date",
+        "dueDate": "the due date",
+        "parent": "the parent",
+        "removed": "a removed field"
+      },
+      "values": {
+        "none": "nothing",
+        "formerMember": "a former member",
+        "deletedIssue": "a deleted ticket",
+        "yes": "yes",
+        "no": "no"
+      }
     }
   }
 }

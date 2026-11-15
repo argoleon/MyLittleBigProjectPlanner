@@ -515,7 +515,12 @@ impl Language {
         (!labels.is_empty()).then(|| labels.join(separator))
     }
 
-    fn display(&self, field: &Field, value: &Value, people: &BTreeMap<Uuid, String>) -> Option<String> {
+    pub(crate) fn display(
+        &self,
+        field: &Field,
+        value: &Value,
+        people: &BTreeMap<Uuid, String>,
+    ) -> Option<String> {
         let ids = |value: &Value| ids_in(value).iter().map(Uuid::as_u128).collect::<Vec<_>>();
         let values = field.options.values.as_deref().unwrap_or_default();
         match field.kind {
@@ -987,6 +992,12 @@ pub async fn create(
             payload: serde_json::json!({"key": issue.key, "projectId": project.id, "typeId": issue.type_id}),
             actor_id: Some(actor),
         },
+    )
+    .await?;
+    crate::issue_history::record(
+        &mut tx,
+        issue.id,
+        &[infra::audit::Entry::action(domain::audit::Action::Created)],
     )
     .await?;
     tracing::info!(target: "audit", actor = %actor, issue = %issue.id, key = %issue.key, "ticket created");

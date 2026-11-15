@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT i.id, i.project_id, i.key, i.key_number, i.type_id, i.status_id, i.parent_id, i.summary,\n               i.description, i.priority, i.reporter_id, r.display_name AS \"reporter_name?\", i.assignee_id,\n               a.display_name AS \"assignee_name?\", i.start_date, i.due_date, i.fields, i.created_at, i.updated_at,\n               i.version\n        FROM issue i\n        LEFT JOIN account r ON r.id = i.reporter_id\n        LEFT JOIN account a ON a.id = i.assignee_id\n        WHERE (i.assignee_id = $1 OR i.reporter_id = $1)\n          AND ($2::timestamptz IS NULL OR (i.created_at, i.id) < ($2, $3))\n        ORDER BY i.created_at DESC, i.id DESC\n        LIMIT $4\n        ",
+  "query": "\n        SELECT i.id, i.project_id, i.key, i.key_number, i.type_id, i.status_id, i.parent_id, i.summary,\n               i.description, i.priority, i.reporter_id, app_member_name(i.reporter_id) AS \"reporter_name?\", i.assignee_id,\n               app_member_name(i.assignee_id) AS \"assignee_name?\", i.start_date, i.due_date, i.fields, i.created_at, i.updated_at,\n               i.version\n        FROM issue i\n        WHERE i.id = ANY($1)\n        ",
   "describe": {
     "columns": [
       {
@@ -128,12 +128,7 @@
         "ordinal": 11,
         "name": "reporter_name?",
         "type_info": "Text",
-        "origin": {
-          "Table": {
-            "table": "account",
-            "name": "display_name"
-          }
-        }
+        "origin": "Expression"
       },
       {
         "ordinal": 12,
@@ -150,12 +145,7 @@
         "ordinal": 13,
         "name": "assignee_name?",
         "type_info": "Text",
-        "origin": {
-          "Table": {
-            "table": "account",
-            "name": "display_name"
-          }
-        }
+        "origin": "Expression"
       },
       {
         "ordinal": 14,
@@ -226,10 +216,7 @@
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Timestamptz",
-        "Uuid",
-        "Int8"
+        "UuidArray"
       ]
     },
     "nullable": [
@@ -244,9 +231,9 @@
       true,
       false,
       true,
-      false,
+      null,
       true,
-      false,
+      null,
       true,
       true,
       false,
@@ -255,5 +242,5 @@
       false
     ]
   },
-  "hash": "998c6e7c6a6931200004d6dccef00d9a2050ce883e1a4142d6c9899b0cef912d"
+  "hash": "14789161d24fc2ddce7f1b3de6714e615168f562d71df84907d45153b7903db4"
 }
