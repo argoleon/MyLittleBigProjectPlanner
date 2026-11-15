@@ -24,6 +24,7 @@ use infra::email::{EMAIL_JOB, EmailJob, MailError, Mailer, render};
 use infra::erasure::{ERASURE_JOB, ErasedMember};
 use infra::exports::{EXPORT_JOB, ExportJob, ExportStore};
 use infra::jobs::ClaimedJob;
+use infra::notifications::{DISPATCH_JOB, DispatchJob};
 use infra::platform::PURGE_TENANT_JOB;
 use infra::sqlx::postgres::{PgConnection, PgPool};
 
@@ -57,9 +58,20 @@ pub struct Jobs {
     pub storage: Option<infra::storage::Storage>,
     /// `host:port` of clamd; without it, scans wait.
     pub clamav: Option<String>,
+    /// `PUBLIC_URL` (with `{tenant}` in multi-tenant mode): links of
+    /// notification emails.
+    pub public_url: Option<String>,
 }
 
 impl Jobs {
+    /// The page of the ticket `key` of the tenant `slug`, if the public
+    /// address is known.
+    pub fn ticket_link(&self, slug: &str, key: &str) -> Option<String> {
+        self.public_url
+            .as_ref()
+            .map(|url| format!("{}/issues/{key}", url.replace("{tenant}", slug)))
+    }
+
     fn storage(&self) -> Result<&infra::storage::Storage, JobError> {
         self.storage
             .as_ref()
@@ -139,6 +151,22 @@ impl JobHandler for Jobs {
                         .map_err(retry)?
                     {
                         tracing::info!(attachment = %expire.attachment_id, "upload never came: forgotten");
+                    }
+                    Ok(())
+                }
+                DISPATCH_JOB => {
+                    let event: DispatchJob = payload(job)?;
+                    let link = |slug: &str, key: &str| self.ticket_link(slug, key);
+                    let dispatched = infra::notifications::dispatch(conn, event.event_id, &link)
+                        .await
+                        .map_err(retry)?;
+                    if dispatched.notified > 0 {
+                        tracing::info!(
+                            event = %event.event_id,
+                            notified = dispatched.notified,
+                            emailed = dispatched.emailed,
+                            "notifications written"
+                        );
                     }
                     Ok(())
                 }

@@ -607,6 +607,9 @@ pub struct WorkerConfig {
     pub storage: Option<StorageConfig>,
     /// `CLAMAV_ADDR` (`host:port` of clamd): the antivirus of attachments.
     pub clamav: Option<String>,
+    /// `PUBLIC_URL`, as the api reads it: links of notification emails.
+    /// Without it, emails name the ticket without a link.
+    pub public_url: Option<String>,
 }
 
 /// Default address of the worker's health endpoint.
@@ -625,6 +628,9 @@ impl WorkerConfig {
             valkey: env.required("VALKEY_URL")?,
             storage: StorageConfig::from_env(env)?,
             clamav: env.get("CLAMAV_ADDR")?,
+            public_url: env
+                .get("PUBLIC_URL")?
+                .map(|url| url.trim_end_matches('/').to_owned()),
         })
     }
 }

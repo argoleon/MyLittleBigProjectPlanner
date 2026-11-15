@@ -22,7 +22,8 @@ pub struct Event<'a> {
     pub actor_id: Option<Uuid>,
 }
 
-/// Records `event` in the current transaction and tenant; its id.
+/// Records `event` in the current transaction and tenant, and queues its
+/// dispatch (`crate::notifications::dispatch`); its id.
 pub async fn record(conn: &mut PgConnection, event: &Event<'_>) -> Result<Uuid, sqlx::Error> {
     let id = crate::id::new_id();
     sqlx::query!(
@@ -37,8 +38,11 @@ pub async fn record(conn: &mut PgConnection, event: &Event<'_>) -> Result<Uuid, 
         event.payload,
         event.actor_id
     )
-    .execute(conn)
+    .execute(&mut *conn)
     .await?;
+    let job = crate::notifications::DispatchJob { event_id: id };
+    let payload = serde_json::to_value(job).map_err(|e| sqlx::Error::Encode(Box::new(e)))?;
+    crate::jobs::enqueue(conn, crate::notifications::DISPATCH_JOB, &payload).await?;
     Ok(id)
 }
 

@@ -20,12 +20,13 @@ import {
 
 import { MyAccount } from '../account/my-account';
 import { NAVIGATION } from '../navigation';
+import { NotificationBell } from '../notifications/notification-bell';
 import { MfaDialog } from './mfa-dialog';
 
 /** Frame of the screens of signed-in members: navigation, top app bar, account. */
 @Component({
   selector: 'app-main-layout',
-  imports: [AccountMenu, RouterOutlet, Shell, TenantSwitcher],
+  imports: [AccountMenu, NotificationBell, RouterOutlet, Shell, TenantSwitcher],
   template: `
     <ui-shell [navItems]="navigation">
       <ui-tenant-switcher
@@ -35,6 +36,7 @@ import { MfaDialog } from './mfa-dialog';
         (switched)="switchTo($event)"
       />
       @if (auth.session(); as session) {
+        <app-notification-bell uiShellTopBar />
         <ui-account-menu
           uiShellTopBar
           [displayName]="session.account.displayName"

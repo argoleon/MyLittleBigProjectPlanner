@@ -1,0 +1,217 @@
+:host {
+  display: block;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--app-space-3);
+  margin-bottom: var(--app-space-4);
+}
+
+.title {
+  margin: 0;
+  font: var(--mat-sys-headline-medium);
+}
+
+.subtitle {
+  margin: var(--app-space-1) 0 0;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  gap: var(--app-space-6);
+  align-items: start;
+
+  @media (width < 1100px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.filters {
+  display: block;
+  margin-bottom: var(--app-space-2);
+}
+
+.period {
+  margin: var(--app-space-4) 0 var(--app-space-2);
+  padding-inline-start: var(--app-space-4);
+  font: var(--mat-sys-label-large);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  gap: var(--app-space-4);
+  width: 100%;
+  padding: var(--app-space-4);
+  border: 0;
+  border-radius: var(--mat-sys-corner-medium);
+  background: transparent;
+  color: var(--mat-sys-on-surface);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--mat-sys-surface-container);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+
+  &.unread {
+    background: var(--mat-sys-surface-container-high);
+
+    .what {
+      font-weight: var(--mat-sys-title-small-weight);
+    }
+  }
+}
+
+.icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--mat-sys-corner-full);
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+}
+
+[data-event='mentioned'] .icon {
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+}
+
+[data-event='assigned'] .icon {
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--app-space-1);
+  min-width: 0;
+}
+
+.what {
+  font: var(--mat-sys-body-large);
+}
+
+.detail {
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--app-space-2);
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.tenant {
+  padding: 0 var(--app-space-2);
+  border-radius: var(--mat-sys-corner-small);
+  background: var(--mat-sys-surface-container-highest);
+}
+
+.empty,
+.hint {
+  margin: 0;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.hint {
+  font: var(--mat-sys-body-small);
+}
+
+.more {
+  margin-top: var(--app-space-3);
+}
+
+.card {
+  padding: var(--app-space-5);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface);
+}
+
+.card-title {
+  margin: 0 0 var(--app-space-1);
+  font: var(--mat-sys-title-medium);
+}
+
+.choices {
+  width: 100%;
+  margin-top: var(--app-space-3);
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: var(--app-space-1) var(--app-space-2);
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+    font: var(--mat-sys-body-medium);
+    text-align: center;
+  }
+
+  thead th {
+    font: var(--mat-sys-label-medium);
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  th[scope='row'],
+  thead th:first-child {
+    text-align: start;
+  }
+}
+
+.digest {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--app-space-3);
+  margin-top: var(--app-space-4);
+}
+
+.digest-title {
+  margin: 0;
+  font: var(--mat-sys-body-large);
+}
+
+.message {
+  margin: var(--app-space-2) 0;
+  padding: var(--app-space-3) var(--app-space-4);
+  border-radius: var(--mat-sys-corner-small);
+  font: var(--mat-sys-body-medium);
+
+  &.error {
+    background: var(--mat-sys-error-container);
+    color: var(--mat-sys-on-error-container);
+  }
+}

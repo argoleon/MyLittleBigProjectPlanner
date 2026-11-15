@@ -154,6 +154,8 @@ services:
       S3_ACCESS_KEY_FILE: /run/secrets/s3_access_key
       S3_SECRET_KEY_FILE: /run/secrets/s3_secret_key
       CLAMAV_ADDR: clamav:3310
+      # Links of notification emails, as the api has them.
+      PUBLIC_URL: ${PUBLIC_URL:-https://${MLBPP_DOMAIN}${MLBPP_PUBLIC_PORT:-}}
     secrets: [database_url, valkey_url, smtp_url, s3_access_key, s3_secret_key]
     # The observability profile's collector is on the edge network.
     networks: [backend, edge]

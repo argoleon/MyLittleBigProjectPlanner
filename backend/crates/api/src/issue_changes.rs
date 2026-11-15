@@ -457,6 +457,10 @@ pub async fn update(
         &issue_history::snapshot(&updated, &content),
     );
     issue_history::record(&mut tx, updated.id, &entries).await?;
+    // A new assignee follows the ticket.
+    if let Some(assignee) = updated.assignee_id.filter(|a| Some(*a) != issue.assignee_id) {
+        infra::watchers::watch(&mut tx, updated.id, assignee).await?;
+    }
     let actor = tx.account_id();
     infra::outbox::record(
         &mut tx,

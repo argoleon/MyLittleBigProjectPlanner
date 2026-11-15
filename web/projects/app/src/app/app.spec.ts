@@ -172,7 +172,12 @@ const query = (fixture: ComponentFixture<App>, selector: string) =>
   (fixture.nativeElement as HTMLElement).querySelector(selector);
 
 describe('App', () => {
-  afterEach(() => TestBed.inject(HttpTestingController).verify());
+  afterEach(() => {
+    const http = TestBed.inject(HttpTestingController);
+    // The bell of the top app bar reads the unread count on each navigation (L05-US07).
+    http.match('/api/v1/me/notifications/unread').forEach((request) => request.flush({ total: 0, byTenant: [] }));
+    http.verify();
+  });
 
   it('renders the shell with every entry of the navigation', async () => {
     const { fixture } = await boot();

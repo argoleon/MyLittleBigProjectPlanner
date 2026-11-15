@@ -114,7 +114,7 @@ async fn run(config: WorkerConfig) -> ExitCode {
         token.clone(),
         worker::PARTITIONS_EVERY,
     ));
-    let runner = std::sync::Arc::new(worker::jobs::JobRunner::new(pool));
+    let runner = std::sync::Arc::new(worker::jobs::JobRunner::new(pool.clone()));
     let valkey = match infra::valkey::connect_lazy(&config.valkey) {
         Ok(valkey) => valkey,
         Err(err) => {
@@ -140,11 +140,19 @@ async fn run(config: WorkerConfig) -> ExitCode {
     {
         tracing::warn!(error = %err, "the attachments' bucket is not ready");
     }
+    tokio::spawn(worker::send_digests(
+        pool.clone(),
+        mailer.clone(),
+        config.public_url.clone(),
+        token.clone(),
+        worker::DIGESTS_EVERY,
+    ));
     let handler = std::sync::Arc::new(worker::jobs::Jobs {
         mailer,
         exports,
         storage,
         clamav: config.clamav.clone(),
+        public_url: config.public_url.clone(),
     });
     tracing::info!(health = %config.health_addr, worker_id = runner.worker_id(), "worker started");
     let mut worker = tokio::spawn(worker::run_loop(token.clone(), config.poll_interval, move || {

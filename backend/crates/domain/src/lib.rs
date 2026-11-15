@@ -25,6 +25,7 @@ pub mod members;
 pub mod mfa;
 pub mod migration;
 pub mod notifications;
+pub mod notify;
 pub mod oidc;
 pub mod permissions;
 pub mod reference_item;

@@ -240,6 +240,7 @@ async fn jobs() -> Jobs {
         exports: infra::exports::ExportStore::new(valkey, prefix),
         storage: Some(testkit::storage().await),
         clamav: Some(testkit::clamav_addr()),
+        public_url: None,
     }
 }
 

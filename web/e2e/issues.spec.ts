@@ -141,6 +141,8 @@ async function mockTickets(page: Page, mine = [SUMMARY]) {
   await page.route('**/api/v1/issues/*/activity**', (route) => route.fulfill({ json: { items: [], nextCursor: null } }));
   // No attachment unless a test adds some (mockAttachments, registered later, wins).
   await page.route('**/api/v1/issues/*/attachments', (route) => route.fulfill({ json: [] }));
+  // The member watches the ticket.
+  await page.route('**/api/v1/issues/*/watchers', (route) => route.fulfill({ json: { count: 1, watching: true } }));
   await page.route('**/api/v1/me/issues**', (route) => route.fulfill({ json: { items: mine, nextCursor: null } }));
   await page.route('**/api/v1/nodes?**', (route) => route.fulfill({ json: { items: [PROJECT, CRM], nextCursor: null } }));
   await page.route('**/api/v1/projects/PLAT/issue-form**', (route) => route.fulfill({ json: FORM }));

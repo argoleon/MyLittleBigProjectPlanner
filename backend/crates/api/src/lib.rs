@@ -34,6 +34,7 @@ pub mod middleware;
 pub mod migrations;
 pub mod nodes;
 pub mod notification_rules;
+pub mod notifications;
 pub mod openapi;
 pub mod pagination;
 pub mod permissions;

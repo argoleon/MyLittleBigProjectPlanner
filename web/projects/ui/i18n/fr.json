@@ -1644,6 +1644,66 @@
       "removeTitle": "Retirer le fichier ?",
       "removeMessage": "{{ name }} est retiré du ticket ; le ticket en garde la trace dans son activité.",
       "remove": "Retirer"
+    },
+    "watch": {
+      "watch": "Observer",
+      "watching": "Observé ({{ count }})"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "bell": "Notifications",
+    "bellUnread": "Notifications, {{ count }} non lues",
+    "unread": "{{ count }} non lues",
+    "allTenants": "toutes organisations",
+    "oneTenant": "une organisation",
+    "markAll": "Tout marquer comme lu",
+    "listLabel": "Vos notifications",
+    "kindFilter": "Type de notification",
+    "tenantFilter": "Organisation",
+    "all": "Toutes",
+    "allTenantsChip": "Toutes les organisations",
+    "kinds": {
+      "mentioned": "Mentions",
+      "assigned": "Affectations",
+      "status_changed": "Changements de statut",
+      "commented": "Commentaires",
+      "created": "Nouveaux tickets"
+    },
+    "empty": "Aucune notification.",
+    "more": "Voir les notifications plus anciennes",
+    "someone": "Quelqu’un",
+    "unreadMark": "(non lue)",
+    "opensIn": "s’ouvre dans {{ tenant }}",
+    "periods": {
+      "today": "Aujourd’hui",
+      "week": "Cette semaine",
+      "earlier": "Plus tôt"
+    },
+    "events": {
+      "mentioned": "{{ actor }} vous a mentionné sur {{ key }}",
+      "assigned": "{{ actor }} vous a assigné {{ key }}",
+      "status_changed": "{{ actor }} a passé {{ key }} à {{ status }}",
+      "commented": "{{ actor }} a commenté {{ key }}",
+      "created": "{{ actor }} a créé {{ key }}"
+    },
+    "preferences": {
+      "title": "Préférences de notification",
+      "everywhere": "Elles s’appliquent dans toutes vos organisations.",
+      "event": "Événement",
+      "inApp": "Application",
+      "email": "Email",
+      "inAppOf": "{{ event }} dans l’application",
+      "emailOf": "{{ event }} par email",
+      "events": {
+        "created": "Nouveau ticket",
+        "assigned": "Ticket assigné",
+        "status_changed": "Changement de statut",
+        "commented": "Nouveau commentaire",
+        "mentioned": "Mentions"
+      },
+      "digest": "Résumé quotidien par email",
+      "digestHint": "Chaque jour ouvré à 8 h, au lieu d’un email par événement."
     }
   }
 }

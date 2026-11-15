@@ -3146,6 +3146,182 @@
         }
       }
     },
+    "/api/v1/issues/{idOrKey}/watch": {
+      "put": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Watch a ticket",
+        "description": "Whoever sees its project: the rules naming \"watchers\" notify them.",
+        "operationId": "watchIssue",
+        "parameters": [
+          {
+            "name": "idOrKey",
+            "in": "path",
+            "description": "Id, key or former key of the ticket",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The watchers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueWatchers"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such ticket visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Stop watching a ticket",
+        "operationId": "unwatchIssue",
+        "parameters": [
+          {
+            "name": "idOrKey",
+            "in": "path",
+            "description": "Id, key or former key of the ticket",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The watchers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueWatchers"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such ticket visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/issues/{idOrKey}/watchers": {
+      "get": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Who watches a ticket",
+        "description": "Whoever sees its project: how many watch it, and whether the member does.",
+        "operationId": "getIssueWatchers",
+        "parameters": [
+          {
+            "name": "idOrKey",
+            "in": "path",
+            "description": "Id, key or former key of the ticket",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The watchers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueWatchers"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such ticket visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me": {
       "get": {
         "tags": [
@@ -3544,6 +3720,277 @@
           },
           "403": {
             "description": "`forbidden`: an external account",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/notification-preferences": {
+      "get": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "The signed-in member's notification preferences",
+        "description": "For every organization: per event, in the application and by email (the defaults until they choose), and the daily digest.",
+        "operationId": "getMyNotificationPreferences",
+        "responses": {
+          "200": {
+            "description": "The preferences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferences"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Change the signed-in member's notification preferences",
+        "description": "For every organization. Events left out keep their current choice.",
+        "operationId": "setMyNotificationPreferences",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationPreferences"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The preferences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferences"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`: `events[i]` `duplicate`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/notifications": {
+      "get": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "The signed-in member's notifications",
+        "description": "Of all their organizations (or `tenantId`), newest first; those they chose to receive in the application.",
+        "operationId": "listMyNotifications",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "query",
+            "description": "Only this organization's.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "unread",
+            "in": "query",
+            "description": "Only the unread ones.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, from 1 to 200 (default 50).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "`nextCursor` of the previous page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of the labels",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of notifications",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid `limit` or `cursor`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/notifications/read": {
+      "post": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Mark notifications read",
+        "description": "The ones given, or all of them (of `tenantId` if given). Only the signed-in member's: others' ids are ignored.",
+        "operationId": "markMyNotificationsRead",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkReadBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The unread notifications left",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadNotifications"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/notifications/unread": {
+      "get": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "How many notifications the signed-in member has not read",
+        "description": "In total and per organization.",
+        "operationId": "countMyUnreadNotifications",
+        "responses": {
+          "200": {
+            "description": "The counts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadNotifications"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -17900,6 +18347,49 @@
           "published"
         ]
       },
+      "IssueWatchers": {
+        "type": "object",
+        "description": "Who watches a ticket.",
+        "required": [
+          "count",
+          "watching"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "watching": {
+            "type": "boolean",
+            "description": "The member reading watches it."
+          }
+        }
+      },
+      "MarkReadBody": {
+        "type": "object",
+        "description": "Which notifications to mark read.",
+        "properties": {
+          "ids": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "These; absent: all of them (of `tenantId` if given)."
+          },
+          "tenantId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
       "Me": {
         "type": "object",
         "description": "The signed-in account, as the current tenant sees it.",
@@ -18043,6 +18533,74 @@
           "accountType": "internal",
           "localAccount": false,
           "tenantRole": "configuration_admin"
+        }
+      },
+      "MemberNotification": {
+        "type": "object",
+        "description": "A notification of the signed-in member.",
+        "required": [
+          "id",
+          "tenant",
+          "event",
+          "issueId",
+          "issueKey",
+          "issueSummary",
+          "actorName",
+          "status",
+          "excerpt",
+          "read",
+          "createdAt"
+        ],
+        "properties": {
+          "actorName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Who made the change; \"Deleted user #N\" once erased."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "event": {
+            "$ref": "#/components/schemas/NotificationEvent"
+          },
+          "excerpt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The beginning of the comment (`commented`, `mentioned`)."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "issueId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "issueKey": {
+            "type": "string",
+            "example": "PLAT-151"
+          },
+          "issueSummary": {
+            "type": "string"
+          },
+          "read": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The status reached (`status_changed`), in the language of the request."
+          },
+          "tenant": {
+            "$ref": "#/components/schemas/NotificationTenant"
+          }
         }
       },
       "MemberPage": {
@@ -19634,6 +20192,27 @@
           "project"
         ]
       },
+      "NotificationChoice": {
+        "type": "object",
+        "description": "One event's choice.",
+        "required": [
+          "event",
+          "inApp",
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "boolean"
+          },
+          "event": {
+            "$ref": "#/components/schemas/NotificationEvent"
+          },
+          "inApp": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "NotificationEvent": {
         "type": "string",
         "description": "A ticket event that notifies.",
@@ -19644,6 +20223,50 @@
           "commented",
           "mentioned"
         ]
+      },
+      "NotificationPage": {
+        "type": "object",
+        "description": "A page of notifications.",
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MemberNotification"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "NotificationPreferences": {
+        "type": "object",
+        "description": "The signed-in member's preferences, for every organization.",
+        "required": [
+          "events",
+          "dailyDigest"
+        ],
+        "properties": {
+          "dailyDigest": {
+            "type": "boolean",
+            "description": "One email each working day at 8:00 instead of one per notification."
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationChoice"
+            },
+            "description": "Every event, with its channels."
+          }
+        },
+        "additionalProperties": false
       },
       "NotificationRecipientKind": {
         "type": "string",
@@ -19746,6 +20369,27 @@
           "draft",
           "published"
         ]
+      },
+      "NotificationTenant": {
+        "type": "object",
+        "description": "An organization a notification comes from.",
+        "required": [
+          "id",
+          "slug",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        }
       },
       "OidcProvider": {
         "type": "object",
@@ -21207,6 +21851,23 @@
           }
         }
       },
+      "TenantUnread": {
+        "type": "object",
+        "required": [
+          "tenantId",
+          "unread"
+        ],
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unread": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "TransitionConditions": {
         "type": "object",
         "description": "Who may take a transition: anyone when both lists are empty, otherwise\nwhoever has one of the roles on the project or belongs to one of the\ngroups.",
@@ -21340,6 +22001,26 @@
           }
         },
         "additionalProperties": false
+      },
+      "UnreadNotifications": {
+        "type": "object",
+        "description": "The unread notifications of each organization.",
+        "required": [
+          "total",
+          "byTenant"
+        ],
+        "properties": {
+          "byTenant": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantUnread"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
       },
       "VeiledHierarchyNode": {
         "type": "object",

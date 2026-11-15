@@ -36,6 +36,7 @@ pub mod memberships;
 pub mod mfa;
 pub mod nodes;
 pub mod notification_rules;
+pub mod notifications;
 pub mod oidc;
 pub mod oidc_providers;
 pub mod outbox;
@@ -55,6 +56,7 @@ pub mod telemetry;
 pub mod tenant_switch;
 pub mod transition_rules;
 pub mod valkey;
+pub mod watchers;
 pub mod workflows;
 
 pub use sqlx;
