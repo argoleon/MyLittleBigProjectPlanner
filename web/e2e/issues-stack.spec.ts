@@ -239,3 +239,55 @@ test('a story goes through the standard workflow from its page', async ({ page }
   await page.reload();
   await expect(page.locator('app-issue-status')).toContainText('Done');
 });
+
+test('a comment mentions a member and refers to a ticket, then is edited and deleted', async ({ page }) => {
+  test.setTimeout(120_000);
+  const run = Date.now().toString(36).toUpperCase().slice(-5);
+  const code = `CO${run}`.slice(0, 10);
+  await signIn(page, adminEmail!, adminSecret!);
+  const url = await project(page, `Comments ${run}`, code);
+  const dialog = page.getByRole('dialog');
+  for (const summary of [`First ${run}`, `Second ${run}`]) {
+    await page.goto(url);
+    await page.getByRole('button', { name: 'New ticket' }).click();
+    await dialog.getByRole('combobox', { name: 'Type' }).click();
+    await page.getByRole('option', { name: 'Story', exact: true }).click();
+    await dialog.getByLabel('Summary').fill(summary);
+    await dialog.getByRole('button', { name: 'Create' }).click();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(summary);
+  }
+
+  // On the second: a mention of the admin (picked with the keyboard) and the first by its key.
+  const section = page.locator('app-issue-comments');
+  await expect(section.getByRole('heading', { name: 'Comments (0)' })).toBeVisible();
+  await section.getByRole('textbox', { name: 'Add a comment' }).click();
+  await page.keyboard.type('Thanks @');
+  await expect(section.getByRole('option').first()).toBeVisible();
+  await page.keyboard.press('Enter');
+  await page.keyboard.type(`see ${code}-1`);
+  await section.getByRole('button', { name: 'Comment', exact: true }).click();
+  const comment = section.locator('.comment');
+  await expect(comment).toHaveCount(1);
+  await expect(comment.locator('.mention')).toContainText('@');
+  await expect(comment.getByRole('link', { name: `${code}-1` })).toHaveAttribute('href', `/issues/${code}-1`);
+  await expect(section.getByRole('heading', { name: 'Comments (1)' })).toBeVisible();
+  expect(await accessibilityViolations(page)).toEqual([]);
+
+  // Edited, made public; then deleted: a placeholder stays.
+  await comment.getByRole('button', { name: /^Edit the comment/ }).click();
+  await comment.getByRole('textbox', { name: 'Comment' }).click();
+  await page.keyboard.press('End');
+  await page.keyboard.type(' today');
+  await comment.getByRole('radio', { name: 'Public', exact: true }).click();
+  await comment.getByRole('button', { name: 'Save' }).click();
+  await expect(comment.locator('.note')).toHaveText('edited');
+  await expect(comment.locator('.visibility')).toHaveText('Public');
+  await expect(comment.locator('ui-rich-text')).toContainText('today');
+  await comment.getByRole('button', { name: /^Delete the comment/ }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
+  await expect(comment.locator('.deleted')).toHaveText('Comment deleted.');
+
+  // Read again: the placeholder is stored.
+  await page.reload();
+  await expect(section.locator('.comment .deleted')).toBeVisible();
+});

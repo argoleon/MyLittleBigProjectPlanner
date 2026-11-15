@@ -134,6 +134,9 @@ async function mockTickets(page: Page, mine = [SUMMARY]) {
   const posted: unknown[] = [];
   // No transition unless a test offers some (mockTransitions, registered later, wins).
   await page.route('**/api/v1/issues/*/transitions', (route) => route.fulfill({ json: [] }));
+  await page.route(`**/api/v1/nodes/${CRM.id}/my-permissions`, (route) => route.fulfill({ json: ['view'] }));
+  // No comment unless a test writes some (mockComments, registered later, wins).
+  await page.route('**/api/v1/issues/*/comments', (route) => route.fulfill({ json: [] }));
   await page.route('**/api/v1/me/issues**', (route) => route.fulfill({ json: { items: mine, nextCursor: null } }));
   await page.route('**/api/v1/nodes?**', (route) => route.fulfill({ json: { items: [PROJECT, CRM], nextCursor: null } }));
   await page.route('**/api/v1/projects/PLAT/issue-form**', (route) => route.fulfill({ json: FORM }));
@@ -144,7 +147,7 @@ async function mockTickets(page: Page, mine = [SUMMARY]) {
     return body.fields['f-app'] ? route.fulfill({ status: 201, json: ISSUE }) : route.fulfill(problem(400, 'validation_failed', [{ field: 'fields.f-app', code: 'required' }]));
   });
   await page.route('**/api/v1/issues/PLAT-142**', (route) => route.fulfill({ json: ISSUE }));
-  await page.route(`**/api/v1/nodes/${PROJECT.id}/my-permissions`, (route) => route.fulfill({ json: ['view', 'create_ticket', 'edit'] }));
+  await page.route(`**/api/v1/nodes/${PROJECT.id}/my-permissions`, (route) => route.fulfill({ json: ['view', 'create_ticket', 'edit', 'comment'] }));
   await page.route(`**/api/v1/issues/${ISSUE.id}/edit-form`, (route) => route.fulfill({ json: { fields: FORM.fields } }));
   await page.route(`**/api/v1/issues/${ISSUE.id}/move-plan`, (route) => route.fulfill({ json: MOVE_PLAN }));
   return posted;
@@ -348,6 +351,75 @@ test('a member sends a ticket to review, filling the field the transition takes'
   await expect(page.getByRole('button', { name: 'Status: In review. Change it' })).toBeVisible();
 });
 
+const COMMENT = {
+  id: 'c1',
+  author: { id: 'a2', name: 'Camille Martin' },
+  visibility: 'public',
+  byTransition: false,
+  content: null,
+  contentHtml: '<p><span class="mention" data-id="a1">@Lucas Bernard</span> see <a class="issue-ref" href="/issues/PLAT-120">PLAT-120</a></p>',
+  deleted: false,
+  createdAt: '2026-11-10T09:00:00Z',
+  editedAt: null,
+  version: 1,
+  canEdit: false,
+  canDelete: true,
+};
+
+/** The comments of the ticket; what was written, kept. */
+async function mockComments(page: Page) {
+  const written: unknown[] = [];
+  await page.route(`**/api/v1/issues/${ISSUE.id}/comments`, (route) => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: written.length ? [COMMENT, { ...COMMENT, id: 'c2', canEdit: true, author: { id: 'a1', name: 'Lucas Bernard' }, contentHtml: '<p>Done</p>' }] : [COMMENT] });
+    written.push(route.request().postDataJSON());
+    return route.fulfill({ status: 201, json: { ...COMMENT, id: 'c2' } });
+  });
+  await page.route('**/api/v1/projects/PLAT/people**', (route) =>
+    route.fulfill({ json: [{ id: 'a2', name: 'Camille Martin' }, { id: 'a3', name: 'Hugo Leroy' }] }),
+  );
+  return written;
+}
+
+test('a member comments with a mention picked with the keyboard', async ({ page }) => {
+  await mockTickets(page);
+  const written = await mockComments(page);
+  await page.goto('/issues/PLAT-142');
+  const section = page.locator('app-issue-comments');
+  await expect(section.getByRole('heading', { name: 'Comments (1)' })).toBeVisible();
+  await expect(section.locator('.mention')).toHaveText('@Lucas Bernard');
+  const editor = section.getByRole('textbox', { name: 'Add a comment' });
+  await editor.click();
+  await page.keyboard.type('Thanks @');
+  const list = section.getByRole('listbox');
+  await expect(list.getByRole('option')).toHaveCount(2);
+  await page.keyboard.press('ArrowDown');
+  await expect(list.getByRole('option').nth(1)).toHaveAttribute('aria-selected', 'true');
+  await page.keyboard.press('Enter');
+  await expect(list).toHaveCount(0);
+  await expect(editor.locator('.mention')).toHaveText('@Hugo Leroy');
+  await section.getByRole('button', { name: 'Comment', exact: true }).click();
+  await expect(section.locator('.comment')).toHaveCount(2);
+  expect(written).toEqual([
+    {
+      content: {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [
+              { type: 'text', text: 'Thanks ' },
+              expect.objectContaining({ type: 'mention', attrs: expect.objectContaining({ id: 'a3', label: 'Hugo Leroy' }) }),
+              // The space the editor adds after a mention.
+              { type: 'text', text: ' ' },
+            ],
+          },
+        ],
+      },
+      visibility: 'internal',
+    },
+  ]);
+});
+
 for (const theme of ['light', 'dark'] as const) {
   for (const language of ['fr', 'en'] as const) {
     test.describe(`accessibility of tickets, ${theme} mode, ${language}`, () => {
@@ -374,6 +446,18 @@ for (const theme of ['light', 'dark'] as const) {
         await page.goto('/issues/PLAT-142');
         await expect(page.getByRole('heading', { level: 1 })).toHaveText('Migrate the authentication to OIDC');
         await expect(page.locator('ui-rich-text a')).toHaveText('OIDC');
+        await animationsDone(page);
+        expect(await accessibilityViolations(page)).toEqual([]);
+      });
+
+      test('the comments and the mention suggestions have no axe-core violation', async ({ page }) => {
+        await mockTickets(page);
+        await mockComments(page);
+        await page.goto('/issues/PLAT-142');
+        await expect(page.locator('app-issue-comments .comment')).toHaveCount(1);
+        await page.locator('app-issue-comments .new [role="textbox"]').click();
+        await page.keyboard.type('@');
+        await expect(page.getByRole('option')).toHaveCount(2);
         await animationsDone(page);
         expect(await accessibilityViolations(page)).toEqual([]);
       });

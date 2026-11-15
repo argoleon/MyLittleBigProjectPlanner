@@ -50,6 +50,7 @@
         }
       </section>
       <app-issue-relations [issue]="current" [canEdit]="canEdit()" (changed)="issue.reload()" />
+      <app-issue-comments [issue]="current" [canComment]="canComment()" />
     </div>
 
     <aside class="side">

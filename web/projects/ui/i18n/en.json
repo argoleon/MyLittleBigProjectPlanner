@@ -1401,7 +1401,9 @@
     "link": "Link",
     "linkAddress": "Link address",
     "linkApply": "Apply",
-    "linkInvalid": "Enter a web address (http or https) or an email address (mailto)."
+    "linkInvalid": "Enter a web address (http or https) or an email address (mailto).",
+    "suggestions": "Suggestions",
+    "noMatch": "No match."
   },
   "priority": {
     "highest": "Highest",
@@ -1536,6 +1538,28 @@
     "transition": {
       "menu": "Status: {{ status }}. Change it",
       "to": "The ticket goes to “{{ status }}”."
+    },
+    "comments": {
+      "title": "Comments ({{ count }})",
+      "empty": "No comment yet.",
+      "add": "Add a comment",
+      "hint": "@ to mention someone, # to refer to a ticket.",
+      "visibility": "Who sees it",
+      "internal": "Internal",
+      "public": "Public",
+      "publicPortal": "Public (portal)",
+      "write": "Comment",
+      "editLabel": "Comment",
+      "editOf": "Edit the comment of {{ author }}",
+      "removeOf": "Delete the comment of {{ author }}",
+      "removeTitle": "Delete the comment?",
+      "removeMessage": "Its text is removed; the ticket keeps a trace that it was deleted.",
+      "remove": "Delete",
+      "deleted": "Comment deleted.",
+      "edited": "edited",
+      "byTransition": "via the workflow",
+      "formerMember": "Former member",
+      "conflict": "This comment changed since you opened it: cancel and edit it again."
     }
   }
 }

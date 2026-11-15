@@ -9,6 +9,19 @@
     color: var(--mat-sys-primary);
   }
 
+  .mention,
+  .issue-ref {
+    padding: 0 var(--app-space-1);
+    border-radius: var(--mat-sys-corner-extra-small);
+    background: var(--mat-sys-secondary-container);
+    color: var(--mat-sys-on-secondary-container);
+  }
+
+  // A link stays underlined: not told apart by its color alone (WCAG 1.4.1).
+  a.issue-ref {
+    text-decoration: underline;
+  }
+
   code,
   pre {
     font-family: var(--app-font-mono);
