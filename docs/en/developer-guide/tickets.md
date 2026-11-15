@@ -62,6 +62,17 @@ The ticket gets the initial status of its type's workflow. The creation is idemp
 - Types and statuses are stable identities: those the target configuration has keep their identity (same configuration: nothing to map). Others are mapped (`typeMappings`, `statusMappings`), checked by `domain::issues::plan_move`: the ticket lands on a type that is no sub-task, its sub-tasks on sub-task types allowed under it, each status in the workflow of its new type. The plan suggests a mapping (same key, else same category) and reports what the move would refuse.
 - Values of fields the target lacks, that do not apply to the new type, or no longer fit, are dropped (`kept_values`); the plan lists them, and `issue.moved` (one per ticket) carries `droppedFieldIds` with the former and new keys and projects.
 
+## Links, sub-tasks and parents (L05-US03)
+
+`issue_link` stores a link from a source ticket to a target, across projects of the tenant (`api::issue_links`, `infra::links`, `domain::links`).
+
+- **Four kinds, each read two ways**: blocks / blocked by, depends on / required by, duplicates / duplicated by, relates to (the same both ways). The API speaks in relations as read from the ticket at hand (`relation: "blocked_by"`); `Link::new` turns one into the stored source, target and type. The Gantt dependencies of L12 are another thing.
+- **Each link once**: never a ticket to itself (`issue_link_not_self`), each kind once per direction (`issue_link_unique`), "relates to" once per pair whatever its direction (`issue_link_relates_once` on `LEAST`/`GREATEST`). `domain::links::validate_link` checks the same before writing, for a clear error (`issue` `self`, 409 `issue_link.exists`).
+- **Rights and sight**: adding or removing a link takes `edit` on **both** tickets' projects. A link shows only to those who see both tickets: `link_views` leaves out the others, and a target out of sight is `not_found`.
+- `GET /issues/{idOrKey}?expand=parent,children,links` returns the parent, the sub-tasks (`children`) and the links, the other ticket each time with its project, type and status (`RelatedView`, read in its own project's configuration).
+- **Parents**: `PUT /issues/{idOrKey}/parent` (with `If-Match`) changes the parent within the project: a type the ticket's type may sit under, never the ticket itself or one below it (`infra::issues::is_below` walks up the parents), and a sub-task always keeps one. It writes `issue.updated` with `{field: "parentId", old, new}`.
+- **Finding a ticket**: `GET /issues?search=&projectKey=` returns at most ten tickets of projects the member sees: its key or a former key first, then summaries holding the text, most recently updated first. It is a stopgap until the query language of L06.
+
 ## Rich text
 
 The description is a Tiptap document. The server never stores HTML it received:

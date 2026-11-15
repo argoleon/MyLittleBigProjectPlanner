@@ -17,6 +17,7 @@ pub mod idempotency;
 pub mod issue_types;
 pub mod issues;
 pub mod jobs;
+pub mod links;
 pub mod members;
 pub mod mfa;
 pub mod migration;

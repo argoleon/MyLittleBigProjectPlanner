@@ -1,0 +1,80 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO issue_link (id, tenant_id, source_id, target_id, link_type, created_by)\n        VALUES ($1, app_current_tenant(), $2, $3, $4, $5)\n        RETURNING id, source_id, target_id, link_type, created_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "issue_link",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "source_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "issue_link",
+            "name": "source_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "target_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "issue_link",
+            "name": "target_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "link_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "issue_link",
+            "name": "link_type"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "issue_link",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e11a76e12eec7edd332434227e8970d24675f9a1400c5d4f9718c274627b3cb4"
+}

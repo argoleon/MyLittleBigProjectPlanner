@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH RECURSIVE up (id, parent_id, depth) AS (\n            SELECT id, parent_id, 0 FROM issue WHERE id = $2\n            UNION ALL\n            SELECT i.id, i.parent_id, up.depth + 1 FROM issue i JOIN up ON i.id = up.parent_id\n            WHERE up.depth < 50\n        )\n        SELECT EXISTS (SELECT 1 FROM up WHERE parent_id = $1) AS \"below!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "below!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "8ee5065108f30601f7ae545f0719d01c0107b80958105e5b1e5f9f4c9e7def90"
+}

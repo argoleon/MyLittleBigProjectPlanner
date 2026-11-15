@@ -82,7 +82,7 @@ impl From<Priority> for PriorityView {
 }
 
 /// A project, by its key and name.
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[schema(as = IssueProject)]
 pub struct ProjectView {
@@ -94,7 +94,7 @@ pub struct ProjectView {
 }
 
 /// The type of a ticket.
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[schema(as = IssueTypeRef)]
 pub struct TypeView {
@@ -112,7 +112,7 @@ pub struct TypeView {
 }
 
 /// The status of a ticket.
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[schema(as = IssueStatusRef)]
 pub struct StatusView {
@@ -210,6 +210,12 @@ pub struct IssueView {
     updated_at: DateTime<Utc>,
     #[schema(example = 1)]
     version: i64,
+    /// `expand=children`: its sub-tasks, oldest first.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) children: Option<Vec<crate::issue_links::RelatedView>>,
+    /// `expand=links`: its links to tickets the member sees, oldest first.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) links: Option<Vec<crate::issue_links::LinkView>>,
 }
 
 /// A ticket in a list.
@@ -287,7 +293,9 @@ pub struct NewIssueBody {
 #[derive(Debug, Default, Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
 pub struct ReadParams {
-    /// `parent`: the ticket it sits under, in a few words.
+    /// Comma-separated: `parent` (the ticket it sits under, in a few
+    /// words), `children` (its sub-tasks), `links` (its links to tickets
+    /// the member sees).
     pub expand: Option<String>,
 }
 
@@ -735,6 +743,8 @@ pub(crate) async fn issue_view(
         created_at: issue.created_at,
         updated_at: issue.updated_at,
         version: issue.version,
+        children: None,
+        links: None,
     })
 }
 
@@ -1014,12 +1024,15 @@ pub async fn read(
         .as_deref()
         .map(|e| e.split(',').map(str::trim).filter(|s| !s.is_empty()).collect())
         .unwrap_or_default();
-    if let Some(unknown) = expand.iter().find(|e| **e != "parent") {
+    if let Some(unknown) = expand
+        .iter()
+        .find(|e| !["parent", "children", "links"].contains(e))
+    {
         return Err(Problem::new(ErrorCode::InvalidQuery).with_detail(format!("unknown expand: {unknown}")));
     }
     let (issue, project) = visible_issue(&state, &mut tx, &id_or_key).await?;
     let language = Language::of(&tx, &accept);
-    let view = issue_view(
+    let mut view = issue_view(
         &state,
         &mut tx,
         &language,
@@ -1028,6 +1041,14 @@ pub async fn read(
         expand.contains("parent"),
     )
     .await?;
+    let id = view.id;
+    if expand.contains("children") {
+        let children = repo::children(&mut tx, id).await?;
+        view.children = Some(crate::issue_links::related_views(&state, &mut tx, &language, children).await?);
+    }
+    if expand.contains("links") {
+        view.links = Some(crate::issue_links::link_views(&state, &mut tx, &language, id).await?);
+    }
     tx.commit().await?;
     let version = view.version;
     let mut response = ApiJson(view).into_response();
