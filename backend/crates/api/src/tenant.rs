@@ -50,11 +50,17 @@ pub struct AppState {
     pub(crate) grants: Arc<dyn GrantSource>,
     /// The storage of attachments; none: attachments answer 503.
     pub(crate) storage: Option<Arc<infra::storage::Storage>>,
+    /// Real-time signals (`crate::events`).
+    pub(crate) realtime: Arc<crate::events::Realtime>,
 }
 
 impl AppState {
     pub fn new(pool: PgPool, tenancy: Tenancy, auth: Auth) -> Self {
         let dependencies = Arc::from([Dependency::Postgres(pool.clone())]);
+        let realtime = Arc::new(crate::events::Realtime::new(
+            auth.valkey.clone(),
+            &auth.key_prefix,
+        ));
         Self {
             pool,
             tenancy: Arc::new(tenancy),
@@ -62,6 +68,7 @@ impl AppState {
             auth: Arc::new(auth),
             grants: Arc::new(NodeGrants),
             storage: None,
+            realtime,
         }
     }
 

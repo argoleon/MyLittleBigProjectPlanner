@@ -11,6 +11,7 @@ pub mod config_fields;
 pub mod configs;
 pub mod correlation;
 pub mod etag;
+pub mod events;
 pub mod extract;
 pub mod fields;
 pub mod gdpr;

@@ -64,12 +64,15 @@ export class IssueComments {
   private readonly dialog = inject(MatDialog);
 
   readonly issue = input.required<Issue>();
+  /** Bumped when the ticket changed elsewhere: read again. */
+  readonly refresh = input(0);
   /** The member may write comments here. */
   readonly canComment = input(false);
 
   protected readonly comments = resource({
-    params: () => this.issue().id,
-    loader: ({ params }) => this.api.invoke(listIssueComments, { idOrKey: params }),
+    // Read again when the ticket changes elsewhere (`refresh`, L05-US08).
+    params: () => ({ id: this.issue().id, refresh: this.refresh() }),
+    loader: ({ params }) => this.api.invoke(listIssueComments, { idOrKey: params.id }),
   });
   private readonly count = computed(() => (this.comments.hasValue() ? this.comments.value().filter((c) => !c.deleted).length : 0));
   /** The number of comments not deleted, for the tab's label. */

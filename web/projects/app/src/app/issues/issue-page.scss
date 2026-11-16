@@ -2,6 +2,19 @@
   display: block;
 }
 
+.remote {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--app-space-2) var(--app-space-3);
+  margin-bottom: var(--app-space-3);
+  padding: var(--app-space-2) var(--app-space-4);
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+  font: var(--mat-sys-body-medium);
+}
+
 .eyebrow {
   margin: 0;
   font: var(--mat-sys-body-small);

@@ -421,10 +421,20 @@ async fn an_outbox_event_is_dispatched_once_and_queues_its_dispatch() {
     .unwrap();
     assert_eq!(queued, 1, "in the transaction of the event");
     let none = |_: &str, _: &str| None;
+    // Nobody to notify (no configuration), but the ticket changed: one
+    // real-time signal (L05-US08).
     assert_eq!(
         notifications::dispatch(&mut tx, event, &none).await.unwrap(),
-        notifications::Dispatched::default()
+        notifications::Dispatched {
+            signals: 1,
+            ..notifications::Dispatched::default()
+        }
     );
+    let published: i64 = sqlx::query_scalar("SELECT count(*) FROM job WHERE kind = 'events.publish'")
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap();
+    assert_eq!(published, 1);
     let processed: bool =
         sqlx::query_scalar("SELECT processed_at IS NOT NULL FROM outbox_event WHERE id = $1")
             .bind(event)

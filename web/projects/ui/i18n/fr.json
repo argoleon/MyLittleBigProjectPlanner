@@ -1472,7 +1472,9 @@
       "no": "Non",
       "attachment": "Rattachement",
       "project": "Projet",
-      "created": "Créé le {{ at }}"
+      "created": "Créé le {{ at }}",
+      "remoteChange": "Quelqu’un d’autre a modifié ce ticket pendant que votre formulaire était ouvert : votre saisie est conservée. Rechargez pour voir la modification.",
+      "reload": "Recharger"
     },
     "list": {
       "create": "Nouveau ticket",

@@ -7,6 +7,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { filter } from 'rxjs';
+import { Realtime } from 'ui';
 
 import { NotificationCenter } from './notification-center';
 
@@ -16,7 +17,8 @@ export const UNREAD_POLL_MS = 60_000;
 /**
  * The bell of the top app bar (L05-US07): the notifications not read yet,
  * of all the member's organizations; opens the notifications page. Read
- * again on each navigation and every minute (real time comes with US08).
+ * again when a real-time signal says so, on each navigation and every
+ * minute.
  */
 @Component({
   selector: 'app-notification-bell',
@@ -51,6 +53,11 @@ export class NotificationBell {
         filter((event) => event instanceof NavigationEnd),
         takeUntilDestroyed(),
       )
+      .subscribe(() => void this.center.refresh());
+    // Told at once when something new comes (L05-US08); every minute otherwise.
+    inject(Realtime)
+      .notifications()
+      .pipe(takeUntilDestroyed())
       .subscribe(() => void this.center.refresh());
     const timer = setInterval(() => void this.center.refresh(), UNREAD_POLL_MS);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));

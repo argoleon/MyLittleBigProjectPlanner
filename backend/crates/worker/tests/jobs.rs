@@ -241,6 +241,7 @@ async fn jobs() -> Jobs {
         storage: Some(testkit::storage().await),
         clamav: Some(testkit::clamav_addr()),
         public_url: None,
+        events: None,
     }
 }
 

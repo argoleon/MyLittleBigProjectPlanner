@@ -36,10 +36,12 @@ export class IssueWatch {
   private readonly api = inject(Api);
 
   readonly issue = input.required<Issue>();
+  /** Bumped when the ticket changed elsewhere: read again. */
+  readonly refresh = input(0);
 
   protected readonly watchers = resource({
     // Read again when the ticket is (an assignee starts watching it).
-    params: () => ({ id: this.issue().id, version: this.issue().version }),
+    params: () => ({ id: this.issue().id, version: this.issue().version, refresh: this.refresh() }),
     loader: ({ params }) => this.api.invoke(getIssueWatchers, { idOrKey: params.id }),
   });
   protected readonly saving = signal(false);

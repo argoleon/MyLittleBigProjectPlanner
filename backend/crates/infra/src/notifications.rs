@@ -256,12 +256,46 @@ struct Pending {
 }
 
 /// What came of dispatching an event.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Dispatched {
     /// Notifications written.
     pub notified: usize,
     /// Emails queued.
     pub emailed: usize,
+    /// The members who see a new notification in the application.
+    pub in_app: Vec<Uuid>,
+    /// The real-time signals queued (`crate::events`).
+    pub signals: usize,
+}
+
+/// Job appending real-time signals to the tenant's event log, once the
+/// dispatch committed (`crate::events`).
+pub const PUBLISH_JOB: &str = "events.publish";
+
+/// Payload of [`PUBLISH_JOB`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PublishJob {
+    pub signals: Vec<crate::events::Signal>,
+}
+
+/// The tickets an outbox event concerns: its aggregate, and the other end
+/// of a link.
+fn issues_of(kind: &str, aggregate: Uuid, payload: &serde_json::Value) -> Vec<Uuid> {
+    let mut issues = vec![aggregate];
+    if kind == "issue.linked" || kind == "issue.unlinked" {
+        for side in ["sourceId", "targetId"] {
+            if let Some(id) = payload
+                .get(side)
+                .and_then(serde_json::Value::as_str)
+                .and_then(|id| Uuid::parse_str(id).ok())
+                && !issues.contains(&id)
+            {
+                issues.push(id);
+            }
+        }
+    }
+    issues
 }
 
 /// Builds the address of a ticket's page: from the tenant's slug and the
@@ -290,7 +324,44 @@ pub async fn dispatch(
     let Some(pending) = pending else {
         return Ok(Dispatched::default());
     };
-    let dispatched = notify(conn, event_id, &pending, link_of).await?;
+    let mut dispatched = notify(conn, event_id, &pending, link_of).await?;
+    // Real time: the tickets changed, and who has new notifications.
+    let mut signals = Vec::new();
+    if pending.kind.starts_with("issue.")
+        || pending.kind.starts_with("comment.")
+        || pending.kind.starts_with("attachment.")
+    {
+        for id in issues_of(&pending.kind, pending.aggregate_id, &pending.payload) {
+            if let Some(issue) = crate::issues::find(conn, id).await? {
+                signals.push(crate::events::Signal {
+                    topic: crate::events::Topic::Issue,
+                    kind: Some(pending.kind.clone()),
+                    issue_id: Some(issue.id),
+                    issue_key: Some(issue.key),
+                    project_id: Some(issue.project_id),
+                    actor_id: pending.actor_id,
+                    recipients: Vec::new(),
+                });
+            }
+        }
+    }
+    if !dispatched.in_app.is_empty() {
+        signals.push(crate::events::Signal {
+            topic: crate::events::Topic::Notifications,
+            kind: None,
+            issue_id: None,
+            issue_key: None,
+            project_id: None,
+            actor_id: None,
+            recipients: dispatched.in_app.clone(),
+        });
+    }
+    if !signals.is_empty() {
+        dispatched.signals = signals.len();
+        let payload =
+            serde_json::to_value(PublishJob { signals }).map_err(|e| sqlx::Error::Encode(Box::new(e)))?;
+        crate::jobs::enqueue(conn, PUBLISH_JOB, &payload).await?;
+    }
     sqlx::query!(
         "UPDATE outbox_event SET processed_at = now() WHERE id = $1",
         event_id
@@ -458,6 +529,9 @@ async fn notify(
         .execute(&mut *conn)
         .await?;
         dispatched.notified += 1;
+        if preferences.wants(event, domain::notify::Channel::InApp) {
+            dispatched.in_app.push(recipient.account_id);
+        }
         if emails_now {
             let job = EmailJob {
                 to: recipient.email.clone(),

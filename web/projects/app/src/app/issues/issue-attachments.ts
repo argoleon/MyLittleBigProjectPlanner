@@ -73,14 +73,17 @@ export class IssueAttachments {
   private readonly locale = inject(LocaleService);
 
   readonly issue = input.required<Issue>();
+  /** Bumped when the ticket changed elsewhere: read again. */
+  readonly refresh = input(0);
   /** The member may attach files (`edit` on the project). */
   readonly canAttach = input(false);
   /** A file was attached or removed: the history changed. */
   readonly changed = output<void>();
 
   protected readonly attachments = resource({
-    params: () => this.issue().id,
-    loader: ({ params }) => this.api.invoke(listIssueAttachments, { idOrKey: params }),
+    // Read again when the ticket changes elsewhere (`refresh`, L05-US08).
+    params: () => ({ id: this.issue().id, refresh: this.refresh() }),
+    loader: ({ params }) => this.api.invoke(listIssueAttachments, { idOrKey: params.id }),
   });
   protected readonly count = computed(() => (this.attachments.hasValue() ? this.attachments.value().length : 0));
   protected readonly uploads = signal<Upload[]>([]);

@@ -4,6 +4,13 @@
   <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
 } @else {
   @let current = issue.value();
+  @if (remoteChange()) {
+    <div class="remote" role="status">
+      <mat-icon aria-hidden="true">sync_problem</mat-icon>
+      <span>{{ 'issue.page.remoteChange' | transloco }}</span>
+      <button matButton type="button" class="reload" (click)="reloadAll()">{{ 'issue.page.reload' | transloco }}</button>
+    </div>
+  }
   <nav class="eyebrow" [attr.aria-label]="'issue.page.breadcrumb' | transloco">
     <a [routerLink]="['/nodes', current.project.id]">{{ current.project.name }}</a>
     @if (current.parent; as parent) {
@@ -37,7 +44,7 @@
         {{ 'issue.page.addSubtask' | transloco }}
       </button>
     }
-    <app-issue-watch [issue]="current" />
+    <app-issue-watch [issue]="current" [refresh]="refresh()" />
   </div>
 
   <div class="layout">
@@ -50,7 +57,7 @@
           <p class="empty">{{ 'issue.page.noDescription' | transloco }}</p>
         }
       </section>
-      <app-issue-attachments [issue]="current" [canAttach]="canEdit()" (changed)="activityRevision.update(bump)" />
+      <app-issue-attachments [issue]="current" [refresh]="refresh()" [canAttach]="canEdit()" (changed)="activityRevision.update(bump)" />
       <app-issue-relations [issue]="current" [canEdit]="canEdit()" (changed)="issue.reload()" />
       <section class="card tabs" [attr.aria-label]="'issue.activity.tabs' | transloco">
         <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start" animationDuration="0ms">
@@ -60,6 +67,7 @@
           <mat-tab [label]="'issue.comments.title' | transloco: { count: commentCount() }">
             <app-issue-comments
               [issue]="current"
+              [refresh]="refresh()"
               [canComment]="canComment()"
               (countChange)="commentCount.set($event)"
               (changed)="activityRevision.update(bump)"

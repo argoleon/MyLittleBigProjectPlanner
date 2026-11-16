@@ -1,4 +1,5 @@
 import { Component, computed, inject, input, resource, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,6 +10,8 @@ import { TranslocoPipe } from '@jsverse/transloco';
 import {
   Api,
   AuthService,
+  Realtime,
+  RealtimeEvent,
   ErrorState,
   InstantPipe,
   Issue,
@@ -83,6 +86,39 @@ export class IssuePage {
   protected readonly activityRevision = signal(0);
   protected readonly bump = (n: number) => n + 1;
   protected readonly chipKind = chipKind;
+  /** Bumped when the ticket changed elsewhere: its parts read it again (L05-US08). */
+  protected readonly refresh = signal(0);
+  /** Someone else changed the ticket while a form of this page was open. */
+  protected readonly remoteChange = signal(false);
+
+  constructor() {
+    inject(Realtime)
+      .events.pipe(takeUntilDestroyed())
+      .subscribe((event) => this.onRealtime(event));
+  }
+
+  /**
+   * A real-time signal: the ticket shown changed, or everything must be
+   * read again. Read at once; while a form is open (an edit, a transition,
+   * a move…), the member is warned instead, their input kept.
+   */
+  private onRealtime(event: RealtimeEvent): void {
+    if (!this.issue.hasValue() || event.type === 'notifications') return;
+    if (event.type === 'issue' && event.signal.issueId !== this.issue.value().id) return;
+    const mine = event.type === 'issue' && event.signal.actorId === this.auth.session()?.account.id;
+    if (this.dialog.openDialogs.length > 0 && !mine) {
+      this.remoteChange.set(true);
+      return;
+    }
+    this.reloadAll();
+  }
+
+  /** Reads the ticket and its parts again. */
+  protected reloadAll(): void {
+    this.remoteChange.set(false);
+    this.issue.reload();
+    this.refresh.update(this.bump);
+  }
 
   protected readonly issue = resource({
     params: () => this.key(),
