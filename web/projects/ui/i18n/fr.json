@@ -435,7 +435,8 @@
       "same_project": "Le ticket est déjà dans ce projet.",
       "not_in_workflow": "Ce statut n’est pas dans le workflow de ce type.",
       "self": "Un ticket ne peut pas être lié à lui-même.",
-      "cycle": "Ce ticket est rattaché sous celui que vous modifiez."
+      "cycle": "Ce ticket est rattaché sous celui que vous modifiez.",
+      "immutable": "Cette valeur ne peut pas être modifiée."
     },
     "invitation": {
       "invalid": "Ce lien d’invitation est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
@@ -670,7 +671,8 @@
       "health": "Statut",
       "save": "Enregistrer",
       "saved": "Modifications enregistrées.",
-      "unsaved": "Modifications non enregistrées"
+      "unsaved": "Modifications non enregistrées",
+      "nodeKeyHint": "Désigne le nœud dans les requêtes (descendantsOf). La changer casse les filtres qui l’utilisent."
     },
     "dialog": {
       "title": "Nouveau nœud",
@@ -678,7 +680,8 @@
       "type": "Type",
       "keyHint": "2 à 10 majuscules et chiffres, une lettre d’abord (PLAT).",
       "create": "Créer",
-      "created": "{{ name }} créé."
+      "created": "{{ name }} créé.",
+      "nodeKeyHint": "2 à 20 majuscules, chiffres et tirets, une lettre d’abord (PORTF-RH)."
     },
     "owners": {
       "label": "Responsables",

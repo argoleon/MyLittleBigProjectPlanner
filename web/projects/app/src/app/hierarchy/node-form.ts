@@ -9,6 +9,19 @@ export const HEALTHS: readonly NodeHealth[] = ['on_track', 'at_risk', 'off_track
 /** A project key: 2 to 10 capital letters and digits, a letter first. */
 export const PROJECT_KEY = /^[A-Z][A-Z0-9]{1,9}$/;
 
+/** A portfolio or program key: 2 to 20 capital letters, digits and single dashes, a letter first. */
+export const NODE_KEY = /^(?=.{2,20}$)[A-Z][A-Z0-9]*(-[A-Z0-9]+)*$/;
+
+/** The key pattern of a node of type `type`. */
+export function keyPattern(type: NodeType): RegExp {
+  return type === 'project' ? PROJECT_KEY : NODE_KEY;
+}
+
+/** The longest key of a node of type `type`. */
+export function keyMaxLength(type: NodeType): number {
+  return type === 'project' ? 10 : 20;
+}
+
 /**
  * The kinds of node that may go under `parent` (specification §4): any at
  * the root or under a portfolio, programs and projects under a program,
@@ -33,6 +46,8 @@ export function normalizeKey(value: string): string {
 /** What the General tab and the creation dialog edit. */
 export interface NodeFormValue {
   readonly name: string;
+  /** A project's never changes; a portfolio's or program's may. */
+  readonly key: string;
   readonly description: string;
   readonly objectives: string;
   readonly startDate: Date | null;
@@ -45,6 +60,7 @@ export interface NodeFormValue {
 export function formValueOf(node: Node): NodeFormValue {
   return {
     name: node.name,
+    key: node.key,
     description: node.description,
     objectives: node.objectives,
     startDate: fromLocalDate(node.startDate),
@@ -54,10 +70,11 @@ export function formValueOf(node: Node): NodeFormValue {
   };
 }
 
-/** The API changes of a form value: trimmed name, local dates. */
+/** The API changes of a form value: trimmed name, key in capitals, local dates. */
 export function changesOf(value: NodeFormValue): NodeChanges {
   return {
     name: value.name.trim(),
+    key: normalizeKey(value.key),
     description: value.description,
     objectives: value.objectives,
     startDate: value.startDate ? toLocalDate(value.startDate) : null,

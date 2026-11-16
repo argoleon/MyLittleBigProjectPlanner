@@ -25,7 +25,7 @@ async fn create(
     conn: &mut PgConnection,
     node_type: NodeType,
     name: &str,
-    code: Option<&str>,
+    code: &str,
     parent: Option<Uuid>,
     creator: Uuid,
 ) -> Uuid {
@@ -37,6 +37,7 @@ async fn create(
             node_type,
             key: code,
             fields: NodeFields {
+                key: None,
                 name,
                 description: "",
                 objectives: "",
@@ -99,12 +100,12 @@ struct Portfolio {
 }
 
 async fn portfolio(conn: &mut PgConnection, creator: Uuid) -> Portfolio {
-    let portfolio = create(conn, NodeType::Portfolio, "Digital", None, None, creator).await;
+    let portfolio = create(conn, NodeType::Portfolio, "Digital", "DIGITAL", None, creator).await;
     let program_a = create(
         conn,
         NodeType::Program,
         "Modernization",
-        None,
+        "MODERNIZATION",
         Some(portfolio),
         creator,
     )
@@ -113,7 +114,7 @@ async fn portfolio(conn: &mut PgConnection, creator: Uuid) -> Portfolio {
         conn,
         NodeType::Program,
         "Compliance",
-        None,
+        "COMPLIANCE",
         Some(portfolio),
         creator,
     )
@@ -122,7 +123,7 @@ async fn portfolio(conn: &mut PgConnection, creator: Uuid) -> Portfolio {
         conn,
         NodeType::Project,
         "Identity platform",
-        Some("PLAT"),
+        "PLAT",
         Some(program_a),
         creator,
     )
@@ -135,7 +136,7 @@ async fn portfolio(conn: &mut PgConnection, creator: Uuid) -> Portfolio {
         conn,
         NodeType::Project,
         "Customer portal",
-        Some("PORT"),
+        "PORT",
         Some(program_a),
         creator,
     )
@@ -144,7 +145,7 @@ async fn portfolio(conn: &mut PgConnection, creator: Uuid) -> Portfolio {
         conn,
         NodeType::Project,
         "Data warehouse",
-        Some("DWH"),
+        "DWH",
         Some(program_a),
         creator,
     )
@@ -153,7 +154,7 @@ async fn portfolio(conn: &mut PgConnection, creator: Uuid) -> Portfolio {
         conn,
         NodeType::Project,
         "ERP flows",
-        Some("ERP"),
+        "ERP",
         Some(warehouse),
         creator,
     )
@@ -338,7 +339,7 @@ async fn changes_in_a_burst_share_one_job_and_a_running_job_calls_for_another() 
     // Another tenant has its own job.
     let other = admin(&db, &db.tenant_b).await;
     let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_b.id).await.unwrap();
-    create(&mut tx, NodeType::Portfolio, "Other", None, None, other).await;
+    create(&mut tx, NodeType::Portfolio, "Other", "OTHER", None, other).await;
     tx.commit().await.unwrap();
     assert_eq!(jobs(&db).await.len(), 2);
     sqlx::query("UPDATE job SET run_at = now() + interval '1 hour' WHERE tenant_id = $1")
@@ -469,7 +470,7 @@ async fn one_level_is_browsed_at_a_time() {
     let creator = admin(&db, &db.tenant_a).await;
     let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
     let p = portfolio(&mut tx, creator).await;
-    let lone = create(&mut tx, NodeType::Project, "Alone", Some("ALONE"), None, creator).await;
+    let lone = create(&mut tx, NodeType::Project, "Alone", "ALONE", None, creator).await;
     nodes::link(&mut tx, p.portfolio, p.erp, 40)
         .await
         .unwrap()
@@ -545,8 +546,8 @@ async fn a_tenant_of_a_thousand_projects_is_recomputed_in_well_under_a_second() 
     let (portfolios, programs, projects) = (ids(10), ids(100), ids(1000));
     for (node_type, nodes) in [("portfolio", &portfolios), ("program", &programs)] {
         sqlx::query(
-            "INSERT INTO node (id, tenant_id, node_type, name)
-             SELECT id, app_current_tenant(), $2, $2 || ' ' || rank
+            "INSERT INTO node (id, tenant_id, node_type, name, key)
+             SELECT id, app_current_tenant(), $2, $2 || ' ' || rank, upper($2) || '-' || rank
              FROM unnest($1::uuid[]) WITH ORDINALITY AS n (id, rank)",
         )
         .bind(nodes)

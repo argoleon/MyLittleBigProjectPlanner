@@ -23,7 +23,7 @@ import {
 } from 'ui';
 
 import { OwnerPicker } from './owner-picker';
-import { PROJECT_KEY, changesOf, childTypes, endsBeforeStart, normalizeKey } from './node-form';
+import { changesOf, childTypes, endsBeforeStart, keyMaxLength, keyPattern, normalizeKey } from './node-form';
 
 /** Where the new node goes: under `parent`, or at the root. */
 export interface NodeDialogData {
@@ -62,26 +62,26 @@ export class NodeDialog {
   protected readonly form = inject(FormBuilder).nonNullable.group({
     type: [this.types[0] as NodeType, Validators.required],
     name: ['', Validators.required],
-    key: ['', [Validators.required, Validators.pattern(PROJECT_KEY)]],
+    key: ['', [Validators.required, Validators.pattern(keyPattern(this.types[0]))]],
     startDate: [null as Date | null],
     endDate: [null as Date | null],
   });
   protected readonly owners = signal<readonly NodeOwner[]>([]);
   private readonly type = toSignal(this.form.controls.type.valueChanges, { initialValue: this.form.controls.type.value });
   protected readonly isProject = computed(() => this.type() === 'project');
+  protected readonly keyMaxLength = computed(() => keyMaxLength(this.type()));
   protected readonly saving = signal(false);
   protected readonly errorKey = signal<string | null>(null);
   private readonly idempotencyKey = crypto.randomUUID();
 
   constructor() {
     inject(DateAdapter).setLocale(inject(LocaleService).formattingLocale());
-    // Only a project has a key.
+    // Every node has a key, in the format of its type.
     this.form.controls.type.valueChanges.subscribe((type) => {
       const key = this.form.controls.key;
-      if (type === 'project') key.enable();
-      else key.disable();
+      key.setValidators([Validators.required, Validators.pattern(keyPattern(type))]);
+      key.updateValueAndValidity();
     });
-    if (this.form.controls.type.value !== 'project') this.form.controls.key.disable();
   }
 
   protected tidyKey(): void {
@@ -102,6 +102,7 @@ export class NodeDialog {
     this.errorKey.set(null);
     const changes = changesOf({
       name,
+      key,
       description: '',
       objectives: '',
       startDate,
@@ -115,7 +116,7 @@ export class NodeDialog {
         body: {
           type,
           name: changes.name,
-          key: type === 'project' ? key : null,
+          key: changes.key ?? key,
           startDate: changes.startDate,
           endDate: changes.endDate,
           ownerIds: changes.ownerIds,

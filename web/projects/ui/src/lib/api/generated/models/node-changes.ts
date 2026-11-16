@@ -16,6 +16,13 @@ export interface NodeChanges {
   health?: NodeHealth;
 
   /**
+   * A new key for a portfolio or program (same rules as at creation);
+   * left out, it stays. A project's key never changes: only its current
+   * key is accepted.
+   */
+  key?: (string | null);
+
+  /**
    * 1 to 200 characters.
    */
   name: string;

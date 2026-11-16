@@ -16,6 +16,7 @@ use testkit::{SeedTenant, TestDb};
 
 fn fields<'a>(name: &'a str, owners: &'a [Uuid]) -> NodeFields<'a> {
     NodeFields {
+        key: None,
         name,
         description: "",
         objectives: "",
@@ -30,7 +31,7 @@ async fn create(
     conn: &mut PgConnection,
     node_type: NodeType,
     name: &str,
-    key: Option<&str>,
+    key: &str,
     parent: Option<Uuid>,
     creator: Uuid,
 ) -> Result<Node, WriteConflict> {
@@ -75,18 +76,18 @@ async fn project_keys_are_unique_per_tenant_and_nodes_stay_in_theirs() {
         &mut tx,
         NodeType::Project,
         "Identity platform",
-        Some("PLAT"),
+        "PLAT",
         None,
         alpha,
     )
     .await
     .unwrap();
     assert_eq!(
-        (plat.key.as_deref(), plat.node_type, plat.version),
-        (Some("PLAT"), NodeType::Project, 1)
+        (plat.key.as_str(), plat.node_type, plat.version),
+        ("PLAT", NodeType::Project, 1)
     );
     assert_eq!(
-        create(&mut tx, NodeType::Project, "Another", Some("PLAT"), None, alpha).await,
+        create(&mut tx, NodeType::Project, "Another", "PLAT", None, alpha).await,
         Err(WriteConflict::KeyTaken)
     );
     tx.rollback().await.unwrap();
@@ -95,7 +96,7 @@ async fn project_keys_are_unique_per_tenant_and_nodes_stay_in_theirs() {
         &mut tx,
         NodeType::Project,
         "Identity platform",
-        Some("PLAT"),
+        "PLAT",
         None,
         alpha,
     )
@@ -105,7 +106,7 @@ async fn project_keys_are_unique_per_tenant_and_nodes_stay_in_theirs() {
 
     // Another tenant has its own PLAT, and sees nothing of alpha's.
     let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_b.id).await.unwrap();
-    create(&mut tx, NodeType::Project, "Platform", Some("PLAT"), None, beta)
+    create(&mut tx, NodeType::Project, "Platform", "PLAT", None, beta)
         .await
         .unwrap();
     let page = nodes::list(&mut tx, &NodeFilter::default(), None, 50)
@@ -123,14 +124,14 @@ async fn the_database_enforces_the_attachment_matrix() {
     let db = TestDb::new().await;
     let admin = admin(&db, &db.tenant_a).await;
     let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
-    let portfolio = create(&mut tx, NodeType::Portfolio, "Digital", None, None, admin)
+    let portfolio = create(&mut tx, NodeType::Portfolio, "Digital", "DIGITAL", None, admin)
         .await
         .unwrap();
     let program = create(
         &mut tx,
         NodeType::Program,
         "IT Modernization",
-        None,
+        "IT-MODERNIZATION",
         Some(portfolio.id),
         admin,
     )
@@ -140,7 +141,7 @@ async fn the_database_enforces_the_attachment_matrix() {
         &mut tx,
         NodeType::Project,
         "Identity",
-        Some("PLAT"),
+        "PLAT",
         Some(program.id),
         admin,
     )
@@ -158,7 +159,7 @@ async fn the_database_enforces_the_attachment_matrix() {
         &mut tx,
         NodeType::Project,
         "Sub-project",
-        Some("SUB"),
+        "SUB",
         Some(project.id),
         admin,
     )
@@ -168,7 +169,7 @@ async fn the_database_enforces_the_attachment_matrix() {
         &mut tx,
         NodeType::Portfolio,
         "Sub-portfolio",
-        None,
+        "SUB-PORTFOLIO",
         Some(portfolio.id),
         admin,
     )
@@ -183,7 +184,7 @@ async fn the_database_enforces_the_attachment_matrix() {
         // Each refusal aborts its statement: back to the savepoint.
         sqlx::query("SAVEPOINT s").execute(&mut *tx).await.unwrap();
         assert_eq!(
-            create(&mut tx, node_type, "Refused", None, Some(parent), admin).await,
+            create(&mut tx, node_type, "Refused", "REFUSED", Some(parent), admin).await,
             Err(WriteConflict::ParentNotAllowed),
             "{node_type:?}"
         );
@@ -197,7 +198,7 @@ async fn the_database_enforces_the_attachment_matrix() {
             &mut tx,
             NodeType::Project,
             "Orphan",
-            Some("ORPH"),
+            "ORPH",
             Some(new_id()),
             admin
         )
@@ -218,19 +219,19 @@ async fn the_closure_counts_paths_and_refuses_cycles() {
     let db = TestDb::new().await;
     let admin = admin(&db, &db.tenant_a).await;
     let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
-    let portfolio = create(&mut tx, NodeType::Portfolio, "P", None, None, admin)
+    let portfolio = create(&mut tx, NodeType::Portfolio, "P", "PP", None, admin)
         .await
         .unwrap();
-    let a = create(&mut tx, NodeType::Program, "A", None, Some(portfolio.id), admin)
+    let a = create(&mut tx, NodeType::Program, "A", "AA", Some(portfolio.id), admin)
         .await
         .unwrap();
-    let b = create(&mut tx, NodeType::Program, "B", None, Some(portfolio.id), admin)
+    let b = create(&mut tx, NodeType::Program, "B", "BB", Some(portfolio.id), admin)
         .await
         .unwrap();
-    let x = create(&mut tx, NodeType::Project, "X", Some("XX"), Some(a.id), admin)
+    let x = create(&mut tx, NodeType::Project, "X", "XX", Some(a.id), admin)
         .await
         .unwrap();
-    let y = create(&mut tx, NodeType::Project, "Y", Some("YY"), Some(x.id), admin)
+    let y = create(&mut tx, NodeType::Project, "Y", "YY", Some(x.id), admin)
         .await
         .unwrap();
     // X under B too: P reaches X and Y by two paths.
@@ -302,7 +303,7 @@ async fn owners_are_members_and_changes_check_the_version() {
     let lucas = db.add_member(&db.tenant_a, TenantRole::Member).await.account_id;
     let stranger = db.add_member(&db.tenant_b, TenantRole::Member).await.account_id;
     let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
-    let node = create(&mut tx, NodeType::Portfolio, "Digital", None, None, admin)
+    let node = create(&mut tx, NodeType::Portfolio, "Digital", "DIGITAL", None, admin)
         .await
         .unwrap();
 
@@ -389,14 +390,14 @@ async fn a_project_has_several_weighted_parents() {
     let db = TestDb::new().await;
     let admin = admin(&db, &db.tenant_a).await;
     let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
-    let digital = create(&mut tx, NodeType::Portfolio, "Digital", None, None, admin)
+    let digital = create(&mut tx, NodeType::Portfolio, "Digital", "DIGITAL", None, admin)
         .await
         .unwrap();
     let modernization = create(
         &mut tx,
         NodeType::Program,
         "IT Modernization",
-        None,
+        "IT-MODERNIZATION",
         Some(digital.id),
         admin,
     )
@@ -406,7 +407,7 @@ async fn a_project_has_several_weighted_parents() {
         &mut tx,
         NodeType::Program,
         "Compliance",
-        None,
+        "COMPLIANCE",
         Some(digital.id),
         admin,
     )
@@ -416,7 +417,7 @@ async fn a_project_has_several_weighted_parents() {
         &mut tx,
         NodeType::Project,
         "Identity platform",
-        Some("PLAT"),
+        "PLAT",
         Some(modernization.id),
         admin,
     )
@@ -451,9 +452,9 @@ async fn a_project_has_several_weighted_parents() {
     assert_eq!(
         children
             .iter()
-            .map(|l| (l.name.as_str(), l.key.as_deref(), l.weight_percent))
+            .map(|l| (l.name.as_str(), l.key.as_str(), l.weight_percent))
             .collect::<Vec<_>>(),
-        [("Identity platform", Some("PLAT"), 60)]
+        [("Identity platform", "PLAT", 60)]
     );
 
     // A diamond: Digital reaches PLAT by two paths, and lists it once.
@@ -522,14 +523,21 @@ async fn candidate_parents_say_why_they_are_refused() {
     let db = TestDb::new().await;
     let admin = admin(&db, &db.tenant_a).await;
     let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
-    let security = create(&mut tx, NodeType::Program, "Cybersecurity", None, None, admin)
-        .await
-        .unwrap();
+    let security = create(
+        &mut tx,
+        NodeType::Program,
+        "Cybersecurity",
+        "CYBERSECURITY",
+        None,
+        admin,
+    )
+    .await
+    .unwrap();
     let plat = create(
         &mut tx,
         NodeType::Project,
         "Identity platform",
-        Some("PLAT"),
+        "PLAT",
         Some(security.id),
         admin,
     )
@@ -539,7 +547,7 @@ async fn candidate_parents_say_why_they_are_refused() {
         &mut tx,
         NodeType::Project,
         "Cyber permissions",
-        Some("CYBP"),
+        "CYBP",
         Some(plat.id),
         admin,
     )
@@ -549,22 +557,15 @@ async fn candidate_parents_say_why_they_are_refused() {
         &mut tx,
         NodeType::Project,
         "Cyber resilience",
-        Some("CYBR"),
+        "CYBR",
         None,
         admin,
     )
     .await
     .unwrap();
-    create(
-        &mut tx,
-        NodeType::Project,
-        "Payroll 50%",
-        Some("PAY"),
-        None,
-        admin,
-    )
-    .await
-    .unwrap();
+    create(&mut tx, NodeType::Project, "Payroll 50%", "PAY", None, admin)
+        .await
+        .unwrap();
 
     let found = nodes::parent_candidates(&mut tx, plat.id, Some(" CYBER"), 20)
         .await
@@ -611,10 +612,10 @@ async fn two_links_made_at_once_cannot_close_a_cycle() {
     let db = TestDb::new().await;
     let admin = admin(&db, &db.tenant_a).await;
     let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
-    let a = create(&mut tx, NodeType::Project, "A", Some("AA"), None, admin)
+    let a = create(&mut tx, NodeType::Project, "A", "AA", None, admin)
         .await
         .unwrap();
-    let b = create(&mut tx, NodeType::Project, "B", Some("BB"), None, admin)
+    let b = create(&mut tx, NodeType::Project, "B", "BB", None, admin)
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -661,7 +662,7 @@ async fn confidentiality_is_set_with_the_version_it_was_read_at() {
         &mut tx,
         NodeType::Project,
         "Identity platform",
-        Some("PLAT"),
+        "PLAT",
         None,
         admin,
     )
@@ -703,14 +704,21 @@ async fn an_archived_project_leaves_the_active_lists_until_it_is_restored() {
     let db = TestDb::new().await;
     let admin = admin(&db, &db.tenant_a).await;
     let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
-    let program = create(&mut tx, NodeType::Program, "IT Modernization", None, None, admin)
-        .await
-        .unwrap();
+    let program = create(
+        &mut tx,
+        NodeType::Program,
+        "IT Modernization",
+        "IT-MODERNIZATION",
+        None,
+        admin,
+    )
+    .await
+    .unwrap();
     let plat = create(
         &mut tx,
         NodeType::Project,
         "Identity platform",
-        Some("PLAT"),
+        "PLAT",
         Some(program.id),
         admin,
     )
@@ -720,7 +728,7 @@ async fn an_archived_project_leaves_the_active_lists_until_it_is_restored() {
         &mut tx,
         NodeType::Project,
         "Cyber permissions",
-        Some("CYBP"),
+        "CYBP",
         Some(plat.id),
         admin,
     )
@@ -825,4 +833,73 @@ async fn an_archived_project_leaves_the_active_lists_until_it_is_restored() {
         .map(|link| link.name)
         .collect();
     assert_eq!(children, ["Identity platform"]);
+}
+
+/// The key the L06 migration gives an existing portfolio or program
+/// (`app_generated_node_key`), as the owner running migrations in a tenant.
+async fn generated_key(db: &TestDb, tenant: &SeedTenant, node_type: &str, name: &str) -> String {
+    let mut tx = db.owner_pool.begin().await.unwrap();
+    sqlx::query("SELECT set_config('app.tenant_id', $1, true)")
+        .bind(tenant.id.to_string())
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    let key: String = sqlx::query_scalar("SELECT app_generated_node_key($1, $2)")
+        .bind(node_type)
+        .bind(name)
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    key
+}
+
+#[tokio::test]
+async fn existing_portfolios_and_programs_get_a_free_key_made_of_their_type_and_name() {
+    let db = TestDb::new().await;
+    let a = &db.tenant_a;
+    assert_eq!(
+        generated_key(&db, a, "portfolio", "Ressources humaines").await,
+        "PORTF-RESSOURCES-HUM"
+    );
+    assert_eq!(
+        generated_key(&db, a, "program", "Modernisation du SI (2026)").await,
+        "PROG-MODERNISATION-D"
+    );
+    assert_eq!(
+        generated_key(&db, a, "program", "Œuvres & économie").await,
+        "PROG-OUVRES-ECONOMIE"
+    );
+    assert_eq!(generated_key(&db, a, "portfolio", "???").await, "PORTF");
+    for key in ["PORTF-RESSOURCES-HUM", "PROG-SI"] {
+        assert!(domain::hierarchy::is_node_key(key), "{key}");
+    }
+
+    // A key already taken in the tenant: the next free number.
+    let admin = db.add_member(a, TenantRole::TenantAdmin).await.account_id;
+    let mut tx = begin_tenant_tx(&db.app_pool, a.id).await.unwrap();
+    create(&mut tx, NodeType::Program, "SI", "PROG-SI", None, admin)
+        .await
+        .unwrap();
+    create(&mut tx, NodeType::Program, "SI bis", "PROG-SI-2", None, admin)
+        .await
+        .unwrap();
+    create(
+        &mut tx,
+        NodeType::Portfolio,
+        "Long",
+        "PORTF-RESSOURCES-HUM",
+        None,
+        admin,
+    )
+    .await
+    .unwrap();
+    tx.commit().await.unwrap();
+    assert_eq!(generated_key(&db, a, "program", "SI").await, "PROG-SI-3");
+    assert_eq!(
+        generated_key(&db, a, "portfolio", "Ressources humaines").await,
+        "PORTF-RESSOURCES-H-2"
+    );
+    // Another tenant's keys do not count.
+    assert_eq!(generated_key(&db, &db.tenant_b, "program", "SI").await, "PROG-SI");
 }

@@ -245,8 +245,9 @@ async fn project_on(db: &TestDb, key: &str, config: Uuid) -> Uuid {
         &NewNode {
             id: new_id(),
             node_type: NodeType::Project,
-            key: Some(key),
+            key,
             fields: NodeFields {
+                key: None,
                 name: key,
                 description: "",
                 objectives: "",

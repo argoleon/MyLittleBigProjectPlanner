@@ -4,6 +4,18 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
 
 ## [Unreleased]
 
+### Changed
+
+- **Every node has a key** (#168): portfolios and programs now carry one too (2 to 20 capitals, digits and dashes, such as `PORTF-HR`), unique in the organization together with project keys, so that queries can name them (`descendantsOf("PORTF-HR")`). It is entered in the creation dialog and may be changed in the General tab; a project's key still never changes. API: `key` is required to create any node and always present in node responses; `PUT /nodes/{id}` accepts a new `key` for a portfolio or program.
+
+### Fixed
+
+- The owners field of a node's General tab no longer breaks the accessibility rules once an owner is chosen (the search input sat inside the chip grid).
+
+### Upgrading from 0.5.0
+
+- **Node keys**: the migration gives every existing portfolio and program a key made of its type and name (`PORTF-RESSOURCES-HUM`, `PROG-MODERNISATION-D`, numbered when taken). Administrators should review them in each node's General tab before saving filters that use them.
+
 ## [0.5.0] - 2026-11-16
 
 Work package **L05 Tickets and collaboration**: tickets with their fields, workflow and relations, rich comments with mentions, attachments scanned by an antivirus, the history of every change, notifications in the app and by email, real-time updates, and the migration of tickets when a configuration change is published.

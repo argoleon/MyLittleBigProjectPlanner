@@ -31,8 +31,9 @@ async fn ticket(db: &TestDb, tenant: &SeedTenant) -> (Issue, Uuid) {
         &NewNode {
             id: new_id(),
             node_type: NodeType::Project,
-            key: Some("PLAT"),
+            key: "PLAT",
             fields: NodeFields {
+                key: None,
                 name: "PLAT",
                 description: "",
                 objectives: "",

@@ -456,7 +456,7 @@ pub(crate) fn type_ids_of(fields: &[Field]) -> Vec<Vec<u128>> {
 pub(crate) fn project_view(node: &Node) -> ProjectView {
     ProjectView {
         id: node.id,
-        key: node.key.clone().unwrap_or_default(),
+        key: node.key.clone(),
         name: node.name.clone(),
     }
 }
@@ -968,7 +968,7 @@ pub async fn create(
         &repo::NewIssue {
             id: infra::id::new_id(),
             project_id: project.id,
-            project_key: project.key.as_deref().unwrap_or_default(),
+            project_key: &project.key,
             type_id: body.type_id,
             status_id: status,
             parent_id: body.parent_id,

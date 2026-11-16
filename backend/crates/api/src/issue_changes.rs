@@ -972,7 +972,7 @@ pub async fn move_issue(
         .map_err(Problem::validation)?;
     let (kept, dropped) = prepared.kept(&landings);
     let target = &prepared.target;
-    let target_key = target.key.as_deref().unwrap_or_default();
+    let target_key = target.key.as_str();
     let actor = tx.account_id();
     let mut moved_root = None;
     for (index, ((issue, landing), fields)) in prepared.moving.iter().zip(&landings).zip(&kept).enumerate() {

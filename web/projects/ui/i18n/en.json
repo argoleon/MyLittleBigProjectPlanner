@@ -435,7 +435,8 @@
       "same_project": "The ticket is already in this project.",
       "not_in_workflow": "Not a status of this type’s workflow.",
       "self": "A ticket cannot be linked to itself.",
-      "cycle": "This ticket sits under the one you are changing."
+      "cycle": "This ticket sits under the one you are changing.",
+      "immutable": "This value cannot be changed."
     },
     "invitation": {
       "invalid": "This invitation link is invalid, has expired or was already used. Ask for a new one.",
@@ -670,7 +671,8 @@
       "health": "Health",
       "save": "Save",
       "saved": "Changes saved.",
-      "unsaved": "Unsaved changes"
+      "unsaved": "Unsaved changes",
+      "nodeKeyHint": "Names the node in queries (descendantsOf). Changing it breaks the filters that use it."
     },
     "dialog": {
       "title": "New node",
@@ -678,7 +680,8 @@
       "type": "Type",
       "keyHint": "2 to 10 capital letters and digits, a letter first (PLAT).",
       "create": "Create",
-      "created": "{{ name }} created."
+      "created": "{{ name }} created.",
+      "nodeKeyHint": "2 to 20 capital letters, digits and dashes, a letter first (PORTF-HR)."
     },
     "owners": {
       "label": "Owners",

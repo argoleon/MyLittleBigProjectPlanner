@@ -150,9 +150,10 @@ pub struct NodeView {
     node_type: NodeTypeView,
     #[schema(example = "Identity platform")]
     name: String,
-    /// Projects only, unique in the tenant.
+    /// Unique in the tenant: a project's (`PLAT`) never changes, a
+    /// portfolio's or program's (`PORTF-HR`) may.
     #[schema(example = "PLAT")]
-    key: Option<String>,
+    key: String,
     description: String,
     objectives: String,
     /// Local planning date.
@@ -192,8 +193,8 @@ pub struct LinkView {
     node_type: NodeTypeView,
     #[schema(example = "Compliance")]
     name: String,
-    /// Projects only.
-    key: Option<String>,
+    #[schema(example = "PORTF-CMP")]
+    key: String,
     /// Share of the child in the parent's aggregates, 0 to 100.
     #[schema(example = 40)]
     weight_percent: i16,
@@ -380,7 +381,8 @@ pub struct CandidateView {
     node_type: NodeTypeView,
     #[schema(example = "Cyber resilience")]
     name: String,
-    key: Option<String>,
+    #[schema(example = "CYBP")]
+    key: String,
     /// Its own parents, for context.
     parents: Vec<ParentView>,
     /// Why it cannot become the parent; `null` when it can.
@@ -484,6 +486,12 @@ pub struct NodeListParams {
 pub struct ChangesBody {
     /// 1 to 200 characters.
     name: String,
+    /// A new key for a portfolio or program (same rules as at creation);
+    /// left out, it stays. A project's key never changes: only its current
+    /// key is accepted.
+    #[serde(default)]
+    #[schema(example = "PORTF-HR")]
+    key: Option<String>,
     /// 10,000 characters at most.
     #[serde(default)]
     description: String,
@@ -513,10 +521,14 @@ pub struct CreateBody {
     node_type: NodeTypeView,
     /// 1 to 200 characters.
     name: String,
-    /// Projects only (required for them): 2 to 10 capital letters and
-    /// digits, a letter first; unique in the tenant.
+    /// Unique in the tenant. A project's: 2 to 10 capital letters and
+    /// digits, a letter first (`PLAT`). A portfolio's or program's: 2 to 20
+    /// capital letters, digits and single dashes, a letter first
+    /// (`PORTF-HR`).
+    // Missing: a `required` field error, not unreadable JSON.
     #[serde(default)]
-    key: Option<String>,
+    #[schema(example = "PLAT", required = true)]
+    key: String,
     #[serde(default)]
     description: String,
     #[serde(default)]
@@ -538,10 +550,11 @@ fn ymd(date: Option<NaiveDate>) -> Option<(i32, u32, u32)> {
     date.map(|d| (d.year(), d.month(), d.day()))
 }
 
-fn input(name: &str, key: Option<&str>, changes: &ChangesBody) -> NodeInput {
+/// What `validate_node` checks; an empty key is a missing one.
+fn input(name: &str, key: &str, changes: &ChangesBody) -> NodeInput {
     NodeInput {
         name: name.to_owned(),
-        key: key.map(str::to_owned),
+        key: (!key.is_empty()).then(|| key.to_owned()),
         description: changes.description.clone(),
         objectives: changes.objectives.clone(),
         start_date: ymd(changes.start_date),
@@ -553,6 +566,7 @@ fn input(name: &str, key: Option<&str>, changes: &ChangesBody) -> NodeInput {
 fn fields(changes: &ChangesBody) -> NodeFields<'_> {
     NodeFields {
         name: &changes.name,
+        key: changes.key.as_deref().map(str::trim),
         description: &changes.description,
         objectives: &changes.objectives,
         start_date: changes.start_date,
@@ -687,7 +701,7 @@ pub async fn list(
             ("ETag" = String, description = "Version of the node"),
             ("Location" = String, description = "URL of the node"),
         )),
-        (status = 400, description = "`validation_failed`: `name`, `key` (`required`, `format`, `not_allowed`), \
+        (status = 400, description = "`validation_failed`: `name`, `key` (`required`, `format`), \
                                       `endDate` `before_start`, `ownerIds` (`too_many`, `unknown_member`), \
                                       `parentId` (`not_found`, `not_allowed`)", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
@@ -733,6 +747,7 @@ pub async fn create(
 
     let changes = ChangesBody {
         name: body.name.clone(),
+        key: None,
         description: body.description.clone(),
         objectives: body.objectives.clone(),
         start_date: body.start_date,
@@ -740,7 +755,7 @@ pub async fn create(
         health: body.health,
         owner_ids: body.owner_ids.clone(),
     };
-    let node_key = body.key.as_deref().map(str::trim);
+    let node_key = body.key.trim();
     let mut errors = validate_node(node_type, &input(&body.name, node_key, &changes))
         .err()
         .unwrap_or_default();
@@ -840,8 +855,9 @@ pub async fn read(
     tag = TAG,
     operation_id = "updateNode",
     summary = "Change a portfolio, program or project",
-    description = "Tenant admins, and the members who administer the node. The type and the key \
-                   do not change; the owners are replaced by `ownerIds`.",
+    description = "Tenant admins, and the members who administer the node. The type does not \
+                   change, nor a project's key; a portfolio's or program's key may. The owners are \
+                   replaced by `ownerIds`.",
     params(
         ("id" = Uuid, Path, description = "Id of the node"),
         ("If-Match" = String, Header, description = "ETag of the version being replaced, or `*`"),
@@ -851,11 +867,11 @@ pub async fn read(
         (status = 200, description = "The node", body = NodeView, headers(
             ("ETag" = String, description = "New version of the node"),
         )),
-        (status = 400, description = "`validation_failed`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 400, description = "`validation_failed`: `name`, `key` (`format`, or `immutable` for a project)", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 403, description = "`forbidden`: may not change it, or `csrf.invalid`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 404, description = "No such node in this tenant, or not visible to the member", body = ProblemBody, content_type = PROBLEM_JSON),
-        (status = 409, description = "`node.archived`: an archived project is read-only", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 409, description = "`node.archived`: an archived project is read-only; `node.key_taken`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 412, description = "The node changed since this ETag", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 428, description = "`If-Match` is missing", body = ProblemBody, content_type = PROBLEM_JSON),
     )
@@ -879,11 +895,11 @@ pub async fn update(
         return Err(Problem::new(ErrorCode::Forbidden));
     }
     ensure_changeable(&current)?;
-    validate_node(
-        current.node_type,
-        &input(&body.name, current.key.as_deref(), &body),
-    )
-    .map_err(Problem::validation)?;
+    let key = body.key.as_deref().map_or(current.key.as_str(), str::trim);
+    if current.node_type == NodeType::Project && key != current.key {
+        return Err(Problem::validation(vec![FieldError::new("key", "immutable")]));
+    }
+    validate_node(current.node_type, &input(&body.name, key, &body)).map_err(Problem::validation)?;
     let node = repo::update(&mut tx, id, if_match.versions(), &fields(&body))
         .await?
         .map_err(conflict_problem)?;
@@ -1385,7 +1401,7 @@ mod tests {
             id: PLAT,
             node_type: NodeType::Project,
             name: "Identity platform".to_owned(),
-            key: Some("PLAT".to_owned()),
+            key: "PLAT".to_owned(),
             description: String::new(),
             objectives: String::new(),
             start_date: None,
@@ -1446,7 +1462,7 @@ mod tests {
             id: Uuid::nil(),
             node_type: NodeType::Project,
             name: "Cyber permissions".to_owned(),
-            key: Some("CYBP".to_owned()),
+            key: "CYBP".to_owned(),
             parents: vec![],
             descends_from_child: true,
             already_parent: false,
@@ -1482,7 +1498,7 @@ mod tests {
             id: PLAT,
             node_type: NodeType::Project,
             name: "Identity platform".to_owned(),
-            key: Some("PLAT".to_owned()),
+            key: "PLAT".to_owned(),
             description: "The secret plan".to_owned(),
             objectives: "Ship in March".to_owned(),
             start_date: NaiveDate::from_ymd_opt(2026, 1, 5),
@@ -1583,7 +1599,7 @@ mod tests {
             id: PLAT,
             node_type: NodeType::Project,
             name: "Identity platform".to_owned(),
-            key: Some("PLAT".to_owned()),
+            key: "PLAT".to_owned(),
             weight_percent: 40,
             confidential: true,
             parents: vec![node_ref(PORTFOLIO, NodeType::Portfolio, "Digital")],

@@ -27,20 +27,18 @@
         <mat-error>{{ 'errors.field.required' | transloco }}</mat-error>
       }
     </mat-form-field>
-    @if (isProject()) {
-      <mat-form-field appearance="outline">
-        <mat-label>{{ 'hierarchy.general.key' | transloco }}</mat-label>
-        <input matInput formControlName="key" maxlength="10" required class="project-key" (blur)="tidyKey()" />
-        <mat-hint>{{ 'hierarchy.dialog.keyHint' | transloco }}</mat-hint>
-        @if (form.controls.key.getError('api'); as key) {
-          <mat-error>{{ key | transloco }}</mat-error>
-        } @else if (form.controls.key.hasError('pattern')) {
-          <mat-error>{{ 'errors.field.format' | transloco }}</mat-error>
-        } @else {
-          <mat-error>{{ 'errors.field.required' | transloco }}</mat-error>
-        }
-      </mat-form-field>
-    }
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'hierarchy.general.key' | transloco }}</mat-label>
+      <input matInput formControlName="key" [maxlength]="keyMaxLength()" required class="node-key" (blur)="tidyKey()" />
+      <mat-hint>{{ (isProject() ? 'hierarchy.dialog.keyHint' : 'hierarchy.dialog.nodeKeyHint') | transloco }}</mat-hint>
+      @if (form.controls.key.getError('api'); as key) {
+        <mat-error>{{ key | transloco }}</mat-error>
+      } @else if (form.controls.key.hasError('pattern')) {
+        <mat-error>{{ 'errors.field.format' | transloco }}</mat-error>
+      } @else {
+        <mat-error>{{ 'errors.field.required' | transloco }}</mat-error>
+      }
+    </mat-form-field>
     <div class="dates">
       <mat-form-field appearance="outline">
         <mat-label>{{ 'hierarchy.general.startDate' | transloco }}</mat-label>

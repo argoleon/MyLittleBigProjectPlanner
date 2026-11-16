@@ -109,8 +109,8 @@ test('a project under two weighted programs, never under its own sub-project', a
   // A portfolio, a program, a project and its sub-project, each under the last.
   await page.goto('/portfolios');
   await page.getByRole('button', { name: 'New node' }).click();
-  await createIn(page, 'Portfolio', digital);
-  await addChild(page, 'Program', modernization);
+  await createIn(page, 'Portfolio', digital, `PF-${run}`);
+  await addChild(page, 'Program', modernization, `PG-${run}`);
   await addChild(page, 'Project', platform, `P${run}`);
   const platformUrl = page.url();
   await addChild(page, 'Project', permissions, `S${run}`);
@@ -122,7 +122,7 @@ test('a project under two weighted programs, never under its own sub-project', a
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(digital);
   const digitalUrl = page.url();
   await page.getByRole('button', { name: 'Add a child' }).click();
-  await fillNode(page, 'Program', compliance);
+  await fillNode(page, 'Program', compliance, `PC-${run}`);
   // The view stays, the new program shows in its tree.
   await expect(page.getByRole('link', { name: compliance })).toBeVisible();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(digital);
@@ -192,7 +192,7 @@ test('a role granted on a portfolio opens the project below, until it is revoked
   const admin = await signIn(browser, adminEmail!, adminSecret!);
   await admin.goto('/portfolios');
   await admin.getByRole('button', { name: 'New node' }).click();
-  await createIn(admin, 'Portfolio', portfolio);
+  await createIn(admin, 'Portfolio', portfolio, `PF-${run}`);
   const portfolioUrl = admin.url();
   await addChild(admin, 'Project', project, `V${run}`);
   const projectUrl = admin.url();
@@ -256,7 +256,7 @@ test('a confidential project closes to those above it, who find it veiled', asyn
   const admin = await signIn(browser, adminEmail!, adminSecret!);
   await admin.goto('/portfolios');
   await admin.getByRole('button', { name: 'New node' }).click();
-  await createIn(admin, 'Portfolio', portfolio);
+  await createIn(admin, 'Portfolio', portfolio, `PF-${run}`);
   await grantReader(admin, portfolio, viewerEmail!);
   await addChild(admin, 'Project', project, `X${run}`);
   const projectUrl = admin.url();
@@ -320,7 +320,7 @@ test('an archived project leaves the tree and the indicators, read-only, until i
   const admin = await signIn(browser, adminEmail!, adminSecret!);
   await admin.goto('/portfolios');
   await admin.getByRole('button', { name: 'New node' }).click();
-  await createIn(admin, 'Portfolio', portfolio);
+  await createIn(admin, 'Portfolio', portfolio, `PF-${run}`);
   await addChild(admin, 'Project', project, `D${run}`);
   const projectUrl = admin.url().replace(/\/general$/, '');
   await admin.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('link', { name: portfolio }).click();

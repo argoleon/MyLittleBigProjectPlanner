@@ -153,18 +153,23 @@ async fn a_portfolio_shows_its_tree_and_aggregates_its_distinct_projects() {
     let db = TestDb::new().await;
     let api = common::start(&db, multi()).await;
     let t = &db.tenant_a;
-    let digital = node(&api, t, json!({"type": "portfolio", "name": "Digital"})).await;
+    let digital = node(
+        &api,
+        t,
+        json!({"type": "portfolio", "name": "Digital", "key": "DIGITAL"}),
+    )
+    .await;
     assert_eq!(queued_jobs(&db, t).await, 1, "a change queues the recompute");
     let modernization = node(
         &api,
         t,
-        json!({"type": "program", "name": "Modernization", "parentId": digital}),
+        json!({"type": "program", "name": "Modernization", "key": "MODERNIZATION", "parentId": digital}),
     )
     .await;
     let compliance = node(
         &api,
         t,
-        json!({"type": "program", "name": "Compliance", "parentId": digital}),
+        json!({"type": "program", "name": "Compliance", "key": "COMPLIANCE", "parentId": digital}),
     )
     .await;
     let plat = node(
@@ -420,7 +425,12 @@ async fn the_hierarchy_and_its_aggregates_stay_in_their_tenant() {
     let db = TestDb::new().await;
     let api = common::start(&db, multi()).await;
     let (a, b) = (&db.tenant_a, &db.tenant_b);
-    let digital = node(&api, a, json!({"type": "portfolio", "name": "Digital"})).await;
+    let digital = node(
+        &api,
+        a,
+        json!({"type": "portfolio", "name": "Digital", "key": "DIGITAL"}),
+    )
+    .await;
     let plat = node(
         &api,
         a,
@@ -429,7 +439,12 @@ async fn the_hierarchy_and_its_aggregates_stay_in_their_tenant() {
     .await;
     measure(&db, a, &plat, figures(600, 42, 58, 1)).await;
     recompute(&db, a).await;
-    let other = node(&api, b, json!({"type": "portfolio", "name": "Elsewhere"})).await;
+    let other = node(
+        &api,
+        b,
+        json!({"type": "portfolio", "name": "Elsewhere", "key": "ELSEWHERE"}),
+    )
+    .await;
     assert_eq!(recompute(&db, b).await, 1, "each tenant recomputes its own nodes");
 
     let (_, top) = send(admin(&api, b, Method::GET, "/api/v1/hierarchy")).await;
@@ -469,8 +484,9 @@ async fn seed_volume(db: &TestDb, tenant: &SeedTenant, portfolio: &str) -> Vec<U
     let (programs, projects) = (ids(20), ids(1000));
     let mut tx = infra::db::begin_tenant_tx(&db.app_pool, tenant.id).await.unwrap();
     infra::sqlx::query(
-        "INSERT INTO node (id, tenant_id, node_type, name)
-         SELECT id, app_current_tenant(), 'program', 'Program ' || lpad(rank::text, 2, '0')
+        "INSERT INTO node (id, tenant_id, node_type, name, key)
+         SELECT id, app_current_tenant(), 'program', 'Program ' || lpad(rank::text, 2, '0'),
+                'PROG-' || lpad(rank::text, 2, '0')
          FROM unnest($1::uuid[]) WITH ORDINALITY AS n (id, rank)",
     )
     .bind(&programs)
@@ -521,7 +537,12 @@ async fn browsing_a_thousand_projects_answers_within_200_ms_at_the_95th_percenti
     let db = TestDb::new().await;
     let api = common::start(&db, multi()).await;
     let t = &db.tenant_a;
-    let portfolio = node(&api, t, json!({"type": "portfolio", "name": "Digital"})).await;
+    let portfolio = node(
+        &api,
+        t,
+        json!({"type": "portfolio", "name": "Digital", "key": "DIGITAL"}),
+    )
+    .await;
     let programs = seed_volume(&db, t, &portfolio).await;
     // A member's requests also compute what they see of the hierarchy.
     let (lucas, session) = member(&db, &api, t).await;

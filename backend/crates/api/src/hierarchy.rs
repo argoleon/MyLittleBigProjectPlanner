@@ -89,9 +89,8 @@ pub struct RowView {
     node_type: NodeTypeView,
     #[schema(example = "Identity platform")]
     name: String,
-    /// Projects only.
     #[schema(example = "PLAT")]
-    key: Option<String>,
+    key: String,
     health: HealthView,
     owners: Vec<OwnerView>,
     /// Weighting of the link to the node browsed; `null` at the top.
@@ -288,7 +287,7 @@ mod tests {
             id: PLAT,
             node_type: NodeType::Project,
             name: "Identity platform".to_owned(),
-            key: Some("PLAT".to_owned()),
+            key: "PLAT".to_owned(),
             health: Health::AtRisk,
             confidential,
             weight_percent: Some(60),

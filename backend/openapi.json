@@ -4516,7 +4516,7 @@
             }
           },
           "400": {
-            "description": "`validation_failed`: `name`, `key` (`required`, `format`, `not_allowed`), `endDate` `before_start`, `ownerIds` (`too_many`, `unknown_member`), `parentId` (`not_found`, `not_allowed`)",
+            "description": "`validation_failed`: `name`, `key` (`required`, `format`), `endDate` `before_start`, `ownerIds` (`too_many`, `unknown_member`), `parentId` (`not_found`, `not_allowed`)",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -4648,7 +4648,7 @@
           "hierarchy"
         ],
         "summary": "Change a portfolio, program or project",
-        "description": "Tenant admins, and the members who administer the node. The type and the key do not change; the owners are replaced by `ownerIds`.",
+        "description": "Tenant admins, and the members who administer the node. The type does not change, nor a project's key; a portfolio's or program's key may. The owners are replaced by `ownerIds`.",
         "operationId": "updateNode",
         "parameters": [
           {
@@ -4701,7 +4701,7 @@
             }
           },
           "400": {
-            "description": "`validation_failed`",
+            "description": "`validation_failed`: `name`, `key` (`format`, or `immutable` for a project)",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -4741,7 +4741,7 @@
             }
           },
           "409": {
-            "description": "`node.archived`: an archived project is read-only",
+            "description": "`node.archived`: an archived project is read-only; `node.key_taken`",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -16672,6 +16672,7 @@
           "id",
           "type",
           "name",
+          "key",
           "health",
           "owners",
           "otherParents",
@@ -16694,11 +16695,7 @@
             "format": "uuid"
           },
           "key": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Projects only.",
+            "type": "string",
             "example": "PLAT"
           },
           "name": {
@@ -19419,7 +19416,8 @@
         "description": "A node to create.",
         "required": [
           "type",
-          "name"
+          "name",
+          "key"
         ],
         "properties": {
           "description": {
@@ -19436,11 +19434,9 @@
             "$ref": "#/components/schemas/NodeHealth"
           },
           "key": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Projects only (required for them): 2 to 10 capital letters and\ndigits, a letter first; unique in the tenant."
+            "type": "string",
+            "description": "Unique in the tenant. A project's: 2 to 10 capital letters and\ndigits, a letter first (`PLAT`). A portfolio's or program's: 2 to 20\ncapital letters, digits and single dashes, a letter first\n(`PORTF-HR`).",
+            "example": "PLAT"
           },
           "name": {
             "type": "string",
@@ -19690,6 +19686,7 @@
           "id",
           "type",
           "name",
+          "key",
           "description",
           "objectives",
           "health",
@@ -19727,11 +19724,8 @@
             "format": "uuid"
           },
           "key": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Projects only, unique in the tenant.",
+            "type": "string",
+            "description": "Unique in the tenant: a project's (`PLAT`) never changes, a\nportfolio's or program's (`PORTF-HR`) may.",
             "example": "PLAT"
           },
           "name": {
@@ -19919,6 +19913,7 @@
           "id",
           "type",
           "name",
+          "key",
           "parents",
           "refusal"
         ],
@@ -19928,10 +19923,8 @@
             "format": "uuid"
           },
           "key": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string",
+            "example": "CYBP"
           },
           "name": {
             "type": "string",
@@ -19980,6 +19973,14 @@
           },
           "health": {
             "$ref": "#/components/schemas/NodeHealth"
+          },
+          "key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A new key for a portfolio or program (same rules as at creation);\nleft out, it stays. A project's key never changes: only its current\nkey is accepted.",
+            "example": "PORTF-HR"
           },
           "name": {
             "type": "string",
@@ -20110,6 +20111,7 @@
           "id",
           "type",
           "name",
+          "key",
           "weightPercent",
           "parents"
         ],
@@ -20120,11 +20122,8 @@
             "description": "Id of the parent or child."
           },
           "key": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Projects only."
+            "type": "string",
+            "example": "PORTF-CMP"
           },
           "name": {
             "type": "string",

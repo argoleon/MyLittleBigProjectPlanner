@@ -35,7 +35,7 @@ pub struct Node {
     pub id: Uuid,
     pub node_type: NodeType,
     pub name: String,
-    pub key: Option<String>,
+    pub key: String,
     pub description: String,
     pub objectives: String,
     pub start_date: Option<NaiveDate>,
@@ -58,10 +58,13 @@ impl Node {
     }
 }
 
-/// What can be changed on a node (its type and key cannot).
+/// What can be changed on a node: its type never, its key only for a
+/// portfolio or program (the caller checks it).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NodeFields<'a> {
     pub name: &'a str,
+    /// A new key; `None` keeps it. Ignored at creation (`NewNode::key`).
+    pub key: Option<&'a str>,
     pub description: &'a str,
     pub objectives: &'a str,
     pub start_date: Option<NaiveDate>,
@@ -75,7 +78,7 @@ pub struct NodeFields<'a> {
 pub struct NewNode<'a> {
     pub id: Uuid,
     pub node_type: NodeType,
-    pub key: Option<&'a str>,
+    pub key: &'a str,
     pub fields: NodeFields<'a>,
     pub parent: Option<Uuid>,
     pub created_by: Uuid,
@@ -88,7 +91,7 @@ pub struct Link {
     pub id: Uuid,
     pub node_type: NodeType,
     pub name: String,
-    pub key: Option<String>,
+    pub key: String,
     pub weight_percent: i16,
     /// Blocks inheritance: those above it without a role on it see it veiled.
     pub confidential: bool,
@@ -101,7 +104,7 @@ pub struct Candidate {
     pub id: Uuid,
     pub node_type: NodeType,
     pub name: String,
-    pub key: Option<String>,
+    pub key: String,
     pub parents: Vec<NodeRef>,
     /// It is a descendant of the child: the link would make a cycle.
     pub descends_from_child: bool,
@@ -238,7 +241,7 @@ struct Row {
     id: Uuid,
     node_type: String,
     name: String,
-    key: Option<String>,
+    key: String,
     description: String,
     objectives: String,
     start_date: Option<NaiveDate>,
@@ -385,25 +388,32 @@ pub async fn update(
     expected_versions: Option<&[i64]>,
     fields: &NodeFields<'_>,
 ) -> WriteResult<Node> {
-    let updated = sqlx::query_scalar!(
-        r#"
-        UPDATE node
-        SET name = $3, description = $4, objectives = $5, start_date = $6, end_date = $7,
-            health = $8, version = version + 1
-        WHERE id = $1 AND ($2::bigint[] IS NULL OR version = ANY($2))
-        RETURNING id
-        "#,
-        id,
-        expected_versions,
-        fields.name.trim(),
-        fields.description,
-        fields.objectives,
-        fields.start_date,
-        fields.end_date,
-        fields.health.as_str()
+    let updated = conflicts(
+        sqlx::query_scalar!(
+            r#"
+            UPDATE node
+            SET name = $3, description = $4, objectives = $5, start_date = $6, end_date = $7,
+                health = $8, key = COALESCE($9, key), version = version + 1
+            WHERE id = $1 AND ($2::bigint[] IS NULL OR version = ANY($2))
+            RETURNING id
+            "#,
+            id,
+            expected_versions,
+            fields.name.trim(),
+            fields.description,
+            fields.objectives,
+            fields.start_date,
+            fields.end_date,
+            fields.health.as_str(),
+            fields.key
+        )
+        .fetch_optional(&mut *conn),
     )
-    .fetch_optional(&mut *conn)
     .await?;
+    let updated = match updated {
+        Ok(updated) => updated,
+        Err(conflict) => return Ok(Err(conflict)),
+    };
     if updated.is_none() {
         return Ok(Err(if exists(conn, id).await? {
             WriteConflict::VersionMismatch
@@ -624,7 +634,7 @@ pub struct BrowseRow {
     pub id: Uuid,
     pub node_type: NodeType,
     pub name: String,
-    pub key: Option<String>,
+    pub key: String,
     pub health: Health,
     pub confidential: bool,
     /// Weighting of its link under the browsed parent; `None` at the top.
@@ -695,7 +705,7 @@ struct LinkRow {
     id: Uuid,
     node_type: String,
     name: String,
-    key: Option<String>,
+    key: String,
     weight_percent: i16,
     confidential: bool,
 }
