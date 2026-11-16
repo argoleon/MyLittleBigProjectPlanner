@@ -4,6 +4,13 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
 
 ## [Unreleased]
 
+### Added
+
+- **Search with the query language** (#168)
+  - A JQL-like language (specification §6): comparisons, `IN`, `IS EMPTY`, `~` on text, `AND` / `OR` / `NOT` and parentheses, durations (`created > -7d`), `currentUser()`, `now()`, `startOf…()` and `endOf…()` (day, week, month, year), `descendantsOf("PORTF-HR")`, and `ORDER BY`. Fields and values are stable keys; dates are read in the member's time zone.
+  - `POST /api/v1/search` with `{query, fields, expand, cursor, limit}`: the tickets of the projects the member sees, the total on the first page, a cursor for the next ones. A query that cannot run answers `query.invalid` with the reason, the character position and what was expected.
+  - `sprint` and `fixVersion` are understood but answer `unsupported` until sprints and versions come (L09); `text ~` matches the summary and the description until full text comes (#177).
+
 ### Changed
 
 - **Every node has a key** (#168): portfolios and programs now carry one too (2 to 20 capitals, digits and dashes, such as `PORTF-HR`), unique in the organization together with project keys, so that queries can name them (`descendantsOf("PORTF-HR")`). It is entered in the creation dialog and may be changed in the General tab; a project's key still never changes. API: `key` is required to create any node and always present in node responses; `PUT /nodes/{id}` accepts a new `key` for a portfolio or program.

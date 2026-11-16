@@ -94,5 +94,6 @@ export const ERROR_CODE: ErrorCode[] = [
   'attachment.quota_exceeded',
   'attachment.not_uploaded',
   'attachment.not_scanned',
-  'storage.unavailable'
+  'storage.unavailable',
+  'query.invalid'
 ];

@@ -96,6 +96,26 @@ pub async fn time_zone_of(conn: &mut PgConnection, account: Uuid) -> Result<Stri
     .await
 }
 
+/// A project of a page of results, with the configuration it follows.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProjectOfPage {
+    pub id: Uuid,
+    pub key: String,
+    pub name: String,
+    pub config_id: Option<Uuid>,
+}
+
+/// The projects `ids`, in one query.
+pub async fn projects_of(conn: &mut PgConnection, ids: &[Uuid]) -> Result<Vec<ProjectOfPage>, sqlx::Error> {
+    sqlx::query_as!(
+        ProjectOfPage,
+        "SELECT id, key, name, config_id FROM node WHERE id = ANY($1)",
+        ids
+    )
+    .fetch_all(conn)
+    .await
+}
+
 /// The tickets matching `query`, `limit` of them after `cursor`, with the
 /// total when `count` is set.
 pub async fn search(
@@ -117,18 +137,19 @@ pub async fn search(
         .map(|c| decode_cursor(c, &order_text, sort.len()))
         .transpose()?;
 
-    let mut qb = QueryBuilder::new(
-        "SELECT i.id, i.project_id, i.key, i.key_number, i.type_id, i.status_id, i.parent_id, i.summary, \
-         i.description, i.priority, i.reporter_id, app_member_name(i.reporter_id) AS reporter_name, i.assignee_id, \
-         app_member_name(i.assignee_id) AS assignee_name, i.start_date, i.due_date, i.fields, i.created_at, \
-         i.updated_at, i.version",
-    );
+    // The page first, ids and sort values only: what a ticket shows (the
+    // names of its people) is read for the page alone.
+    let mut qb = QueryBuilder::new("SELECT i.id");
     for (index, key) in sort.iter().enumerate() {
         qb.push(", (");
         key.push(&mut qb);
         qb.push(")::text AS s").push(index);
     }
-    qb.push(" FROM issue i WHERE ");
+    qb.push(" FROM issue i");
+    if sort.iter().any(SortKey::needs_project) {
+        qb.push(" JOIN node pn ON pn.id = i.project_id");
+    }
+    qb.push(" WHERE ");
     compiler.push_filter(&mut qb, query.filter.as_ref())?;
     if let Some(after) = &after {
         qb.push(" AND ");
@@ -136,9 +157,12 @@ pub async fn search(
     }
     qb.push(" ORDER BY ");
     for key in &sort {
+        if key.nullable() {
+            qb.push("(");
+            key.push(&mut qb);
+            qb.push(") IS NULL, ");
+        }
         qb.push("(");
-        key.push(&mut qb);
-        qb.push(") IS NULL, (");
         key.push(&mut qb);
         qb.push(if key.descending { ") DESC, " } else { ") ASC, " });
     }
@@ -146,24 +170,29 @@ pub async fn search(
         .push_bind(i64::try_from(limit + 1).unwrap_or(i64::MAX));
     let rows = qb.build().fetch_all(&mut *conn).await?;
 
-    let mut items = Vec::with_capacity(rows.len().min(limit));
-    let mut last = None;
+    let mut page = Vec::with_capacity(rows.len().min(limit));
     for row in rows.iter().take(limit) {
-        items.push(issue_of(row)?);
         let values = (0..sort.len())
             .map(|index| row.try_get::<Option<String>, _>(format!("s{index}").as_str()))
             .collect::<Result<Vec<_>, _>>()?;
-        last = Some(CursorDoc {
+        page.push(CursorDoc {
             order: order_text.clone(),
             values,
             id: row.try_get("id")?,
         });
     }
     let next_cursor = if rows.len() > limit {
-        last.map(|doc| encode_cursor(&doc))
+        page.last().map(encode_cursor)
     } else {
         None
     };
+    let ids: Vec<Uuid> = page.iter().map(|doc| doc.id).collect();
+    let mut found: HashMap<Uuid, Issue> = crate::issues::find_many(conn, &ids)
+        .await?
+        .into_iter()
+        .map(|issue| (issue.id, issue))
+        .collect();
+    let items = ids.iter().filter_map(|id| found.remove(id)).collect();
 
     let total = if count {
         let mut qb = QueryBuilder::new("SELECT count(*) FROM issue i WHERE ");
@@ -176,31 +205,6 @@ pub async fn search(
         items,
         next_cursor,
         total,
-    })
-}
-
-fn issue_of(row: &sqlx::postgres::PgRow) -> Result<Issue, sqlx::Error> {
-    Ok(Issue {
-        id: row.try_get("id")?,
-        project_id: row.try_get("project_id")?,
-        key: row.try_get("key")?,
-        key_number: row.try_get("key_number")?,
-        type_id: row.try_get("type_id")?,
-        status_id: row.try_get("status_id")?,
-        parent_id: row.try_get("parent_id")?,
-        summary: row.try_get("summary")?,
-        description: row.try_get("description")?,
-        priority: row.try_get("priority")?,
-        reporter_id: row.try_get("reporter_id")?,
-        reporter_name: row.try_get("reporter_name")?,
-        assignee_id: row.try_get("assignee_id")?,
-        assignee_name: row.try_get("assignee_name")?,
-        start_date: row.try_get("start_date")?,
-        due_date: row.try_get("due_date")?,
-        fields: row.try_get("fields")?,
-        created_at: row.try_get("created_at")?,
-        updated_at: row.try_get("updated_at")?,
-        version: row.try_get("version")?,
     })
 }
 
@@ -300,7 +304,31 @@ enum CustomSort {
     Text,
 }
 
+/// Sort expressions over columns that are never empty: they sort without
+/// the "empty last" prefix, which lets PostgreSQL use plain comparisons.
+const NEVER_EMPTY: [&str; 6] = [
+    PROJECT_KEY_SQL,
+    "i.key_number",
+    PRIORITY_RANK_SQL,
+    "lower(i.summary)",
+    "i.created_at",
+    "i.updated_at",
+];
+
 impl SortKey {
+    /// Whether the expression can be empty (`NULL`).
+    fn nullable(&self) -> bool {
+        match &self.expr {
+            SortExpr::Sql(sql, _) => !NEVER_EMPTY.contains(sql),
+            SortExpr::Custom { .. } => true,
+        }
+    }
+
+    /// Whether it reads the ticket's project (`pn`, joined by the page query).
+    fn needs_project(&self) -> bool {
+        matches!(self.expr, SortExpr::Sql(PROJECT_KEY_SQL, _))
+    }
+
     fn cast(&self) -> &'static str {
         match &self.expr {
             SortExpr::Sql(_, cast) => cast,
@@ -352,7 +380,8 @@ impl SortKey {
     }
 }
 
-const PROJECT_KEY_SQL: &str = "(SELECT n.key FROM node n WHERE n.id = i.project_id)";
+/// The project's key, through the join the page query adds (`pn`).
+const PROJECT_KEY_SQL: &str = "pn.key";
 const PRIORITY_RANK_SQL: &str = "CASE i.priority WHEN 'lowest' THEN 1 WHEN 'low' THEN 2 WHEN 'medium' THEN 3 \
                                  WHEN 'high' THEN 4 ELSE 5 END";
 
@@ -433,9 +462,13 @@ fn push_after(qb: &mut QueryBuilder<Postgres>, sort: &[SortKey], after: &CursorD
                     qb.push("false");
                 }
                 Some(value) => {
-                    qb.push("((");
-                    key.push(qb);
-                    qb.push(") IS NULL OR (");
+                    qb.push("(");
+                    if key.nullable() {
+                        qb.push("(");
+                        key.push(qb);
+                        qb.push(") IS NULL OR ");
+                    }
+                    qb.push("(");
                     key.push(qb);
                     qb.push(if key.descending { ") < " } else { ") > " })
                         .push_bind(value.clone())
@@ -549,34 +582,44 @@ impl Compiler<'_> {
         }
         if let Some(filter) = filter {
             qb.push(" AND ");
-            self.push_expr(qb, filter)?;
+            self.push_expr(qb, filter, false)?;
         }
         Ok(())
     }
 
-    fn push_expr(&self, qb: &mut QueryBuilder<Postgres>, expr: &Expr) -> Result<(), QueryError> {
+    /// `expr`; `negated` when a `NOT` is above it.
+    fn push_expr(
+        &self,
+        qb: &mut QueryBuilder<Postgres>,
+        expr: &Expr,
+        negated: bool,
+    ) -> Result<(), QueryError> {
         match expr {
             Expr::And(left, right) | Expr::Or(left, right) => {
                 qb.push("(");
-                self.push_expr(qb, left)?;
+                self.push_expr(qb, left, negated)?;
                 qb.push(if matches!(expr, Expr::And(..)) {
                     " AND "
                 } else {
                     " OR "
                 });
-                self.push_expr(qb, right)?;
+                self.push_expr(qb, right, negated)?;
                 qb.push(")");
             }
             Expr::Not(inner) => {
                 qb.push("NOT ");
-                self.push_expr(qb, inner)?;
+                self.push_expr(qb, inner, true)?;
             }
-            Expr::Clause(clause) => {
-                // Never unknown: an empty field fails the condition.
+            // Never unknown: an empty field fails the condition. `WHERE`, AND
+            // and OR already treat unknown as false; only NOT would turn it
+            // into true, so the condition is made false there. Elsewhere it
+            // stays bare, for the indexes.
+            Expr::Clause(clause) if negated => {
                 qb.push("COALESCE((");
                 self.push_clause(qb, clause)?;
                 qb.push("), false)");
             }
+            Expr::Clause(clause) => self.push_clause(qb, clause)?,
         }
         Ok(())
     }
