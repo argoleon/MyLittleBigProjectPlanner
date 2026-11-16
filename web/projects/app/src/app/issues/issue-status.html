@@ -1,0 +1,38 @@
+@let current = issue();
+@let status = current.status.label ?? current.status.key;
+@if (canEdit() && available().length > 0) {
+  <button
+    matButton="tonal"
+    type="button"
+    class="status-menu"
+    [matMenuTriggerFor]="menu"
+    [disabled]="running()"
+    [attr.aria-label]="'issue.transition.menu' | transloco: { status: status }"
+  >
+    {{ status }}
+    <mat-icon iconPositionEnd aria-hidden="true">arrow_drop_down</mat-icon>
+  </button>
+  <mat-menu #menu="matMenu">
+    @for (transition of available(); track transition.id) {
+      <button mat-menu-item type="button" class="transition" (click)="run(transition)">
+        {{ transition.name }}
+        <span class="target">→ {{ transition.toStatus.label ?? transition.toStatus.key }}</span>
+      </button>
+    }
+  </mat-menu>
+  @let first = available()[0];
+  <button matButton="filled" type="button" class="first-transition" [disabled]="running()" (click)="run(first)">
+    {{ first.name }}
+  </button>
+} @else {
+  <ui-status-chip [category]="chipCategory(current.status.category)" [label]="status" />
+}
+@if (conflict()) {
+  <p class="message error conflict" role="alert">
+    {{ 'issue.edit.conflict' | transloco }}
+    <button matButton type="button" class="reload" (click)="reload.emit()">{{ 'issue.edit.reload' | transloco }}</button>
+  </p>
+}
+@if (errorKey(); as key) {
+  <p class="message error" role="alert">{{ key | transloco }}</p>
+}

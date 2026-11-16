@@ -119,11 +119,19 @@ pub enum ErrorCode {
     ScreenInUse,
     MappingIncomplete,
     ConfigMigrationRunning,
+    ConfigMigrationRequired,
+    IssueSubtaskMoves,
+    IssueLinkExists,
+    AttachmentTooLarge,
+    AttachmentQuotaExceeded,
+    AttachmentNotUploaded,
+    AttachmentNotScanned,
+    StorageUnavailable,
 }
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 80] = [
+    pub const ALL: [Self; 88] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -204,6 +212,14 @@ impl ErrorCode {
         Self::ScreenInUse,
         Self::MappingIncomplete,
         Self::ConfigMigrationRunning,
+        Self::ConfigMigrationRequired,
+        Self::IssueSubtaskMoves,
+        Self::IssueLinkExists,
+        Self::AttachmentTooLarge,
+        Self::AttachmentQuotaExceeded,
+        Self::AttachmentNotUploaded,
+        Self::AttachmentNotScanned,
+        Self::StorageUnavailable,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -288,6 +304,14 @@ impl ErrorCode {
             Self::ScreenInUse => "screen.in_use",
             Self::MappingIncomplete => "mapping_incomplete",
             Self::ConfigMigrationRunning => "config.migration_running",
+            Self::ConfigMigrationRequired => "config.migration_required",
+            Self::IssueSubtaskMoves => "issue.subtask_moves_with_parent",
+            Self::IssueLinkExists => "issue_link.exists",
+            Self::AttachmentTooLarge => "attachment.too_large",
+            Self::AttachmentQuotaExceeded => "attachment.quota_exceeded",
+            Self::AttachmentNotUploaded => "attachment.not_uploaded",
+            Self::AttachmentNotScanned => "attachment.not_scanned",
+            Self::StorageUnavailable => "storage.unavailable",
         }
     }
 
@@ -365,9 +389,17 @@ impl ErrorCode {
             | Self::ScreenExists
             | Self::ScreenGeneral
             | Self::ScreenInUse
-            | Self::ConfigMigrationRunning => StatusCode::CONFLICT,
+            | Self::ConfigMigrationRunning
+            | Self::ConfigMigrationRequired
+            | Self::IssueSubtaskMoves
+            | Self::IssueLinkExists
+            | Self::AttachmentNotUploaded
+            | Self::AttachmentNotScanned => StatusCode::CONFLICT,
             Self::PreconditionFailed => StatusCode::PRECONDITION_FAILED,
-            Self::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
+            Self::PayloadTooLarge | Self::AttachmentTooLarge | Self::AttachmentQuotaExceeded => {
+                StatusCode::PAYLOAD_TOO_LARGE
+            }
+            Self::StorageUnavailable => StatusCode::SERVICE_UNAVAILABLE,
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
             Self::IdempotencyKeyReused => StatusCode::UNPROCESSABLE_ENTITY,
             Self::PreconditionRequired => StatusCode::PRECONDITION_REQUIRED,
@@ -472,6 +504,18 @@ impl ErrorCode {
                 "Every removed status and type must be mapped to one the draft keeps: see errors"
             }
             Self::ConfigMigrationRunning => "A migration of this configuration is already under way",
+            Self::ConfigMigrationRequired => {
+                "Tickets use statuses or types the draft removes: map them through a migration first"
+            }
+            Self::IssueSubtaskMoves => "A sub-task moves with its parent: move the parent instead",
+            Self::IssueLinkExists => "The two tickets already have this link",
+            Self::AttachmentTooLarge => "The file is larger than the maximum allowed",
+            Self::AttachmentQuotaExceeded => "The organization's storage quota would be exceeded",
+            Self::AttachmentNotUploaded => "The file was not uploaded, or not whole",
+            Self::AttachmentNotScanned => {
+                "The file is not available: not scanned yet, or refused by the antivirus"
+            }
+            Self::StorageUnavailable => "The file storage is not available",
         }
     }
 
@@ -551,6 +595,13 @@ impl From<ErrorCode> for Problem {
 impl From<infra::sqlx::Error> for Problem {
     fn from(err: infra::sqlx::Error) -> Self {
         Self::internal(&err)
+    }
+}
+
+impl From<infra::storage::StorageError> for Problem {
+    fn from(err: infra::storage::StorageError) -> Self {
+        tracing::error!(error = %err, "storage error");
+        Self::new(ErrorCode::StorageUnavailable)
     }
 }
 
@@ -715,7 +766,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 80] = [
+        let expected: [(ErrorCode, u16); 88] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -796,6 +847,14 @@ mod tests {
             (ErrorCode::ScreenInUse, 409),
             (ErrorCode::MappingIncomplete, 400),
             (ErrorCode::ConfigMigrationRunning, 409),
+            (ErrorCode::ConfigMigrationRequired, 409),
+            (ErrorCode::IssueSubtaskMoves, 409),
+            (ErrorCode::IssueLinkExists, 409),
+            (ErrorCode::AttachmentTooLarge, 413),
+            (ErrorCode::AttachmentQuotaExceeded, 413),
+            (ErrorCode::AttachmentNotUploaded, 409),
+            (ErrorCode::AttachmentNotScanned, 409),
+            (ErrorCode::StorageUnavailable, 503),
         ];
         for (code, status) in expected {
             assert_eq!(code.status().as_u16(), status, "{}", code.as_str());

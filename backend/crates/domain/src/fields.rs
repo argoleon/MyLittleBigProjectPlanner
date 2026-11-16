@@ -499,8 +499,9 @@ pub fn validate_rules(
 }
 
 /// A value of a field on a ticket, as the API receives it (JSON).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub enum Value {
+    #[default]
     Null,
     Bool(bool),
     Number(f64),
@@ -880,6 +881,19 @@ pub fn parse_uuid(text: &str) -> Option<u128> {
         id = (id << 4) | u128::from(digit);
     }
     Some(id)
+}
+
+/// The hyphenated form of an identifier (`01933b2e-7c4a-7b9e-8f3d-2a6c5e1f0b9a`).
+pub fn format_uuid(id: u128) -> String {
+    let hex = format!("{id:032x}");
+    format!(
+        "{}-{}-{}-{}-{}",
+        &hex[0..8],
+        &hex[8..12],
+        &hex[12..16],
+        &hex[16..20],
+        &hex[20..32]
+    )
 }
 
 /// A system field: every configuration has it, it cannot be removed, and
@@ -1651,6 +1665,8 @@ mod tests {
             Some(DIRECTORY)
         );
         assert_eq!(parse_uuid("01933b2e7c4a7b9e8f3d2a6c5e1f0b01"), None);
+        assert_eq!(parse_uuid(&format_uuid(DIRECTORY)), Some(DIRECTORY));
+        assert_eq!(format_uuid(DIRECTORY), uuid(DIRECTORY));
         assert_eq!(parse_uuid("01933b2e-7c4a-7b9e-8f3d-2a6c5e1f0bzz"), None);
     }
 

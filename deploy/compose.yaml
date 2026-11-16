@@ -107,9 +107,16 @@ services:
       # Encrypts the secrets stored in the database (TOTP, OIDC clients).
       DATA_ENCRYPTION_KEY_FILE: /run/secrets/data_encryption_key
       # Sessions and rate limits use Valkey (VALKEY_URL_FILE above).
-      # Links of emails; multi-tenant mode needs https://{tenant}.<domain>.
+      # Links of emails and of attachments; multi-tenant mode needs
+      # https://{tenant}.<domain>.
       PUBLIC_URL: ${PUBLIC_URL:-https://${MLBPP_DOMAIN}${MLBPP_PUBLIC_PORT:-}}
-    secrets: [database_url, valkey_url, data_encryption_key]
+      # Attachments (S3_ENDPOINT above): browsers reach the bucket through
+      # the route of the seaweedfs service below.
+      S3_BUCKET: ${S3_BUCKET:-mlbpp-attachments}
+      S3_ACCESS_KEY_FILE: /run/secrets/s3_access_key
+      S3_SECRET_KEY_FILE: /run/secrets/s3_secret_key
+      ATTACHMENT_MAX_BYTES: ${ATTACHMENT_MAX_BYTES:-52428800}
+    secrets: [database_url, valkey_url, data_encryption_key, s3_access_key, s3_secret_key]
     networks: [edge, backend]
     depends_on:
       migrate:
@@ -141,7 +148,15 @@ services:
       DATABASE_URL_FILE: /run/secrets/database_url
       SMTP_URL_FILE: /run/secrets/smtp_url
       MAIL_FROM: ${MAIL_FROM:-My Little Big Project Planner <noreply@${MLBPP_DOMAIN}>}
-    secrets: [database_url, valkey_url, smtp_url]
+      # Attachments: scanned by ClamAV, given thumbnails. Scans wait (and
+      # retry) while ClamAV loads its signatures at first start.
+      S3_BUCKET: ${S3_BUCKET:-mlbpp-attachments}
+      S3_ACCESS_KEY_FILE: /run/secrets/s3_access_key
+      S3_SECRET_KEY_FILE: /run/secrets/s3_secret_key
+      CLAMAV_ADDR: clamav:3310
+      # Links of notification emails, as the api has them.
+      PUBLIC_URL: ${PUBLIC_URL:-https://${MLBPP_DOMAIN}${MLBPP_PUBLIC_PORT:-}}
+    secrets: [database_url, valkey_url, smtp_url, s3_access_key, s3_secret_key]
     # The observability profile's collector is on the edge network.
     networks: [backend, edge]
     depends_on:
@@ -313,7 +328,20 @@ services:
     secrets: [seaweedfs_s3_config]
     volumes:
       - seaweedfs-data:/data
-    networks: [backend]
+    # Edge: browsers upload and download attachments through presigned URLs
+    # of the application's own origin, under /<bucket>/ (path style); every
+    # request is signed, the storage refuses anonymous ones.
+    networks: [backend, edge]
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.mlbpp-files.rule=${MLBPP_HOST_RULE:-(Host(`${MLBPP_DOMAIN}`) || HostRegexp(`^[a-z0-9-]+[.]${MLBPP_DOMAIN}$`))} && PathPrefix(`/${S3_BUCKET:-mlbpp-attachments}/`)
+      - traefik.http.routers.mlbpp-files.middlewares=mlbpp-files
+      - traefik.http.services.mlbpp-files.loadbalancer.server.port=8333
+      # Files are never run nor framed on the application's origin.
+      - traefik.http.middlewares.mlbpp-files.headers.contenttypenosniff=true
+      - traefik.http.middlewares.mlbpp-files.headers.framedeny=true
+      - traefik.http.middlewares.mlbpp-files.headers.referrerpolicy=no-referrer
+      - "traefik.http.middlewares.mlbpp-files.headers.customresponseheaders.Content-Security-Policy=default-src 'none'; sandbox"
     healthcheck:
       # Ready once the master, the filer and the S3 API all answer: the
       # filer starts some seconds after the master.
@@ -566,3 +594,8 @@ secrets:
     file: ./secrets/keycloak_admin_password
   grafana_admin_password:
     file: ./secrets/grafana_admin_password
+  # Keys of the services on the storage; seaweedfs_s3_config holds them too.
+  s3_access_key:
+    file: ./secrets/s3_access_key
+  s3_secret_key:
+    file: ./secrets/s3_secret_key

@@ -6,8 +6,12 @@
 export * from './lib/api/generated';
 export { ERROR_CODE } from './lib/api/generated/models/error-code-array';
 export { PERMISSION } from './lib/api/generated/models/permission-array';
+export { ISSUE_PRIORITY } from './lib/api/generated/models/issue-priority-array';
+export { ISSUE_RELATION } from './lib/api/generated/models/issue-relation-array';
 export * from './lib/api/api-problem';
 export * from './lib/api/provide-api';
+export * from './lib/api/attachment-uploader';
+export * from './lib/api/realtime';
 
 // Authentication: session, route guards, sign-in page frame.
 export * from './lib/auth/auth.service';
@@ -45,3 +49,5 @@ export * from './lib/components/empty-state';
 export * from './lib/components/error-state';
 export * from './lib/components/loading-state';
 export * from './lib/components/translatable-input';
+export * from './lib/components/rich-text';
+export * from './lib/components/priority';

@@ -1,0 +1,246 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT i.id, i.project_id, i.key, i.key_number, i.type_id, i.status_id, i.parent_id, i.summary,\n               i.description, i.priority, i.reporter_id, app_member_name(i.reporter_id) AS \"reporter_name?\", i.assignee_id,\n               app_member_name(i.assignee_id) AS \"assignee_name?\", i.start_date, i.due_date, i.fields, i.created_at, i.updated_at,\n               i.version\n        FROM issue i\n        WHERE i.id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "project_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "key"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "key_number",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "key_number"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "type_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "type_id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "status_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "status_id"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "parent_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "parent_id"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "summary",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "summary"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "description",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "description"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "priority",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "priority"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "reporter_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "reporter_id"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "reporter_name?",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 12,
+        "name": "assignee_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "assignee_id"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "assignee_name?",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 14,
+        "name": "start_date",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "start_date"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "due_date",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "due_date"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "fields",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "fields"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 19,
+        "name": "version",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "version"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      null,
+      true,
+      null,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8305940aee37b7f6a4760c7f3ad519740561bd710b6817369425a9b97c23654d"
+}

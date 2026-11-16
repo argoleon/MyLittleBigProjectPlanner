@@ -1,0 +1,85 @@
+<section class="card" aria-labelledby="issue-attachments">
+  <h2 class="card-title" id="issue-attachments">{{ 'issue.attachments.title' | transloco: { count: count() } }}</h2>
+  @if (errorKey(); as key) {
+    <p class="message error" role="alert">{{ key | transloco }}</p>
+  }
+
+  @if (canAttach()) {
+    <div class="drop" [class.over]="over()" (dragover)="dragOver($event)" (dragleave)="over.set(false)" (drop)="dropped($event)">
+      <mat-icon aria-hidden="true">upload_file</mat-icon>
+      <span class="drop-text">{{ 'issue.attachments.drop' | transloco }}</span>
+      <button matButton="tonal" type="button" class="pick" (click)="input.click()">{{ 'issue.attachments.pick' | transloco }}</button>
+      <input #input type="file" multiple class="file-input" tabindex="-1" aria-hidden="true" (change)="picked(input)" />
+      <p class="hint" id="attachments-hint">{{ 'issue.attachments.hint' | transloco }}</p>
+    </div>
+  }
+
+  @if (uploads().length > 0) {
+    <ul class="files uploads" [attr.aria-label]="'issue.attachments.sending' | transloco">
+      @for (upload of uploads(); track upload.key) {
+        <li class="file upload">
+          <mat-icon class="icon" aria-hidden="true">{{ upload.errorKey ? 'error' : 'cloud_upload' }}</mat-icon>
+          <div class="body">
+            <span class="name">{{ upload.name }}</span>
+            <span class="meta">{{ size(upload.size) }}</span>
+            @if (upload.errorKey; as key) {
+              <p class="upload-error" role="alert">{{ key | transloco }}</p>
+            } @else {
+              <mat-progress-bar
+                mode="determinate"
+                [value]="upload.sent * 100"
+                [attr.aria-label]="'issue.attachments.progressOf' | transloco: { name: upload.name }"
+              />
+            }
+          </div>
+          @if (upload.errorKey) {
+            <button matIconButton type="button" class="dismiss" [attr.aria-label]="'issue.attachments.dismissOf' | transloco: { name: upload.name }" (click)="dismiss(upload)">
+              <mat-icon aria-hidden="true">close</mat-icon>
+            </button>
+          }
+        </li>
+      }
+    </ul>
+  }
+
+  @if (attachments.error()) {
+    <ui-error-state [error]="attachments.error()" [headingLevel]="3" (retry)="attachments.reload()" />
+  } @else if (!attachments.hasValue()) {
+    <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+  } @else if (attachments.value().length === 0 && uploads().length === 0) {
+    <p class="empty">{{ 'issue.attachments.empty' | transloco }}</p>
+  } @else {
+    <ul class="files">
+      @for (attachment of attachments.value(); track attachment.id) {
+        <li class="file" [attr.data-status]="attachment.status">
+          @if (attachment.hasThumbnail) {
+            <img class="thumbnail" [src]="thumbnailUrl(attachment)" alt="" loading="lazy" />
+          } @else {
+            <mat-icon class="icon" aria-hidden="true">{{ iconOf(attachment) }}</mat-icon>
+          }
+          <div class="body">
+            @if (attachment.status === 'clean') {
+              <a class="name" [href]="contentUrl(attachment)" download>{{ attachment.name }}</a>
+            } @else {
+              <span class="name">{{ attachment.name }}</span>
+            }
+            <span class="meta">
+              {{ size(attachment.size) }} ·
+              {{ attachment.uploadedBy?.name ?? ('issue.comments.formerMember' | transloco) }} ·
+              {{ attachment.createdAt | instant: { dateStyle: 'medium', timeStyle: 'short' } }}
+            </span>
+            @if (attachment.status === 'infected') {
+              <span class="meta">{{ 'issue.attachments.signature' | transloco: { signature: attachment.signature ?? '' } }}</span>
+            }
+          </div>
+          <span class="scan" role="status">{{ 'issue.attachments.status.' + attachment.status | transloco }}</span>
+          @if (attachment.canDelete) {
+            <button matIconButton type="button" class="remove" [attr.aria-label]="'issue.attachments.removeOf' | transloco: { name: attachment.name }" (click)="remove(attachment)">
+              <mat-icon aria-hidden="true">delete</mat-icon>
+            </button>
+          }
+        </li>
+      }
+    </ul>
+  }
+</section>

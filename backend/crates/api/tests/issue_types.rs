@@ -338,7 +338,7 @@ async fn a_removed_type_shows_in_the_publish_impact() {
     let subtask = by_key(&left, "subtask");
     assert_eq!(subtask["parentIds"].as_array().unwrap().len(), 2);
 
-    // The impact names it; no ticket uses it before L05, so nothing to migrate.
+    // The impact names it; no ticket uses it, so nothing to migrate.
     let (status, impact) = send(admin(
         &api,
         t,

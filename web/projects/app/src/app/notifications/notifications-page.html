@@ -1,0 +1,138 @@
+<header class="head">
+  <div>
+    <h1 class="title">{{ 'notifications.title' | transloco }}</h1>
+    <p class="subtitle">
+      {{ 'notifications.unread' | transloco: { count: unread() } }} ·
+      {{ (tenant() ? 'notifications.oneTenant' : 'notifications.allTenants') | transloco }}
+    </p>
+  </div>
+  <button matButton type="button" class="mark-all" [disabled]="unread() === 0" (click)="markAll()">
+    <mat-icon aria-hidden="true">done_all</mat-icon>
+    {{ 'notifications.markAll' | transloco }}
+  </button>
+</header>
+
+<div class="layout">
+  <section class="list" [attr.aria-label]="'notifications.listLabel' | transloco">
+    <mat-chip-listbox class="filters" [attr.aria-label]="'notifications.kindFilter' | transloco" [value]="kind()" (change)="kind.set($event.value ?? null)">
+      <mat-chip-option [value]="null">{{ 'notifications.all' | transloco }}</mat-chip-option>
+      @for (k of kinds; track k) {
+        <mat-chip-option [value]="k">{{ 'notifications.kinds.' + k | transloco }}</mat-chip-option>
+      }
+    </mat-chip-listbox>
+    @if (tenants().length > 1) {
+      <mat-chip-listbox
+        class="filters"
+        [attr.aria-label]="'notifications.tenantFilter' | transloco"
+        [value]="tenant()"
+        (change)="tenant.set($event.value ?? null)"
+      >
+        <mat-chip-option [value]="null">{{ 'notifications.allTenantsChip' | transloco }}</mat-chip-option>
+        @for (t of tenants(); track t.tenantId) {
+          <mat-chip-option [value]="t.tenantId">{{ t.name }}</mat-chip-option>
+        }
+      </mat-chip-listbox>
+    }
+
+    @if (errorKey(); as key) {
+      <p class="message error" role="alert">{{ key | transloco }}</p>
+    }
+    @if (error()) {
+      <ui-error-state [error]="error()" [headingLevel]="2" (retry)="load(true)" />
+    } @else if (items() === null) {
+      <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+    } @else if (shown().length === 0) {
+      <p class="empty">{{ 'notifications.empty' | transloco }}</p>
+    } @else {
+      @for (group of groups(); track group.period) {
+        <h2 class="period">{{ 'notifications.periods.' + group.period | transloco }}</h2>
+        <ul class="items">
+          @for (n of group.items; track n.id) {
+            <li>
+              <button type="button" class="item" [class.unread]="!n.read" [attr.data-event]="n.event" (click)="open(n)">
+                <span class="icon" aria-hidden="true"><mat-icon>{{ icons[n.event] }}</mat-icon></span>
+                <span class="body">
+                  <span class="what">
+                    {{ 'notifications.events.' + n.event | transloco: { actor: n.actorName ?? ('notifications.someone' | transloco), key: n.issueKey, status: n.status ?? '' } }}
+                    @if (!n.read) {
+                      <span class="cdk-visually-hidden">{{ 'notifications.unreadMark' | transloco }}</span>
+                    }
+                  </span>
+                  <span class="detail">{{ n.excerpt ? '« ' + n.excerpt + ' »' : n.issueSummary }}</span>
+                  <span class="meta">
+                    <span class="tenant">{{ n.tenant.name }}</span>
+                    <span>{{ n.createdAt | instant: { dateStyle: 'medium', timeStyle: 'short' } }}</span>
+                    @if (inOtherTenant(n)) {
+                      <span class="elsewhere">{{ 'notifications.opensIn' | transloco: { tenant: n.tenant.name } }}</span>
+                    }
+                  </span>
+                </span>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+      @if (cursor()) {
+        <button matButton="outlined" type="button" class="more" [disabled]="loading()" (click)="load(false)">
+          {{ 'notifications.more' | transloco }}
+        </button>
+      }
+    }
+  </section>
+
+  <section class="card preferences" aria-labelledby="notification-preferences">
+    <h2 class="card-title" id="notification-preferences">{{ 'notifications.preferences.title' | transloco }}</h2>
+    <p class="hint">{{ 'notifications.preferences.everywhere' | transloco }}</p>
+    @if (preferencesErrorKey(); as key) {
+      <p class="message error" role="alert">{{ key | transloco }}</p>
+    }
+    @if (preferences.error()) {
+      <ui-error-state [error]="preferences.error()" [headingLevel]="3" (retry)="preferences.reload()" />
+    } @else if (preferences.hasValue()) {
+      <table class="choices">
+        <thead>
+          <tr>
+            <th scope="col">{{ 'notifications.preferences.event' | transloco }}</th>
+            <th scope="col">{{ 'notifications.preferences.inApp' | transloco }}</th>
+            <th scope="col">{{ 'notifications.preferences.email' | transloco }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (choice of preferences.value().events; track choice.event) {
+            <tr>
+              <th scope="row">{{ 'notifications.preferences.events.' + choice.event | transloco }}</th>
+              <td>
+                <mat-checkbox
+                  [checked]="choice.inApp"
+                  [aria-label]="'notifications.preferences.inAppOf' | transloco: { event: ('notifications.preferences.events.' + choice.event | transloco) }"
+                  (change)="toggle(choice.event, 'inApp', $event.checked)"
+                />
+              </td>
+              <td>
+                <mat-checkbox
+                  [checked]="choice.email"
+                  [aria-label]="'notifications.preferences.emailOf' | transloco: { event: ('notifications.preferences.events.' + choice.event | transloco) }"
+                  (change)="toggle(choice.event, 'email', $event.checked)"
+                />
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <div class="digest">
+        <div>
+          <p class="digest-title" id="digest-title">{{ 'notifications.preferences.digest' | transloco }}</p>
+          <p class="hint" id="digest-hint">{{ 'notifications.preferences.digestHint' | transloco }}</p>
+        </div>
+        <mat-slide-toggle
+          [checked]="preferences.value().dailyDigest"
+          aria-labelledby="digest-title"
+          aria-describedby="digest-hint"
+          (change)="digest($event.checked)"
+        />
+      </div>
+    } @else {
+      <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+    }
+  </section>
+</div>

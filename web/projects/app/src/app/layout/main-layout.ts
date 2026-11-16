@@ -1,4 +1,4 @@
-import { Component, computed, inject, resource } from '@angular/core';
+import { Component, DestroyRef, computed, inject, resource } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -6,6 +6,7 @@ import { Router, RouterOutlet } from '@angular/router';
 import { TranslocoService } from '@jsverse/transloco';
 import {
   AccountMenu,
+  Realtime,
   Api,
   AuthService,
   Language,
@@ -20,12 +21,13 @@ import {
 
 import { MyAccount } from '../account/my-account';
 import { NAVIGATION } from '../navigation';
+import { NotificationBell } from '../notifications/notification-bell';
 import { MfaDialog } from './mfa-dialog';
 
 /** Frame of the screens of signed-in members: navigation, top app bar, account. */
 @Component({
   selector: 'app-main-layout',
-  imports: [AccountMenu, RouterOutlet, Shell, TenantSwitcher],
+  imports: [AccountMenu, NotificationBell, RouterOutlet, Shell, TenantSwitcher],
   template: `
     <ui-shell [navItems]="navigation">
       <ui-tenant-switcher
@@ -35,6 +37,7 @@ import { MfaDialog } from './mfa-dialog';
         (switched)="switchTo($event)"
       />
       @if (auth.session(); as session) {
+        <app-notification-bell uiShellTopBar />
         <ui-account-menu
           uiShellTopBar
           [displayName]="session.account.displayName"
@@ -61,6 +64,10 @@ export class MainLayout {
   private readonly memberships = resource({ loader: () => this.api.invoke(listMyMemberships) });
 
   constructor() {
+    // Real-time signals while signed in (L05-US08).
+    const realtime = inject(Realtime);
+    realtime.start();
+    inject(DestroyRef).onDestroy(() => realtime.stop());
     // The account's language and time zone; the device's until loaded, or
     // if the API cannot answer.
     this.myAccount.load().catch(() => undefined);

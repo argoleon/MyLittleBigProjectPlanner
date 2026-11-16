@@ -1,0 +1,151 @@
+@let f = field();
+@switch (f.kind) {
+  @case ('checkbox') {
+    <div class="checkbox">
+      <mat-checkbox [formControl]="control()">{{ label() }}</mat-checkbox>
+      @if (errorKey(); as key) {
+        <p class="error" role="alert">{{ key | transloco }}</p>
+      }
+    </div>
+  }
+  @case ('user') {
+    <app-people-picker
+      [formControl]="control()"
+      [projectKey]="projectKey()"
+      [label]="label()"
+      [multiple]="f.multiple === true"
+      [required]="required()"
+      [error]="errorKey()"
+    />
+  }
+  @case ('group') {
+    <app-people-picker
+      [formControl]="control()"
+      [projectKey]="projectKey()"
+      [label]="label()"
+      kind="group"
+      [required]="required()"
+      [error]="errorKey()"
+    />
+  }
+  @case ('labels') {
+    <mat-form-field appearance="outline" class="field">
+      <mat-label>{{ label() }}</mat-label>
+      <mat-chip-grid #grid [formControl]="control()" [attr.aria-label]="label()" [required]="required()">
+        @for (item of list(); track item) {
+          <mat-chip-row (removed)="removeLabel(item)">
+            {{ item }}
+            <button matChipRemove type="button" [attr.aria-label]="'issue.fields.removeLabel' | transloco: { label: item }">
+              <mat-icon aria-hidden="true">cancel</mat-icon>
+            </button>
+          </mat-chip-row>
+        }
+      </mat-chip-grid>
+      <!-- Out of the grid, which holds only its rows (axe); linked by matChipInputFor. -->
+      <input
+        [placeholder]="'issue.fields.addLabel' | transloco"
+        [matChipInputFor]="grid"
+        [matChipInputSeparatorKeyCodes]="separators"
+        (matChipInputTokenEnd)="addLabel($event)"
+      />
+      <mat-error>{{ errorKey() ?? '' | transloco }}</mat-error>
+    </mat-form-field>
+  }
+  @case ('cascading_select') {
+    <div class="cascade">
+      <mat-form-field appearance="outline" class="field">
+        <mat-label>{{ label() }}</mat-label>
+        <mat-select
+          [value]="list()[0] ?? null"
+          [required]="required()"
+          [aria-label]="label()"
+          (selectionChange)="setCascade(0, $event.value)"
+          (openedChange)="$event || control().markAsTouched()"
+        >
+          <mat-option [value]="null">{{ 'issue.fields.none' | transloco }}</mat-option>
+          @for (option of values(); track option.id) {
+            <mat-option [value]="option.id">{{ option.label }}</mat-option>
+          }
+        </mat-select>
+        @if (errorKey(); as key) {
+          <mat-hint class="error" role="alert">{{ key | transloco }}</mat-hint>
+        }
+      </mat-form-field>
+      @if (children().length > 0) {
+        <mat-form-field appearance="outline" class="field">
+          <mat-label>{{ 'issue.fields.cascadeChild' | transloco: { label: label() } }}</mat-label>
+          <mat-select
+            [value]="list()[1] ?? null"
+            [aria-label]="'issue.fields.cascadeChild' | transloco: { label: label() }"
+            (selectionChange)="setCascade(1, $event.value)"
+          >
+            <mat-option [value]="null">{{ 'issue.fields.none' | transloco }}</mat-option>
+            @for (option of children(); track option.id) {
+              <mat-option [value]="option.id">{{ option.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      }
+    </div>
+  }
+  @case ('number') {
+    <mat-form-field appearance="outline" class="field">
+      <mat-label>{{ label() }}</mat-label>
+      <input matInput type="number" [formControl]="control()" [required]="required()" [step]="step()" [min]="f.min ?? null" [max]="f.max ?? null" />
+      <span matTextSuffix>{{ f.unit ? ('issue.fields.unit.' + f.unit | transloco) : '' }}</span>
+      <mat-error>{{ errorKey() ?? '' | transloco }}</mat-error>
+    </mat-form-field>
+  }
+  @case ('date') {
+    <mat-form-field appearance="outline" class="field">
+      <mat-label>{{ label() }}</mat-label>
+      <input matInput [matDatepicker]="picker" [formControl]="control()" [required]="required()" />
+      <mat-datepicker-toggle matIconSuffix [for]="picker" />
+      <mat-datepicker #picker />
+      <mat-error>{{ errorKey() ?? '' | transloco }}</mat-error>
+    </mat-form-field>
+  }
+  @case ('issue_link') {
+    <mat-form-field appearance="outline" class="field">
+      <mat-label>{{ label() }}</mat-label>
+      <input matInput [formControl]="control()" [required]="required()" />
+      <mat-hint>{{ 'issue.fields.issueLinkHint' | transloco }}</mat-hint>
+      <mat-error>{{ errorKey() ?? '' | transloco }}</mat-error>
+    </mat-form-field>
+  }
+  @default {
+    <mat-form-field appearance="outline" class="field">
+      <mat-label>{{ label() }}</mat-label>
+      @switch (f.kind) {
+        @case ('rich_text') {
+          <textarea matInput rows="3" [formControl]="control()" [required]="required()"></textarea>
+        }
+        @case ('date_time') {
+          <input matInput type="datetime-local" [formControl]="control()" [required]="required()" />
+        }
+        @case ('single_select') {
+          <mat-select [formControl]="control()" [required]="required()" [aria-label]="label()">
+            <mat-option [value]="null">{{ 'issue.fields.none' | transloco }}</mat-option>
+            @for (option of values(); track option.id) {
+              <mat-option [value]="option.id">{{ option.label }}</mat-option>
+            }
+          </mat-select>
+        }
+        @case ('multi_select') {
+          <mat-select multiple [formControl]="control()" [required]="required()" [aria-label]="label()">
+            @for (option of values(); track option.id) {
+              <mat-option [value]="option.id">{{ option.label }}</mat-option>
+            }
+          </mat-select>
+        }
+        @case ('url') {
+          <input matInput type="url" [formControl]="control()" [required]="required()" />
+        }
+        @default {
+          <input matInput [formControl]="control()" [required]="required()" [attr.maxlength]="f.maxLength ?? null" />
+        }
+      }
+      <mat-error>{{ errorKey() ?? '' | transloco }}</mat-error>
+    </mat-form-field>
+  }
+}

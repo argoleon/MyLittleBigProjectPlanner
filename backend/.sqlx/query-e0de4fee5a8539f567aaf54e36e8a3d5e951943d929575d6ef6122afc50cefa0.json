@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT k AS \"key!\" FROM unnest($1::text[]) AS k\n        WHERE NOT EXISTS (SELECT 1 FROM attachment a\n                          WHERE (a.object_key = k OR a.thumbnail_key = k)\n                            AND a.status IN ('pending', 'scanning', 'clean'))\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "key!",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "e0de4fee5a8539f567aaf54e36e8a3d5e951943d929575d6ef6122afc50cefa0"
+}

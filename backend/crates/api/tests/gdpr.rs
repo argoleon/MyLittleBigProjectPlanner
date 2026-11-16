@@ -106,6 +106,10 @@ async fn run_jobs(api: &TestApi, db: &TestDb) {
     let jobs = worker::jobs::Jobs {
         mailer,
         exports: infra::exports::ExportStore::new(api.valkey.clone(), api.key_prefix.clone()),
+        storage: None,
+        clamav: None,
+        public_url: None,
+        events: None,
     };
     let runner = worker::jobs::JobRunner::new(db.app_pool.clone());
     while runner.next_batch(&jobs).await == worker::Batch::Processed {}

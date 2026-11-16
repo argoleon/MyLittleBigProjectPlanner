@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT account_id AS \"account_id!\", email AS \"email!\", display_name AS \"display_name!\", locale AS \"locale!\",\n               local_date AS \"local_date!\", local_weekday AS \"local_weekday!\", local_hour AS \"local_hour!\",\n               sent_today AS \"sent_today!\"\n        FROM app_digest_candidates()\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "account_id!",
+        "type_info": "Uuid",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "email!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "display_name!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "locale!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "local_date!",
+        "type_info": "Date",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "local_weekday!",
+        "type_info": "Int4",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "local_hour!",
+        "type_info": "Int4",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "sent_today!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "8b3a75fb93b5d1ff5e4552f274b76f5506f9343575f84ce6406ea040627a1283"
+}

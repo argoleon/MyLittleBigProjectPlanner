@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT version FROM issue WHERE id = $1 FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "version",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "version"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a18caa5b862647deb7f323ee73025580a7937cc601b0edf9500d4776481c6d3a"
+}

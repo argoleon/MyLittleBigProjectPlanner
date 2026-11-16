@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE config_migration SET state = 'failed', error = $2, finished_at = now() WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e4de9a8f5aa9498dc8928f3c732e7917a49c01dd5753ac744da89a7c6f15257e"
+}

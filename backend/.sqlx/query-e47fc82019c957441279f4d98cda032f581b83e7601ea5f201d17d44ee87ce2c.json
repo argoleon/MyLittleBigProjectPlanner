@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE config_migration\n        SET state = 'done', tickets_migrated = tickets_migrated + $2, ticket_total = tickets_migrated + $2,\n            finished_at = now()\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e47fc82019c957441279f4d98cda032f581b83e7601ea5f201d17d44ee87ce2c"
+}

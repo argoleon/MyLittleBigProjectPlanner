@@ -86,5 +86,13 @@ export const ERROR_CODE: ErrorCode[] = [
   'screen.general',
   'screen.in_use',
   'mapping_incomplete',
-  'config.migration_running'
+  'config.migration_running',
+  'config.migration_required',
+  'issue.subtask_moves_with_parent',
+  'issue_link.exists',
+  'attachment.too_large',
+  'attachment.quota_exceeded',
+  'attachment.not_uploaded',
+  'attachment.not_scanned',
+  'storage.unavailable'
 ];

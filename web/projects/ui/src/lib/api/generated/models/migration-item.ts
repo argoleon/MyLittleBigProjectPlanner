@@ -18,7 +18,7 @@ export interface MigrationItem {
   targets: Array<MigrationTarget>;
 
   /**
-   * The tickets in it (0 until tickets exist, L05).
+   * The tickets in it, over the projects of the configuration.
    */
   ticketCount: number;
 

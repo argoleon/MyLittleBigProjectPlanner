@@ -1,0 +1,70 @@
+<div #frame class="frame" [class.disabled]="disabled()" [class.invalid]="invalid()">
+  <span class="label" [id]="labelId">{{ label() }}</span>
+  <div class="toolbar" role="toolbar" [attr.aria-label]="'richText.toolbar' | transloco" [attr.aria-controls]="contentId">
+    @for (action of actions; track action.id) {
+      <button
+        matIconButton
+        type="button"
+        [class]="'action ' + action.id"
+        [disabled]="disabled()"
+        [attr.aria-label]="'richText.' + action.id | transloco"
+        [attr.aria-pressed]="isActive(action)"
+        (click)="apply(action)"
+      >
+        <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+      </button>
+    }
+    <button
+      matIconButton
+      type="button"
+      class="action link"
+      [disabled]="disabled()"
+      [attr.aria-label]="'richText.link' | transloco"
+      [attr.aria-pressed]="isActive(linkAction)"
+      [attr.aria-expanded]="linking()"
+      (click)="toggleLink()"
+    >
+      <mat-icon aria-hidden="true">link</mat-icon>
+    </button>
+  </div>
+  @if (linking()) {
+    <div class="link-form">
+      <label class="link-label" [for]="linkInputId">{{ 'richText.linkAddress' | transloco }}</label>
+      <input
+        #linkInput
+        class="link-input"
+        type="url"
+        [id]="linkInputId"
+        [attr.aria-invalid]="linkError()"
+        [attr.aria-describedby]="linkError() ? linkInputId + '-error' : null"
+        (keydown.enter)="$event.preventDefault(); setLink(linkInput.value)"
+        (keydown.escape)="linking.set(false)"
+      />
+      <button matButton type="button" class="link-apply" (click)="setLink(linkInput.value)">{{ 'richText.linkApply' | transloco }}</button>
+      @if (linkError()) {
+        <p class="link-error" role="alert" [id]="linkInputId + '-error'">{{ 'richText.linkInvalid' | transloco }}</p>
+      }
+    </div>
+  }
+  <div #content class="content-host"></div>
+  @if (suggestions(); as list) {
+    <ul class="suggestions" role="listbox" [id]="listId" [attr.aria-label]="'richText.suggestions' | transloco" [style.top.px]="list.top" [style.left.px]="list.left">
+      @for (item of list.items; track item.id; let i = $index) {
+        <li
+          role="option"
+          class="suggestion"
+          [id]="optionId(i)"
+          [attr.aria-selected]="i === list.index"
+          (mousedown)="$event.preventDefault(); list.command(item)"
+        >
+          <span class="suggestion-label">{{ item.label }}</span>
+          @if (item.detail) {
+            <span class="suggestion-detail">{{ item.detail }}</span>
+          }
+        </li>
+      } @empty {
+        <li role="option" class="suggestion empty" aria-disabled="true" aria-selected="false">{{ 'richText.noMatch' | transloco }}</li>
+      }
+    </ul>
+  }
+</div>

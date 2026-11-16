@@ -511,6 +511,36 @@ describe('NodePage', () => {
     expect(admin.page().querySelector('button.add-first-child')).not.toBeNull();
   });
 
+  it('offers a new ticket in an active project to those who create tickets there (L05-US01)', async () => {
+    const openProject = async (permissions: string[], archived = false) => {
+      const context = await setUp('member');
+      await context.harness.navigateByUrl(`/nodes/${PROJECT.id}`);
+      await context.reply((url, method) => url === `/api/v1/nodes/${PROJECT.id}` && method === 'GET', { ...PROJECT, archived });
+      await context.reply((url) => url === `/api/v1/nodes/${PROJECT.id}/aggregate`, NOTHING);
+      await context.reply((url) => url === `/api/v1/nodes/${PROJECT.id}/my-permissions`, permissions);
+      await context.reply(isUnder(PROJECT.id), []);
+      return { ...context, page: () => context.root().querySelector('app-node-page')! };
+    };
+    const reader = await openProject(['view']);
+    expect(reader.page().querySelector('button.new-ticket')).toBeNull();
+    TestBed.resetTestingModule();
+    const archived = await openProject(['view', 'create_ticket'], true);
+    expect(archived.page().querySelector('button.new-ticket')).toBeNull();
+    TestBed.resetTestingModule();
+
+    const { page, click, reply, dialog, text } = await openProject(['view', 'create_ticket']);
+    await click(page().querySelector('button.new-ticket'));
+    // The dialog loads on first use, for this project.
+    await reply((url) => url.startsWith('/api/v1/projects/PLAT/issue-form'), {
+      project: { id: PROJECT.id, key: 'PLAT', name: PROJECT.name },
+      types: [],
+      typeId: 't1',
+      fields: [],
+    });
+    expect(text(dialog().querySelector('h2'))).toBe('New ticket');
+    expect(dialog().querySelector('mat-select[formcontrolname="project"]')).toBeNull();
+  });
+
   it('says when the node cannot be read', async () => {
     const { harness, reply, root } = await setUp('member');
     await harness.navigateByUrl(`/nodes/${PROGRAM.id}`);

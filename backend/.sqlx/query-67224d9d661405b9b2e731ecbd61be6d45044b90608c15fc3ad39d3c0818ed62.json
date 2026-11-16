@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT account_id AS \"account_id!\", email AS \"email!\", display_name AS \"display_name!\",\n               locale AS \"locale!\", preferences AS \"preferences!\", daily_digest AS \"daily_digest!\"\n        FROM app_notification_recipients($1)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "account_id!",
+        "type_info": "Uuid",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "email!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "display_name!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "locale!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "preferences!",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "daily_digest!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "67224d9d661405b9b2e731ecbd61be6d45044b90608c15fc3ad39d3c0818ed62"
+}

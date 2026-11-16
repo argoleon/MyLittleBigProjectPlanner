@@ -1,0 +1,45 @@
+<section class="card" aria-labelledby="issue-relations">
+  <div class="card-header">
+    <h2 class="card-title" id="issue-relations">{{ 'issue.links.title' | transloco }}</h2>
+    @if (canEdit()) {
+      <button matButton="tonal" type="button" class="add-link" (click)="add()">
+        <mat-icon aria-hidden="true">add_link</mat-icon>
+        {{ 'issue.links.addOpen' | transloco }}
+      </button>
+    }
+  </div>
+  @if (errorKey(); as key) {
+    <p class="message error" role="alert">{{ key | transloco }}</p>
+  }
+  @if (lines().length === 0) {
+    <p class="empty">{{ 'issue.links.empty' | transloco }}</p>
+  } @else {
+    <ul class="lines">
+      @for (line of lines(); track line.id) {
+        <li class="line" [attr.data-relation]="line.relation">
+          <mat-icon class="icon" aria-hidden="true">{{ line.icon }}</mat-icon>
+          <span class="relation">{{ 'issue.links.relations.' + line.relation | transloco }}</span>
+          <a class="key" [routerLink]="['/issues', line.issue.key]">{{ line.issue.key }}</a>
+          <span class="summary">
+            {{ line.issue.summary }}
+            @if (line.issue.project.id !== issue().project.id) {
+              <span class="project"> · {{ line.issue.project.name }}</span>
+            }
+          </span>
+          <ui-status-chip [category]="chipCategory(line.issue.status.category)" [label]="line.issue.status.label ?? line.issue.status.key" />
+          @if (canEdit() && line.link) {
+            <button
+              matIconButton
+              type="button"
+              class="remove"
+              [attr.aria-label]="'issue.links.removeOf' | transloco: { key: line.issue.key }"
+              (click)="remove(line)"
+            >
+              <mat-icon aria-hidden="true">link_off</mat-icon>
+            </button>
+          }
+        </li>
+      }
+    </ul>
+  }
+</section>

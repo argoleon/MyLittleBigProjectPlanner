@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, source_id, target_id, link_type, created_at FROM issue_link WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "issue_link",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "source_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "issue_link",
+            "name": "source_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "target_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "issue_link",
+            "name": "target_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "link_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "issue_link",
+            "name": "link_type"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "issue_link",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "0d46af685426e8988313fea351fe40ec447b9d2dbd5013e5f23b107e0f13f5c3"
+}

@@ -1,0 +1,9 @@
+{
+  "identities": [
+    {
+      "name": "mlbpp-dev",
+      "credentials": [{ "accessKey": "mlbpp-dev", "secretKey": "mlbpp-dev-only" }],
+      "actions": ["Admin", "Read", "List", "Tagging", "Write"]
+    }
+  ]
+}

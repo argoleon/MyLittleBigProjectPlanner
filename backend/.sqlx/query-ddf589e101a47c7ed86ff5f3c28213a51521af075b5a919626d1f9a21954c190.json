@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE issue\n        SET project_id = $2, key_number = $3, key = $4, type_id = $5, status_id = $6, parent_id = $7,\n            fields = $8, version = version + 1, updated_at = now()\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Int4",
+        "Text",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ddf589e101a47c7ed86ff5f3c28213a51521af075b5a919626d1f9a21954c190"
+}

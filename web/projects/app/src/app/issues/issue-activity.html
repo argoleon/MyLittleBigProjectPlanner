@@ -1,0 +1,87 @@
+@if (newest.error()) {
+  <ui-error-state [error]="newest.error()" [headingLevel]="3" (retry)="newest.reload()" />
+} @else if (!newest.hasValue()) {
+  <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+} @else if (entries().length === 0) {
+  <p class="empty">{{ 'issue.activity.empty' | transloco }}</p>
+} @else {
+  <ol class="entries">
+    @for (item of entries(); track item.entry.id) {
+      <li class="entry" [attr.data-action]="item.entry.action">
+        <span class="avatar" aria-hidden="true">{{ item.initials }}</span>
+        <div class="body">
+          <p class="sentence">
+            <span class="who">{{ item.sentence.who }}</span>
+            {{ item.sentence.what }}
+            @if (item.entry.origin === 'mcp' || item.entry.origin === 'api' || item.entry.origin === 'import') {
+              <span class="origin" [attr.data-origin]="item.entry.origin">
+                @if (item.entry.origin === 'mcp') {
+                  <mat-icon aria-hidden="true">smart_toy</mat-icon>
+                }
+                {{ 'issue.activity.via.' + item.entry.origin | transloco }}
+              </span>
+            }
+          </p>
+          <p class="date">{{ item.entry.createdAt | instant: { dateStyle: 'full', timeStyle: 'short' } }}</p>
+          @if (item.sentence.change; as change) {
+            <button
+              matButton
+              type="button"
+              class="toggle"
+              [attr.aria-expanded]="open().has(item.entry.id)"
+              [attr.aria-controls]="'change-' + item.entry.id"
+              (click)="toggle(item.entry)"
+            >
+              {{ (open().has(item.entry.id) ? 'issue.activity.hideChange' : 'issue.activity.showChange') | transloco }}
+            </button>
+            @if (open().has(item.entry.id)) {
+              <div class="change" [id]="'change-' + item.entry.id">
+                <div class="side">
+                  <p class="label">{{ 'issue.activity.before' | transloco }}</p>
+                  @if (change.before; as html) {
+                    <ui-rich-text [html]="html" />
+                  } @else {
+                    <p class="nothing">{{ 'issue.activity.values.none' | transloco }}</p>
+                  }
+                </div>
+                <div class="side">
+                  <p class="label">{{ 'issue.activity.after' | transloco }}</p>
+                  @if (change.after; as html) {
+                    <ui-rich-text [html]="html" />
+                  } @else {
+                    <p class="nothing">{{ 'issue.activity.values.none' | transloco }}</p>
+                  }
+                </div>
+              </div>
+            }
+          }
+          @if (item.sentence.deleted; as html) {
+            <button
+              matButton
+              type="button"
+              class="toggle"
+              [attr.aria-expanded]="open().has(item.entry.id)"
+              [attr.aria-controls]="'deleted-' + item.entry.id"
+              (click)="toggle(item.entry)"
+            >
+              {{ (open().has(item.entry.id) ? 'issue.activity.hideDeleted' : 'issue.activity.showDeleted') | transloco }}
+            </button>
+            @if (open().has(item.entry.id)) {
+              <div class="deleted" [id]="'deleted-' + item.entry.id">
+                <ui-rich-text [html]="html" />
+              </div>
+            }
+          }
+        </div>
+      </li>
+    }
+  </ol>
+  @if (moreError(); as error) {
+    <ui-error-state [error]="error" [headingLevel]="3" (retry)="more()" />
+  }
+  @if (hasMore()) {
+    <button matButton="outlined" type="button" class="more" [disabled]="loadingMore()" (click)="more()">
+      {{ 'issue.activity.more' | transloco }}
+    </button>
+  }
+}

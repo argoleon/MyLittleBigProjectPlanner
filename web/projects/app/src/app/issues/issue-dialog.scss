@@ -1,0 +1,76 @@
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-1);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--app-space-3);
+
+  > * {
+    flex: 1 1 240px;
+  }
+}
+
+.description {
+  margin-bottom: var(--app-space-5);
+}
+
+.field-error {
+  margin: var(--app-space-1) var(--app-space-3) 0;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-error);
+}
+
+.section {
+  margin: var(--app-space-2) 0 var(--app-space-3);
+  font: var(--mat-sys-title-small);
+}
+
+.message {
+  margin: 0 0 var(--app-space-3);
+  padding: var(--app-space-3) var(--app-space-4);
+  border-radius: var(--mat-sys-corner-small);
+  font: var(--mat-sys-body-medium);
+
+  &.error {
+    background: var(--mat-sys-error-container);
+    color: var(--mat-sys-on-error-container);
+  }
+}
+
+.conflict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--app-space-2);
+
+  p {
+    margin: 0;
+  }
+}
+
+.plan {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-2);
+}
+
+.note {
+  margin: 0;
+  font: var(--mat-sys-body-medium);
+}
+
+.tickets {
+  margin: 0 0 var(--app-space-2);
+  padding-inline-start: var(--app-space-5);
+  font: var(--mat-sys-body-medium);
+}
+
+.message.warning {
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+}

@@ -8,6 +8,8 @@ use std::time::Duration;
 
 use lettre::message::{Mailbox, MultiPart};
 use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::config::Secret;
@@ -44,6 +46,78 @@ pub enum EmailMessage {
         /// The invitee will use the request portal, not the application.
         external: bool,
     },
+    /// A notification about a ticket (L05-US07).
+    Notification {
+        tenant_name: String,
+        line: NotificationLine,
+        /// The ticket's page.
+        link: Option<String>,
+    },
+    /// The daily digest of a member's notifications, of every organization.
+    Digest {
+        display_name: String,
+        lines: Vec<DigestLine>,
+    },
+}
+
+/// What a notification tells about a ticket.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NotificationLine {
+    /// `domain::notifications::Event` as a string: `mentioned`, `assigned`…
+    pub event: String,
+    pub actor: String,
+    pub key: String,
+    pub summary: String,
+    /// The status reached, by language.
+    #[serde(default)]
+    pub status: BTreeMap<String, String>,
+    /// The beginning of the comment.
+    #[serde(default)]
+    pub excerpt: Option<String>,
+}
+
+/// A notification in a digest.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DigestLine {
+    pub tenant_name: String,
+    pub line: NotificationLine,
+    pub link: Option<String>,
+}
+
+/// What `line` says, in `locale`: "Inès Moreau mentioned you on PLAT-151".
+pub fn notification_sentence(line: &NotificationLine, locale: &str) -> String {
+    let en = locale == "en";
+    let (actor, key) = (&line.actor, &line.key);
+    let status = line
+        .status
+        .get(if en { "en" } else { "fr" })
+        .or_else(|| line.status.values().next())
+        .cloned()
+        .unwrap_or_default();
+    match (line.event.as_str(), en) {
+        ("mentioned", true) => format!("{actor} mentioned you on {key}"),
+        ("mentioned", false) => format!("{actor} vous a mentionné sur {key}"),
+        ("assigned", true) => format!("{actor} assigned {key} to you"),
+        ("assigned", false) => format!("{actor} vous a assigné {key}"),
+        ("status_changed", true) => format!("{actor} moved {key} to {status}"),
+        ("status_changed", false) => format!("{actor} a passé {key} à {status}"),
+        ("commented", true) => format!("{actor} commented on {key}"),
+        ("commented", false) => format!("{actor} a commenté {key}"),
+        (_, true) => format!("{actor} created {key}"),
+        (_, false) => format!("{actor} a créé {key}"),
+    }
+}
+
+/// The lines of a notification: its sentence, the ticket's summary, the
+/// comment's beginning.
+fn notification_lines(line: &NotificationLine, locale: &str) -> Vec<String> {
+    let mut lines = vec![notification_sentence(line, locale), line.summary.clone()];
+    if let Some(excerpt) = &line.excerpt {
+        lines.push(format!("« {excerpt} »"));
+    }
+    lines
 }
 
 /// A rendered email.
@@ -70,7 +144,98 @@ pub fn render(message: &EmailMessage, locale: &str) -> RenderedEmail {
             valid_days,
             external,
         } => invitation(locale, inviter_name, tenant_name, link, *valid_days, *external),
+        EmailMessage::Notification {
+            tenant_name,
+            line,
+            link,
+        } => notification(locale, tenant_name, line, link.as_deref()),
+        EmailMessage::Digest { display_name, lines } => digest(locale, display_name, lines),
     }
+}
+
+fn notification(locale: &str, tenant: &str, line: &NotificationLine, link: Option<&str>) -> RenderedEmail {
+    let en = locale == "en";
+    let subject = format!("{} · {tenant}", notification_sentence(line, locale));
+    let (button, settings) = if en {
+        (
+            "Open the ticket",
+            "You receive this email as your notification preferences allow; change them in the application.",
+        )
+    } else {
+        (
+            "Ouvrir le ticket",
+            "Vous recevez cet e-mail selon vos préférences de notification ; modifiez-les dans l’application.",
+        )
+    };
+    let body = notification_lines(line, locale);
+    let mut text = body.join("\n");
+    let mut html = format!(
+        "<!doctype html><html lang=\"{lang}\"><body>",
+        lang = if en { "en" } else { "fr" }
+    );
+    for part in &body {
+        html.push_str(&format!("<p>{}</p>", escape_html(part)));
+    }
+    if let Some(link) = link {
+        text.push_str(&format!("\n\n{link}"));
+        html.push_str(&format!(
+            "<p><a href=\"{}\">{}</a></p>",
+            escape_html(link),
+            escape_html(button)
+        ));
+    }
+    text.push_str(&format!("\n\n{settings}\n"));
+    html.push_str(&format!("<p>{}</p></body></html>", escape_html(settings)));
+    RenderedEmail { subject, text, html }
+}
+
+fn digest(locale: &str, name: &str, lines: &[DigestLine]) -> RenderedEmail {
+    let en = locale == "en";
+    let count = lines.len();
+    let (subject, hello, settings) = if en {
+        (
+            format!(
+                "Your day in {}: {count} notification{}",
+                domain::PRODUCT_NAME,
+                if count > 1 { "s" } else { "" }
+            ),
+            format!("Hello {name},"),
+            "This digest replaces one email per notification, as you chose; change it in the application.",
+        )
+    } else {
+        (
+            format!(
+                "Votre journée sur {} : {count} notification{}",
+                domain::PRODUCT_NAME,
+                if count > 1 { "s" } else { "" }
+            ),
+            format!("Bonjour {name},"),
+            "Ce résumé remplace un e-mail par notification, comme vous l’avez choisi ; modifiez-le dans l’application.",
+        )
+    };
+    let mut text = format!("{hello}\n");
+    let mut html = format!(
+        "<!doctype html><html lang=\"{lang}\"><body><p>{hello}</p><ul>",
+        lang = if en { "en" } else { "fr" },
+        hello = escape_html(&hello)
+    );
+    for entry in lines {
+        let parts = notification_lines(&entry.line, locale);
+        text.push_str(&format!("\n[{}] {}\n", entry.tenant_name, parts.join(" · ")));
+        html.push_str(&format!(
+            "<li><strong>{}</strong> · {}",
+            escape_html(&entry.tenant_name),
+            escape_html(&parts.join(" · "))
+        ));
+        if let Some(link) = &entry.link {
+            text.push_str(&format!("{link}\n"));
+            html.push_str(&format!(" · <a href=\"{0}\">{0}</a>", escape_html(link)));
+        }
+        html.push_str("</li>");
+    }
+    text.push_str(&format!("\n{settings}\n"));
+    html.push_str(&format!("</ul><p>{}</p></body></html>", escape_html(settings)));
+    RenderedEmail { subject, text, html }
 }
 
 fn invitation(
@@ -334,6 +499,89 @@ mod tests {
         );
         assert!(email.text.contains("valid for 7 days"), "{}", email.text);
         assert!(email.html.contains("Accept the invitation"));
+    }
+
+    fn line(event: &str) -> NotificationLine {
+        NotificationLine {
+            event: event.to_owned(),
+            actor: "Inès Moreau".to_owned(),
+            key: "PLAT-151".to_owned(),
+            summary: "Politique MFA <v2>".to_owned(),
+            status: [
+                ("fr".to_owned(), "En cours".to_owned()),
+                ("en".to_owned(), "In progress".to_owned()),
+            ]
+            .into(),
+            excerpt: Some("@Lucas peux-tu valider ?".to_owned()),
+        }
+    }
+
+    #[test]
+    fn a_notification_tells_what_happened_in_the_members_language() {
+        let message = EmailMessage::Notification {
+            tenant_name: "Acme".to_owned(),
+            line: line("mentioned"),
+            link: Some("https://acme.example.org/issues/PLAT-151".to_owned()),
+        };
+        let fr = render(&message, "fr");
+        assert_eq!(fr.subject, "Inès Moreau vous a mentionné sur PLAT-151 · Acme");
+        assert!(fr.text.contains("« @Lucas peux-tu valider ? »"));
+        assert!(
+            fr.html.contains("Politique MFA &lt;v2&gt;"),
+            "escaped: {}",
+            fr.html
+        );
+        assert!(
+            fr.html
+                .contains("href=\"https://acme.example.org/issues/PLAT-151\"")
+        );
+        let en = render(&message, "en");
+        assert_eq!(en.subject, "Inès Moreau mentioned you on PLAT-151 · Acme");
+        assert_eq!(
+            notification_sentence(&line("status_changed"), "en"),
+            "Inès Moreau moved PLAT-151 to In progress"
+        );
+        assert_eq!(
+            notification_sentence(&line("status_changed"), "fr"),
+            "Inès Moreau a passé PLAT-151 à En cours"
+        );
+        assert_eq!(
+            notification_sentence(&line("assigned"), "fr"),
+            "Inès Moreau vous a assigné PLAT-151"
+        );
+        assert_eq!(
+            notification_sentence(&line("created"), "en"),
+            "Inès Moreau created PLAT-151"
+        );
+    }
+
+    #[test]
+    fn a_digest_gathers_the_notifications_of_every_organization() {
+        let lines = vec![
+            DigestLine {
+                tenant_name: "Acme".to_owned(),
+                line: line("commented"),
+                link: Some("https://acme.example.org/issues/PLAT-151".to_owned()),
+            },
+            DigestLine {
+                tenant_name: "Acme Services".to_owned(),
+                line: line("assigned"),
+                link: None,
+            },
+        ];
+        let message = EmailMessage::Digest {
+            display_name: "Lucas".to_owned(),
+            lines,
+        };
+        let en = render(&message, "en");
+        assert!(en.subject.ends_with(": 2 notifications"), "{}", en.subject);
+        assert!(en.text.contains("[Acme] Inès Moreau commented on PLAT-151"));
+        assert!(
+            en.text
+                .contains("[Acme Services] Inès Moreau assigned PLAT-151 to you")
+        );
+        assert_eq!(en.html.matches("<li>").count(), 2);
+        assert!(render(&message, "fr").subject.starts_with("Votre journée"));
     }
 
     #[test]

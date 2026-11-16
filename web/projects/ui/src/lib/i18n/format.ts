@@ -82,3 +82,23 @@ export function formatInstant(
 export function formatNumber(value: number, locale: string, options?: Intl.NumberFormatOptions): string {
   return new Intl.NumberFormat(locale, options).format(value);
 }
+
+/**
+ * A size in bytes as people read it in `locale`: `3.2 MB`, `3,2 Mo`. Units
+ * of 1,000 (kilobyte, megabyte, gigabyte), one decimal at most.
+ */
+export function formatFileSize(bytes: number, locale: string): string {
+  const units = ['byte', 'kilobyte', 'megabyte', 'gigabyte'] as const;
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1000 && unit < units.length - 1) {
+    value /= 1000;
+    unit++;
+  }
+  return new Intl.NumberFormat(locale, {
+    style: 'unit',
+    unit: units[unit],
+    unitDisplay: unit === 0 ? 'long' : 'short',
+    maximumFractionDigits: unit === 0 ? 0 : 1,
+  }).format(value);
+}

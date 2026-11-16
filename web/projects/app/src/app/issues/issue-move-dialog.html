@@ -1,0 +1,97 @@
+<h2 mat-dialog-title>{{ 'issue.move.title' | transloco: { key: ticket.key } }}</h2>
+<mat-dialog-content class="fields">
+  @if (conflict()) {
+    <div class="message error conflict" role="alert">
+      <p>{{ 'issue.edit.conflict' | transloco }}</p>
+      <button matButton="tonal" type="button" class="reload" (click)="reload()">{{ 'issue.edit.reload' | transloco }}</button>
+    </div>
+  }
+  @if (errorKey(); as key) {
+    <p class="message error" role="alert">{{ key | transloco }}</p>
+  }
+  <mat-form-field appearance="outline">
+    <mat-label>{{ 'issue.move.project' | transloco }}</mat-label>
+    <mat-select [formControl]="project" required [aria-label]="'issue.move.project' | transloco">
+      @for (choice of choices(); track choice.id) {
+        <mat-option [value]="choice.key">{{ choice.name }} ({{ choice.key }})</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  @if (plan.error()) {
+    <ui-error-state [error]="plan.error()" [headingLevel]="3" (retry)="plan.reload()" />
+  } @else if (plan.hasValue()) {
+    @let current = plan.value();
+    <section class="plan" aria-live="polite">
+      <p class="note">{{ 'issue.move.tickets' | transloco: { count: current.tickets.length } }}</p>
+      <ul class="tickets">
+        @for (ticket of current.tickets; track ticket.id) {
+          <li>{{ ticket.key }} {{ ticket.summary }}</li>
+        }
+      </ul>
+      @if (current.parentCleared; as parent) {
+        <p class="note">{{ 'issue.move.parentCleared' | transloco: { parent: parent.key + ' ' + parent.summary } }}</p>
+      }
+      @if (current.sameConfiguration) {
+        <p class="note">{{ 'issue.move.sameConfiguration' | transloco }}</p>
+      }
+
+      @if (current.types.length > 0 || current.statuses.length > 0) {
+        <h3 class="section">{{ 'issue.move.mapping' | transloco }}</h3>
+        @for (need of current.types; track need.id) {
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'issue.move.typeOf' | transloco: { label: need.label ?? need.key } }}</mat-label>
+            <mat-select
+              class="type-mapping"
+              [value]="types()[need.id] ?? null"
+              [aria-label]="'issue.move.typeOf' | transloco: { label: need.label ?? need.key }"
+              (selectionChange)="setType(need.id, $event.value)"
+            >
+              @for (target of typeOptions(current, need); track target.id) {
+                <mat-option [value]="target.id">{{ target.label }}</mat-option>
+              }
+            </mat-select>
+            @if (problemOf(current, 'typeMappings.' + need.id); as problem) {
+              <mat-hint class="field-error" role="alert">{{ problem | transloco }}</mat-hint>
+            }
+          </mat-form-field>
+        }
+        @for (need of current.statuses; track need.id) {
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'issue.move.statusOf' | transloco: { label: need.label ?? need.key } }}</mat-label>
+            <mat-select
+              class="status-mapping"
+              [value]="statuses()[need.id] ?? null"
+              [aria-label]="'issue.move.statusOf' | transloco: { label: need.label ?? need.key }"
+              (selectionChange)="setStatus(need.id, $event.value)"
+            >
+              @for (target of statusOptions(current, need); track target.id) {
+                <mat-option [value]="target.id">{{ target.label }}</mat-option>
+              }
+            </mat-select>
+            @if (problemOf(current, 'statusMappings.' + need.id); as problem) {
+              <mat-hint class="field-error" role="alert">{{ problem | transloco }}</mat-hint>
+            }
+          </mat-form-field>
+        }
+      }
+      @if (current.droppedFields.length > 0) {
+        <p class="message warning dropped">{{ 'issue.move.dropped' | transloco: { fields: labels(current.droppedFields) } }}</p>
+      }
+    </section>
+  } @else if (plan.isLoading()) {
+    <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button matButton type="button" mat-dialog-close>{{ 'dialog.cancel' | transloco }}</button>
+  <button
+    matButton="filled"
+    type="button"
+    class="confirm"
+    [disabled]="saving() || conflict() || !plan.hasValue() || plan.isLoading() || plan.value().problems.length > 0"
+    (click)="move()"
+  >
+    {{ 'issue.move.confirm' | transloco }}
+  </button>
+</mat-dialog-actions>

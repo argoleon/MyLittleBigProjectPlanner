@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT preferences, daily_digest FROM notification_settings WHERE account_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "preferences",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "notification_settings",
+            "name": "preferences"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "daily_digest",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "notification_settings",
+            "name": "daily_digest"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "9cdb4f54161ef70402af5d3f59d0f17f10fa0e8eede1dce61bb5665f31025adf"
+}

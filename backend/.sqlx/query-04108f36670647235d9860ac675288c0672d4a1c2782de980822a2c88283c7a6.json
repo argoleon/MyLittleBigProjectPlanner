@@ -1,0 +1,97 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id AS \"id!\", tenant_id AS \"tenant_id!\", tenant_slug AS \"tenant_slug!\", tenant_name AS \"tenant_name!\",\n               event AS \"event!\", issue_id AS \"issue_id!\", actor_id, actor_name, details AS \"details!\", read_at,\n               created_at AS \"created_at!\"\n        FROM app_my_notifications($1, $2, $3, $4, $5)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "tenant_id!",
+        "type_info": "Uuid",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "tenant_slug!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "tenant_name!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "event!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "issue_id!",
+        "type_info": "Uuid",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "actor_id",
+        "type_info": "Uuid",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "actor_name",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
+        "name": "details!",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 9,
+        "name": "read_at",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at!",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bool",
+        "Timestamptz",
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "04108f36670647235d9860ac675288c0672d4a1c2782de980822a2c88283c7a6"
+}

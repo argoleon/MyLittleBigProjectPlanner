@@ -102,6 +102,11 @@ describe('the mapping of a migration', () => {
       typeMappings: [{ fromId: 't-bug', toId: 't-task' }],
     });
   });
+
+  it('counts a ticket in both a removed status and a removed type once, as the API does', () => {
+    // 38 in "In test" and 2,134 bugs, 10 of them bugs in test: 2,162 tickets.
+    expect(ticketTotal({ ...PLAN, ticketTotal: 2162 })).toBe(2162);
+  });
 });
 
 describe('the migration wizard', () => {

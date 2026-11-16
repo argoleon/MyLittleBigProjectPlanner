@@ -1,6 +1,6 @@
 {
   "name": "web",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -20,8 +20,14 @@
     "@angular/material": "22.2.6",
     "@angular/platform-browser": "^22.2.0",
     "@angular/router": "^22.2.0",
+    "@floating-ui/dom": "1.8.0",
     "@fontsource/roboto": "5.3.0",
     "@jsverse/transloco": "8.4.0",
+    "@tiptap/core": "3.32.1",
+    "@tiptap/extension-mention": "3.32.1",
+    "@tiptap/pm": "3.32.1",
+    "@tiptap/starter-kit": "3.32.1",
+    "@tiptap/suggestion": "3.32.1",
     "material-symbols": "0.48.3",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"

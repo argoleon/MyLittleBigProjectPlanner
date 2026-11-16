@@ -426,7 +426,16 @@
       "invalid_id": "Identifiant invalide.",
       "unknown_value": "Pas une valeur de cette liste.",
       "inactive_value": "Cette valeur est désactivée.",
-      "not_a_child": "Cette valeur n’est pas sous la première."
+      "not_a_child": "Cette valeur n’est pas sous la première.",
+      "other_project": "Doit appartenir au même projet.",
+      "unknown_group": "Ce groupe n’existe pas.",
+      "unknown_issue": "Ce ticket n’existe pas.",
+      "invalid": "Le contenu n’est pas valide.",
+      "too_deep": "Le contenu est trop imbriqué.",
+      "same_project": "Le ticket est déjà dans ce projet.",
+      "not_in_workflow": "Ce statut n’est pas dans le workflow de ce type.",
+      "self": "Un ticket ne peut pas être lié à lui-même.",
+      "cycle": "Ce ticket est rattaché sous celui que vous modifiez."
     },
     "invitation": {
       "invalid": "Ce lien d’invitation est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
@@ -473,7 +482,8 @@
       "no_draft": "Cette configuration n’a pas de brouillon : rien à publier ni à abandonner.",
       "default": "La configuration par défaut reste : les nouveaux projets la reçoivent.",
       "in_use": "Des projets utilisent cette configuration : déplacez-les d’abord vers une autre.",
-      "migration_running": "Une migration de cette configuration est déjà en cours."
+      "migration_running": "Une migration de cette configuration est déjà en cours.",
+      "migration_required": "Des tickets utilisent des statuts ou des types que le brouillon supprime : faites-les d’abord migrer avec l’assistant."
     },
     "issue_type": {
       "key_taken": "Un autre type de cette configuration a déjà cet identifiant.",
@@ -496,6 +506,21 @@
       "exists": "Ce type, ou la configuration, a déjà un écran de ce genre.",
       "general": "Les écrans généraux de création et de consultation d’une configuration restent.",
       "in_use": "Des transitions affichent cet écran : donnez-leur-en un autre d’abord."
+    },
+    "issue": {
+      "subtask_moves_with_parent": "Une sous-tâche se déplace avec son parent : déplacez plutôt le parent."
+    },
+    "issue_link": {
+      "exists": "Les deux tickets ont déjà ce lien."
+    },
+    "attachment": {
+      "too_large": "Le fichier dépasse la taille maximale autorisée.",
+      "quota_exceeded": "L’espace de stockage de l’organisation est plein : retirez des fichiers ou contactez un administrateur.",
+      "not_uploaded": "Le fichier n’a pas été envoyé en entier. Réessayez.",
+      "not_scanned": "Le fichier n’est pas disponible : il est encore en cours d’analyse, ou l’antivirus l’a refusé."
+    },
+    "storage": {
+      "unavailable": "Le stockage des fichiers n’est pas disponible pour le moment. Réessayez plus tard."
     }
   },
   "dialog": {
@@ -1370,6 +1395,318 @@
       "removeMember": "Retirer {{name}}",
       "save": "Enregistrer",
       "saved": "Notifications de « {{event}} » enregistrées dans le brouillon."
+    }
+  },
+  "richText": {
+    "toolbar": "Mise en forme",
+    "bold": "Gras",
+    "italic": "Italique",
+    "strike": "Barré",
+    "code": "Code",
+    "heading": "Titre",
+    "bulletList": "Liste à puces",
+    "orderedList": "Liste numérotée",
+    "blockquote": "Citation",
+    "codeBlock": "Bloc de code",
+    "link": "Lien",
+    "linkAddress": "Adresse du lien",
+    "linkApply": "Appliquer",
+    "linkInvalid": "Saisissez une adresse web (http ou https) ou une adresse e-mail (mailto).",
+    "suggestions": "Suggestions",
+    "noMatch": "Aucun résultat."
+  },
+  "priority": {
+    "highest": "La plus haute",
+    "high": "Haute",
+    "medium": "Moyenne",
+    "low": "Basse",
+    "lowest": "La plus basse"
+  },
+  "issue": {
+    "people": {
+      "remove": "Retirer {{ name }}",
+      "search": "Rechercher un membre…",
+      "searchGroup": "Rechercher un groupe…",
+      "noMatch": "Aucun résultat."
+    },
+    "fields": {
+      "removeLabel": "Retirer l’étiquette {{ label }}",
+      "addLabel": "Ajouter une étiquette…",
+      "none": "Aucune",
+      "cascadeChild": "{{ label }} : précision",
+      "unit": {
+        "hours": "h",
+        "days": "j",
+        "percent": "%"
+      },
+      "issueLinkHint": "La clé d’un ticket, par exemple PLAT-12"
+    },
+    "dialog": {
+      "title": "Nouveau ticket",
+      "subtaskTitle": "Nouvelle sous-tâche de {{ key }}",
+      "project": "Projet",
+      "forbidden": "Vous ne pouvez pas créer de ticket dans ce projet.",
+      "type": "Type",
+      "summary": "Résumé",
+      "description": "Description",
+      "priority": "Priorité",
+      "assignee": "Responsable",
+      "startDate": "Début",
+      "dueDate": "Échéance",
+      "fields": "Champs de ce type",
+      "create": "Créer"
+    },
+    "page": {
+      "title": "Ticket",
+      "breadcrumb": "Rattachement du ticket",
+      "addSubtask": "Ajouter une sous-tâche",
+      "description": "Description",
+      "noDescription": "Aucune description.",
+      "details": "Détails",
+      "assignee": "Responsable",
+      "unassigned": "Non assigné",
+      "reporter": "Rapporteur",
+      "priority": "Priorité",
+      "startDate": "Début",
+      "dueDate": "Échéance",
+      "yes": "Oui",
+      "no": "Non",
+      "attachment": "Rattachement",
+      "project": "Projet",
+      "created": "Créé le {{ at }}",
+      "remoteChange": "Quelqu’un d’autre a modifié ce ticket pendant que votre formulaire était ouvert : votre saisie est conservée. Rechargez pour voir la modification.",
+      "reload": "Recharger"
+    },
+    "list": {
+      "create": "Nouveau ticket",
+      "intro": "Les tickets qui vous sont assignés ou que vous avez signalés, les plus récents d’abord.",
+      "empty": "Aucun ticket pour l’instant",
+      "emptyHint": "Les tickets qui vous sont assignés ou que vous signalez apparaissent ici.",
+      "caption": "Mes tickets",
+      "columns": {
+        "ticket": "Ticket",
+        "summary": "Résumé",
+        "project": "Projet",
+        "status": "Statut",
+        "priority": "Priorité",
+        "updated": "Mis à jour"
+      },
+      "loadMore": "Afficher plus"
+    },
+    "edit": {
+      "open": "Modifier",
+      "title": "Modifier {{ key }}",
+      "save": "Enregistrer",
+      "conflict": "Quelqu’un a modifié ce ticket depuis que vous l’avez ouvert. Rechargez-le pour voir ses changements, puis refaites les vôtres.",
+      "reload": "Recharger"
+    },
+    "move": {
+      "open": "Déplacer",
+      "title": "Déplacer {{ key }} vers un autre projet",
+      "project": "Projet cible",
+      "tickets": "Tickets déplacés ({{ count }}), avec de nouvelles clés ; leurs clés actuelles y mènent toujours :",
+      "parentCleared": "Il n’est plus rattaché à {{ parent }}, qui reste dans son projet.",
+      "sameConfiguration": "Les deux projets utilisent la même configuration : types et statuts restent les mêmes.",
+      "mapping": "Types et statuts du projet cible",
+      "typeOf": "{{ label }} devient",
+      "statusOf": "Le statut {{ label }} devient",
+      "dropped": "Ces champs n’existent pas là-bas, ou ne s’appliquent pas : leurs valeurs seront perdues : {{ fields }}.",
+      "confirm": "Déplacer"
+    },
+    "links": {
+      "title": "Sous-tâches et liens",
+      "addOpen": "Lier un ticket",
+      "addTitle": "Lier {{ key }} à un ticket",
+      "relation": "Ce ticket",
+      "other": "Ticket",
+      "add": "Lier",
+      "empty": "Aucune sous-tâche ni aucun lien.",
+      "remove": "Retirer",
+      "removeTitle": "Retirer le lien ?",
+      "removeMessage": "Le lien avec {{ key }} est retiré des deux tickets.",
+      "removeOf": "Retirer le lien avec {{ key }}",
+      "relations": {
+        "subtask": "Sous-tâche",
+        "blocks": "Bloque",
+        "blocked_by": "Bloqué par",
+        "depends_on": "Dépend de",
+        "required_by": "Requis par",
+        "duplicates": "Duplique",
+        "duplicated_by": "Dupliqué par",
+        "relates_to": "Lié à"
+      }
+    },
+    "picker": {
+      "placeholder": "PLAT-12, ou des mots de son résumé",
+      "hint": "Sa clé, ou des mots de son résumé.",
+      "noMatch": "Aucun ticket trouvé."
+    },
+    "parent": {
+      "open": "Changer de parent",
+      "title": "Parent de {{ key }}",
+      "top": "Au premier niveau, sous aucun ticket",
+      "parent": "Ticket parent"
+    },
+    "transition": {
+      "menu": "Statut : {{ status }}. Le changer",
+      "to": "Le ticket passe en « {{ status }} »."
+    },
+    "comments": {
+      "title": "Commentaires ({{ count }})",
+      "empty": "Aucun commentaire pour l’instant.",
+      "add": "Ajouter un commentaire",
+      "hint": "@ pour mentionner, # pour citer un ticket.",
+      "visibility": "Qui le voit",
+      "internal": "Interne",
+      "public": "Public",
+      "publicPortal": "Public (portail)",
+      "write": "Commenter",
+      "editLabel": "Commentaire",
+      "editOf": "Modifier le commentaire de {{ author }}",
+      "removeOf": "Supprimer le commentaire de {{ author }}",
+      "removeTitle": "Supprimer le commentaire ?",
+      "removeMessage": "Son texte est retiré ; le ticket garde la trace de sa suppression.",
+      "remove": "Supprimer",
+      "deleted": "Commentaire supprimé.",
+      "edited": "modifié",
+      "byTransition": "via le workflow",
+      "formerMember": "Ancien membre",
+      "conflict": "Ce commentaire a changé depuis que vous l’avez ouvert : annulez et modifiez-le à nouveau."
+    },
+    "activity": {
+      "title": "Activité",
+      "tabs": "Activité et commentaires",
+      "empty": "Aucune activité pour l’instant.",
+      "more": "Voir l’activité plus ancienne",
+      "system": "Le système",
+      "formerMember": "Un ancien membre",
+      "created": "a créé le ticket",
+      "changed": "a changé {{ field }} : {{ old }} → {{ new }}",
+      "set": "a renseigné {{ field }} : {{ new }}",
+      "cleared": "a vidé {{ field }} (auparavant {{ old }})",
+      "changedText": "a modifié {{ field }}",
+      "moved": "a déplacé le ticket : {{ old }} → {{ new }}",
+      "linkAdded": "a ajouté un lien : {{ relation }} {{ key }}",
+      "linkRemoved": "a retiré un lien : {{ relation }} {{ key }}",
+      "commented": "a commenté",
+      "commentEdited": "a modifié un commentaire",
+      "commentDeleted": "a supprimé un commentaire",
+      "showChange": "Voir avant et après",
+      "hideChange": "Masquer avant et après",
+      "before": "Avant",
+      "after": "Après",
+      "showDeleted": "Voir le commentaire supprimé",
+      "hideDeleted": "Masquer le commentaire supprimé",
+      "via": {
+        "mcp": "via MCP",
+        "api": "via l’API",
+        "import": "par import"
+      },
+      "fields": {
+        "type": "le type",
+        "status": "le statut",
+        "summary": "le résumé",
+        "description": "la description",
+        "priority": "la priorité",
+        "reporter": "le rapporteur",
+        "assignee": "le responsable",
+        "startDate": "la date de début",
+        "dueDate": "l’échéance",
+        "parent": "le parent",
+        "removed": "un champ supprimé"
+      },
+      "values": {
+        "none": "rien",
+        "formerMember": "un ancien membre",
+        "deletedIssue": "un ticket supprimé",
+        "yes": "oui",
+        "no": "non"
+      },
+      "attached": "a joint {{ name }}",
+      "fileRemoved": "a retiré le fichier {{ name }}"
+    },
+    "attachments": {
+      "title": "Pièces jointes ({{ count }})",
+      "drop": "Déposez des fichiers ici, ou",
+      "pick": "Choisir des fichiers",
+      "hint": "Chaque fichier est analysé par l’antivirus avant de pouvoir être téléchargé.",
+      "sending": "Fichiers en cours d’envoi",
+      "progressOf": "Envoi de {{ name }}",
+      "dismissOf": "Fermer {{ name }}",
+      "uploadFailed": "Le fichier n’a pas pu être envoyé. Réessayez.",
+      "empty": "Aucun fichier joint.",
+      "signature": "Virus détecté : {{ signature }}",
+      "status": {
+        "pending": "En attente",
+        "scanning": "Analyse en cours",
+        "clean": "Sain",
+        "infected": "Infecté",
+        "rejected": "Refusé"
+      },
+      "removeOf": "Retirer le fichier {{ name }}",
+      "removeTitle": "Retirer le fichier ?",
+      "removeMessage": "{{ name }} est retiré du ticket ; le ticket en garde la trace dans son activité.",
+      "remove": "Retirer"
+    },
+    "watch": {
+      "watch": "Observer",
+      "watching": "Observé ({{ count }})"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "bell": "Notifications",
+    "bellUnread": "Notifications, {{ count }} non lues",
+    "unread": "{{ count }} non lues",
+    "allTenants": "toutes organisations",
+    "oneTenant": "une organisation",
+    "markAll": "Tout marquer comme lu",
+    "listLabel": "Vos notifications",
+    "kindFilter": "Type de notification",
+    "tenantFilter": "Organisation",
+    "all": "Toutes",
+    "allTenantsChip": "Toutes les organisations",
+    "kinds": {
+      "mentioned": "Mentions",
+      "assigned": "Affectations",
+      "status_changed": "Changements de statut",
+      "commented": "Commentaires",
+      "created": "Nouveaux tickets"
+    },
+    "empty": "Aucune notification.",
+    "more": "Voir les notifications plus anciennes",
+    "someone": "Quelqu’un",
+    "unreadMark": "(non lue)",
+    "opensIn": "s’ouvre dans {{ tenant }}",
+    "periods": {
+      "today": "Aujourd’hui",
+      "week": "Cette semaine",
+      "earlier": "Plus tôt"
+    },
+    "events": {
+      "mentioned": "{{ actor }} vous a mentionné sur {{ key }}",
+      "assigned": "{{ actor }} vous a assigné {{ key }}",
+      "status_changed": "{{ actor }} a passé {{ key }} à {{ status }}",
+      "commented": "{{ actor }} a commenté {{ key }}",
+      "created": "{{ actor }} a créé {{ key }}"
+    },
+    "preferences": {
+      "title": "Préférences de notification",
+      "everywhere": "Elles s’appliquent dans toutes vos organisations.",
+      "event": "Événement",
+      "inApp": "Application",
+      "email": "Email",
+      "inAppOf": "{{ event }} dans l’application",
+      "emailOf": "{{ event }} par email",
+      "events": {
+        "created": "Nouveau ticket",
+        "assigned": "Ticket assigné",
+        "status_changed": "Changement de statut",
+        "commented": "Nouveau commentaire",
+        "mentioned": "Mentions"
+      },
+      "digest": "Résumé quotidien par email",
+      "digestHint": "Chaque jour ouvré à 8 h, au lieu d’un email par événement."
     }
   }
 }

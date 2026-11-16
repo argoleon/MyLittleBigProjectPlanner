@@ -21,18 +21,27 @@ use crate::account;
 use crate::auth;
 use crate::config_fields;
 use crate::configs;
+use crate::events;
 use crate::gdpr;
 use crate::grants;
 use crate::groups;
 use crate::hierarchy;
 use crate::invitations;
+use crate::issue_attachments;
+use crate::issue_changes;
+use crate::issue_comments;
+use crate::issue_history;
+use crate::issue_links;
+use crate::issue_transitions;
 use crate::issue_types;
+use crate::issues;
 use crate::me;
 use crate::members;
 use crate::mfa;
 use crate::migrations;
 use crate::nodes;
 use crate::notification_rules;
+use crate::notifications;
 use crate::openapi;
 use crate::platform;
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
@@ -150,6 +159,37 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
             config_fields::update,
             config_fields::delete
         ))
+        .routes(routes!(issues::create))
+        .routes(routes!(issues::read, issue_changes::update))
+        .routes(routes!(issue_changes::edit_form))
+        .routes(routes!(issue_links::search))
+        .routes(routes!(issue_links::create))
+        .routes(routes!(issue_links::delete))
+        .routes(routes!(issue_links::set_parent))
+        .routes(routes!(issue_transitions::list, issue_transitions::run))
+        .routes(routes!(issue_comments::list, issue_comments::create))
+        .routes(routes!(issue_comments::update, issue_comments::delete))
+        .routes(routes!(issue_history::activity))
+        .routes(routes!(notifications::watchers))
+        .routes(routes!(notifications::watch, notifications::unwatch))
+        .routes(routes!(events::events))
+        .routes(routes!(notifications::list))
+        .routes(routes!(notifications::unread))
+        .routes(routes!(notifications::mark_read))
+        .routes(routes!(
+            notifications::preferences,
+            notifications::set_preferences
+        ))
+        .routes(routes!(issue_attachments::list, issue_attachments::create))
+        .routes(routes!(issue_attachments::uploaded))
+        .routes(routes!(issue_attachments::content))
+        .routes(routes!(issue_attachments::thumbnail))
+        .routes(routes!(issue_attachments::delete))
+        .routes(routes!(issue_changes::move_plan))
+        .routes(routes!(issue_changes::move_issue))
+        .routes(routes!(issues::form))
+        .routes(routes!(issues::mine))
+        .routes(routes!(issues::people))
         .routes(routes!(migrations::plan_of))
         .routes(routes!(migrations::start))
         .routes(routes!(migrations::progress))

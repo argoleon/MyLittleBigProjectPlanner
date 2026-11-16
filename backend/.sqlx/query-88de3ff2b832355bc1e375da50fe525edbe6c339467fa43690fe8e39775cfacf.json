@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE issue\n        SET status_id = m.status_id, type_id = m.type_id, version = issue.version + 1, updated_at = now()\n        FROM unnest($1::uuid[], $2::uuid[], $3::uuid[]) AS m(id, status_id, type_id)\n        WHERE issue.id = m.id\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "UuidArray",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "88de3ff2b832355bc1e375da50fe525edbe6c339467fa43690fe8e39775cfacf"
+}

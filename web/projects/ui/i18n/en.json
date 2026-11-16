@@ -426,7 +426,16 @@
       "invalid_id": "Not a valid identifier.",
       "unknown_value": "Not a value of this list.",
       "inactive_value": "This value is deactivated.",
-      "not_a_child": "This value is not under the first one."
+      "not_a_child": "This value is not under the first one.",
+      "other_project": "Must be in the same project.",
+      "unknown_group": "This group does not exist.",
+      "unknown_issue": "This ticket does not exist.",
+      "invalid": "The content is invalid.",
+      "too_deep": "The content is nested too deeply.",
+      "same_project": "The ticket is already in this project.",
+      "not_in_workflow": "Not a status of this type’s workflow.",
+      "self": "A ticket cannot be linked to itself.",
+      "cycle": "This ticket sits under the one you are changing."
     },
     "invitation": {
       "invalid": "This invitation link is invalid, has expired or was already used. Ask for a new one.",
@@ -473,7 +482,8 @@
       "no_draft": "This configuration has no draft: nothing to publish or discard.",
       "default": "The default configuration stays: new projects get it.",
       "in_use": "Projects use this configuration: move them to another one first.",
-      "migration_running": "A migration of this configuration is already under way."
+      "migration_running": "A migration of this configuration is already under way.",
+      "migration_required": "Tickets use statuses or types the draft removes: map them through the migration wizard first."
     },
     "issue_type": {
       "key_taken": "Another type of this configuration already has this identifier.",
@@ -496,6 +506,21 @@
       "exists": "This type, or the configuration, already has a screen of this kind.",
       "general": "The general creation and view screens of a configuration stay.",
       "in_use": "Transitions show this screen: give them another one first."
+    },
+    "issue": {
+      "subtask_moves_with_parent": "A sub-task moves with its parent: move the parent instead."
+    },
+    "issue_link": {
+      "exists": "The two tickets already have this link."
+    },
+    "attachment": {
+      "too_large": "The file is larger than the maximum allowed.",
+      "quota_exceeded": "The organization's storage space is full: remove files or ask an administrator.",
+      "not_uploaded": "The file was not sent whole. Try again.",
+      "not_scanned": "The file is not available: it is still being scanned, or the antivirus refused it."
+    },
+    "storage": {
+      "unavailable": "File storage is not available right now. Try again later."
     }
   },
   "dialog": {
@@ -1370,6 +1395,318 @@
       "removeMember": "Remove {{name}}",
       "save": "Save",
       "saved": "Notifications of “{{event}}” saved in the draft."
+    }
+  },
+  "richText": {
+    "toolbar": "Formatting",
+    "bold": "Bold",
+    "italic": "Italic",
+    "strike": "Strikethrough",
+    "code": "Code",
+    "heading": "Heading",
+    "bulletList": "Bulleted list",
+    "orderedList": "Numbered list",
+    "blockquote": "Quote",
+    "codeBlock": "Code block",
+    "link": "Link",
+    "linkAddress": "Link address",
+    "linkApply": "Apply",
+    "linkInvalid": "Enter a web address (http or https) or an email address (mailto).",
+    "suggestions": "Suggestions",
+    "noMatch": "No match."
+  },
+  "priority": {
+    "highest": "Highest",
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low",
+    "lowest": "Lowest"
+  },
+  "issue": {
+    "people": {
+      "remove": "Remove {{ name }}",
+      "search": "Search for a member…",
+      "searchGroup": "Search for a group…",
+      "noMatch": "No match."
+    },
+    "fields": {
+      "removeLabel": "Remove the label {{ label }}",
+      "addLabel": "Add a label…",
+      "none": "None",
+      "cascadeChild": "{{ label }}: detail",
+      "unit": {
+        "hours": "h",
+        "days": "d",
+        "percent": "%"
+      },
+      "issueLinkHint": "A ticket key, such as PLAT-12"
+    },
+    "dialog": {
+      "title": "New ticket",
+      "subtaskTitle": "New sub-task of {{ key }}",
+      "project": "Project",
+      "forbidden": "You cannot create tickets in this project.",
+      "type": "Type",
+      "summary": "Summary",
+      "description": "Description",
+      "priority": "Priority",
+      "assignee": "Assignee",
+      "startDate": "Start",
+      "dueDate": "Due",
+      "fields": "Fields of this type",
+      "create": "Create"
+    },
+    "page": {
+      "title": "Ticket",
+      "breadcrumb": "Where the ticket belongs",
+      "addSubtask": "Add a sub-task",
+      "description": "Description",
+      "noDescription": "No description.",
+      "details": "Details",
+      "assignee": "Assignee",
+      "unassigned": "Unassigned",
+      "reporter": "Reporter",
+      "priority": "Priority",
+      "startDate": "Start",
+      "dueDate": "Due",
+      "yes": "Yes",
+      "no": "No",
+      "attachment": "Belongs to",
+      "project": "Project",
+      "created": "Created {{ at }}",
+      "remoteChange": "Someone else changed this ticket while your form was open: your input is kept. Reload to see the change.",
+      "reload": "Reload"
+    },
+    "list": {
+      "create": "New ticket",
+      "intro": "The tickets assigned to you or reported by you, newest first.",
+      "empty": "No ticket yet",
+      "emptyHint": "Tickets assigned to you or that you report show up here.",
+      "caption": "My tickets",
+      "columns": {
+        "ticket": "Ticket",
+        "summary": "Summary",
+        "project": "Project",
+        "status": "Status",
+        "priority": "Priority",
+        "updated": "Updated"
+      },
+      "loadMore": "Show more"
+    },
+    "edit": {
+      "open": "Edit",
+      "title": "Edit {{ key }}",
+      "save": "Save",
+      "conflict": "Someone changed this ticket since you opened it. Reload it to see their changes, then make yours again.",
+      "reload": "Reload"
+    },
+    "move": {
+      "open": "Move",
+      "title": "Move {{ key }} to another project",
+      "project": "Target project",
+      "tickets": "Tickets that move ({{ count }}), with new keys; their current keys keep leading to them:",
+      "parentCleared": "It no longer sits under {{ parent }}, which stays in its project.",
+      "sameConfiguration": "Both projects use the same configuration: types and statuses stay as they are.",
+      "mapping": "Types and statuses of the target project",
+      "typeOf": "{{ label }} becomes",
+      "statusOf": "Status {{ label }} becomes",
+      "dropped": "These fields do not exist there, or do not apply: their values will be lost: {{ fields }}.",
+      "confirm": "Move"
+    },
+    "links": {
+      "title": "Sub-tasks and links",
+      "addOpen": "Link a ticket",
+      "addTitle": "Link {{ key }} to a ticket",
+      "relation": "This ticket",
+      "other": "Ticket",
+      "add": "Link",
+      "empty": "No sub-task nor link.",
+      "remove": "Remove",
+      "removeTitle": "Remove the link?",
+      "removeMessage": "The link with {{ key }} is removed from both tickets.",
+      "removeOf": "Remove the link with {{ key }}",
+      "relations": {
+        "subtask": "Sub-task",
+        "blocks": "Blocks",
+        "blocked_by": "Blocked by",
+        "depends_on": "Depends on",
+        "required_by": "Required by",
+        "duplicates": "Duplicates",
+        "duplicated_by": "Duplicated by",
+        "relates_to": "Relates to"
+      }
+    },
+    "picker": {
+      "placeholder": "PLAT-12, or words of its summary",
+      "hint": "Its key, or words of its summary.",
+      "noMatch": "No ticket found."
+    },
+    "parent": {
+      "open": "Change parent",
+      "title": "Parent of {{ key }}",
+      "top": "At the top, under no ticket",
+      "parent": "Parent ticket"
+    },
+    "transition": {
+      "menu": "Status: {{ status }}. Change it",
+      "to": "The ticket goes to “{{ status }}”."
+    },
+    "comments": {
+      "title": "Comments ({{ count }})",
+      "empty": "No comment yet.",
+      "add": "Add a comment",
+      "hint": "@ to mention someone, # to refer to a ticket.",
+      "visibility": "Who sees it",
+      "internal": "Internal",
+      "public": "Public",
+      "publicPortal": "Public (portal)",
+      "write": "Comment",
+      "editLabel": "Comment",
+      "editOf": "Edit the comment of {{ author }}",
+      "removeOf": "Delete the comment of {{ author }}",
+      "removeTitle": "Delete the comment?",
+      "removeMessage": "Its text is removed; the ticket keeps a trace that it was deleted.",
+      "remove": "Delete",
+      "deleted": "Comment deleted.",
+      "edited": "edited",
+      "byTransition": "via the workflow",
+      "formerMember": "Former member",
+      "conflict": "This comment changed since you opened it: cancel and edit it again."
+    },
+    "activity": {
+      "title": "Activity",
+      "tabs": "Activity and comments",
+      "empty": "No activity yet.",
+      "more": "Show older activity",
+      "system": "The system",
+      "formerMember": "A former member",
+      "created": "created the ticket",
+      "changed": "changed {{ field }}: {{ old }} → {{ new }}",
+      "set": "set {{ field }} to {{ new }}",
+      "cleared": "cleared {{ field }} (was {{ old }})",
+      "changedText": "changed {{ field }}",
+      "moved": "moved the ticket: {{ old }} → {{ new }}",
+      "linkAdded": "added a link: {{ relation }} {{ key }}",
+      "linkRemoved": "removed a link: {{ relation }} {{ key }}",
+      "commented": "commented",
+      "commentEdited": "edited a comment",
+      "commentDeleted": "deleted a comment",
+      "showChange": "Show before and after",
+      "hideChange": "Hide before and after",
+      "before": "Before",
+      "after": "After",
+      "showDeleted": "Show the deleted comment",
+      "hideDeleted": "Hide the deleted comment",
+      "via": {
+        "mcp": "via MCP",
+        "api": "via the API",
+        "import": "by import"
+      },
+      "fields": {
+        "type": "the type",
+        "status": "the status",
+        "summary": "the summary",
+        "description": "the description",
+        "priority": "the priority",
+        "reporter": "the reporter",
+        "assignee": "the assignee",
+        "startDate": "the start date",
+        "dueDate": "the due date",
+        "parent": "the parent",
+        "removed": "a removed field"
+      },
+      "values": {
+        "none": "nothing",
+        "formerMember": "a former member",
+        "deletedIssue": "a deleted ticket",
+        "yes": "yes",
+        "no": "no"
+      },
+      "attached": "attached {{ name }}",
+      "fileRemoved": "removed the file {{ name }}"
+    },
+    "attachments": {
+      "title": "Attachments ({{ count }})",
+      "drop": "Drop files here, or",
+      "pick": "Choose files",
+      "hint": "Each file is scanned by the antivirus before it can be downloaded.",
+      "sending": "Files being sent",
+      "progressOf": "Sending {{ name }}",
+      "dismissOf": "Dismiss {{ name }}",
+      "uploadFailed": "The file could not be sent. Try again.",
+      "empty": "No file attached.",
+      "signature": "Virus found: {{ signature }}",
+      "status": {
+        "pending": "Waiting",
+        "scanning": "Scanning",
+        "clean": "Clean",
+        "infected": "Infected",
+        "rejected": "Rejected"
+      },
+      "removeOf": "Remove the file {{ name }}",
+      "removeTitle": "Remove the file?",
+      "removeMessage": "{{ name }} is removed from the ticket; the ticket keeps a trace of it in its activity.",
+      "remove": "Remove"
+    },
+    "watch": {
+      "watch": "Watch",
+      "watching": "Watching ({{ count }})"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "bell": "Notifications",
+    "bellUnread": "Notifications, {{ count }} unread",
+    "unread": "{{ count }} unread",
+    "allTenants": "all organizations",
+    "oneTenant": "one organization",
+    "markAll": "Mark all as read",
+    "listLabel": "Your notifications",
+    "kindFilter": "Kind of notification",
+    "tenantFilter": "Organization",
+    "all": "All",
+    "allTenantsChip": "All organizations",
+    "kinds": {
+      "mentioned": "Mentions",
+      "assigned": "Assignments",
+      "status_changed": "Status changes",
+      "commented": "Comments",
+      "created": "New tickets"
+    },
+    "empty": "No notification.",
+    "more": "Show older notifications",
+    "someone": "Someone",
+    "unreadMark": "(unread)",
+    "opensIn": "opens in {{ tenant }}",
+    "periods": {
+      "today": "Today",
+      "week": "This week",
+      "earlier": "Earlier"
+    },
+    "events": {
+      "mentioned": "{{ actor }} mentioned you on {{ key }}",
+      "assigned": "{{ actor }} assigned {{ key }} to you",
+      "status_changed": "{{ actor }} moved {{ key }} to {{ status }}",
+      "commented": "{{ actor }} commented on {{ key }}",
+      "created": "{{ actor }} created {{ key }}"
+    },
+    "preferences": {
+      "title": "Notification preferences",
+      "everywhere": "They apply in all your organizations.",
+      "event": "Event",
+      "inApp": "In the app",
+      "email": "Email",
+      "inAppOf": "{{ event }} in the app",
+      "emailOf": "{{ event }} by email",
+      "events": {
+        "created": "New ticket",
+        "assigned": "Ticket assigned",
+        "status_changed": "Status change",
+        "commented": "New comment",
+        "mentioned": "Mentions"
+      },
+      "digest": "Daily email digest",
+      "digestHint": "Each working day at 8:00, instead of one email per event."
     }
   }
 }

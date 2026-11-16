@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO comment (id, tenant_id, issue_id, author_id, visibility, source, content, content_html, mentions)\n        VALUES ($1, app_current_tenant(), $2, $3, $4, $5, $6, $7, $8)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Text",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d0eac46944ad326890a7c49adccf6c89d47f099b8aa9b606ceb37f0bcc3120d6"
+}

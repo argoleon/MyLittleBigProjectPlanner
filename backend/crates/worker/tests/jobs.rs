@@ -238,6 +238,10 @@ async fn jobs() -> Jobs {
     Jobs {
         mailer: Mailer::new(&smtp, "Planner <noreply@example.org>").unwrap(),
         exports: infra::exports::ExportStore::new(valkey, prefix),
+        storage: Some(testkit::storage().await),
+        clamav: Some(testkit::clamav_addr()),
+        public_url: None,
+        events: None,
     }
 }
 
@@ -302,6 +306,19 @@ async fn the_purge_job_removes_a_deleted_tenant_and_its_rows() {
         .add_member(&db.tenant_b, infra::accounts::TenantRole::Member)
         .await;
     enqueue(&db, db.tenant_b.id, "test.job", serde_json::json!({})).await;
+    // Files of both tenants in the storage.
+    let storage = testkit::storage().await;
+    let gone = [
+        infra::storage::upload_key(db.tenant_b.id, infra::id::new_id()),
+        format!("{}/thumbnails/x.png", db.tenant_b.id),
+    ];
+    let kept = infra::storage::upload_key(db.tenant_a.id, infra::id::new_id());
+    for key in gone.iter().chain([&kept]) {
+        storage
+            .write(key, b"x".to_vec().into(), "text/plain")
+            .await
+            .unwrap();
+    }
 
     let job_id = infra::id::new_id();
     let mut conn = db.app_pool.acquire().await.unwrap();
@@ -354,6 +371,113 @@ async fn the_purge_job_removes_a_deleted_tenant_and_its_rows() {
         .await,
         1
     );
+    assert!(
+        storage
+            .keys(&format!("{}/", db.tenant_b.id))
+            .await
+            .unwrap()
+            .is_empty(),
+        "the deleted tenant's files left the storage"
+    );
+    assert_eq!(
+        storage.size_of(&kept).await.unwrap(),
+        Some(1),
+        "the other tenant's stay"
+    );
+    storage.delete(&kept).await.unwrap();
+}
+
+#[tokio::test]
+async fn an_uploaded_file_is_scanned_by_the_queue_and_its_upload_removed_when_infected() {
+    use domain::attachments::Status;
+    use infra::attachments::{self, AttachmentJob, NewAttachment};
+
+    let db = TestDb::new().await;
+    let tenant = db.tenant_a.id;
+    let admin = db
+        .add_member(&db.tenant_a, infra::accounts::TenantRole::TenantAdmin)
+        .await
+        .account_id;
+    let storage = testkit::storage().await;
+    let mut tx = infra::db::begin_tenant_tx(&db.app_pool, tenant).await.unwrap();
+    let project = node(
+        &mut tx,
+        domain::hierarchy::NodeType::Project,
+        "PLAT",
+        Some("PLAT"),
+        None,
+        admin,
+    )
+    .await;
+    let fields = serde_json::json!({});
+    let issue = infra::issues::create(
+        &mut tx,
+        &infra::issues::NewIssue {
+            id: infra::id::new_id(),
+            project_id: project,
+            project_key: "PLAT",
+            type_id: Uuid::from_u128(1),
+            status_id: Uuid::from_u128(2),
+            parent_id: None,
+            summary: "Ticket",
+            description: None,
+            priority: "medium",
+            reporter_id: admin,
+            assignee_id: None,
+            start_date: None,
+            due_date: None,
+            fields: &fields,
+        },
+    )
+    .await
+    .unwrap();
+    let mut ids = Vec::new();
+    for content in [b"a clean file".to_vec(), testkit::eicar()] {
+        let id = infra::id::new_id();
+        let key = infra::storage::upload_key(tenant, id);
+        attachments::insert(
+            &mut tx,
+            &NewAttachment {
+                id,
+                issue_id: issue.id,
+                name: "file",
+                size: content.len() as i64,
+                media_type: "text/plain",
+                object_key: &key,
+                uploaded_by: admin,
+            },
+        )
+        .await
+        .unwrap();
+        storage.write(&key, content.into(), "text/plain").await.unwrap();
+        attachments::mark_uploaded(&mut tx, id).await.unwrap();
+        let payload = serde_json::to_value(AttachmentJob { attachment_id: id }).unwrap();
+        infra::jobs::enqueue(&mut tx, attachments::SCAN_JOB, &payload)
+            .await
+            .unwrap();
+        ids.push(id);
+    }
+    tx.commit().await.unwrap();
+
+    let runner = JobRunner::new(db.app_pool.clone());
+    while runner.next_batch(&jobs().await).await == Batch::Processed {}
+
+    let mut tx = infra::db::begin_tenant_tx(&db.app_pool, tenant).await.unwrap();
+    let clean = attachments::find(&mut tx, ids[0]).await.unwrap().unwrap();
+    let infected = attachments::find(&mut tx, ids[1]).await.unwrap().unwrap();
+    assert_eq!((clean.status, infected.status), (Status::Clean, Status::Infected));
+    assert_eq!(
+        storage.keys(&format!("{tenant}/")).await.unwrap(),
+        [clean.object_key],
+        "the infected upload was removed by its job"
+    );
+    let left: Vec<(String, String, Option<String>)> = sqlx::query_as(
+        "SELECT kind, status, last_error FROM job WHERE kind IN ('attachment.scan', 'storage.delete')",
+    )
+    .fetch_all(&db.owner_pool)
+    .await
+    .unwrap();
+    assert_eq!(left, [], "no scan nor removal left, none failed");
 }
 
 /// A node of `node_type` named `name`, under `parent`, in the tenant of `conn`.
@@ -526,4 +650,146 @@ async fn the_aggregates_of_every_ancestor_follow_a_change_within_seconds() {
         .await
         .unwrap();
     assert_eq!(left, 0, "no job left, none failed");
+}
+
+#[tokio::test]
+async fn the_outbox_and_history_partitions_are_kept_ready_until_cancelled() {
+    let db = TestDb::new().await;
+    for table in ["outbox_event", "audit_log"] {
+        db.exec_as_owner(&format!(
+            "DO $$ BEGIN EXECUTE format('DROP TABLE {table}_%s', \
+             to_char(date_trunc('month', now()) + interval '3 months', 'YYYY_MM')); END $$"
+        ))
+        .await;
+    }
+    let token = tokio_util::sync::CancellationToken::new();
+    let keeper = tokio::spawn(worker::keep_partitions(
+        db.app_pool.clone(),
+        token.clone(),
+        Duration::from_secs(3600),
+    ));
+    let mut created = false;
+    for _ in 0..100 {
+        let found: bool = sqlx::query_scalar(
+            "SELECT to_regclass('outbox_event_' || \
+             to_char(date_trunc('month', now()) + interval '3 months', 'YYYY_MM')) IS NOT NULL \
+             AND to_regclass('audit_log_' || \
+             to_char(date_trunc('month', now()) + interval '3 months', 'YYYY_MM')) IS NOT NULL",
+        )
+        .fetch_one(&db.owner_pool)
+        .await
+        .unwrap();
+        if found {
+            created = true;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert!(created, "the missing months are created at start");
+    token.cancel();
+    tokio::time::timeout(Duration::from_secs(2), keeper)
+        .await
+        .expect("stops when cancelled, without waiting for the next check")
+        .unwrap();
+}
+
+#[tokio::test]
+async fn a_configuration_migration_runs_batch_by_batch_and_resumes_after_a_dead_worker() {
+    use domain::hierarchy::NodeType;
+    use domain::migration::State;
+    use infra::accounts::TenantRole;
+    use infra::config_migrations::{self, Mapping, NewMigration};
+
+    let db = TestDb::new().await;
+    let t = db.tenant_a.id;
+    let admin = db
+        .add_member(&db.tenant_a, TenantRole::TenantAdmin)
+        .await
+        .account_id;
+    let mut tx = infra::db::begin_tenant_tx(&db.app_pool, t).await.unwrap();
+    let name = [("en".to_owned(), "Software".to_owned())].into();
+    let config = infra::configs::insert(&mut tx, infra::id::new_id(), &name, None)
+        .await
+        .unwrap()
+        .unwrap()
+        .id;
+    let draft = infra::configs::open_draft(&mut tx, config, None)
+        .await
+        .unwrap()
+        .unwrap()
+        .draft
+        .unwrap()
+        .id;
+    let project = node(&mut tx, NodeType::Project, "Platform", Some("PLAT"), None, admin).await;
+    assert!(infra::configs::assign(&mut tx, project, config).await.unwrap());
+    let (in_test, accepted) = (infra::id::new_id(), infra::id::new_id());
+    sqlx::query(
+        r#"
+        INSERT INTO issue (id, tenant_id, project_id, key_number, key, type_id, status_id, summary)
+        SELECT gen_random_uuid(), app_current_tenant(), $1, n, 'PLAT-' || n, $2, $3, 'Ticket ' || n
+        FROM generate_series(1, 1100) AS n
+        "#,
+    )
+    .bind(project)
+    .bind(Uuid::from_u128(1))
+    .bind(in_test)
+    .execute(&mut *tx)
+    .await
+    .unwrap();
+    let id = infra::id::new_id();
+    let mapping = [Mapping {
+        from: in_test,
+        to: accepted,
+    }];
+    let new = NewMigration {
+        id,
+        config_id: config,
+        draft_id: draft,
+        status_mappings: &mapping,
+        type_mappings: &[],
+        ticket_total: 1100,
+        created_by: admin,
+    };
+    assert!(config_migrations::start(&mut tx, &new).await.unwrap());
+    tx.commit().await.unwrap();
+
+    // A worker claims the migration, then dies without finishing it.
+    let claimed = infra::jobs::claim(&db.app_pool, "dead-worker", 10, Duration::from_secs(1))
+        .await
+        .unwrap();
+    assert_eq!(claimed.len(), 1);
+    let jobs = jobs().await;
+    let runner = JobRunner::new(db.app_pool.clone());
+    assert_eq!(runner.next_batch(&jobs).await, Batch::Idle, "leased");
+    tokio::time::sleep(Duration::from_millis(1500)).await;
+
+    // Another one resumes it: a batch per job, each queuing the next.
+    let mut runs = 0;
+    while runner.next_batch(&jobs).await == Batch::Processed {
+        runs += 1;
+        assert!(runs <= 5, "the migration keeps going");
+    }
+    assert_eq!(runs, 3, "500, 500, then 100 and the publication");
+    let left: i64 = sqlx::query_scalar("SELECT count(*) FROM job WHERE kind = 'config.migration'")
+        .fetch_one(&db.owner_pool)
+        .await
+        .unwrap();
+    assert_eq!(left, 0, "no migration job left");
+    let mut tx = infra::db::begin_tenant_tx(&db.app_pool, t).await.unwrap();
+    let done = config_migrations::find(&mut tx, config, id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        (done.state, done.tickets_migrated, done.ticket_total),
+        (State::Done, 1100, 1100)
+    );
+    let moved: i64 = sqlx::query_scalar("SELECT count(*) FROM issue WHERE status_id = $1")
+        .bind(accepted)
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap();
+    assert_eq!(moved, 1100);
+    let config_now = infra::configs::find(&mut tx, config).await.unwrap().unwrap();
+    assert_eq!(config_now.published.id, draft);
 }

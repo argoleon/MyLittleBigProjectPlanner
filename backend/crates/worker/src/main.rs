@@ -109,7 +109,12 @@ async fn run(config: WorkerConfig) -> ExitCode {
 
     let token = CancellationToken::new();
     let health = tokio::spawn(worker::serve_health(listener, token.clone(), dependencies.into()));
-    let runner = std::sync::Arc::new(worker::jobs::JobRunner::new(pool));
+    tokio::spawn(worker::keep_partitions(
+        pool.clone(),
+        token.clone(),
+        worker::PARTITIONS_EVERY,
+    ));
+    let runner = std::sync::Arc::new(worker::jobs::JobRunner::new(pool.clone()));
     let valkey = match infra::valkey::connect_lazy(&config.valkey) {
         Ok(valkey) => valkey,
         Err(err) => {
@@ -117,8 +122,40 @@ async fn run(config: WorkerConfig) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    let events = infra::events::EventLog::new(valkey.clone(), "mlbpp:");
     let exports = infra::exports::ExportStore::new(valkey, "mlbpp:");
-    let handler = std::sync::Arc::new(worker::jobs::Jobs { mailer, exports });
+    let storage = match config
+        .storage
+        .as_ref()
+        .map(infra::storage::Storage::new)
+        .transpose()
+    {
+        Ok(storage) => storage,
+        Err(err) => {
+            eprintln!("worker: {err}");
+            return ExitCode::FAILURE;
+        }
+    };
+    if let Some(storage) = &storage
+        && let Err(err) = storage.ensure_bucket().await
+    {
+        tracing::warn!(error = %err, "the attachments' bucket is not ready");
+    }
+    tokio::spawn(worker::send_digests(
+        pool.clone(),
+        mailer.clone(),
+        config.public_url.clone(),
+        token.clone(),
+        worker::DIGESTS_EVERY,
+    ));
+    let handler = std::sync::Arc::new(worker::jobs::Jobs {
+        mailer,
+        exports,
+        storage,
+        clamav: config.clamav.clone(),
+        public_url: config.public_url.clone(),
+        events: Some(events),
+    });
     tracing::info!(health = %config.health_addr, worker_id = runner.worker_id(), "worker started");
     let mut worker = tokio::spawn(worker::run_loop(token.clone(), config.poll_interval, move || {
         let (runner, handler) = (runner.clone(), handler.clone());

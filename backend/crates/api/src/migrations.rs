@@ -7,16 +7,18 @@
 //! Starting a migration checks that every removed item is mapped
 //! (`mapping_incomplete` otherwise) and queues the job, which publishes the
 //! draft once every ticket moved; its progress is read meanwhile. Tickets
-//! come with L05: until then, counts are 0 and the job publishes at once.
+//! are counted over the projects of the configuration, archived ones
+//! included ([`TicketCounts`]); a ticket in both a removed status and a
+//! removed type counts once in the total.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use chrono::{DateTime, Utc};
 use domain::migration::{
     MappingError, Required, State, StatusOption, TypeOption, percent, suggest_status, suggest_type,
-    validate_mapping,
+    tickets_to_move, validate_mapping,
 };
 use domain::validation::FieldError;
 use domain::workflows::Category;
@@ -59,7 +61,7 @@ pub struct ItemView {
     /// The workflow of a status; `null` for a type.
     #[schema(required = true)]
     workflow: Option<String>,
-    /// The tickets in it (0 until tickets exist, L05).
+    /// The tickets in it, over the projects of the configuration.
     ticket_count: u64,
     targets: Vec<TargetView>,
     /// Same identifier, else same category (or sub-task or not).
@@ -74,7 +76,7 @@ pub struct ItemView {
 pub struct PlanView {
     statuses: Vec<ItemView>,
     types: Vec<ItemView>,
-    /// Every ticket to move.
+    /// Every ticket to move, each once (in a removed status and type alike).
     ticket_total: u64,
     /// The configuration's version: send it as `If-Match` to start.
     version: i64,
@@ -182,19 +184,64 @@ impl Removed {
     }
 }
 
+/// The tickets of the projects of a configuration, by status and type.
+pub(crate) struct TicketCounts(Vec<(u128, u128, u64)>);
+
+impl TicketCounts {
+    pub(crate) async fn of(tx: &mut TenantTx, config: Uuid) -> Result<Self, Problem> {
+        let rows = repo::ticket_counts(tx, config).await?;
+        Ok(Self(
+            rows.into_iter()
+                .map(|(status, issue_type, count)| {
+                    (
+                        status.as_u128(),
+                        issue_type.as_u128(),
+                        u64::try_from(count).unwrap_or(0),
+                    )
+                })
+                .collect(),
+        ))
+    }
+
+    /// The tickets in the status `id`.
+    pub(crate) fn in_status(&self, id: Uuid) -> u64 {
+        self.0
+            .iter()
+            .filter(|(s, _, _)| *s == id.as_u128())
+            .map(|(_, _, n)| n)
+            .sum()
+    }
+
+    /// The tickets of the type `id`.
+    pub(crate) fn of_type(&self, id: Uuid) -> u64 {
+        self.0
+            .iter()
+            .filter(|(_, t, _)| *t == id.as_u128())
+            .map(|(_, _, n)| n)
+            .sum()
+    }
+
+    /// The tickets in one of `statuses` or of one of `types`, each once.
+    pub(crate) fn to_move(&self, statuses: &[Uuid], types: &[Uuid]) -> u64 {
+        let ids = |items: &[Uuid]| items.iter().map(Uuid::as_u128).collect::<BTreeSet<_>>();
+        tickets_to_move(&self.0, &ids(statuses), &ids(types))
+    }
+}
+
 /// What the draft removes from the published version, with targets.
 struct Plan {
     statuses: Vec<Removed>,
     types: Vec<Removed>,
+    /// Every ticket to move, each once.
+    ticket_total: u64,
 }
 
-async fn plan(tx: &mut TenantTx, published: Uuid, draft: Uuid) -> Result<Plan, Problem> {
+async fn plan(tx: &mut TenantTx, config: Uuid, published: Uuid, draft: Uuid) -> Result<Plan, Problem> {
     let kept = infra::workflows::load(tx, draft).await?;
     let before = infra::workflows::load(tx, published).await?;
     let is_new_status = |id: Uuid| !before.statuses.iter().any(|s| s.item_id == id);
-    // Tickets come with L05: none in a removed status or type until then.
-    let tickets = 0;
-    let statuses = infra::workflows::removed_statuses(tx, published, draft)
+    let counts = TicketCounts::of(tx, config).await?;
+    let statuses: Vec<Removed> = infra::workflows::removed_statuses(tx, published, draft)
         .await?
         .into_iter()
         .map(|(status, workflow)| {
@@ -224,7 +271,7 @@ async fn plan(tx: &mut TenantTx, published: Uuid, draft: Uuid) -> Result<Plan, P
                 key: status.key,
                 labels: status.label_translations,
                 workflow: Some(workflow),
-                tickets,
+                tickets: counts.in_status(status.item_id),
             }
         })
         .collect();
@@ -254,10 +301,16 @@ async fn plan(tx: &mut TenantTx, published: Uuid, draft: Uuid) -> Result<Plan, P
             key: t.key,
             labels: t.label_translations,
             workflow: None,
-            tickets,
+            tickets: counts.of_type(t.item_id),
         })
-        .collect();
-    Ok(Plan { statuses, types })
+        .collect::<Vec<_>>();
+    let ids = |items: &[Removed]| items.iter().map(|r| r.id).collect::<Vec<_>>();
+    let ticket_total = counts.to_move(&ids(&statuses), &ids(&types));
+    Ok(Plan {
+        statuses,
+        types,
+        ticket_total,
+    })
 }
 
 impl Language {
@@ -319,7 +372,7 @@ async fn with_draft(tx: &mut TenantTx, id: Uuid) -> Result<(configs_repo::Config
     operation_id = "getMigrationPlan",
     summary = "List what publishing the draft removes, to map",
     description = "Tenant admins and configuration admins. Each status and type the draft removes, \
-                   with its tickets (0 until tickets exist), the targets it may map to (the new \
+                   with its tickets over the projects of the configuration, the targets it may map to (the new \
                    ones marked) and a suggested one: the same identifier, else the same category \
                    (or a sub-task for a sub-task).",
     params(
@@ -341,11 +394,11 @@ pub async fn plan_of(
 ) -> Result<Response, Problem> {
     require_config_admin(&tx)?;
     let (config, draft) = with_draft(&mut tx, id).await?;
-    let plan = plan(&mut tx, config.published.id, draft).await?;
+    let plan = plan(&mut tx, id, config.published.id, draft).await?;
     let language = Language::of(&tx, &accept);
     tx.commit().await?;
     let view = PlanView {
-        ticket_total: plan.statuses.iter().chain(&plan.types).map(|r| r.tickets).sum(),
+        ticket_total: plan.ticket_total,
         statuses: plan.statuses.iter().map(|r| language.item(r)).collect(),
         types: plan.types.iter().map(|r| language.item(r)).collect(),
         version: config.version,
@@ -401,7 +454,7 @@ pub async fn start(
     if !problems.is_empty() {
         return Err(Problem::new(ErrorCode::WorkflowInvalid).with_errors(problems));
     }
-    let plan = plan(&mut tx, config.published.id, draft).await?;
+    let plan = plan(&mut tx, id, config.published.id, draft).await?;
     let required = |items: &[Removed]| items.iter().map(Removed::required).collect::<Vec<_>>();
     let mut errors = Vec::new();
     if let Err(e) = validate_mapping(&required(&plan.statuses), &pairs(&body.status_mappings)) {
@@ -422,7 +475,7 @@ pub async fn start(
             })
             .collect::<Vec<_>>()
     };
-    let total: u64 = plan.statuses.iter().chain(&plan.types).map(|r| r.tickets).sum();
+    let total = plan.ticket_total;
     let migration_id = infra::id::new_id();
     let actor = tx.account_id();
     let started = repo::start(

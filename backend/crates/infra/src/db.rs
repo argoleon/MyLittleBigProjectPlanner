@@ -22,6 +22,9 @@ const TENANT_ID_EXEMPT: &[&str] = &[
     "platform_admin",
     "account_mfa",
     "account_backup_code",
+    // Notification preferences belong to the account, for every tenant
+    // (L05-US07); row-level security keys them on the signed-in account.
+    "notification_settings",
 ];
 
 /// Pool for the runtime role. Connections open lazily, so the service starts

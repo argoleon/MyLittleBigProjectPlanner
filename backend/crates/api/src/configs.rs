@@ -34,6 +34,7 @@ use utoipa::{IntoParams, ToSchema};
 use crate::etag::{etag, if_none_match, require_if_match};
 use crate::extract::{AcceptLanguage, ApiJson, ApiPath, ApiQuery};
 use crate::idempotency::{self, Start};
+use crate::migrations::TicketCounts;
 use crate::nodes::{Sight, ensure_changeable, visible_node};
 use crate::pagination::{PageParams, encode_cursor};
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
@@ -842,12 +843,12 @@ pub async fn impact(
     let removed_statuses = infra::workflows::removed_statuses(&mut tx, config.published.id, draft.id).await?;
     let workflow_problems =
         crate::workflows::publish_errors(&infra::workflows::load(&mut tx, draft.id).await?);
+    let counts = TicketCounts::of(&mut tx, id).await?;
     let sight = Sight::of(&mut tx).await?;
     let language = Language::of(&tx, &accept);
     tx.commit().await?;
-    // Tickets come with L05: until then, no ticket uses a removed type.
-    let tickets = |_: &infra::issue_types::IssueType| 0;
-    let in_status = |_: &infra::workflows::Status| 0;
+    let tickets = |t: &infra::issue_types::IssueType| counts.of_type(t.item_id);
+    let in_status = |s: &infra::workflows::Status| counts.in_status(s.item_id);
     let removals: Vec<Removal> = removed
         .iter()
         .map(|t| Removal {
@@ -922,7 +923,7 @@ pub async fn impact(
         (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 403, description = "`forbidden`, or `csrf.invalid`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 404, description = "No such configuration in this tenant", body = ProblemBody, content_type = PROBLEM_JSON),
-        (status = 409, description = "`config.no_draft`, or `workflow.invalid`: each problem of the workflows of the draft in `errors`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 409, description = "`config.no_draft`, or `workflow.invalid`: each problem of the workflows of the draft in `errors`; or `config.migration_required`: tickets use a status or type the draft removes, migrate them instead (`POST /project-configs/{id}/migrations`)", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 412, description = "The configuration changed since this ETag", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 428, description = "`If-Match` is missing", body = ProblemBody, content_type = PROBLEM_JSON),
     )
@@ -935,10 +936,27 @@ pub async fn publish(
 ) -> Result<Response, Problem> {
     require_config_admin(&tx)?;
     let if_match = require_if_match(&headers)?;
-    if let Some(draft) = repo::find(&mut tx, id).await?.and_then(|c| c.draft) {
+    if let Some(config) = repo::find(&mut tx, id).await?
+        && let Some(draft) = &config.draft
+    {
         let errors = crate::workflows::publish_errors(&infra::workflows::load(&mut tx, draft.id).await?);
         if !errors.is_empty() {
             return Err(Problem::new(ErrorCode::WorkflowInvalid).with_errors(errors));
+        }
+        // Tickets in a status or of a type the draft removes move first,
+        // through the mapping wizard.
+        let types: Vec<Uuid> = infra::issue_types::removed(&mut tx, config.published.id, draft.id)
+            .await?
+            .iter()
+            .map(|t| t.item_id)
+            .collect();
+        let statuses: Vec<Uuid> = infra::workflows::removed_statuses(&mut tx, config.published.id, draft.id)
+            .await?
+            .iter()
+            .map(|(s, _)| s.item_id)
+            .collect();
+        if TicketCounts::of(&mut tx, id).await?.to_move(&statuses, &types) > 0 {
+            return Err(Problem::new(ErrorCode::ConfigMigrationRequired));
         }
     }
     let config = repo::publish(&mut tx, id, if_match.versions())

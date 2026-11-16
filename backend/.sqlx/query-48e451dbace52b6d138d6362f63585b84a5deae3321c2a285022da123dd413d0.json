@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE audit_log l SET old_value = l.old_value - 'content', new_value = l.new_value - 'content'\n        FROM comment c\n        WHERE l.action IN ('comment_created', 'comment_updated', 'comment_deleted')\n          AND c.id = coalesce(l.new_value ->> 'commentId', l.old_value ->> 'commentId')::uuid\n          AND c.author_id = $1\n          AND (l.old_value ? 'content' OR l.new_value ? 'content')\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "48e451dbace52b6d138d6362f63585b84a5deae3321c2a285022da123dd413d0"
+}

@@ -45,7 +45,8 @@ Requirements: Docker Engine with Compose v2.24 or later, ports 80 and 443 open, 
    | `database_url`, `database_migration_url` | `postgres://mlbpp_app:<password>@postgres:5432/mlbpp`, and the same with `mlbpp_owner` |
    | `pgbackrest_cipher_pass` | Encryption key of the backups. **Keep a copy off the server**: without it, no restore is possible |
    | `valkey_password`, `valkey_url` | Valkey password, and `redis://:<password>@valkey:6379` for the services |
-   | `seaweedfs_s3_config` | SeaweedFS S3 identities (JSON) |
+   | `s3_access_key`, `s3_secret_key` | Keys of the API and the worker on the S3 storage (attachments) |
+   | `seaweedfs_s3_config` | SeaweedFS S3 identities (JSON), made of the two keys above. An installation made before attachments (L05) has it already: the script then takes `s3_access_key` and `s3_secret_key` from it |
    | `keycloak_db_password`, `keycloak_admin_password` | Profile `sso` |
    | `grafana_admin_password` | Profile `observability` (user `admin`) |
    | `data_encryption_key` | AES-256 key encrypting the secrets stored in the database (two-step verification, OIDC client secrets): 32 random bytes in base64 (`head -c 32 /dev/urandom \| base64`). **Keep a copy with the backups**: without it, members with two-step verification cannot sign in, and OIDC providers must be entered again |
@@ -68,6 +69,15 @@ Requirements: Docker Engine with Compose v2.24 or later, ports 80 and 443 open, 
    Type the password, then Enter. An email that already has an account in another tenant is linked to it and keeps its password.
 
 Optional profiles: add `--profile sso` and/or `--profile observability` to every command.
+
+## Attachments
+
+Files attached to tickets live in SeaweedFS (S3-compatible, volume `seaweedfs-data`); the database keeps what describes them.
+
+- **Direct upload and download.** Browsers send and fetch files with presigned URLs, never through the API. The URLs are paths on the address the browser uses, `/mlbpp-attachments/…`, signed for that host: Traefik routes that prefix (`S3_BUCKET`) to SeaweedFS, keeping the Host header, and SeaweedFS checks every signature and refuses anonymous requests. A proxy in front of Traefik must keep the Host header too. Files are served with `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'none'; sandbox`, and always as downloads (`Content-Disposition: attachment`), so nothing uploaded runs on the application's origin.
+- **Antivirus.** The worker streams each upload to ClamAV (`clamav` service); a file is downloadable only once clean, an infected file's content is deleted. On its first start, ClamAV downloads its signatures (a few minutes): uploads stay "Scanning" meanwhile, then are scanned.
+- **Limits.** `ATTACHMENT_MAX_BYTES` (50 MB by default, at most 100 MB) and each tenant's storage quota (`storage_quota_bytes`, set by the super admin) are checked before an upload starts. The same file uploaded twice in a tenant is stored once.
+- **Backups.** pgBackRest saves the database, not the files: back up the `seaweedfs-data` volume too.
 
 ## Sign-in and sessions
 

@@ -327,6 +327,55 @@ pub async fn valkey() -> (infra::valkey::Valkey, String) {
     (client, format!("test:{}:", new_id().simple()))
 }
 
+// --- S3 storage and antivirus ------------------------------------------------
+
+/// Bucket of the integration tests; objects sit under their tenant's id,
+/// unique per test.
+pub const TEST_BUCKET: &str = "mlbpp-test";
+
+/// The S3 storage of the integration tests (`TEST_S3_ENDPOINT`,
+/// `TEST_S3_ACCESS_KEY`, `TEST_S3_SECRET_KEY`; defaults: the SeaweedFS of
+/// `deploy/compose.dev.yaml`), its bucket created.
+pub async fn storage() -> infra::storage::Storage {
+    storage_with(infra::config::DEFAULT_MAX_ATTACHMENT_BYTES).await
+}
+
+/// [`storage`] accepting attachments of at most `max_attachment_bytes`.
+pub async fn storage_with(max_attachment_bytes: u64) -> infra::storage::Storage {
+    let var = |name: &str, default: &str| std::env::var(name).unwrap_or_else(|_| default.to_owned());
+    let config = infra::config::StorageConfig {
+        endpoint: var("TEST_S3_ENDPOINT", "http://127.0.0.1:58333")
+            .parse()
+            .expect("TEST_S3_ENDPOINT is a URL"),
+        bucket: TEST_BUCKET.to_owned(),
+        region: "us-east-1".to_owned(),
+        access_key: infra::config::Secret::new(var("TEST_S3_ACCESS_KEY", "mlbpp-dev")),
+        secret_key: infra::config::Secret::new(var("TEST_S3_SECRET_KEY", "mlbpp-dev-only")),
+        max_attachment_bytes,
+    };
+    let storage = infra::storage::Storage::new(&config).expect("test storage");
+    storage.ensure_bucket().await.expect("create the test bucket");
+    storage
+}
+
+/// `host:port` of the ClamAV of the integration tests (`TEST_CLAMAV_ADDR`):
+/// it knows the EICAR test signature only.
+pub fn clamav_addr() -> String {
+    std::env::var("TEST_CLAMAV_ADDR").unwrap_or_else(|_| "127.0.0.1:3310".to_owned())
+}
+
+/// The EICAR test file: harmless, found by every antivirus. Built here so
+/// that no file of the repository holds it whole.
+pub fn eicar() -> Vec<u8> {
+    [
+        r"X5O!P%@AP[4\PZX54(P^)7CC)7}",
+        "$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!",
+        "$H+H*",
+    ]
+    .concat()
+    .into_bytes()
+}
+
 // --- Mailpit ----------------------------------------------------------------
 
 /// SMTP URL of the test mail catcher (`TEST_SMTP_URL`, default the Mailpit

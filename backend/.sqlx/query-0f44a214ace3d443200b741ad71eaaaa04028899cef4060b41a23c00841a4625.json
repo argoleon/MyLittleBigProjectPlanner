@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT count(*) AS \"count!\", coalesce(bool_or(account_id = $2), false) AS \"watching!\"\n        FROM issue_watcher WHERE issue_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "watching!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "0f44a214ace3d443200b741ad71eaaaa04028899cef4060b41a23c00841a4625"
+}

@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO project_issue_counter (tenant_id, project_id, last_number)\n        VALUES (app_current_tenant(), $1, 1)\n        ON CONFLICT (tenant_id, project_id) DO UPDATE SET last_number = project_issue_counter.last_number + 1\n        RETURNING last_number\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "last_number",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "project_issue_counter",
+            "name": "last_number"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "67143f9cd1fb8a57fb6b5e684e568193aa4c923c33734bff065905352785d058"
+}

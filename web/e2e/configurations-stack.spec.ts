@@ -1,8 +1,9 @@
 /**
  * Project configurations on the production stack, nothing mocked
- * (L04-US01 to US07): the tenant admin creates a configuration, moves two projects
+ * (L04-US01 to US08): the tenant admin creates a configuration, moves two projects
  * to it from their settings, sees it shared by both, then detaches one,
- * which gets its own copy.
+ * which gets its own copy; a status removed from a shared configuration
+ * has its tickets migrated by the worker before the draft is published.
  *
  * Runs with `just compose-e2e` only: deploy/tests/e2e.sh creates the admin
  * and passes E2E_ADMIN_EMAIL and E2E_ADMIN_SECRET.
@@ -422,6 +423,113 @@ test('ticket created notifies the reporter and the project managers once publish
   await expect(admin.getByText('Version 2 is published.', { exact: true })).toBeVisible();
   await admin.reload();
   await expect(admin.getByRole('row', { name: /Ticket created/ })).toContainText('Project manager');
+
+  await admin.context().close();
+});
+
+/**
+ * Creates a story in each project of `codes` through the API, as the admin
+ * signed in on `page`, and runs `transition` on it unless null; their keys.
+ */
+async function stories(page: Page, codes: readonly string[], transition: string | null): Promise<string[]> {
+  return page.evaluate(
+    async ({ codes, transition }) => {
+      const session = (await (await fetch('/api/v1/auth/session')).json()) as { csrfToken: string };
+      const headers = { 'content-type': 'application/json', 'x-csrf-token': session.csrfToken };
+      const created: string[] = [];
+      for (const code of codes) {
+        const form = (await (await fetch(`/api/v1/projects/${code}/issue-form`)).json()) as {
+          types: { id: string; key: string }[];
+        };
+        const story = form.types.find((type) => type.key === 'story');
+        const response = await fetch(`/api/v1/projects/${code}/issues`, {
+          method: 'POST',
+          headers: { ...headers, 'idempotency-key': crypto.randomUUID() },
+          body: JSON.stringify({ summary: `Story of ${code}`, typeId: story?.id }),
+        });
+        if (response.status !== 201) throw new Error(`creation in ${code}: ${response.status}`);
+        const issue = (await response.json()) as { key: string };
+        if (transition) {
+          const offered = (await (await fetch(`/api/v1/issues/${issue.key}/transitions`)).json()) as { id: string; name: string }[];
+          const ran = await fetch(`/api/v1/issues/${issue.key}/transitions`, {
+            method: 'POST',
+            headers: { ...headers, 'if-match': '*' },
+            body: JSON.stringify({ transitionId: offered.find((offer) => offer.name === transition)?.id }),
+          });
+          if (ran.status !== 200) throw new Error(`${transition} on ${issue.key}: ${ran.status}`);
+        }
+        created.push(issue.key);
+      }
+      return created;
+    },
+    { codes: [...codes], transition },
+  );
+}
+
+test('a status removed from a shared configuration is mapped, its tickets migrated, then the draft published', async ({ browser }) => {
+  test.setTimeout(180_000);
+  const run = Date.now().toString(36).toUpperCase().slice(-6);
+  const config = `Support ${run}`;
+  const [first, second] = [`Helpdesk ${run}`, `Hotline ${run}`];
+  const [firstCode, secondCode] = [`H${run}`, `L${run}`];
+
+  // Two projects share the configuration, with a cancelled story each, and
+  // a story still to do.
+  const admin = await signIn(browser, adminEmail!, adminSecret!);
+  const firstUrl = await project(admin, first, firstCode);
+  const secondUrl = await project(admin, second, secondCode);
+  await admin.goto('/admin/configurations');
+  await admin.getByRole('button', { name: 'New configuration' }).click();
+  const dialog = admin.getByRole('dialog', { name: 'New project configuration' });
+  await expect(dialog.getByLabel('Name (Français)')).toBeFocused();
+  await dialog.getByLabel('Name (Français)').fill(`Assistance ${run}`);
+  await dialog.getByLabel('Name (English)').fill(config);
+  await dialog.getByRole('button', { name: 'Create' }).click();
+  await expect(admin.getByRole('heading', { level: 1 })).toHaveText(config);
+  const configUrl = admin.url();
+  await moveTo(admin, firstUrl, config);
+  await moveTo(admin, secondUrl, config);
+  const cancelled = await stories(admin, [firstCode, secondCode], 'Cancel');
+  const [todo] = await stories(admin, [firstCode], null);
+
+  // The draft removes "Cancelled".
+  await admin.goto(configUrl);
+  await admin.getByRole('tab', { name: 'Workflows' }).click();
+  await admin.getByRole('button', { name: 'Remove Cancelled' }).click();
+  await admin.getByRole('dialog', { name: 'Remove the status “Cancelled”?' }).getByRole('button', { name: 'Remove' }).click();
+  await expect(admin.getByRole('status')).toHaveText('Status “Cancelled” removed from the draft.');
+
+  // Publishing asks to migrate the two cancelled tickets first.
+  await admin.getByRole('button', { name: 'Publish the changes' }).click();
+  await admin.getByRole('dialog', { name: `Publish “${config}”?` }).getByRole('button', { name: 'Map and migrate' }).click();
+  const wizard = admin.getByRole('dialog', { name: 'Migrate the tickets' });
+  await expect(wizard.getByRole('row', { name: /Cancelled/ }).getByRole('cell').first()).toHaveText('2');
+  // Same category: Done is suggested.
+  await expect(wizard.getByRole('combobox', { name: 'New value for Cancelled' })).toContainText('Done');
+  await expect(wizard.getByText(firstCode, { exact: true })).toBeVisible();
+  await expect(wizard.getByText(secondCode, { exact: true })).toBeVisible();
+  await admin.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+  expect(await accessibilityViolations(admin), 'migration wizard').toEqual([]);
+  await wizard.getByRole('button', { name: 'Migrate 2 tickets' }).click();
+
+  // The worker moves them, then publishes: both dialogs close.
+  await expect(admin.getByRole('dialog')).toHaveCount(0, { timeout: 30_000 });
+  await expect(admin.getByText('Version 2 is published to its 2 projects.')).toBeVisible();
+
+  // Each cancelled ticket is now done, the system telling so in its history.
+  for (const ticket of cancelled) {
+    await admin.goto(`/issues/${ticket}`);
+    await expect(admin.locator('app-issue-status')).toContainText('Done');
+    await admin.getByRole('tab', { name: 'Activity' }).click();
+    const latest = admin.locator('app-issue-activity .entry').first();
+    await expect(latest).toContainText('The system');
+    await expect(latest.locator('.sentence')).toContainText('changed the status: Cancelled → Done');
+  }
+  // The story to do stays as it was.
+  await admin.goto(`/issues/${todo}`);
+  await expect(admin.locator('app-issue-status')).toContainText('To do');
+  await admin.getByRole('tab', { name: 'Activity' }).click();
+  await expect(admin.locator('app-issue-activity .entry')).toHaveCount(1);
 
   await admin.context().close();
 });

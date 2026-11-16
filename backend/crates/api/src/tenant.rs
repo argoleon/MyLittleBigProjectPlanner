@@ -48,18 +48,35 @@ pub struct AppState {
     pub(crate) auth: Arc<Auth>,
     /// Grants of roles on nodes (`crate::permissions`): `node_role_grant`.
     pub(crate) grants: Arc<dyn GrantSource>,
+    /// The storage of attachments; none: attachments answer 503.
+    pub(crate) storage: Option<Arc<infra::storage::Storage>>,
+    /// Real-time signals (`crate::events`).
+    pub(crate) realtime: Arc<crate::events::Realtime>,
 }
 
 impl AppState {
     pub fn new(pool: PgPool, tenancy: Tenancy, auth: Auth) -> Self {
         let dependencies = Arc::from([Dependency::Postgres(pool.clone())]);
+        let realtime = Arc::new(crate::events::Realtime::new(
+            auth.valkey.clone(),
+            &auth.key_prefix,
+        ));
         Self {
             pool,
             tenancy: Arc::new(tenancy),
             dependencies,
             auth: Arc::new(auth),
             grants: Arc::new(NodeGrants),
+            storage: None,
+            realtime,
         }
+    }
+
+    /// Keeps attachments in `storage`.
+    #[must_use]
+    pub fn with_storage(mut self, storage: infra::storage::Storage) -> Self {
+        self.storage = Some(Arc::new(storage));
+        self
     }
 
     /// Takes the grants of roles from `grants` (tests of the engine).
@@ -182,6 +199,16 @@ impl TenantTx {
 
     pub fn account_id(&self) -> Uuid {
         self.member.account_id
+    }
+
+    /// Who writes, and from where, for the history of tickets: the member,
+    /// from the interface (a session cookie). API tokens (L15) and the MCP server
+    /// (L16) will set their own origin here.
+    pub fn author(&self) -> infra::audit::Author {
+        infra::audit::Author {
+            actor_id: Some(self.member.account_id),
+            origin: domain::audit::Origin::Interface,
+        }
     }
 
     pub(crate) fn session(&self) -> &Session {

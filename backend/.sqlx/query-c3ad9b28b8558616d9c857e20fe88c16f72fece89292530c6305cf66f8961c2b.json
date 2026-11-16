@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id AS \"id!\", tenant_slug AS \"tenant_slug!\", tenant_name AS \"tenant_name!\", event AS \"event!\",\n               actor_name, details AS \"details!\"\n        FROM app_digest_notifications($1)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "tenant_slug!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "tenant_name!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "event!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "actor_name",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "details!",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "c3ad9b28b8558616d9c857e20fe88c16f72fece89292530c6305cf66f8961c2b"
+}

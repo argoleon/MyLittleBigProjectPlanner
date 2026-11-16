@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE attachment SET status = 'scanning', version = version + 1 WHERE id = $1 AND status = 'pending'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "02c60e77bd3e4314a4251caa95493ab06fa535037d8bb77803a1ca12d7f4eb40"
+}

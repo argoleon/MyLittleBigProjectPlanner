@@ -34,6 +34,13 @@ printf '%s\n' "$viewer_passphrase" | compose exec -T api /usr/local/bin/api add-
     || fail "api add-member failed"
 pass "created $viewer"
 
+# Notified of a mention (L05-US07); granted a role by its test only.
+notified="e2e-notified-$(date +%s)-$RANDOM@example.test"
+notified_passphrase="e2e notified passphrase $RANDOM$RANDOM"
+printf '%s\n' "$notified_passphrase" | compose exec -T api /usr/local/bin/api add-member default "$notified" "E2E Notified" > /dev/null \
+    || fail "api add-member failed"
+pass "created $notified"
+
 section "playwright"
 docker run --rm --network mlbpp_edge --ipc host --user "${DEV_UID:-$(id -u)}:${DEV_GID:-$(id -g)}" \
     -v "$PWD:/workspace" -w /workspace/web \
@@ -42,4 +49,5 @@ docker run --rm --network mlbpp_edge --ipc host --user "${DEV_UID:-$(id -u)}:${D
     -e "E2E_MFA_EMAIL=$mfa_member" -e "E2E_MFA_SECRET=$mfa_passphrase" \
     -e "E2E_ADMIN_EMAIL=$admin" -e "E2E_ADMIN_SECRET=$admin_passphrase" \
     -e "E2E_VIEWER_EMAIL=$viewer" -e "E2E_VIEWER_SECRET=$viewer_passphrase" \
+    -e "E2E_NOTIFIED_EMAIL=$notified" -e "E2E_NOTIFIED_SECRET=$notified_passphrase" \
     mlbpp-dev-e2e npx playwright test "$@"

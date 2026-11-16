@@ -73,6 +73,12 @@ export const test = base.extend<{ language: 'fr' | 'en'; theme: 'system' | 'ligh
     await page.route('**/api/v1/me', (route) => route.fulfill({ json: ME }));
     // Languages picked in the menu are saved for the account.
     await page.route('**/api/v1/me/preferences', (route) => route.fulfill({ json: route.request().postDataJSON() }));
+    // Real time: an open stream that says nothing, reconnecting slowly (a test may route its own).
+    await page.route('**/api/v1/events', (route) =>
+      route.fulfill({ status: 200, contentType: 'text/event-stream', body: 'retry: 60000\nid: 1-0\nevent: ready\ndata: {}\n\n' }),
+    );
+    // The bell of the top app bar: nothing unread unless a test says so.
+    await page.route('**/api/v1/me/notifications/unread', (route) => route.fulfill({ json: { total: 0, byTenant: [] } }));
     await page.route('**/api/v1/auth/session', (route) =>
       signedIn ? route.fulfill({ json: SESSION }) : route.fulfill(problem(401, 'unauthenticated')),
     );

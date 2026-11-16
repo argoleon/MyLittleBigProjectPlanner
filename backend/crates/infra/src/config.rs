@@ -283,6 +283,74 @@ impl SharedServices {
     }
 }
 
+/// Default name of the attachments' bucket. Browsers reach it on the
+/// application's own origin, under `/<bucket>/` (path-style URLs): the
+/// reverse proxy routes that prefix to the storage.
+pub const DEFAULT_BUCKET: &str = "mlbpp-attachments";
+
+/// Largest attachment allowed by default (specification §12): 50 MB.
+pub const DEFAULT_MAX_ATTACHMENT_BYTES: u64 = 50 * 1024 * 1024;
+
+/// Largest attachment ClamAV scans as a stream (its `StreamMaxLength`).
+pub const MAX_SCANNED_BYTES: u64 = 100 * 1024 * 1024;
+
+/// The S3 storage of attachments (L05-US05).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StorageConfig {
+    /// `S3_ENDPOINT`: where the services reach the storage
+    /// (`http://seaweedfs:8333`).
+    pub endpoint: url::Url,
+    /// `S3_BUCKET` (default `mlbpp-attachments`).
+    pub bucket: String,
+    /// `S3_REGION` (default `us-east-1`): part of the signatures.
+    pub region: String,
+    /// `S3_ACCESS_KEY` and `S3_SECRET_KEY` (secrets: prefer `_FILE`).
+    pub access_key: Secret,
+    pub secret_key: Secret,
+    /// `ATTACHMENT_MAX_BYTES` (default 50 MB, at most 100 MB, what ClamAV
+    /// scans).
+    pub max_attachment_bytes: u64,
+}
+
+impl StorageConfig {
+    /// The storage, if `S3_ENDPOINT` is set; its keys are then required.
+    pub fn from_env(env: &Env) -> Result<Option<Self>, ConfigError> {
+        let Some(raw) = env.get("S3_ENDPOINT")? else {
+            return Ok(None);
+        };
+        let endpoint = url::Url::parse(&raw)
+            .ok()
+            .filter(|url| matches!(url.scheme(), "http" | "https") && url.host_str().is_some())
+            .ok_or_else(|| invalid("S3_ENDPOINT", "must be a URL such as http://host:port"))?;
+        let bucket: String = env.optional("S3_BUCKET", DEFAULT_BUCKET.to_owned())?;
+        if !bucket
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+            || !(3..=63).contains(&bucket.len())
+        {
+            return Err(invalid(
+                "S3_BUCKET",
+                "must be 3 to 63 lowercase letters, digits or hyphens",
+            ));
+        }
+        let max_attachment_bytes: u64 = env.optional("ATTACHMENT_MAX_BYTES", DEFAULT_MAX_ATTACHMENT_BYTES)?;
+        if !(1..=MAX_SCANNED_BYTES).contains(&max_attachment_bytes) {
+            return Err(invalid(
+                "ATTACHMENT_MAX_BYTES",
+                "must be between 1 and 104857600 (100 MB, what the antivirus scans)",
+            ));
+        }
+        Ok(Some(Self {
+            endpoint,
+            bucket,
+            region: env.optional("S3_REGION", "us-east-1".to_owned())?,
+            access_key: env.required("S3_ACCESS_KEY")?,
+            secret_key: env.required("S3_SECRET_KEY")?,
+            max_attachment_bytes,
+        }))
+    }
+}
+
 /// Configuration of the `api` service.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ApiConfig {
@@ -309,6 +377,8 @@ pub struct ApiConfig {
     /// `OIDC_ALLOW_HTTP` (default false): accept plain-HTTP OIDC issuers.
     /// Development and tests only.
     pub oidc_allow_http: bool,
+    /// The storage of attachments; without it, attachments answer 503.
+    pub storage: Option<StorageConfig>,
 }
 
 /// Public address of the front end, used to build the links of emails:
@@ -414,6 +484,7 @@ impl ApiConfig {
             tenancy,
             data_key: env.required("DATA_ENCRYPTION_KEY")?,
             oidc_allow_http: env.optional("OIDC_ALLOW_HTTP", false)?,
+            storage: StorageConfig::from_env(env)?,
         })
     }
 }
@@ -532,6 +603,13 @@ pub struct WorkerConfig {
     pub telemetry: TelemetryConfig,
     /// `VALKEY_URL`: exports of personal data.
     pub valkey: Secret,
+    /// The storage of attachments, scanned and given thumbnails here.
+    pub storage: Option<StorageConfig>,
+    /// `CLAMAV_ADDR` (`host:port` of clamd): the antivirus of attachments.
+    pub clamav: Option<String>,
+    /// `PUBLIC_URL`, as the api reads it: links of notification emails.
+    /// Without it, emails name the ticket without a link.
+    pub public_url: Option<String>,
 }
 
 /// Default address of the worker's health endpoint.
@@ -548,6 +626,11 @@ impl WorkerConfig {
             shared: SharedServices::from_env(env)?,
             telemetry: TelemetryConfig::from_env(env)?,
             valkey: env.required("VALKEY_URL")?,
+            storage: StorageConfig::from_env(env)?,
+            clamav: env.get("CLAMAV_ADDR")?,
+            public_url: env
+                .get("PUBLIC_URL")?
+                .map(|url| url.trim_end_matches('/').to_owned()),
         })
     }
 }
@@ -1098,5 +1181,64 @@ mod tests {
         ]);
         let err = McpConfig::from_env(&bad).unwrap_err();
         assert!(matches!(&err, ConfigError::Invalid { name, .. } if name == "MCP_API_BASE_URL"));
+    }
+
+    #[test]
+    fn storage_is_optional_and_needs_its_keys_once_configured() {
+        assert_eq!(StorageConfig::from_env(&Env::default()).unwrap(), None);
+        let only_endpoint = Env::from_pairs([("S3_ENDPOINT", "http://seaweedfs:8333")]);
+        let err = StorageConfig::from_env(&only_endpoint).unwrap_err();
+        assert!(matches!(&err, ConfigError::Missing { name } if name == "S3_ACCESS_KEY"));
+        let env = |extra: &[(&str, &str)]| {
+            let mut pairs = vec![
+                ("S3_ENDPOINT", "http://seaweedfs:8333"),
+                ("S3_ACCESS_KEY", "key"),
+                ("S3_SECRET_KEY", "s3cr3t-value"),
+            ];
+            pairs.extend_from_slice(extra);
+            Env::from_pairs(pairs)
+        };
+        let storage = StorageConfig::from_env(&env(&[])).unwrap().unwrap();
+        assert_eq!(
+            (
+                storage.bucket.as_str(),
+                storage.region.as_str(),
+                storage.max_attachment_bytes
+            ),
+            ("mlbpp-attachments", "us-east-1", 50 * 1024 * 1024)
+        );
+        assert!(
+            !format!("{storage:?}").contains("s3cr3t-value"),
+            "the keys stay out of the logs"
+        );
+        let custom = StorageConfig::from_env(&env(&[
+            ("S3_BUCKET", "files-2"),
+            ("ATTACHMENT_MAX_BYTES", "1048576"),
+        ]))
+        .unwrap()
+        .unwrap();
+        assert_eq!(
+            (custom.bucket.as_str(), custom.max_attachment_bytes),
+            ("files-2", 1_048_576)
+        );
+        for (name, value) in [
+            ("S3_ENDPOINT", "seaweedfs:8333"),
+            ("S3_BUCKET", "Files"),
+            ("ATTACHMENT_MAX_BYTES", "0"),
+            ("ATTACHMENT_MAX_BYTES", "104857601"),
+        ] {
+            let mut pairs = vec![
+                ("S3_ENDPOINT", "http://seaweedfs:8333"),
+                ("S3_ACCESS_KEY", "key"),
+                ("S3_SECRET_KEY", "secret"),
+            ];
+            pairs.retain(|(n, _)| *n != name);
+            pairs.push((name, value));
+            let err = StorageConfig::from_env(&Env::from_pairs(pairs)).unwrap_err();
+            assert!(
+                matches!(&err, ConfigError::Invalid { name: n, .. } if n == name),
+                "{name}={value}: {err}"
+            );
+        }
     }
 }
