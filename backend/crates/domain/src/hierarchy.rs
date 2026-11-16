@@ -1,8 +1,10 @@
 //! Portfolio, program and project hierarchy (specification §4, L03).
 //!
 //! Nodes form a directed acyclic graph: a node may have several parents,
-//! within the attachment matrix ([`may_attach`]). Only projects hold tickets
-//! and carry a key (`PLAT`), unique in their tenant.
+//! within the attachment matrix ([`may_attach`]). Only projects hold tickets.
+//! Every node carries a key, unique in its tenant: a project's (`PLAT`) makes
+//! its tickets' keys and never changes; a portfolio's or program's
+//! (`PORTF-HR`) names it in queries (`descendantsOf`, L06) and may change.
 
 use crate::validation::{FieldError, Violations};
 
@@ -84,12 +86,36 @@ pub fn is_project_key(key: &str) -> bool {
         && chars.all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
 }
 
+/// Longest key of a portfolio or program, in characters.
+pub const NODE_KEY_MAX_LEN: usize = 20;
+
+/// Whether `key` is a portfolio or program key: 2 to 20 capital letters,
+/// digits and single dashes between them, a letter first (`PORTF-HR`,
+/// `PROG-MODSI`).
+pub fn is_node_key(key: &str) -> bool {
+    let first_is_letter = key.chars().next().is_some_and(|c| c.is_ascii_uppercase());
+    (2..=NODE_KEY_MAX_LEN).contains(&key.len())
+        && first_is_letter
+        && !key.ends_with('-')
+        && !key.contains("--")
+        && key
+            .chars()
+            .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '-')
+}
+
+/// Whether `key` is a valid key for a node of type `node_type`.
+pub fn is_key_of(node_type: NodeType, key: &str) -> bool {
+    match node_type {
+        NodeType::Project => is_project_key(key),
+        NodeType::Portfolio | NodeType::Program => is_node_key(key),
+    }
+}
+
 /// What is set on a node. Dates are local `YYYY-MM-DD` dates, compared as
 /// such (the API parses them).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NodeInput {
     pub name: String,
-    /// Projects only.
     pub key: Option<String>,
     pub description: String,
     pub objectives: String,
@@ -108,11 +134,10 @@ pub fn validate_node(node_type: NodeType, input: &NodeInput) -> Result<(), Vec<F
     } else if name > NAME_MAX_CHARS {
         v.add("name", "too_long");
     }
-    match (node_type, input.key.as_deref()) {
-        (NodeType::Project, None) => v.add("key", "required"),
-        (NodeType::Project, Some(key)) if !is_project_key(key) => v.add("key", "format"),
-        (NodeType::Portfolio | NodeType::Program, Some(_)) => v.add("key", "not_allowed"),
-        _ => {}
+    match input.key.as_deref() {
+        None => v.add("key", "required"),
+        Some(key) if !is_key_of(node_type, key) => v.add("key", "format"),
+        Some(_) => {}
     }
     if input.description.chars().count() > TEXT_MAX_CHARS {
         v.add("description", "too_long");
@@ -369,28 +394,61 @@ mod tests {
     }
 
     #[test]
-    fn a_project_needs_a_key_and_the_others_have_none() {
+    fn portfolio_and_program_keys_take_dashes_and_are_longer() {
+        for good in ["PORTF-HR", "PROG-MODSI", "HR", "P2-2026", "ABCDEFGHIJ-KLMNOPQRS"] {
+            assert!(is_node_key(good), "{good}");
+        }
+        for bad in [
+            "P",
+            "hr",
+            "2HR",
+            "-HR",
+            "HR-",
+            "HR--IT",
+            "HR IT",
+            "ABCDEFGHIJ-KLMNOPQRST",
+            "",
+            "RÉSEAU",
+        ] {
+            assert!(!is_node_key(bad), "{bad}");
+        }
+        assert!(is_key_of(NodeType::Portfolio, "PORTF-HR"));
+        assert!(
+            !is_key_of(NodeType::Project, "PORTF-HR"),
+            "a project key has no dash"
+        );
+        assert!(is_key_of(NodeType::Program, "PLAT"));
+    }
+
+    #[test]
+    fn every_node_needs_a_key_of_its_type() {
         assert!(codes(NodeType::Project, &input()).is_empty());
         let keyless = NodeInput { key: None, ..input() };
-        assert_eq!(
-            codes(NodeType::Project, &keyless),
-            [("key".to_owned(), "required")]
-        );
-        assert_eq!(
-            codes(
-                NodeType::Project,
-                &NodeInput {
-                    key: Some("plat".to_owned()),
-                    ..input()
-                }
-            ),
-            [("key".to_owned(), "format")]
-        );
-        assert!(codes(NodeType::Portfolio, &keyless).is_empty());
-        assert_eq!(
-            codes(NodeType::Program, &input()),
-            [("key".to_owned(), "not_allowed")]
-        );
+        let dashed = NodeInput {
+            key: Some("PORTF-HR".to_owned()),
+            ..input()
+        };
+        for node_type in NodeType::ALL {
+            assert_eq!(
+                codes(node_type, &keyless),
+                [("key".to_owned(), "required")],
+                "{node_type:?}"
+            );
+            assert_eq!(
+                codes(
+                    node_type,
+                    &NodeInput {
+                        key: Some("plat".to_owned()),
+                        ..input()
+                    }
+                ),
+                [("key".to_owned(), "format")],
+                "{node_type:?}"
+            );
+        }
+        assert!(codes(NodeType::Portfolio, &dashed).is_empty());
+        assert!(codes(NodeType::Program, &dashed).is_empty());
+        assert_eq!(codes(NodeType::Project, &dashed), [("key".to_owned(), "format")]);
     }
 
     #[test]

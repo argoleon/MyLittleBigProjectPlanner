@@ -281,6 +281,8 @@ export type { UpdateReferenceItem$Params as UpdateReferenceItem$Params } from '.
 export { updateReferenceItem as updateReferenceItem } from './fn/reference-items/update-reference-item';
 export type { DeleteReferenceItem$Params as DeleteReferenceItem$Params } from './fn/reference-items/delete-reference-item';
 export { deleteReferenceItem as deleteReferenceItem } from './fn/reference-items/delete-reference-item';
+export type { SearchWithQuery$Params as SearchWithQuery$Params } from './fn/search/search-with-query';
+export { searchWithQuery as searchWithQuery } from './fn/search/search-with-query';
 export type { GetAuthPolicy$Params as GetAuthPolicy$Params } from './fn/authentication-settings/get-auth-policy';
 export { getAuthPolicy as getAuthPolicy } from './fn/authentication-settings/get-auth-policy';
 export type { UpdateAuthPolicy$Params as UpdateAuthPolicy$Params } from './fn/authentication-settings/update-auth-policy';

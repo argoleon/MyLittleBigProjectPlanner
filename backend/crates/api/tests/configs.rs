@@ -456,7 +456,12 @@ async fn the_default_and_used_configurations_are_not_deleted() {
     assert_problem(status, &gone, 404, "not_found");
 
     // Only projects have a configuration; an unknown one is refused.
-    let program = node(&api, t, json!({"type": "program", "name": "IT Modernization"})).await;
+    let program = node(
+        &api,
+        t,
+        json!({"type": "program", "name": "IT Modernization", "key": "IT-MODERNIZATION"}),
+    )
+    .await;
     let (status, none) = send(admin(
         &api,
         t,

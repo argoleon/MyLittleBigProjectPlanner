@@ -13,10 +13,12 @@ export interface NewNode {
   health?: NodeHealth;
 
   /**
-   * Projects only (required for them): 2 to 10 capital letters and
-   * digits, a letter first; unique in the tenant.
+   * Unique in the tenant. A project's: 2 to 10 capital letters and
+   * digits, a letter first (`PLAT`). A portfolio's or program's: 2 to 20
+   * capital letters, digits and single dashes, a letter first
+   * (`PORTF-HR`).
    */
-  key?: (string | null);
+  key: string;
 
   /**
    * 1 to 200 characters.

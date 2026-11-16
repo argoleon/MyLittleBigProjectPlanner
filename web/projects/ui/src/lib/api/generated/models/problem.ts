@@ -3,6 +3,7 @@
 
 import { ErrorCode } from '../models/error-code';
 import { FieldError } from '../models/field-error';
+import { QueryProblem } from '../models/query-problem';
 
 /**
  * Body of every error response (`application/problem+json`).
@@ -19,6 +20,7 @@ export interface Problem {
    * Invalid fields, for `validation_failed` and similar codes.
    */
   errors?: Array<FieldError>;
+  query?: (QueryProblem | null);
 
   /**
    * HTTP status, repeated from the response.

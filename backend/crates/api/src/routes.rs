@@ -48,6 +48,7 @@ use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
 use crate::reference_items;
 use crate::roles;
 use crate::screens;
+use crate::search;
 use crate::sso;
 use crate::tenant::{AppState, PublicTenantTx};
 use crate::transition_rules;
@@ -189,6 +190,7 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(issue_changes::move_issue))
         .routes(routes!(issues::form))
         .routes(routes!(issues::mine))
+        .routes(routes!(search::search))
         .routes(routes!(issues::people))
         .routes(routes!(migrations::plan_of))
         .routes(routes!(migrations::start))

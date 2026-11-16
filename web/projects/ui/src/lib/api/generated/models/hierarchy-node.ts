@@ -19,11 +19,7 @@ export interface HierarchyNode {
   hasChildren: boolean;
   health: NodeHealth;
   id: string;
-
-  /**
-   * Projects only.
-   */
-  key?: (string | null);
+  key: string;
   name: string;
 
   /**

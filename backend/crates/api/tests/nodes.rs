@@ -193,7 +193,7 @@ async fn nodes_are_checked_field_by_field_and_against_the_matrix() {
     let (_, program) = create(
         &api,
         &db.tenant_a,
-        json!({"type": "program", "name": "IT Modernization"}),
+        json!({"type": "program", "name": "IT Modernization", "key": "IT-MODERNIZATION"}),
     )
     .await;
     let (_, project) = create(
@@ -213,31 +213,39 @@ async fn nodes_are_checked_field_by_field_and_against_the_matrix() {
             vec![("key", "format")],
         ),
         (
-            json!({"type": "program", "name": "Keyed", "key": "PROG"}),
-            vec![("key", "not_allowed")],
+            json!({"type": "program", "name": "No key"}),
+            vec![("key", "required")],
         ),
         (
-            json!({"type": "portfolio", "name": " "}),
+            json!({"type": "portfolio", "name": "Bad key", "key": "portf-hr"}),
+            vec![("key", "format")],
+        ),
+        (
+            json!({"type": "project", "name": "Dashed key", "key": "PL-AT"}),
+            vec![("key", "format")],
+        ),
+        (
+            json!({"type": "portfolio", "name": " ", "key": "BLANK"}),
             vec![("name", "required")],
         ),
         (
-            json!({"type": "portfolio", "name": "Late", "startDate": "2026-12-18", "endDate": "2026-01-05"}),
+            json!({"type": "portfolio", "name": "Late", "key": "LATE", "startDate": "2026-12-18", "endDate": "2026-01-05"}),
             vec![("endDate", "before_start")],
         ),
         (
-            json!({"type": "program", "name": "Under a project", "parentId": project["id"]}),
+            json!({"type": "program", "name": "Under a project", "key": "UNDER-A-PROJECT", "parentId": project["id"]}),
             vec![("parentId", "not_allowed")],
         ),
         (
-            json!({"type": "portfolio", "name": "Under a program", "parentId": program["id"]}),
+            json!({"type": "portfolio", "name": "Under a program", "key": "UNDER-A-PROGRAM", "parentId": program["id"]}),
             vec![("parentId", "not_allowed")],
         ),
         (
-            json!({"type": "portfolio", "name": "Orphan", "parentId": Uuid::now_v7()}),
+            json!({"type": "portfolio", "name": "Orphan", "key": "ORPHAN", "parentId": Uuid::now_v7()}),
             vec![("parentId", "not_found")],
         ),
         (
-            json!({"type": "portfolio", "name": "Foreign owner", "ownerIds": [stranger]}),
+            json!({"type": "portfolio", "name": "Foreign owner", "key": "FOREIGN-OWNER", "ownerIds": [stranger]}),
             vec![("ownerIds", "unknown_member")],
         ),
     ] {
@@ -271,7 +279,7 @@ async fn nodes_are_checked_field_by_field_and_against_the_matrix() {
     let (status, _) = create(
         &api,
         &db.tenant_a,
-        json!({"type": "program", "name": "Sub-program", "parentId": program["id"]}),
+        json!({"type": "program", "name": "Sub-program", "key": "SUB-PROGRAM", "parentId": program["id"]}),
     )
     .await;
     assert_eq!(status, 201);
@@ -284,13 +292,13 @@ async fn node_admins_create_children_under_their_nodes_only() {
     let (_, program) = create(
         &api,
         &db.tenant_a,
-        json!({"type": "program", "name": "IT Modernization"}),
+        json!({"type": "program", "name": "IT Modernization", "key": "IT-MODERNIZATION"}),
     )
     .await;
     let (_, other) = create(
         &api,
         &db.tenant_a,
-        json!({"type": "program", "name": "Compliance"}),
+        json!({"type": "program", "name": "Compliance", "key": "COMPLIANCE"}),
     )
     .await;
     let program_id: Uuid = program["id"].as_str().unwrap().parse().unwrap();
@@ -383,7 +391,7 @@ async fn a_portfolio_is_changed_with_the_version_it_was_read_at() {
     let (_, portfolio) = create(
         &api,
         &db.tenant_a,
-        json!({"type": "portfolio", "name": "Digital transformation"}),
+        json!({"type": "portfolio", "name": "Digital transformation", "key": "DIGITAL-TRANSFORMATI"}),
     )
     .await;
     let path = format!("/api/v1/nodes/{}", portfolio["id"].as_str().unwrap());
@@ -464,21 +472,95 @@ async fn a_portfolio_is_changed_with_the_version_it_was_read_at() {
 }
 
 #[tokio::test]
+async fn every_node_has_a_key_and_only_a_projects_never_changes() {
+    let db = TestDb::new().await;
+    let api = start(&db).await;
+    let t = &db.tenant_a;
+    let (status, portfolio) = create(
+        &api,
+        t,
+        json!({"type": "portfolio", "name": "Human resources", "key": "PORTF-HR"}),
+    )
+    .await;
+    assert_eq!((status, portfolio["key"].as_str()), (201, Some("PORTF-HR")));
+    let program = node(
+        &api,
+        t,
+        json!({"type": "program", "name": "IS modernization", "key": "PROG-MODSI"}),
+    )
+    .await;
+    let project = node(
+        &api,
+        t,
+        json!({"type": "project", "name": "Identity platform", "key": "PLAT"}),
+    )
+    .await;
+    let put = |id: &str, body: Value| {
+        admin(&api, t, Method::PUT, &format!("/api/v1/nodes/{id}"))
+            .header("if-match", "*")
+            .json(&body)
+    };
+
+    // A portfolio's or program's key changes; left out, it stays.
+    let id = portfolio["id"].as_str().unwrap();
+    let (status, changed) = send(put(id, json!({"name": "Human resources", "key": "PORTF-RH"}))).await;
+    assert_eq!((status, changed["key"].as_str()), (200, Some("PORTF-RH")));
+    let (status, kept) = send(put(id, json!({"name": "HR"}))).await;
+    assert_eq!((status, kept["key"].as_str()), (200, Some("PORTF-RH")));
+    let (status, problem) = send(put(id, json!({"name": "HR", "key": "portf-rh"}))).await;
+    assert_problem(status, &problem, 400, "validation_failed");
+    assert_eq!(field_codes(&problem), [("key".to_owned(), "format".to_owned())]);
+
+    // Keys are unique in the tenant, whatever the type.
+    let (status, problem) = send(put(&program, json!({"name": "IS modernization", "key": "PLAT"}))).await;
+    assert_problem(status, &problem, 409, "node.key_taken");
+    let (status, problem) = create(
+        &api,
+        t,
+        json!({"type": "project", "name": "Clash", "key": "PROG"}),
+    )
+    .await;
+    assert_eq!(status, 201, "{problem}");
+    let (status, problem) = create(
+        &api,
+        t,
+        json!({"type": "program", "name": "Clash", "key": "PROG"}),
+    )
+    .await;
+    assert_problem(status, &problem, 409, "node.key_taken");
+
+    // A project's key makes its tickets' keys: it never changes.
+    let (status, problem) = send(put(&project, json!({"name": "Identity platform", "key": "IDP"}))).await;
+    assert_problem(status, &problem, 400, "validation_failed");
+    assert_eq!(
+        field_codes(&problem),
+        [("key".to_owned(), "immutable".to_owned())]
+    );
+    let (status, same) = send(put(&project, json!({"name": "Identity", "key": "PLAT"}))).await;
+    assert_eq!((status, same["key"].as_str()), (200, Some("PLAT")));
+}
+
+#[tokio::test]
 async fn a_project_gets_a_second_weighted_parent_but_never_a_cycle() {
     let db = TestDb::new().await;
     let api = start(&db).await;
     let t = &db.tenant_a;
-    let digital = node(&api, t, json!({"type": "portfolio", "name": "Digital"})).await;
+    let digital = node(
+        &api,
+        t,
+        json!({"type": "portfolio", "name": "Digital", "key": "DIGITAL"}),
+    )
+    .await;
     let modernization = node(
         &api,
         t,
-        json!({"type": "program", "name": "IT Modernization", "parentId": digital}),
+        json!({"type": "program", "name": "IT Modernization", "key": "IT-MODERNIZATION", "parentId": digital}),
     )
     .await;
     let compliance = node(
         &api,
         t,
-        json!({"type": "program", "name": "Compliance", "parentId": digital}),
+        json!({"type": "program", "name": "Compliance", "key": "COMPLIANCE", "parentId": digital}),
     )
     .await;
     let plat = node(
@@ -623,7 +705,12 @@ async fn a_project_gets_a_second_weighted_parent_but_never_a_cycle() {
 
     // Another tenant knows nothing of these nodes.
     let b = &db.tenant_b;
-    let other = node(&api, b, json!({"type": "program", "name": "Elsewhere"})).await;
+    let other = node(
+        &api,
+        b,
+        json!({"type": "program", "name": "Elsewhere", "key": "ELSEWHERE"}),
+    )
+    .await;
     for (method, path) in [
         (Method::GET, format!("/api/v1/nodes/{plat}/parents")),
         (Method::GET, format!("/api/v1/nodes/{plat}/children")),
@@ -656,8 +743,18 @@ async fn linking_needs_both_nodes_administered() {
     let db = TestDb::new().await;
     let api = start(&db).await;
     let t = &db.tenant_a;
-    let modernization = node(&api, t, json!({"type": "program", "name": "IT Modernization"})).await;
-    let compliance = node(&api, t, json!({"type": "program", "name": "Compliance"})).await;
+    let modernization = node(
+        &api,
+        t,
+        json!({"type": "program", "name": "IT Modernization", "key": "IT-MODERNIZATION"}),
+    )
+    .await;
+    let compliance = node(
+        &api,
+        t,
+        json!({"type": "program", "name": "Compliance", "key": "COMPLIANCE"}),
+    )
+    .await;
     let plat = node(
         &api,
         t,

@@ -3,6 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import type { ErrorCode } from './generated/models/error-code';
 import { ERROR_CODE } from './generated/models/error-code-array';
 import type { FieldError } from './generated/models/field-error';
+import type { QueryProblem } from './generated/models/query-problem';
 
 /**
  * Codes added on the client side, for failures that never reached the API
@@ -58,6 +59,8 @@ export class ApiProblem extends Error {
     readonly title: string,
     readonly detail: string | null = null,
     readonly fieldErrors: readonly FieldError[] = [],
+    /** For `query.invalid`: where and why the query was refused. */
+    readonly query: QueryProblem | null = null,
   ) {
     super(`${status} ${code}: ${title}`);
   }
@@ -89,6 +92,7 @@ export class ApiProblem extends Error {
         typeof body['title'] === 'string' ? body['title'] : error.statusText,
         typeof body['detail'] === 'string' ? body['detail'] : null,
         parseFieldErrors(body['errors']),
+        parseQueryProblem(body['query']),
       );
     }
     // Not a Problem Details body, or a code this client does not know yet.
@@ -113,6 +117,16 @@ function parseBody(body: unknown): Record<string, unknown> | null {
   }
   return typeof body === 'object' && body !== null && !Array.isArray(body)
     ? (body as Record<string, unknown>)
+    : null;
+}
+
+function parseQueryProblem(query: unknown): QueryProblem | null {
+  if (typeof query !== 'object' || query === null || Array.isArray(query)) return null;
+  const candidate = query as QueryProblem;
+  return typeof candidate.reason === 'string' &&
+    typeof candidate.position === 'number' &&
+    typeof candidate.length === 'number'
+    ? candidate
     : null;
 }
 

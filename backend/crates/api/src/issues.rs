@@ -410,6 +410,11 @@ impl Content {
         let config = infra::configs::of_project(tx, project)
             .await?
             .ok_or(Problem::new(ErrorCode::NotFound))?;
+        Self::of_config(tx, config).await
+    }
+
+    /// The published content of configuration `config`.
+    pub(crate) async fn of_config(tx: &mut TenantTx, config: Uuid) -> Result<Self, Problem> {
         let version = infra::configs::find(tx, config)
             .await?
             .ok_or(Problem::new(ErrorCode::NotFound))?
@@ -454,11 +459,11 @@ pub(crate) fn type_ids_of(fields: &[Field]) -> Vec<Vec<u128>> {
 }
 
 pub(crate) fn project_view(node: &Node) -> ProjectView {
-    ProjectView {
-        id: node.id,
-        key: node.key.clone().unwrap_or_default(),
-        name: node.name.clone(),
-    }
+    project_ref(node.id, node.key.clone(), node.name.clone())
+}
+
+pub(crate) const fn project_ref(id: Uuid, key: String, name: String) -> ProjectView {
+    ProjectView { id, key, name }
 }
 
 impl Language {
@@ -968,7 +973,7 @@ pub async fn create(
         &repo::NewIssue {
             id: infra::id::new_id(),
             project_id: project.id,
-            project_key: project.key.as_deref().unwrap_or_default(),
+            project_key: &project.key,
             type_id: body.type_id,
             status_id: status,
             parent_id: body.parent_id,

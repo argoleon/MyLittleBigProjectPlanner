@@ -10,7 +10,7 @@ import { ParentRefusal } from '../models/parent-refusal';
  */
 export interface NodeCandidate {
   id: string;
-  key?: (string | null);
+  key: string;
   name: string;
 
   /**

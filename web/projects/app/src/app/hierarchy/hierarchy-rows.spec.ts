@@ -19,6 +19,7 @@ function node(id: string, hasChildren = false): HierarchyNode {
     id,
     type: hasChildren ? 'program' : 'project',
     name: id,
+    key: id.toUpperCase(),
     health: 'on_track',
     owners: [],
     otherParents: [],

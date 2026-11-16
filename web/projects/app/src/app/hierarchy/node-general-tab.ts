@@ -19,7 +19,17 @@ import {
   updateNode,
 } from 'ui';
 
-import { HEALTHS, NodeFormValue, changesOf, endsBeforeStart, formValueOf, sameChanges } from './node-form';
+import {
+  HEALTHS,
+  NodeFormValue,
+  changesOf,
+  endsBeforeStart,
+  formValueOf,
+  keyMaxLength,
+  keyPattern,
+  normalizeKey,
+  sameChanges,
+} from './node-form';
 import { NodeContext } from './node-settings-page';
 import { OwnerPicker } from './owner-picker';
 
@@ -50,9 +60,11 @@ export class NodeGeneralTab {
   private readonly context = inject(NodeContext);
 
   protected readonly healths = HEALTHS;
+  protected readonly keyMaxLength = keyMaxLength;
   protected readonly node = this.context.node;
   protected readonly form = inject(FormBuilder).nonNullable.group({
     name: ['', Validators.required],
+    key: ['', Validators.required],
     description: [''],
     objectives: [''],
     startDate: [null as Date | null],
@@ -109,6 +121,11 @@ export class NodeGeneralTab {
     }
   }
 
+  protected tidyKey(): void {
+    const key = this.form.controls.key;
+    key.setValue(normalizeKey(key.value));
+  }
+
   private value(): NodeFormValue {
     return { ...this.form.getRawValue(), owners: this.owners() };
   }
@@ -116,6 +133,7 @@ export class NodeGeneralTab {
   private load(node: Node): void {
     const value = formValueOf(node);
     const { owners, ...fields } = value;
+    this.form.controls.key.setValidators([Validators.required, Validators.pattern(keyPattern(node.type))]);
     this.form.reset(fields, { emitEvent: false });
     this.owners.set(owners);
     this.baseline.set(value);
@@ -127,12 +145,14 @@ export class NodeGeneralTab {
       this.notice.set({ ok: false, key: errorTranslationKey('unknown') });
       return;
     }
-    const name = error.fieldErrors.find((e) => e.field === 'name');
-    if (name) {
-      this.form.controls.name.setErrors({ api: fieldErrorTranslationKey(name.code) });
-      this.form.controls.name.markAsTouched();
-      return;
+    let onField = false;
+    for (const fieldError of error.fieldErrors) {
+      const control = { name: this.form.controls.name, key: this.form.controls.key }[fieldError.field as 'name' | 'key'];
+      if (!control) continue;
+      control.setErrors({ api: fieldErrorTranslationKey(fieldError.code) });
+      control.markAsTouched();
+      onField = true;
     }
-    this.notice.set({ ok: false, key: error.translationKey });
+    if (!onField) this.notice.set({ ok: false, key: error.translationKey });
   }
 }

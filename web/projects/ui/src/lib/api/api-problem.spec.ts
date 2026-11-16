@@ -73,6 +73,17 @@ describe('ApiProblem.fromHttpError', () => {
     });
   });
 
+  it('keeps where and why a query of the language was refused', () => {
+    const query = { reason: 'syntax', position: 9, length: 0, expected: ['a value'], found: null };
+    const problem = ApiProblem.fromHttpError(
+      httpError(400, { title: 'The query cannot be run', status: 400, code: 'query.invalid', query }),
+    );
+    expect(problem.code).toBe('query.invalid');
+    expect(problem.query).toEqual(query);
+    expect(ApiProblem.fromHttpError(httpError(400, { status: 400, code: 'query.invalid', query: 'no' })).query).toBeNull();
+    expect(ApiProblem.fromHttpError(httpError(404, { status: 404, code: 'not_found' })).query).toBeNull();
+  });
+
   it('reads a body left as text', () => {
     const body = JSON.stringify({ title: 'Resource not found', status: 404, code: 'not_found' });
     const problem = ApiProblem.fromHttpError(httpError(404, body));

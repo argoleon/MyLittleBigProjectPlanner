@@ -15,11 +15,24 @@
           <mat-error>{{ 'errors.field.required' | transloco }}</mat-error>
         }
       </mat-form-field>
-      @if (node.key) {
+      @if (node.type === 'project') {
         <mat-form-field appearance="outline">
           <mat-label>{{ 'hierarchy.general.key' | transloco }}</mat-label>
           <input matInput [value]="node.key" readonly />
           <mat-hint>{{ 'hierarchy.general.keyHint' | transloco }}</mat-hint>
+        </mat-form-field>
+      } @else {
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'hierarchy.general.key' | transloco }}</mat-label>
+          <input matInput formControlName="key" [maxlength]="keyMaxLength(node.type)" required class="node-key" (blur)="tidyKey()" />
+          <mat-hint>{{ 'hierarchy.general.nodeKeyHint' | transloco }}</mat-hint>
+          @if (form.controls.key.getError('api'); as key) {
+            <mat-error>{{ key | transloco }}</mat-error>
+          } @else if (form.controls.key.hasError('pattern')) {
+            <mat-error>{{ 'errors.field.format' | transloco }}</mat-error>
+          } @else {
+            <mat-error>{{ 'errors.field.required' | transloco }}</mat-error>
+          }
         </mat-form-field>
       }
     </div>

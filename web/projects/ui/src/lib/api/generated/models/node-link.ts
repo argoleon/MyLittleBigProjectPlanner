@@ -13,11 +13,7 @@ export interface NodeLink {
    * Id of the parent or child.
    */
   id: string;
-
-  /**
-   * Projects only.
-   */
-  key?: (string | null);
+  key: string;
   name: string;
 
   /**

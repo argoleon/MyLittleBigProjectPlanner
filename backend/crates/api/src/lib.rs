@@ -45,6 +45,7 @@ pub mod reference_items;
 pub mod roles;
 mod routes;
 pub mod screens;
+pub mod search;
 pub mod sso;
 pub mod tenant;
 pub mod transition_rules;

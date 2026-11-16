@@ -27,13 +27,7 @@ async fn admin(db: &TestDb, tenant: &SeedTenant) -> Uuid {
     db.add_member(tenant, TenantRole::TenantAdmin).await.account_id
 }
 
-async fn node(
-    conn: &mut PgConnection,
-    node_type: NodeType,
-    name: &str,
-    key: Option<&str>,
-    creator: Uuid,
-) -> Uuid {
+async fn node(conn: &mut PgConnection, node_type: NodeType, name: &str, key: &str, creator: Uuid) -> Uuid {
     let id = new_id();
     nodes::insert(
         conn,
@@ -42,6 +36,7 @@ async fn node(
             node_type,
             key,
             fields: NodeFields {
+                key: None,
                 name,
                 description: "",
                 objectives: "",
@@ -90,15 +85,15 @@ async fn every_tenant_has_a_default_configuration_that_new_projects_get() {
     assert_eq!(config.draft, None);
 
     // A project gets it; a portfolio or a program has none.
-    let plat = node(
+    let plat = node(&mut tx, NodeType::Project, "Identity platform", "PLAT", creator).await;
+    let program = node(
         &mut tx,
-        NodeType::Project,
-        "Identity platform",
-        Some("PLAT"),
+        NodeType::Program,
+        "IT Modernization",
+        "IT-MODERNIZATION",
         creator,
     )
     .await;
-    let program = node(&mut tx, NodeType::Program, "IT Modernization", None, creator).await;
     assert_eq!(configs::of_project(&mut tx, plat).await.unwrap(), Some(default));
     assert_eq!(configs::of_project(&mut tx, program).await.unwrap(), None);
     assert_eq!(
@@ -118,7 +113,14 @@ async fn every_tenant_has_a_default_configuration_that_new_projects_get() {
     assert!(none.is_err(), "a project keeps a configuration");
     tx.rollback().await.unwrap();
     let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
-    let program = node(&mut tx, NodeType::Program, "IT Modernization", None, creator).await;
+    let program = node(
+        &mut tx,
+        NodeType::Program,
+        "IT Modernization",
+        "IT-MODERNIZATION",
+        creator,
+    )
+    .await;
     let some = sqlx::query("UPDATE node SET config_id = $2 WHERE id = $1")
         .bind(program)
         .bind(default)
@@ -368,26 +370,19 @@ async fn a_project_detaches_by_duplicating_its_configuration() {
     .await
     .unwrap()
     .unwrap();
-    let plat = node(
-        &mut tx,
-        NodeType::Project,
-        "Identity platform",
-        Some("PLAT"),
-        creator,
-    )
-    .await;
-    let cyber = node(
-        &mut tx,
-        NodeType::Project,
-        "Cyber permissions",
-        Some("CYBP"),
-        creator,
-    )
-    .await;
+    let plat = node(&mut tx, NodeType::Project, "Identity platform", "PLAT", creator).await;
+    let cyber = node(&mut tx, NodeType::Project, "Cyber permissions", "CYBP", creator).await;
     for project in [plat, cyber] {
         assert!(configs::assign(&mut tx, project, shared.id).await.unwrap());
     }
-    let program = node(&mut tx, NodeType::Program, "IT Modernization", None, creator).await;
+    let program = node(
+        &mut tx,
+        NodeType::Program,
+        "IT Modernization",
+        "IT-MODERNIZATION",
+        creator,
+    )
+    .await;
     assert!(!configs::assign(&mut tx, program, shared.id).await.unwrap());
     let names: Vec<String> = configs::projects(&mut tx, shared.id)
         .await
@@ -530,14 +525,7 @@ async fn configurations_stay_in_their_tenant() {
         .await
         .unwrap()
         .unwrap();
-    let plat = node(
-        &mut tx,
-        NodeType::Project,
-        "Identity platform",
-        Some("PLAT"),
-        creator,
-    )
-    .await;
+    let plat = node(&mut tx, NodeType::Project, "Identity platform", "PLAT", creator).await;
     let default_a = configs::default_id(&mut tx).await.unwrap().unwrap();
     tx.commit().await.unwrap();
 

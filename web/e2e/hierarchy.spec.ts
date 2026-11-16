@@ -6,7 +6,7 @@ const PROGRAM = {
   id: '0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7c02',
   type: 'program',
   name: 'IT Modernization',
-  key: null,
+  key: 'PROG-MODSI',
   description: '',
   objectives: '',
   startDate: null,
@@ -54,7 +54,7 @@ const PROGRAM_ROW = {
   id: PROGRAM.id,
   type: 'program',
   name: PROGRAM.name,
-  key: null,
+  key: 'PROG-MODSI',
   health: 'at_risk',
   owners: [{ accountId: 'a2', displayName: 'Camille Martin' }],
   weightPercent: null,
@@ -107,7 +107,7 @@ async function mockLinks(page: Page) {
   const manager = { id: 'r3', label: 'Project manager', labelTranslations: { fr: 'Chef de projet', en: 'Project manager' } };
   const reader = { id: 'r1', label: 'Reader', labelTranslations: { fr: 'Lecteur', en: 'Reader' } };
   await page.route(`${node}/parents`, (route) =>
-    route.fulfill({ json: [{ id: PROGRAM.id, type: 'program', name: 'IT Modernization', key: null, weightPercent: 40, parents: [] }] }),
+    route.fulfill({ json: [{ id: PROGRAM.id, type: 'program', name: 'IT Modernization', key: 'PROG-MODSI', weightPercent: 40, parents: [] }] }),
   );
   await page.route(`${node}/children`, (route) =>
     route.fulfill({
@@ -120,7 +120,7 @@ async function mockLinks(page: Page) {
   await page.route(`${node}/parent-candidates?*`, (route) =>
     route.fulfill({
       json: [
-        { id: 'p3', type: 'program', name: 'Cybersecurity', key: null, parents: [], refusal: null },
+        { id: 'p3', type: 'program', name: 'Cybersecurity', key: 'PROG-CYBER', parents: [], refusal: null },
         { id: 'c1', type: 'project', name: 'Cyber permissions', key: 'CYBP', parents: [], refusal: 'cycle' },
       ],
     }),
@@ -174,6 +174,7 @@ test('a program is created at the root, then a project under it, with the keyboa
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await dialog.getByLabel('Name').fill('IT Modernization');
+  await dialog.getByLabel('Key').fill('prog-modsi');
   await dialog.getByRole('button', { name: 'Create' }).click();
   await expect(page).toHaveURL(new RegExp(`/nodes/${PROGRAM.id}/general$`));
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('IT Modernization · Settings');
@@ -189,7 +190,7 @@ test('a program is created at the root, then a project under it, with the keyboa
   await expect(page).toHaveURL(new RegExp(`/nodes/${PROJECT.id}/general$`));
   await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('IT Modernization');
   expect(created).toEqual([
-    { type: 'program', name: 'IT Modernization', key: null, startDate: null, endDate: null, ownerIds: [], parentId: null },
+    { type: 'program', name: 'IT Modernization', key: 'PROG-MODSI', startDate: null, endDate: null, ownerIds: [], parentId: null },
     { type: 'project', name: 'Identity platform', key: 'PLAT', startDate: null, endDate: null, ownerIds: [], parentId: PROGRAM.id },
   ]);
 });

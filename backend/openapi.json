@@ -4516,7 +4516,7 @@
             }
           },
           "400": {
-            "description": "`validation_failed`: `name`, `key` (`required`, `format`, `not_allowed`), `endDate` `before_start`, `ownerIds` (`too_many`, `unknown_member`), `parentId` (`not_found`, `not_allowed`)",
+            "description": "`validation_failed`: `name`, `key` (`required`, `format`), `endDate` `before_start`, `ownerIds` (`too_many`, `unknown_member`), `parentId` (`not_found`, `not_allowed`)",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -4648,7 +4648,7 @@
           "hierarchy"
         ],
         "summary": "Change a portfolio, program or project",
-        "description": "Tenant admins, and the members who administer the node. The type and the key do not change; the owners are replaced by `ownerIds`.",
+        "description": "Tenant admins, and the members who administer the node. The type does not change, nor a project's key; a portfolio's or program's key may. The owners are replaced by `ownerIds`.",
         "operationId": "updateNode",
         "parameters": [
           {
@@ -4701,7 +4701,7 @@
             }
           },
           "400": {
-            "description": "`validation_failed`",
+            "description": "`validation_failed`: `name`, `key` (`format`, or `immutable` for a project)",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -4741,7 +4741,7 @@
             }
           },
           "409": {
-            "description": "`node.archived`: an archived project is read-only",
+            "description": "`node.archived`: an archived project is read-only; `node.key_taken`",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -12462,6 +12462,82 @@
         }
       }
     },
+    "/api/v1/search": {
+      "post": {
+        "tags": [
+          "search"
+        ],
+        "summary": "Search tickets with the query language",
+        "description": "Runs a query of the language over the tickets of the projects the member sees (specification §6): `assignee = currentUser() AND status IN (todo, in_progress) ORDER BY priority DESC`. Fields and values are stable identifiers; dates are read in the member's time zone. Pages follow `nextCursor`; the first page also gives the `total`. A query that cannot run answers `query.invalid` with a `query` member telling the reason, the character `position` and `length`, and for syntax errors what was `expected`.",
+        "operationId": "searchWithQuery",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of the labels",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "A page of tickets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`query.invalid` (see `query`); `validation_failed`: `limit` (`out_of_range`), `cursor` (`invalid`: not from this query), `fields.<name>` or `expand.<name>` (`unknown_field`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/tenant": {
       "get": {
         "tags": [
@@ -16069,7 +16145,7 @@
       },
       "ErrorCode": {
         "type": "string",
-        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n| `invitation.invalid` | 400 | This invitation link is invalid, expired or already used |\n| `invitation.pending` | 409 | This email already has an open invitation; send it again instead |\n| `invitation.already_member` | 409 | This email already belongs to a member of the tenant |\n| `invitation.closed` | 409 | This invitation was already accepted or revoked |\n| `member.last_admin` | 409 | The tenant needs at least one active tenant admin |\n| `group.name_taken` | 409 | Another group already has this name |\n| `permission.denied` | 403 | You do not have the permission this needs |\n| `role.label_taken` | 409 | Another role already has this label |\n| `role.in_use` | 409 | Grants use this role: remove them first |\n| `account.no_password` | 409 | This account signs in through its organization: it has no password |\n| `session.current` | 409 | This is the session of the request: sign out instead |\n| `account.reauthentication_required` | 403 | Sign in again through your organization, then erase your account within 10 minutes |\n| `account.platform_admin` | 409 | A platform super admin cannot be erased: another one removes the role first |\n| `export.pending` | 409 | The export is not ready yet |\n| `node.key_taken` | 409 | Another project of the organization has this key |\n| `node.cycle` | 409 | This link would make the node its own ancestor |\n| `node.parent_not_allowed` | 409 | This type of node cannot be attached under that parent |\n| `node.grant_exists` | 409 | They already have this role on this node |\n| `node.confidential_lockout` | 409 | You would lose your own access: get a role granted on the project itself first |\n| `node.archived` | 409 | This project is archived: it is read-only until it is restored |\n| `node.active_children` | 409 | This project still has active sub-projects: archive or detach them first |\n| `node.parent_archived` | 409 | This project is under an archived project: restore that one first |\n| `config.name_taken` | 409 | Another project configuration already has this name |\n| `config.no_draft` | 409 | This configuration has no draft: nothing to publish or discard |\n| `config.default` | 409 | The default configuration stays: new projects get it |\n| `config.in_use` | 409 | Projects use this configuration: move them to another one first |\n| `issue_type.key_taken` | 409 | Another type of this configuration already has this identifier |\n| `issue_type.cycle` | 409 | A type cannot be its own ancestor |\n| `issue_type.subtask_parent` | 409 | A sub-task type cannot be the parent of another type |\n| `issue_type.last_type` | 409 | A configuration keeps at least one type that is not a sub-task |\n| `issue_type.orphan_subtask` | 409 | A sub-task type would have no parent type left: change it first |\n| `workflow.key_taken` | 409 | Another workflow of this configuration, or status of this workflow, already has this identifier |\n| `workflow.in_use` | 409 | Issue types follow this workflow: move them to another one first |\n| `workflow.last` | 409 | A configuration keeps at least one workflow |\n| `workflow.invalid` | 409 | Workflows of the draft cannot be published as they are: see errors |\n| `config_field.key_taken` | 409 | Another field of this configuration already has this identifier |\n| `config_field.system` | 409 | A system field keeps its label and options and cannot be removed; only its types and rules change |\n| `screen.exists` | 409 | This type, or the configuration, already has a screen of this kind |\n| `screen.general` | 409 | The general creation and view screens of a configuration stay |\n| `screen.in_use` | 409 | Transitions show this screen: give them another one first |\n| `mapping_incomplete` | 400 | Every removed status and type must be mapped to one the draft keeps: see errors |\n| `config.migration_running` | 409 | A migration of this configuration is already under way |\n| `config.migration_required` | 409 | Tickets use statuses or types the draft removes: map them through a migration first |\n| `issue.subtask_moves_with_parent` | 409 | A sub-task moves with its parent: move the parent instead |\n| `issue_link.exists` | 409 | The two tickets already have this link |\n| `attachment.too_large` | 413 | The file is larger than the maximum allowed |\n| `attachment.quota_exceeded` | 413 | The organization's storage quota would be exceeded |\n| `attachment.not_uploaded` | 409 | The file was not uploaded, or not whole |\n| `attachment.not_scanned` | 409 | The file is not available: not scanned yet, or refused by the antivirus |\n| `storage.unavailable` | 503 | The file storage is not available |\n",
+        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n| `invitation.invalid` | 400 | This invitation link is invalid, expired or already used |\n| `invitation.pending` | 409 | This email already has an open invitation; send it again instead |\n| `invitation.already_member` | 409 | This email already belongs to a member of the tenant |\n| `invitation.closed` | 409 | This invitation was already accepted or revoked |\n| `member.last_admin` | 409 | The tenant needs at least one active tenant admin |\n| `group.name_taken` | 409 | Another group already has this name |\n| `permission.denied` | 403 | You do not have the permission this needs |\n| `role.label_taken` | 409 | Another role already has this label |\n| `role.in_use` | 409 | Grants use this role: remove them first |\n| `account.no_password` | 409 | This account signs in through its organization: it has no password |\n| `session.current` | 409 | This is the session of the request: sign out instead |\n| `account.reauthentication_required` | 403 | Sign in again through your organization, then erase your account within 10 minutes |\n| `account.platform_admin` | 409 | A platform super admin cannot be erased: another one removes the role first |\n| `export.pending` | 409 | The export is not ready yet |\n| `node.key_taken` | 409 | Another project of the organization has this key |\n| `node.cycle` | 409 | This link would make the node its own ancestor |\n| `node.parent_not_allowed` | 409 | This type of node cannot be attached under that parent |\n| `node.grant_exists` | 409 | They already have this role on this node |\n| `node.confidential_lockout` | 409 | You would lose your own access: get a role granted on the project itself first |\n| `node.archived` | 409 | This project is archived: it is read-only until it is restored |\n| `node.active_children` | 409 | This project still has active sub-projects: archive or detach them first |\n| `node.parent_archived` | 409 | This project is under an archived project: restore that one first |\n| `config.name_taken` | 409 | Another project configuration already has this name |\n| `config.no_draft` | 409 | This configuration has no draft: nothing to publish or discard |\n| `config.default` | 409 | The default configuration stays: new projects get it |\n| `config.in_use` | 409 | Projects use this configuration: move them to another one first |\n| `issue_type.key_taken` | 409 | Another type of this configuration already has this identifier |\n| `issue_type.cycle` | 409 | A type cannot be its own ancestor |\n| `issue_type.subtask_parent` | 409 | A sub-task type cannot be the parent of another type |\n| `issue_type.last_type` | 409 | A configuration keeps at least one type that is not a sub-task |\n| `issue_type.orphan_subtask` | 409 | A sub-task type would have no parent type left: change it first |\n| `workflow.key_taken` | 409 | Another workflow of this configuration, or status of this workflow, already has this identifier |\n| `workflow.in_use` | 409 | Issue types follow this workflow: move them to another one first |\n| `workflow.last` | 409 | A configuration keeps at least one workflow |\n| `workflow.invalid` | 409 | Workflows of the draft cannot be published as they are: see errors |\n| `config_field.key_taken` | 409 | Another field of this configuration already has this identifier |\n| `config_field.system` | 409 | A system field keeps its label and options and cannot be removed; only its types and rules change |\n| `screen.exists` | 409 | This type, or the configuration, already has a screen of this kind |\n| `screen.general` | 409 | The general creation and view screens of a configuration stay |\n| `screen.in_use` | 409 | Transitions show this screen: give them another one first |\n| `mapping_incomplete` | 400 | Every removed status and type must be mapped to one the draft keeps: see errors |\n| `config.migration_running` | 409 | A migration of this configuration is already under way |\n| `config.migration_required` | 409 | Tickets use statuses or types the draft removes: map them through a migration first |\n| `issue.subtask_moves_with_parent` | 409 | A sub-task moves with its parent: move the parent instead |\n| `issue_link.exists` | 409 | The two tickets already have this link |\n| `attachment.too_large` | 413 | The file is larger than the maximum allowed |\n| `attachment.quota_exceeded` | 413 | The organization's storage quota would be exceeded |\n| `attachment.not_uploaded` | 409 | The file was not uploaded, or not whole |\n| `attachment.not_scanned` | 409 | The file is not available: not scanned yet, or refused by the antivirus |\n| `storage.unavailable` | 503 | The file storage is not available |\n| `query.invalid` | 400 | The query cannot be run |\n",
         "enum": [
           "bad_request",
           "validation_failed",
@@ -16158,7 +16234,8 @@
           "attachment.quota_exceeded",
           "attachment.not_uploaded",
           "attachment.not_scanned",
-          "storage.unavailable"
+          "storage.unavailable",
+          "query.invalid"
         ]
       },
       "ExportStatus": {
@@ -16672,6 +16749,7 @@
           "id",
           "type",
           "name",
+          "key",
           "health",
           "owners",
           "otherParents",
@@ -16694,11 +16772,7 @@
             "format": "uuid"
           },
           "key": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Projects only.",
+            "type": "string",
             "example": "PLAT"
           },
           "name": {
@@ -19419,7 +19493,8 @@
         "description": "A node to create.",
         "required": [
           "type",
-          "name"
+          "name",
+          "key"
         ],
         "properties": {
           "description": {
@@ -19436,11 +19511,9 @@
             "$ref": "#/components/schemas/NodeHealth"
           },
           "key": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Projects only (required for them): 2 to 10 capital letters and\ndigits, a letter first; unique in the tenant."
+            "type": "string",
+            "description": "Unique in the tenant. A project's: 2 to 10 capital letters and\ndigits, a letter first (`PLAT`). A portfolio's or program's: 2 to 20\ncapital letters, digits and single dashes, a letter first\n(`PORTF-HR`).",
+            "example": "PLAT"
           },
           "name": {
             "type": "string",
@@ -19690,6 +19763,7 @@
           "id",
           "type",
           "name",
+          "key",
           "description",
           "objectives",
           "health",
@@ -19727,11 +19801,8 @@
             "format": "uuid"
           },
           "key": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Projects only, unique in the tenant.",
+            "type": "string",
+            "description": "Unique in the tenant: a project's (`PLAT`) never changes, a\nportfolio's or program's (`PORTF-HR`) may.",
             "example": "PLAT"
           },
           "name": {
@@ -19919,6 +19990,7 @@
           "id",
           "type",
           "name",
+          "key",
           "parents",
           "refusal"
         ],
@@ -19928,10 +20000,8 @@
             "format": "uuid"
           },
           "key": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string",
+            "example": "CYBP"
           },
           "name": {
             "type": "string",
@@ -19980,6 +20050,14 @@
           },
           "health": {
             "$ref": "#/components/schemas/NodeHealth"
+          },
+          "key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A new key for a portfolio or program (same rules as at creation);\nleft out, it stays. A project's key never changes: only its current\nkey is accepted.",
+            "example": "PORTF-HR"
           },
           "name": {
             "type": "string",
@@ -20110,6 +20188,7 @@
           "id",
           "type",
           "name",
+          "key",
           "weightPercent",
           "parents"
         ],
@@ -20120,11 +20199,8 @@
             "description": "Id of the parent or child."
           },
           "key": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Projects only."
+            "type": "string",
+            "example": "PORTF-CMP"
           },
           "name": {
             "type": "string",
@@ -20847,6 +20923,17 @@
             },
             "description": "Invalid fields, for `validation_failed` and similar codes."
           },
+          "query": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/QueryProblem",
+                "description": "For `query.invalid`: where and why."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "status": {
             "type": "integer",
             "format": "int32",
@@ -21146,6 +21233,70 @@
             "description": "Where: `workflows.standard`, or a status of it\n(`workflows.standard.statuses.in_review`).",
             "example": "workflows.standard.statuses.in_review"
           }
+        }
+      },
+      "QueryProblem": {
+        "type": "object",
+        "description": "Where and why a query of the language was refused (`query.invalid`).",
+        "required": [
+          "reason",
+          "position",
+          "length",
+          "found"
+        ],
+        "properties": {
+          "allowed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The operators the field takes, for `operator_not_allowed`."
+          },
+          "expected": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What could come at `position`, for `syntax`: `a field`, `a value`,\n`a text`, `the end of the query`, or a keyword or symbol as written\n(`AND`, `)`, `ORDER BY`)."
+          },
+          "field": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The field concerned, for the errors about a field."
+          },
+          "found": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "What came instead, as written; `null` at the end of the query."
+          },
+          "length": {
+            "type": "integer",
+            "description": "How many characters, from `position` (0 at the end of the query).",
+            "minimum": 0
+          },
+          "position": {
+            "type": "integer",
+            "description": "Where it went wrong: a character offset from 0.",
+            "minimum": 0
+          },
+          "reason": {
+            "type": "string",
+            "description": "Stable: `syntax`, `unterminated_string`, `invalid_character`,\n`invalid_number`, `unknown_field`, `unknown_function`,\n`wrong_arguments`, `operator_not_allowed`, `value_not_allowed`,\n`invalid_date`, `unknown_priority`, `not_sortable`, `unsupported`,\n`too_long`, `too_deep`, `too_many_clauses`, `too_many_values`,\n`too_many_order_keys`.",
+            "example": "syntax"
+          }
+        },
+        "example": {
+          "expected": [
+            "a value"
+          ],
+          "found": null,
+          "length": 0,
+          "position": 9,
+          "reason": "syntax"
         }
       },
       "RealtimeSignal": {
@@ -21635,6 +21786,196 @@
           "workflowId": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "SearchPage": {
+        "type": "object",
+        "description": "A page of results.",
+        "required": [
+          "items",
+          "nextCursor",
+          "total"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchResult"
+            },
+            "description": "The results, with the fields asked for."
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cursor of the next page, `null` on the last page."
+          },
+          "total": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "How many tickets match: on the first page (no `cursor`) only.",
+            "example": 38
+          }
+        }
+      },
+      "SearchRequest": {
+        "type": "object",
+        "description": "A search.",
+        "properties": {
+          "cursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`nextCursor` of the previous page, with the same query."
+          },
+          "expand": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "`parent`: the ticket each one sits under, in a few words."
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The fields of each result to return (`id` always comes); all by\ndefault."
+          },
+          "limit": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "1 to 100, 50 by default.",
+            "minimum": 0
+          },
+          "query": {
+            "type": "string",
+            "description": "The query (specification §6), 10,000 characters at most. Empty:\nevery ticket the member sees, newest first."
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "fields": [
+            "key",
+            "summary",
+            "status",
+            "priority"
+          ],
+          "limit": 50,
+          "query": "assignee = currentUser() AND status IN (todo, in_progress) ORDER BY priority DESC"
+        }
+      },
+      "SearchResult": {
+        "type": "object",
+        "description": "A ticket found.",
+        "required": [
+          "id",
+          "key",
+          "summary",
+          "project",
+          "type",
+          "status",
+          "priority",
+          "assignee",
+          "reporter",
+          "startDate",
+          "dueDate",
+          "parentId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "assignee": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/IssuePerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dueDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string",
+            "example": "PLAT-142"
+          },
+          "parent": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/IssueRef",
+                "description": "`expand=parent`: the ticket it sits under."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/IssuePriority"
+          },
+          "project": {
+            "$ref": "#/components/schemas/IssueProject"
+          },
+          "reporter": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/IssuePerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "startDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "status": {
+            "$ref": "#/components/schemas/IssueStatusRef"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/IssueTypeRef"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -22577,6 +22918,10 @@
     {
       "name": "issues",
       "description": "Tickets: creation, reading, the tickets of the signed-in member"
+    },
+    {
+      "name": "search",
+      "description": "Search of tickets with the query language"
     },
     {
       "name": "configurations",

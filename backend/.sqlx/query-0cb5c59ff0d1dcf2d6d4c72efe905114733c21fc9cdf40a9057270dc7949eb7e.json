@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT COALESCE((SELECT a.time_zone FROM account a WHERE a.id = $1),\n                        (SELECT t.time_zone FROM tenant t WHERE t.id = app_current_tenant()),\n                        'UTC') AS \"time_zone!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "time_zone!",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "0cb5c59ff0d1dcf2d6d4c72efe905114733c21fc9cdf40a9057270dc7949eb7e"
+}

@@ -176,6 +176,14 @@ impl RuleRow {
     }
 }
 
+/// The options of a field as `field_def.options` stores them; defaults
+/// when unreadable.
+pub fn options_of(json: serde_json::Value) -> Options {
+    serde_json::from_value::<OptionsDoc>(json)
+        .map(Options::from)
+        .unwrap_or_default()
+}
+
 /// A value as JSON holds it, for a field; none for an object, which no
 /// field takes.
 pub fn value_of(json: &serde_json::Value) -> Option<Value> {
