@@ -1,4 +1,4 @@
-import { Component, inject, input, output, resource, signal } from '@angular/core';
+import { Component, inject, input, linkedSignal, output, resource, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -50,9 +50,18 @@ export class IssueStatus {
   protected readonly errorKey = signal<string | null>(null);
   protected readonly conflict = signal(false);
 
-  protected available(): IssueTransition[] {
-    return this.transitions.hasValue() ? this.transitions.value() : [];
-  }
+  /**
+   * The transitions offered. While those of a new version load (the page
+   * reads the ticket again on every change, its own included), the last
+   * ones stay: the menu, open or not, is not rebuilt in the meantime.
+   */
+  protected readonly available = linkedSignal<{ value: IssueTransition[] | undefined; loading: boolean }, IssueTransition[]>({
+    source: () => ({
+      value: this.transitions.hasValue() ? this.transitions.value() : undefined,
+      loading: this.transitions.isLoading(),
+    }),
+    computation: ({ value, loading }, previous) => value ?? (loading ? (previous?.value ?? []) : []),
+  });
 
   protected async run(transition: IssueTransition): Promise<void> {
     this.errorKey.set(null);

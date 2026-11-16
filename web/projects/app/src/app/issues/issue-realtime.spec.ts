@@ -11,7 +11,7 @@ import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { AuthService, EVENT_SOURCE, EventSourceLike, Issue, Realtime, provideApi, provideMaterialDefaults } from 'ui';
+import { AuthService, EVENT_SOURCE, EventSourceLike, Issue, IssueTransition, Realtime, provideApi, provideMaterialDefaults } from 'ui';
 import { axeViolations, provideI18nTesting } from 'ui/testing';
 
 import { IssuePage } from './issue-page';
@@ -46,6 +46,13 @@ const ISSUE: Issue = {
   version: 4,
 };
 
+const START: IssueTransition = {
+  id: 'tr-start',
+  name: 'Start',
+  toStatus: { id: 's2', key: 'in_progress', label: 'In progress', category: 'in_progress' },
+  fields: [],
+};
+
 /** A form left open: the edit dialog, a transition… */
 @Component({ template: '<p>A form being filled</p>' })
 class OpenForm {}
@@ -71,7 +78,7 @@ class FakeSource implements EventSourceLike {
 }
 
 describe('the ticket page in real time', () => {
-  async function openTicket() {
+  async function openTicket(transitions: IssueTransition[] = []) {
     localStorage.clear();
     const source = new FakeSource();
     TestBed.configureTestingModule({
@@ -115,7 +122,17 @@ describe('the ticket page in real time', () => {
     const asked = () => {
       const urls = http.match(() => true).map((request) => {
         const url = request.request.urlWithParams;
-        request.flush(url.includes('/watchers') ? { count: 1, watching: true } : url.includes('/activity') ? { items: [], nextCursor: null } : url.startsWith('/api/v1/issues/PLAT-142') ? { ...ISSUE } : []);
+        request.flush(
+          url.includes('/watchers')
+            ? { count: 1, watching: true }
+            : url.includes('/activity')
+              ? { items: [], nextCursor: null }
+              : url.startsWith('/api/v1/issues/PLAT-142')
+                ? { ...ISSUE }
+                : url.includes('/transitions')
+                  ? transitions
+                  : [],
+        );
         return url.replace(/\?.*$/, '');
       });
       return [...new Set(urls)].sort();
@@ -173,6 +190,28 @@ describe('the ticket page in real time', () => {
     await settle();
     expect(asked()).toContain('/api/v1/issues/PLAT-142');
     expect(root().querySelector('.remote')).toBeNull();
+  });
+
+  it('keeps the status menu open while the echo of its own change reads the ticket again', async () => {
+    const { source, settle, asked, root } = await openTicket([START]);
+    await settle();
+    asked();
+    await settle();
+    const status = () => root().querySelector('app-issue-status')!;
+    (status().querySelector('button.status-menu') as HTMLButtonElement).click();
+    await settle();
+    const item = root().querySelector('button.transition');
+    expect(item?.textContent).toContain('Start');
+    source.emit('issue', { topic: 'issue', kind: 'issue.transitioned', issueId: 'i142', issueKey: 'PLAT-142', actorId: 'a1' });
+    await settle();
+    // The ticket is read again, then its transitions: while they load, the menu stays.
+    expect(asked()).toContain('/api/v1/issues/PLAT-142');
+    await settle();
+    expect(item?.isConnected, 'the open menu is not rebuilt').toBe(true);
+    expect(status().querySelector('ui-status-chip')).toBeNull();
+    expect(asked()).toContain('/api/v1/issues/i142/transitions');
+    await settle();
+    expect(item?.isConnected).toBe(true);
   });
 
   it('reads everything again on a resync, and after its own changes even with a form open', async () => {
