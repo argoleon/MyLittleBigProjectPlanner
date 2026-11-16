@@ -4,6 +4,44 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-16
+
+Work package **L05 Tickets and collaboration**: tickets with their fields, workflow and relations, rich comments with mentions, attachments scanned by an antivirus, the history of every change, notifications in the app and by email, real-time updates, and the migration of tickets when a configuration change is published.
+
+### Added
+
+- **Tickets** (#130)
+  - Created from a project page ("New ticket") or from "My tickets", with the type's creation screen; keys per project (`PLAT-142`) allocated without gaps under concurrency; a fixed priority list of five levels.
+  - The description is rich text (Tiptap editor), stored as a document and rendered by the server to sanitized HTML.
+  - The ticket page (mockup 03): type and key, summary, status, description, details and custom fields, project.
+- **Editing and moving** (#136)
+  - An "Edit" dialog shows the type's view screen for the current status; saving checks the version read (`If-Match`, 412 when someone changed it meanwhile).
+  - A ticket moves to another project with its sub-tasks: new keys, the former ones still open it; values of fields the target configuration lacks are listed, then dropped.
+- **Links and sub-tasks** (#140)
+  - Blocks, depends on, duplicates and relates to, each read from both tickets; sub-tasks added from their parent; the parent changes within the project, the type hierarchy enforced. A minimal ticket search (key, former key or summary) finds what to link.
+- **Status transitions** (#515)
+  - The transitions the workflow offers from the current status, as buttons on the ticket page; who may take each, the fields it asks for (transition screen), the fields required at the target status, then its post-functions (assign, set or clear a field, add a comment).
+- **Comments** (#144)
+  - Rich text with @mentions, internal by default or public; the author edits and deletes theirs, moderators delete any (a placeholder stays).
+- **Attachments** (#148)
+  - Uploaded and downloaded directly from the S3 storage with presigned URLs, on the application's own origin; every file is scanned by ClamAV before it can be downloaded, an infected one deleted. Image thumbnails, a size limit and a storage quota per tenant, one stored copy of a file uploaded twice.
+- **History** (#153)
+  - Every change of a ticket is recorded with who made it, when and from where (interface, API, MCP, import, system): the Activity tab tells it in sentences, a description before and after on demand, deleted comments for moderators only.
+- **Notifications** (#157)
+  - Ticket created, assigned, status changed, commented and mentioned notify the people the configuration's rules name, watchers included (Watch / Unwatch on the ticket page). A bell with the unread count, a notifications page, and preferences per event for the app and email, with an optional daily digest.
+- **Real time** (#163)
+  - The ticket page and the bell follow changes as they happen (Server-Sent Events); while a form is open, someone else's change shows a warning instead, the input kept.
+- **Migrating tickets on a configuration change** (#125, #127)
+  - The mapping wizard counts the tickets of every project of the configuration; once confirmed, the worker moves them batch by batch, each change in their history by the system, then publishes the draft. A migration interrupted midway resumes without moving a ticket twice. Publishing directly is refused while tickets use a removed status or type (`config.migration_required`).
+
+### Upgrading from 0.4.0
+
+- **Migrations** run at start-up (`migrate` service): tickets, links, comments, the history (`audit_log`) and the event outbox (both partitioned by month), attachments, watchers and notifications, all protected by Row-Level Security.
+- **New secrets** `s3_access_key` and `s3_secret_key`: run `deploy/scripts/generate-secrets.sh` again. An installation from 0.4.0 already has `seaweedfs_s3_config`: the script takes both keys from it, so the storage keeps its identity.
+- **Attachments** use the `seaweedfs` and `clamav` services and Traefik's route of the `/mlbpp-attachments/` prefix (all in `deploy/compose.yaml`). A proxy in front of Traefik must keep the Host header. On its first start ClamAV downloads its signatures for a few minutes: uploads stay "Scanning" meanwhile. Back up the `seaweedfs-data` volume besides the database (see "Attachments" in `deploy/README.md`).
+- **New variables** (optional): `ATTACHMENT_MAX_BYTES` (50 MB by default, at most 100 MB); the worker now reads `PUBLIC_URL` for the links of notification emails, and `CLAMAV_ADDR` (set by `compose.yaml`).
+- **Real time** goes through Valkey (one stream per tenant) and long-lived `GET /api/v1/events` connections: a proxy in front of Traefik must not buffer them.
+
 ## [0.4.0] - 2026-11-14
 
 Work package **L04 Project configuration**: shared project configurations with their issue types, workflows, fields, transition rules, screens and notification rules, edited in a draft and published to every project at once, with the status and type mapping wizard.
@@ -158,6 +196,7 @@ Work package **L01 Technical foundation**: the base every later work package bui
   - License policy enforced on Rust crates and npm packages, RustSec and npm advisories, secret scan of the git history.
   - CI: every step a `just` recipe (`just ci` locally), GitHub Actions only calls them; release workflow publishing the images to GitHub Container Registry.
 
+[0.5.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.5.0
 [0.4.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.4.0
 [0.3.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.3.0
 [0.2.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.2.0
