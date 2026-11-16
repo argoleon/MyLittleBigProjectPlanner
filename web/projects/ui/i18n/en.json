@@ -469,7 +469,7 @@
       "pending": "The export is not ready yet."
     },
     "node": {
-      "key_taken": "Another project of the organization has this key.",
+      "key_taken": "Another portfolio, program or project of the organization has this key.",
       "cycle": "This link would make the node its own ancestor.",
       "parent_not_allowed": "This type of node cannot be attached under that parent.",
       "grant_exists": "They already have this role on this node.",
@@ -522,6 +522,9 @@
     },
     "storage": {
       "unavailable": "File storage is not available right now. Try again later."
+    },
+    "query": {
+      "invalid": "The query cannot be run."
     }
   },
   "dialog": {
@@ -1710,6 +1713,64 @@
       },
       "digest": "Daily email digest",
       "digestHint": "Each working day at 8:00, instead of one email per event."
+    }
+  },
+  "search": {
+    "title": "Search",
+    "total": "Results: {{ count }}",
+    "query": {
+      "label": "Query",
+      "hint": "Enter to run, Shift+Enter for a new line. Queries use identifiers, the same in every language: status = in_progress."
+    },
+    "run": "Search",
+    "columns": {
+      "button": "Columns",
+      "menu": "Columns shown",
+      "key": "Key",
+      "summary": "Summary",
+      "type": "Type",
+      "status": "Status",
+      "assignee": "Assignee",
+      "reporter": "Reporter",
+      "priority": "Priority",
+      "due": "Due",
+      "start": "Start",
+      "project": "Project",
+      "created": "Created",
+      "updated": "Updated"
+    },
+    "caption": "Tickets found",
+    "results": "Search results",
+    "empty": "No ticket matches this query",
+    "emptyHint": "Remove a condition or widen a value, then search again.",
+    "loadingMore": "Loading the next tickets",
+    "expected": {
+      "field": "a field",
+      "value": "a value",
+      "text": "a text",
+      "end": "the end of the query",
+      "or": " or ",
+      "quoted": "“{{ word }}”"
+    },
+    "error": {
+      "syntax": "Character {{ position }}: expected {{ expected }}, found {{ found }}.",
+      "unterminated_string": "Character {{ position }}: this quote is never closed.",
+      "invalid_character": "Character {{ position }}: this character is not part of the language.",
+      "invalid_number": "Character {{ position }}: this is neither a number nor a duration (such as -7d).",
+      "unknown_field": "There is no field “{{ field }}”.",
+      "unknown_function": "Character {{ position }}: there is no such function.",
+      "wrong_arguments": "Character {{ position }}: this function does not take these arguments.",
+      "operator_not_allowed": "The field “{{ field }}” does not take this operator; it takes: {{ allowed }}.",
+      "value_not_allowed": "The field “{{ field }}” does not take this value.",
+      "invalid_date": "Character {{ position }}: this is not a date (YYYY-MM-DD or YYYY-MM-DD HH:MM).",
+      "unknown_priority": "Character {{ position }}: there is no such priority (highest, high, medium, low, lowest).",
+      "not_sortable": "Tickets cannot be sorted by “{{ field }}”.",
+      "unsupported": "The field “{{ field }}” comes with sprints and versions.",
+      "too_long": "The query is too long.",
+      "too_deep": "The query nests too many parentheses or NOTs.",
+      "too_many_clauses": "The query has too many conditions.",
+      "too_many_values": "The list has too many values.",
+      "too_many_order_keys": "The query sorts by too many fields."
     }
   }
 }

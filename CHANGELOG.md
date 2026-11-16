@@ -9,6 +9,7 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
 - **Search with the query language** (#168)
   - A JQL-like language (specification §6): comparisons, `IN`, `IS EMPTY`, `~` on text, `AND` / `OR` / `NOT` and parentheses, durations (`created > -7d`), `currentUser()`, `now()`, `startOf…()` and `endOf…()` (day, week, month, year), `descendantsOf("PORTF-HR")`, and `ORDER BY`. Fields and values are stable keys; dates are read in the member's time zone.
   - `POST /api/v1/search` with `{query, fields, expand, cursor, limit}`: the tickets of the projects the member sees, the total on the first page, a cursor for the next ones. A query that cannot run answers `query.invalid` with the reason, the character position and what was expected.
+  - The Search screen (mockup 15): the query runs on Enter and stays in the address (`/search?q=…`); results in a virtualized table with the total, the next page loaded while scrolling, columns chosen from a menu (kept in the browser), and sorting a column sorts the query. A refused query is explained at its position, the part concerned selected in the field.
   - `sprint` and `fixVersion` are understood but answer `unsupported` until sprints and versions come (L09); `text ~` matches the summary and the description until full text comes (#177).
 
 ### Changed

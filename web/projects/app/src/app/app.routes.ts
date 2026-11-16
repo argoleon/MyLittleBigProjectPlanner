@@ -50,7 +50,7 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       // Screens not built yet show "coming soon".
-      ...NAVIGATION.filter((item) => !['/admin', '/portfolios', '/tickets'].includes(item.route)).map((item) => ({
+      ...NAVIGATION.filter((item) => !['/admin', '/portfolios', '/search', '/tickets'].includes(item.route)).map((item) => ({
         path: item.route.slice(1),
         pathMatch: 'full' as const,
         title: item.labelKey,
@@ -61,6 +61,12 @@ export const routes: Routes = [
         path: 'notifications',
         title: 'notifications.title',
         loadComponent: () => import('./notifications/notifications-page').then((m) => m.NotificationsPage),
+      },
+      {
+        // `?q=`: the query to run.
+        path: 'search',
+        title: 'nav.search',
+        loadComponent: () => import('./search/search-page').then((m) => m.SearchPage),
       },
       {
         path: 'tickets',

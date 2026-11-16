@@ -469,7 +469,7 @@
       "pending": "L’export n’est pas encore prêt."
     },
     "node": {
-      "key_taken": "Un autre projet de l’organisation a déjà cette clé.",
+      "key_taken": "Un autre portefeuille, programme ou projet de l’organisation a cette clé.",
       "cycle": "Ce rattachement ferait du nœud son propre ancêtre.",
       "parent_not_allowed": "Ce type de nœud ne peut pas être rattaché sous ce parent.",
       "grant_exists": "Ce rôle est déjà attribué à cette personne ou à ce groupe sur ce nœud.",
@@ -522,6 +522,9 @@
     },
     "storage": {
       "unavailable": "Le stockage des fichiers n’est pas disponible pour le moment. Réessayez plus tard."
+    },
+    "query": {
+      "invalid": "La requête ne peut pas être exécutée."
     }
   },
   "dialog": {
@@ -1710,6 +1713,64 @@
       },
       "digest": "Résumé quotidien par email",
       "digestHint": "Chaque jour ouvré à 8 h, au lieu d’un email par événement."
+    }
+  },
+  "search": {
+    "title": "Recherche",
+    "total": "Résultats : {{ count }}",
+    "query": {
+      "label": "Requête",
+      "hint": "Entrée pour lancer, Maj+Entrée pour aller à la ligne. Les requêtes utilisent des identifiants, indépendants de la langue : status = in_progress."
+    },
+    "run": "Rechercher",
+    "columns": {
+      "button": "Colonnes",
+      "menu": "Colonnes affichées",
+      "key": "Clé",
+      "summary": "Résumé",
+      "type": "Type",
+      "status": "Statut",
+      "assignee": "Responsable",
+      "reporter": "Rapporteur",
+      "priority": "Priorité",
+      "due": "Échéance",
+      "start": "Début",
+      "project": "Projet",
+      "created": "Créé le",
+      "updated": "Modifié le"
+    },
+    "caption": "Tickets trouvés",
+    "results": "Résultats de la recherche",
+    "empty": "Aucun ticket ne correspond à cette requête",
+    "emptyHint": "Retirez une condition ou élargissez une valeur, puis relancez la recherche.",
+    "loadingMore": "Chargement des tickets suivants",
+    "expected": {
+      "field": "un champ",
+      "value": "une valeur",
+      "text": "un texte",
+      "end": "la fin de la requête",
+      "or": " ou ",
+      "quoted": "« {{ word }} »"
+    },
+    "error": {
+      "syntax": "Caractère {{ position }} : {{ expected }} attendu, {{ found }} trouvé.",
+      "unterminated_string": "Caractère {{ position }} : ce guillemet n’est jamais fermé.",
+      "invalid_character": "Caractère {{ position }} : ce caractère ne fait pas partie du langage.",
+      "invalid_number": "Caractère {{ position }} : ce n’est ni un nombre ni une durée (comme -7d).",
+      "unknown_field": "Le champ « {{ field }} » n’existe pas.",
+      "unknown_function": "Caractère {{ position }} : cette fonction n’existe pas.",
+      "wrong_arguments": "Caractère {{ position }} : cette fonction ne prend pas ces arguments.",
+      "operator_not_allowed": "Le champ « {{ field }} » n’accepte pas cet opérateur ; il accepte : {{ allowed }}.",
+      "value_not_allowed": "Le champ « {{ field }} » n’accepte pas cette valeur.",
+      "invalid_date": "Caractère {{ position }} : ce n’est pas une date (AAAA-MM-JJ ou AAAA-MM-JJ HH:MM).",
+      "unknown_priority": "Caractère {{ position }} : cette priorité n’existe pas (highest, high, medium, low, lowest).",
+      "not_sortable": "Les tickets ne peuvent pas être triés par « {{ field }} ».",
+      "unsupported": "Le champ « {{ field }} » arrivera avec les sprints et les versions.",
+      "too_long": "La requête est trop longue.",
+      "too_deep": "La requête imbrique trop de parenthèses ou de NOT.",
+      "too_many_clauses": "La requête a trop de conditions.",
+      "too_many_values": "La liste a trop de valeurs.",
+      "too_many_order_keys": "La requête trie selon trop de champs."
     }
   }
 }
