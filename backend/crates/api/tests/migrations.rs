@@ -146,7 +146,7 @@ async fn removed_statuses_and_types_are_mapped_then_migrated_and_the_draft_publi
 
     // The plan: In review and Bug, with their targets and a suggestion.
     let plan = get(&api, t, &format!("{base}/migration-plan")).await;
-    assert_eq!(plan["ticketTotal"], 0, "no ticket before L05");
+    assert_eq!(plan["ticketTotal"], 0, "no project uses it: no ticket");
     let status = &plan["statuses"][0];
     assert_eq!(
         (
