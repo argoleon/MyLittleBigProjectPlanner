@@ -482,7 +482,8 @@
       "no_draft": "This configuration has no draft: nothing to publish or discard.",
       "default": "The default configuration stays: new projects get it.",
       "in_use": "Projects use this configuration: move them to another one first.",
-      "migration_running": "A migration of this configuration is already under way."
+      "migration_running": "A migration of this configuration is already under way.",
+      "migration_required": "Tickets use statuses or types the draft removes: map them through the migration wizard first."
     },
     "issue_type": {
       "key_taken": "Another type of this configuration already has this identifier.",
