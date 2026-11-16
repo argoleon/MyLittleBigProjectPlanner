@@ -752,6 +752,11 @@ async fn a_configuration_migration_runs_batch_by_batch_and_resumes_after_a_dead_
     };
     assert!(config_migrations::start(&mut tx, &new).await.unwrap());
     tx.commit().await.unwrap();
+    // Creating the project queued an aggregates recompute, due
+    // `RECOMPUTE_DELAY` later: on a slow runner it falls due after the last
+    // migration batch and would be counted as one more batch.
+    db.exec_as_owner("DELETE FROM job WHERE kind = 'node.aggregates'")
+        .await;
 
     // A worker claims the migration, then dies without finishing it.
     let claimed = infra::jobs::claim(&db.app_pool, "dead-worker", 10, Duration::from_secs(1))
