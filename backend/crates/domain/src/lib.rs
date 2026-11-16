@@ -28,6 +28,7 @@ pub mod notifications;
 pub mod notify;
 pub mod oidc;
 pub mod permissions;
+pub mod query;
 pub mod reference_item;
 pub mod rich_text;
 pub mod screens;
