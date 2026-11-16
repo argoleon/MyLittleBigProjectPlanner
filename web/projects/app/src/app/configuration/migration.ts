@@ -21,9 +21,9 @@ export function isComplete(plan: MigrationPlan, choices: Choices): boolean {
   });
 }
 
-/** The tickets to move, for the confirm button. */
+/** The tickets to move, for the confirm button: each once, even in both a removed status and a removed type. */
 export function ticketTotal(plan: MigrationPlan): number {
-  return items(plan).reduce((sum, item) => sum + item.ticketCount, 0);
+  return plan.ticketTotal;
 }
 
 /** The mappings for the API, statuses and types apart. */

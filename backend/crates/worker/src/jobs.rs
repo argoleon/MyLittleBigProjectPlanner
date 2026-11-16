@@ -241,6 +241,10 @@ impl JobHandler for Jobs {
                         .await
                         .map_err(|e| JobError::Retry(e.to_string()))?;
                     match outcome {
+                        // The next batch is queued, committed with this one.
+                        Outcome::Continues => {
+                            tracing::info!(migration = %migration.migration_id, "configuration migration: batch of tickets moved");
+                        }
                         Outcome::Published => {
                             tracing::info!(target: "audit", migration = %migration.migration_id, "configuration migrated and published");
                         }

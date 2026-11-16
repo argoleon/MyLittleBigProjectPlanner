@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT config_id, draft_id, state FROM config_migration WHERE id = $1 FOR UPDATE",
+  "query": "\n        SELECT config_id, draft_id, state, status_mappings AS \"status_mappings: Json<Vec<Mapping>>\",\n               type_mappings AS \"type_mappings: Json<Vec<Mapping>>\"\n        FROM config_migration WHERE id = $1 FOR UPDATE\n        ",
   "describe": {
     "columns": [
       {
@@ -35,6 +35,28 @@
             "name": "state"
           }
         }
+      },
+      {
+        "ordinal": 3,
+        "name": "status_mappings: Json<Vec<Mapping>>",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "config_migration",
+            "name": "status_mappings"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "type_mappings: Json<Vec<Mapping>>",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "config_migration",
+            "name": "type_mappings"
+          }
+        }
       }
     ],
     "parameters": {
@@ -45,8 +67,10 @@
     "nullable": [
       false,
       false,
+      false,
+      false,
       false
     ]
   },
-  "hash": "6ee1d8c81daf681e7ced92b357291d15fa9818d5772756d92a3aa86a1556c362"
+  "hash": "bdb787428533694573616f8b0faa00fe04ccd9c6b2bd3ec3ad62f0682fdcc850"
 }

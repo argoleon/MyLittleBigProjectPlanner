@@ -482,7 +482,8 @@
       "no_draft": "Cette configuration n’a pas de brouillon : rien à publier ni à abandonner.",
       "default": "La configuration par défaut reste : les nouveaux projets la reçoivent.",
       "in_use": "Des projets utilisent cette configuration : déplacez-les d’abord vers une autre.",
-      "migration_running": "Une migration de cette configuration est déjà en cours."
+      "migration_running": "Une migration de cette configuration est déjà en cours.",
+      "migration_required": "Des tickets utilisent des statuts ou des types que le brouillon supprime : faites-les d’abord migrer avec l’assistant."
     },
     "issue_type": {
       "key_taken": "Un autre type de cette configuration a déjà cet identifiant.",

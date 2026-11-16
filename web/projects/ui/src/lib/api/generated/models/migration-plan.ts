@@ -10,7 +10,7 @@ export interface MigrationPlan {
   statuses: Array<MigrationItem>;
 
   /**
-   * Every ticket to move.
+   * Every ticket to move, each once (in a removed status and type alike).
    */
   ticketTotal: number;
   types: Array<MigrationItem>;

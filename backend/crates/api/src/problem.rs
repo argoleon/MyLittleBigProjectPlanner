@@ -119,6 +119,7 @@ pub enum ErrorCode {
     ScreenInUse,
     MappingIncomplete,
     ConfigMigrationRunning,
+    ConfigMigrationRequired,
     IssueSubtaskMoves,
     IssueLinkExists,
     AttachmentTooLarge,
@@ -130,7 +131,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 87] = [
+    pub const ALL: [Self; 88] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -211,6 +212,7 @@ impl ErrorCode {
         Self::ScreenInUse,
         Self::MappingIncomplete,
         Self::ConfigMigrationRunning,
+        Self::ConfigMigrationRequired,
         Self::IssueSubtaskMoves,
         Self::IssueLinkExists,
         Self::AttachmentTooLarge,
@@ -302,6 +304,7 @@ impl ErrorCode {
             Self::ScreenInUse => "screen.in_use",
             Self::MappingIncomplete => "mapping_incomplete",
             Self::ConfigMigrationRunning => "config.migration_running",
+            Self::ConfigMigrationRequired => "config.migration_required",
             Self::IssueSubtaskMoves => "issue.subtask_moves_with_parent",
             Self::IssueLinkExists => "issue_link.exists",
             Self::AttachmentTooLarge => "attachment.too_large",
@@ -387,6 +390,7 @@ impl ErrorCode {
             | Self::ScreenGeneral
             | Self::ScreenInUse
             | Self::ConfigMigrationRunning
+            | Self::ConfigMigrationRequired
             | Self::IssueSubtaskMoves
             | Self::IssueLinkExists
             | Self::AttachmentNotUploaded
@@ -500,6 +504,9 @@ impl ErrorCode {
                 "Every removed status and type must be mapped to one the draft keeps: see errors"
             }
             Self::ConfigMigrationRunning => "A migration of this configuration is already under way",
+            Self::ConfigMigrationRequired => {
+                "Tickets use statuses or types the draft removes: map them through a migration first"
+            }
             Self::IssueSubtaskMoves => "A sub-task moves with its parent: move the parent instead",
             Self::IssueLinkExists => "The two tickets already have this link",
             Self::AttachmentTooLarge => "The file is larger than the maximum allowed",
@@ -759,7 +766,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 87] = [
+        let expected: [(ErrorCode, u16); 88] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -840,6 +847,7 @@ mod tests {
             (ErrorCode::ScreenInUse, 409),
             (ErrorCode::MappingIncomplete, 400),
             (ErrorCode::ConfigMigrationRunning, 409),
+            (ErrorCode::ConfigMigrationRequired, 409),
             (ErrorCode::IssueSubtaskMoves, 409),
             (ErrorCode::IssueLinkExists, 409),
             (ErrorCode::AttachmentTooLarge, 413),

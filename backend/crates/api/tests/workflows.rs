@@ -410,7 +410,7 @@ async fn a_removed_status_shows_in_the_impact_and_a_followed_workflow_stays() {
         impact["removedStatuses"],
         json!([{"id": review, "key": "in_review", "label": "In review", "workflow": "Standard workflow", "ticketCount": 0}])
     );
-    assert_eq!(impact["needsMigration"], false, "no ticket before L05");
+    assert_eq!(impact["needsMigration"], false, "no ticket in it");
 
     // Every type follows it: it stays.
     let delete = admin(
