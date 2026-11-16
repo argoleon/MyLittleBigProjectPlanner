@@ -155,28 +155,46 @@ async fn healthcheck_command_follows_the_running_server() {
 
 /// Starts `api` on a free port with `database_url`; returns it and the port
 /// once it answers its liveness probe.
+///
+/// The port is free when picked, but closed again so that `api` can bind it:
+/// another socket (a connection of a test running alongside) may take it in
+/// between. `api` then exits at once, and starts again on another port.
 async fn spawn_api(database_url: &str) -> (std::process::Child, u16) {
-    let port = std::net::TcpListener::bind("127.0.0.1:0")
-        .unwrap()
-        .local_addr()
-        .unwrap()
-        .port();
-    let mut child = with_auth_settings(Command::new(BIN).env_clear())
-        .env("API_BIND_ADDR", format!("127.0.0.1:{port}"))
-        .env("DATABASE_URL", database_url)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .unwrap();
-    let deadline = Instant::now() + Duration::from_secs(10);
-    while !healthcheck(port).success() {
-        if Instant::now() > deadline {
-            let _ = child.kill();
-            panic!("api never became alive");
+    for _ in 0..5 {
+        let port = std::net::TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
+        let mut child = with_auth_settings(Command::new(BIN).env_clear())
+            .env("API_BIND_ADDR", format!("127.0.0.1:{port}"))
+            .env("DATABASE_URL", database_url)
+            .stdout(Stdio::null())
+            // Only startup errors go there: the logs go to stdout.
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            if healthcheck(port).success() {
+                return (child, port);
+            }
+            if child.try_wait().unwrap().is_some() {
+                let output = child.wait_with_output().unwrap();
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                if stderr.contains("cannot listen") {
+                    break;
+                }
+                panic!("api exited with {}: {stderr}", output.status);
+            }
+            if Instant::now() > deadline {
+                let _ = child.kill();
+                panic!("api never became alive");
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
         }
-        tokio::time::sleep(Duration::from_millis(100)).await;
     }
-    (child, port)
+    panic!("api found no free port");
 }
 
 fn healthcheck_ready(port: u16) -> std::process::ExitStatus {
