@@ -5,9 +5,10 @@
 //!
 //! The wizard suggests a target for each removed item ([`suggest_status`],
 //! [`suggest_type`]); [`validate_mapping`] refuses a mapping that leaves an
-//! item out or names a target that is not offered. The job (tickets come
-//! with L05) moves them in batches ([`batches`]), skipping those already
-//! moved ([`target_of`]): a retried job does not move a ticket twice.
+//! item out or names a target that is not offered; [`tickets_to_move`]
+//! counts each ticket once. The job moves them batch by batch, skipping
+//! those already moved ([`moves`]): a retried job does not move a ticket
+//! twice.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -144,6 +145,57 @@ pub fn percent(migrated: u64, total: u64) -> u8 {
     }
     let percent = migrated.min(total).saturating_mul(100) / total;
     u8::try_from(percent).unwrap_or(100)
+}
+
+/// A ticket as the migration reads it: its id, status and type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Ticket {
+    pub id: u128,
+    pub status: u128,
+    pub issue_type: u128,
+}
+
+/// What the migration does to a ticket: its status and its type, each
+/// `(from, to)` when it changes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Move {
+    pub id: u128,
+    pub status: Option<(u128, u128)>,
+    pub issue_type: Option<(u128, u128)>,
+}
+
+/// The moves of `tickets` under the mappings of statuses and types, in
+/// their order. A ticket no longer in a mapped status or type (moved by an
+/// earlier run, or never concerned) is left out: running a batch again
+/// moves no ticket twice.
+pub fn moves(tickets: &[Ticket], statuses: &BTreeMap<u128, u128>, types: &BTreeMap<u128, u128>) -> Vec<Move> {
+    tickets
+        .iter()
+        .filter_map(|t| {
+            let status = target_of(t.status, statuses).map(|to| (t.status, to));
+            let issue_type = target_of(t.issue_type, types).map(|to| (t.issue_type, to));
+            (status.is_some() || issue_type.is_some()).then_some(Move {
+                id: t.id,
+                status,
+                issue_type,
+            })
+        })
+        .collect()
+}
+
+/// The tickets in each `(status, type, count)` of `counts` that a mapping
+/// of `statuses` and `types` moves: each ticket once, even when both its
+/// status and its type are removed.
+pub fn tickets_to_move(
+    counts: &[(u128, u128, u64)],
+    statuses: &BTreeSet<u128>,
+    types: &BTreeSet<u128>,
+) -> u64 {
+    counts
+        .iter()
+        .filter(|(status, issue_type, _)| statuses.contains(status) || types.contains(issue_type))
+        .map(|(_, _, count)| count)
+        .sum()
 }
 
 /// Where a migration stands.
@@ -311,6 +363,79 @@ mod tests {
         assert_eq!(percent(1086, 2172), 50);
         assert_eq!(percent(2172, 2172), 100);
         assert_eq!(percent(0, 0), 100, "nothing to move: done");
+    }
+
+    #[test]
+    fn a_batch_moves_the_tickets_still_mapped_and_none_twice() {
+        const STORY: u128 = 20;
+        const DEFECT: u128 = 21;
+        const BUG: u128 = 22;
+        let statuses: BTreeMap<u128, u128> = [(IN_TEST, IN_ACCEPTANCE)].into();
+        let types: BTreeMap<u128, u128> = [(DEFECT, BUG)].into();
+        let ticket = |id, status, issue_type| Ticket {
+            id,
+            status,
+            issue_type,
+        };
+        let batch = [
+            ticket(1, IN_TEST, STORY),
+            ticket(2, TODO, DEFECT),
+            ticket(3, IN_TEST, DEFECT),
+            ticket(4, DONE, STORY),
+        ];
+        let planned = moves(&batch, &statuses, &types);
+        assert_eq!(
+            planned,
+            [
+                Move {
+                    id: 1,
+                    status: Some((IN_TEST, IN_ACCEPTANCE)),
+                    issue_type: None
+                },
+                Move {
+                    id: 2,
+                    status: None,
+                    issue_type: Some((DEFECT, BUG))
+                },
+                // Both removed: one move, both changes.
+                Move {
+                    id: 3,
+                    status: Some((IN_TEST, IN_ACCEPTANCE)),
+                    issue_type: Some((DEFECT, BUG))
+                },
+            ]
+        );
+        // The same batch read again once moved: nothing left to do.
+        let moved: Vec<Ticket> = batch
+            .iter()
+            .map(|t| {
+                let m = planned.iter().find(|m| m.id == t.id);
+                ticket(
+                    t.id,
+                    m.and_then(|m| m.status).map_or(t.status, |(_, to)| to),
+                    m.and_then(|m| m.issue_type).map_or(t.issue_type, |(_, to)| to),
+                )
+            })
+            .collect();
+        assert!(moves(&moved, &statuses, &types).is_empty());
+        assert!(moves(&batch, &BTreeMap::new(), &BTreeMap::new()).is_empty());
+    }
+
+    #[test]
+    fn a_ticket_in_a_removed_status_and_type_counts_once() {
+        const STORY: u128 = 20;
+        const DEFECT: u128 = 21;
+        let counts = [
+            (IN_TEST, STORY, 5),
+            (IN_TEST, DEFECT, 2),
+            (TODO, DEFECT, 3),
+            (TODO, STORY, 40),
+        ];
+        let statuses: BTreeSet<u128> = [IN_TEST].into();
+        let types: BTreeSet<u128> = [DEFECT].into();
+        assert_eq!(tickets_to_move(&counts, &statuses, &types), 10);
+        assert_eq!(tickets_to_move(&counts, &statuses, &BTreeSet::new()), 7);
+        assert_eq!(tickets_to_move(&counts, &BTreeSet::new(), &BTreeSet::new()), 0);
     }
 
     #[test]

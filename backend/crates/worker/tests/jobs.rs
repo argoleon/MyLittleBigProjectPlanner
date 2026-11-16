@@ -692,3 +692,104 @@ async fn the_outbox_and_history_partitions_are_kept_ready_until_cancelled() {
         .expect("stops when cancelled, without waiting for the next check")
         .unwrap();
 }
+
+#[tokio::test]
+async fn a_configuration_migration_runs_batch_by_batch_and_resumes_after_a_dead_worker() {
+    use domain::hierarchy::NodeType;
+    use domain::migration::State;
+    use infra::accounts::TenantRole;
+    use infra::config_migrations::{self, Mapping, NewMigration};
+
+    let db = TestDb::new().await;
+    let t = db.tenant_a.id;
+    let admin = db
+        .add_member(&db.tenant_a, TenantRole::TenantAdmin)
+        .await
+        .account_id;
+    let mut tx = infra::db::begin_tenant_tx(&db.app_pool, t).await.unwrap();
+    let name = [("en".to_owned(), "Software".to_owned())].into();
+    let config = infra::configs::insert(&mut tx, infra::id::new_id(), &name, None)
+        .await
+        .unwrap()
+        .unwrap()
+        .id;
+    let draft = infra::configs::open_draft(&mut tx, config, None)
+        .await
+        .unwrap()
+        .unwrap()
+        .draft
+        .unwrap()
+        .id;
+    let project = node(&mut tx, NodeType::Project, "Platform", Some("PLAT"), None, admin).await;
+    assert!(infra::configs::assign(&mut tx, project, config).await.unwrap());
+    let (in_test, accepted) = (infra::id::new_id(), infra::id::new_id());
+    sqlx::query(
+        r#"
+        INSERT INTO issue (id, tenant_id, project_id, key_number, key, type_id, status_id, summary)
+        SELECT gen_random_uuid(), app_current_tenant(), $1, n, 'PLAT-' || n, $2, $3, 'Ticket ' || n
+        FROM generate_series(1, 1100) AS n
+        "#,
+    )
+    .bind(project)
+    .bind(Uuid::from_u128(1))
+    .bind(in_test)
+    .execute(&mut *tx)
+    .await
+    .unwrap();
+    let id = infra::id::new_id();
+    let mapping = [Mapping {
+        from: in_test,
+        to: accepted,
+    }];
+    let new = NewMigration {
+        id,
+        config_id: config,
+        draft_id: draft,
+        status_mappings: &mapping,
+        type_mappings: &[],
+        ticket_total: 1100,
+        created_by: admin,
+    };
+    assert!(config_migrations::start(&mut tx, &new).await.unwrap());
+    tx.commit().await.unwrap();
+
+    // A worker claims the migration, then dies without finishing it.
+    let claimed = infra::jobs::claim(&db.app_pool, "dead-worker", 10, Duration::from_secs(1))
+        .await
+        .unwrap();
+    assert_eq!(claimed.len(), 1);
+    let jobs = jobs().await;
+    let runner = JobRunner::new(db.app_pool.clone());
+    assert_eq!(runner.next_batch(&jobs).await, Batch::Idle, "leased");
+    tokio::time::sleep(Duration::from_millis(1500)).await;
+
+    // Another one resumes it: a batch per job, each queuing the next.
+    let mut runs = 0;
+    while runner.next_batch(&jobs).await == Batch::Processed {
+        runs += 1;
+        assert!(runs <= 5, "the migration keeps going");
+    }
+    assert_eq!(runs, 3, "500, 500, then 100 and the publication");
+    let left: i64 = sqlx::query_scalar("SELECT count(*) FROM job WHERE kind = 'config.migration'")
+        .fetch_one(&db.owner_pool)
+        .await
+        .unwrap();
+    assert_eq!(left, 0, "no migration job left");
+    let mut tx = infra::db::begin_tenant_tx(&db.app_pool, t).await.unwrap();
+    let done = config_migrations::find(&mut tx, config, id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        (done.state, done.tickets_migrated, done.ticket_total),
+        (State::Done, 1100, 1100)
+    );
+    let moved: i64 = sqlx::query_scalar("SELECT count(*) FROM issue WHERE status_id = $1")
+        .bind(accepted)
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap();
+    assert_eq!(moved, 1100);
+    let config_now = infra::configs::find(&mut tx, config).await.unwrap().unwrap();
+    assert_eq!(config_now.published.id, draft);
+}

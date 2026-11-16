@@ -347,3 +347,187 @@ async fn only_configuration_admins_of_the_tenant_migrate() {
     let (status, missing) = send(admin(&api, a, Method::GET, &unknown)).await;
     assert_problem(status, &missing, 404, "not_found");
 }
+
+/// The project `key` on the configuration `config`.
+async fn project_on(api: &TestApi, t: &SeedTenant, key: &str, config: &str) {
+    let body = json!({"type": "project", "name": key, "key": key});
+    let (status, node) = send(admin(api, t, Method::POST, "/api/v1/nodes").json(&body)).await;
+    assert_eq!(status, 201, "{node}");
+    let path = format!("/api/v1/nodes/{}/configuration", node["id"].as_str().unwrap());
+    let (status, moved) = send(admin(api, t, Method::PUT, &path).json(&json!({"configId": config}))).await;
+    assert_eq!(status, 200, "{moved}");
+}
+
+/// A ticket of type `type_key` in the project `key`; its key.
+async fn ticket(api: &TestApi, t: &SeedTenant, key: &str, type_key: &str) -> String {
+    let form = get(api, t, &format!("/api/v1/projects/{key}/issue-form")).await;
+    let body = json!({"summary": "A ticket", "typeId": by(&form["types"], "key", type_key)["id"]});
+    let (status, created) =
+        send(admin(api, t, Method::POST, &format!("/api/v1/projects/{key}/issues")).json(&body)).await;
+    assert_eq!(status, 201, "{created}");
+    created["key"].as_str().unwrap().to_owned()
+}
+
+/// What the history of `key` says, newest first: field, old and new texts, origin and actor.
+async fn history(api: &TestApi, t: &SeedTenant, key: &str) -> Vec<(Value, Value, Value, Value, Value)> {
+    get(api, t, &format!("/api/v1/issues/{key}/activity")).await["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| {
+            (
+                e["field"].clone(),
+                e["old"]["text"].clone(),
+                e["new"]["text"].clone(),
+                e["origin"].clone(),
+                e["actor"].clone(),
+            )
+        })
+        .collect()
+}
+
+#[tokio::test]
+async fn tickets_of_the_projects_are_counted_moved_with_their_history_then_the_draft_published() {
+    let db = TestDb::new().await;
+    let api = common::start(&db, multi()).await;
+    let t = &db.tenant_a;
+    let id = config(&api, t, "Software").await;
+    let base = format!("/api/v1/project-configs/{id}");
+    project_on(&api, t, "PLAT", &id).await;
+    project_on(&api, t, "MAIL", &id).await;
+    let plat1 = ticket(&api, t, "PLAT", "story").await;
+    let plat2 = ticket(&api, t, "PLAT", "bug").await;
+    let plat3 = ticket(&api, t, "PLAT", "story").await;
+    let mail1 = ticket(&api, t, "MAIL", "story").await;
+    let mail2 = ticket(&api, t, "MAIL", "bug").await;
+    let (review, bug) = draft_removing_in_review_and_bug(&api, t, &id).await;
+    // Three tickets in review (one of them a bug), set as a transition would.
+    let mut tx = infra::db::begin_tenant_tx(&db.app_pool, t.id).await.unwrap();
+    let review_id = infra::uuid::Uuid::parse_str(review.as_str().unwrap()).unwrap();
+    for key in [&plat1, &plat2, &mail1] {
+        infra::sqlx::query("UPDATE issue SET status_id = $1 WHERE key = $2")
+            .bind(review_id)
+            .bind(key)
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+    }
+    tx.commit().await.unwrap();
+
+    // The impact counts them; publishing as is refused.
+    let impact = get(&api, t, &format!("{base}/publish-impact")).await;
+    assert_eq!(impact["needsMigration"], true);
+    assert_eq!(
+        (
+            &impact["removedStatuses"][0]["ticketCount"],
+            &impact["removedTypes"][0]["ticketCount"]
+        ),
+        (&json!(3), &json!(2))
+    );
+    let (status, refused) =
+        send(admin(&api, t, Method::POST, &format!("{base}/publish")).header("if-match", "*")).await;
+    assert_problem(status, &refused, 409, "config.migration_required");
+
+    // The plan: 3 in review, 2 bugs, 4 tickets to move (the bug in review once).
+    let plan = get(&api, t, &format!("{base}/migration-plan")).await;
+    assert_eq!(
+        (
+            &plan["statuses"][0]["ticketCount"],
+            &plan["types"][0]["ticketCount"],
+            &plan["ticketTotal"]
+        ),
+        (&json!(3), &json!(2), &json!(4))
+    );
+    let acceptance = by(&plan["statuses"][0]["targets"], "label", "In acceptance")["id"].clone();
+    let epic = by(&plan["types"][0]["targets"], "label", "Epic")["id"].clone();
+    let body = json!({
+        "statusMappings": [{"fromId": review, "toId": acceptance}],
+        "typeMappings": [{"fromId": bug, "toId": epic}],
+    });
+    let response = admin(&api, t, Method::POST, &format!("{base}/migrations"))
+        .header("if-match", format!("\"{}\"", plan["version"]))
+        .json(&body)
+        .send()
+        .await
+        .unwrap();
+    let location = response.headers()["location"].to_str().unwrap().to_owned();
+    let (status, started) = json(response).await;
+    assert_eq!(status, 202, "{started}");
+    assert_eq!(
+        (
+            &started["ticketTotal"],
+            &started["ticketsMigrated"],
+            &started["percent"]
+        ),
+        (&json!(4), &json!(0), &json!(0))
+    );
+
+    // The worker runs it.
+    let migration = infra::uuid::Uuid::parse_str(started["id"].as_str().unwrap()).unwrap();
+    let mut tx = infra::db::begin_tenant_tx(&db.app_pool, t.id).await.unwrap();
+    assert_eq!(
+        infra::config_migrations::run(&mut tx, migration).await.unwrap(),
+        infra::config_migrations::Outcome::Published
+    );
+    tx.commit().await.unwrap();
+    let done = get(&api, t, &location).await;
+    assert_eq!(
+        (
+            &done["state"],
+            &done["ticketTotal"],
+            &done["ticketsMigrated"],
+            &done["percent"]
+        ),
+        (&json!("done"), &json!(4), &json!(4), &json!(100))
+    );
+    assert_eq!(get(&api, t, &base).await["published"]["number"], 2);
+
+    // Each ticket in its new status and type, its history telling the system did it.
+    let read = |key: String| {
+        let api = &api;
+        async move {
+            let issue = get(api, t, &format!("/api/v1/issues/{key}")).await;
+            (issue["status"]["label"].clone(), issue["type"]["key"].clone())
+        }
+    };
+    assert_eq!(
+        read(plat1.clone()).await,
+        (json!("In acceptance"), json!("story"))
+    );
+    assert_eq!(read(plat2.clone()).await, (json!("In acceptance"), json!("epic")));
+    assert_eq!(read(plat3.clone()).await, (json!("To do"), json!("story")));
+    assert_eq!(read(mail1).await, (json!("In acceptance"), json!("story")));
+    assert_eq!(read(mail2.clone()).await, (json!("To do"), json!("epic")));
+    let system = (json!("system"), Value::Null);
+    let entries = history(&api, t, &plat2).await;
+    assert_eq!(
+        entries[..2],
+        [
+            (
+                json!("status"),
+                json!("In review"),
+                json!("In acceptance"),
+                system.0.clone(),
+                system.1.clone()
+            ),
+            (
+                json!("type"),
+                json!("Bug"),
+                json!("Epic"),
+                system.0.clone(),
+                system.1.clone()
+            ),
+        ]
+    );
+    assert_eq!(
+        history(&api, t, &mail2).await[0],
+        (
+            json!("type"),
+            json!("Bug"),
+            json!("Epic"),
+            system.0.clone(),
+            system.1.clone()
+        )
+    );
+    assert_eq!(history(&api, t, &plat3).await.len(), 1, "only its creation");
+}
