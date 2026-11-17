@@ -1,7 +1,8 @@
 //! Integration tests of `POST /api/v1/search` (L06-US01) on real PostgreSQL
 //! and Valkey: results with the fields asked for, Problem Details with the
 //! position of an error, pages and their cursor, the projects in sight,
-//! tenant isolation, and the time it takes on 100,000 tickets.
+//! tenant isolation, full text (L06-US03), and the time it takes on 100,000
+//! tickets.
 
 #![allow(clippy::unwrap_used)]
 
@@ -48,7 +49,8 @@ async fn node(api: &TestApi, tenant: &SeedTenant, body: Value) -> Uuid {
 }
 
 /// `count` tickets of `project` straight in SQL, numbered from `first`:
-/// statuses, priorities, assignees and due dates in rotation.
+/// statuses, priorities, assignees, due dates and one of five topics in the
+/// description in rotation.
 async fn seed(
     db: &TestDb,
     tenant: &SeedTenant,
@@ -62,7 +64,7 @@ async fn seed(
     infra::sqlx::query(
         r#"
         INSERT INTO issue (id, tenant_id, project_id, key_number, key, type_id, status_id, summary, priority,
-                           assignee_id, due_date, created_at)
+                           assignee_id, due_date, created_at, description)
         SELECT uuidv7(), app_current_tenant(), $1, n, $2 || '-' || n,
                (SELECT t.item_id FROM issue_type t JOIN project_config_version v ON v.id = t.version_id
                 AND v.state = 'published' WHERE t.key = 'task' LIMIT 1),
@@ -73,7 +75,11 @@ async fn seed(
                (ARRAY['lowest', 'low', 'medium', 'high', 'highest'])[n % 5 + 1],
                ($5::uuid[])[n % (cardinality($5::uuid[]) + 1)],
                CASE WHEN n % 3 = 0 THEN NULL ELSE CURRENT_DATE + (n % 30) END,
-               now() - make_interval(mins => n)
+               now() - make_interval(mins => n),
+               jsonb_build_object('type', 'doc', 'content', jsonb_build_array(jsonb_build_object(
+                   'type', 'paragraph', 'content', jsonb_build_array(jsonb_build_object('type', 'text', 'text',
+                   (ARRAY['Outage of the directory', 'Printer jam on the second floor', 'Password reset for a newcomer',
+                          'VPN access from home', 'Laptop replacement after a fall'])[n % 5 + 1])))))
         FROM generate_series($3::int, $3::int + $4::int - 1) AS n
         "#,
     )
@@ -399,6 +405,37 @@ async fn members_find_only_the_tickets_they_see_and_tenants_stay_apart() {
     );
 }
 
+#[tokio::test]
+async fn text_finds_tickets_despite_a_typo_best_matches_first() {
+    let db = TestDb::new().await;
+    let api = common::start(&db, multi()).await;
+    let a = &db.tenant_a;
+    let plat = node(
+        &api,
+        a,
+        json!({"type": "project", "name": "Platform", "key": "PLAT"}),
+    )
+    .await;
+    // PLAT-5 and -10: "Outage of the directory" in the description (the
+    // fifth topic of the rotation); PLAT-6 gets it in its title.
+    seed(&db, a, plat, "PLAT", 1, 10, &[]).await;
+    let mut tx = infra::db::begin_tenant_tx(&db.app_pool, a.id).await.unwrap();
+    infra::sqlx::query("UPDATE issue SET summary = 'Directory outage, again' WHERE key = 'PLAT-6'")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+
+    // The title weighs more than the description; then the newest first.
+    let page = search(&api, a, json!({"query": "text ~ \"directroy outgae\""})).await;
+    assert_eq!(keys(&page), ["PLAT-6", "PLAT-5", "PLAT-10"]);
+    assert_eq!(page["total"], 3);
+    let page = search(&api, a, json!({"query": "text ~ outage ORDER BY key DESC"})).await;
+    assert_eq!(keys(&page), ["PLAT-10", "PLAT-6", "PLAT-5"]);
+    let page = search(&api, a, json!({"query": "text ~ printer AND text !~ floor"})).await;
+    assert_eq!(page["total"], 0);
+}
+
 /// The 95th percentile of `times`.
 fn p95(mut times: Vec<Duration>) -> Duration {
     times.sort();
@@ -450,6 +487,10 @@ async fn searching_a_hundred_thousand_tickets_answers_within_200_ms_at_the_95th_
         "assignee = currentUser() AND status != done ORDER BY due",
         "project IN descendantsOf(\"PORTF-HR\") AND priority >= high ORDER BY updated DESC",
         "due > now() AND assignee IS NOT EMPTY ORDER BY key",
+        // A fifth of the tickets, ranked; a typo; a rare word (20 tickets).
+        "text ~ \"directory outage\"",
+        "text ~ \"pasword\" AND status != done",
+        "text ~ \"4217\"",
     ];
     for query in queries {
         let page = search(&api, a, json!({"query": query})).await;

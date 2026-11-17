@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT t.text AS \"text!\", w.lexeme AS \"word!\"\n        FROM unnest($1::text[]) AS t(text), unnest(to_tsvector('mlbpp_simple', t.text)) AS w\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "text!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "word!",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "6c16ee734df37d4060d197cb2e81ac91184bbbda5a42ea4b6a6213c2b5e5da33"
+}

@@ -195,7 +195,7 @@ A single query language, inspired by JQL, powers search, filters, boards, the Ga
 - It relies on stable identifiers (`in_progress`), never on translated labels.
 - The interface offers a visual builder that generates the query, and an editor with autocompletion.
 - Filters can be saved, personal or shared.
-- Full-text search: PostgreSQL (`tsvector` and `pg_trgm`), behind an abstraction that will allow a dedicated engine later.
+- Full-text search: PostgreSQL (`tsvector`, French and English stemming, accents ignored) over the title, the description and the comments (public ones only for the portal), behind an abstraction that will allow a dedicated engine later. Typos are corrected against the words already written in the tenant, by edit distance (swapping two letters counts as one edit): none under 4 letters, one edit up to 7, two beyond.
 - After the MVP: history operators (`status WAS`, `CHANGED`) and link functions (`linkedTo()`).
 
 **Boards (MVP)**

@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT word FROM search_word WHERE word = ANY($1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "word",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "search_word",
+            "name": "word"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "c1f69e83122bf6e51d75b17be4c538ca4bba040249abae70e60cae7eefcd2910"
+}

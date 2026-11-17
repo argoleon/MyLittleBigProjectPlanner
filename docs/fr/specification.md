@@ -195,7 +195,7 @@ Un langage de requête unique, inspiré de JQL, sert à la recherche, aux filtre
 - Elle s'appuie sur des identifiants stables (`in_progress`), jamais sur des libellés traduits.
 - L'interface propose un constructeur visuel qui génère la requête, et un éditeur avec autocomplétion.
 - Les filtres sont sauvegardables, personnels ou partagés.
-- Recherche plein texte : PostgreSQL (`tsvector` et `pg_trgm`), derrière une abstraction qui permettra un moteur dédié plus tard.
+- Recherche plein texte : PostgreSQL (`tsvector`, racinisation française et anglaise, sans accents) sur le titre, la description et les commentaires (publics seulement pour le portail), derrière une abstraction qui permettra un moteur dédié plus tard. Les fautes de frappe sont corrigées d'après les mots déjà écrits dans le tenant, par distance d'édition (une inversion de deux lettres compte pour une modification) : rien sous 4 lettres, une modification jusqu'à 7, deux au-delà.
 - Après le MVP : opérateurs d'historique (`status WAS`, `CHANGED`) et fonctions de liens (`linkedTo()`).
 
 **Boards (MVP)**

@@ -13,6 +13,7 @@ use axum::response::{IntoResponse, Response};
 use domain::issues::Priority;
 use domain::query::{QueryError, QueryErrorKind};
 use domain::validation::FieldError;
+use infra::full_text::Audience;
 use infra::search::{Context, SearchError};
 use infra::uuid::Uuid;
 use serde::{Deserialize, Serialize};
@@ -295,6 +296,8 @@ pub async fn search(
         account_id: account,
         time_zone: &time_zone,
         visible_projects: visible.as_deref(),
+        // The portal (L13) will search as `Audience::Portal`.
+        audience: Audience::Members,
     };
     let page = infra::search::search(
         &mut tx,
