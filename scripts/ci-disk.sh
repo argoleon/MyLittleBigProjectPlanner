@@ -5,7 +5,7 @@
 # deployment job, outgrow the ~14 GB a runner has free: the linker then dies
 # with SIGBUS, or Docker runs out of space. The preinstalled toolchains this
 # project never uses take about 25 GB, but deleting them takes one to two
-# minutes. So:
+# minutes. So, unless the runner already has enough room:
 #
 #   free  starts deleting them in the background and returns at once; the
 #         checkout, the caches and the images are fetched meanwhile;
@@ -29,6 +29,14 @@ case "${1:-}" in
         mkdir -p "$state"
         rm -f "$state/done"
         df -h /
+        # Runners with a larger disk (145 GB, 89 GB free in November 2026)
+        # need nothing deleted: about 40 GB free is what the cleanup used to
+        # leave, and enough.
+        if [ "$(df --output=avail -BG / | tail -1 | tr -dc 0-9)" -ge 40 ]; then
+            echo "enough space already: nothing deleted" | tee "$state/log"
+            echo 0 > "$state/done"
+            exit 0
+        fi
         # Detached, its output in a file: the step does not wait for it.
         nohup setsid "$0" delete > "$state/log" 2>&1 < /dev/null &
         echo "deleting ${unused[*]} in the background"
