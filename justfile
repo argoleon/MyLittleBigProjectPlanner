@@ -189,10 +189,13 @@ web-licenses: web-build
 e2e *args: web-deps
     {{pw}} npx playwright test {{args}}
 
-# (none allowed in what ships, none high or critical in the build and test tools)
+# (none allowed in what ships; none high or critical in the build and test
+# tools, but the dated exceptions of web/audit-exceptions.json)
 # Fail on known vulnerabilities of the npm dependencies
 web-audit: web-deps
-    {{fe}} bash -c 'npm audit --omit=dev --audit-level=low && npm audit --audit-level=high'
+    {{fe}} npm audit --omit=dev --audit-level=low
+    {{fe}} node --test scripts/check-audit.test.mjs
+    {{fe}} node scripts/check-audit.mjs
 
 # Accessibility checks only (axe-core in the end-to-end tests)
 a11y: (e2e "--grep" "axe-core")

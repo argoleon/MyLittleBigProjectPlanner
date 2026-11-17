@@ -1,0 +1,5 @@
+{
+  "exceptions": [
+    { "advisory": "GHSA-fc5q-39xc-vjpf", "package": "micromatch", "decided": "2026-11-17", "until": "2027-01-15", "reason": "not this package" }
+  ]
+}

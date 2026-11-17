@@ -1,0 +1,6 @@
+{
+  "exceptions": [
+    { "advisory": "GHSA-fc5q-39xc-vjpf", "package": "picomatch", "decided": "2026-11-17", "until": "2027-01-15", "reason": "tools only" },
+    { "advisory": "GHSA-gone-gone-gone", "package": "fixed-since", "decided": "2026-01-01", "until": "2027-01-15", "reason": "fixed upstream since" }
+  ]
+}

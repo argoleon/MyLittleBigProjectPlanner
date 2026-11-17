@@ -1,0 +1,12 @@
+{
+  "$comment": "High or critical advisories accepted in the build and test tools only (scripts/check-audit.mjs, `just web-audit`). What ships has no exception: `npm audit --omit=dev` must find nothing. Each entry says why, and until when: past that date the audit fails again, to be reviewed.",
+  "exceptions": [
+    {
+      "advisory": "GHSA-fc5q-39xc-vjpf",
+      "package": "picomatch",
+      "decided": "2026-11-17",
+      "until": "2027-01-15",
+      "reason": "ReDoS on crafted extglob patterns, no fixed version (every version up to 4.0.7, the latest). Only in build, test and lint tools (Angular CLI, Vite, Vitest, stylelint), which match the glob patterns of our own configuration, never outside input; the shipped bundles do not contain it."
+    }
+  ]
+}

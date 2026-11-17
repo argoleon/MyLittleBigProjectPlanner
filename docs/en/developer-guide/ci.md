@@ -25,7 +25,7 @@ Artifacts: the SBOM of each image (`sbom`, every run), and the Playwright traces
 ### Policies enforced
 
 - **Licenses** (CLAUDE.md, "Licensing"): `backend/deny.toml` for crates, `web/scripts/check-licenses.mjs` for npm packages, the latter checking the shipped bundles themselves for tools-only licenses.
-- **Vulnerabilities**: any RustSec advisory or yanked crate fails; npm: any known vulnerability in what ships, high or critical ones in build and test tools.
+- **Vulnerabilities**: any RustSec advisory or yanked crate fails; npm: any known vulnerability in what ships, high or critical ones in build and test tools (`web/scripts/check-audit.mjs`). An advisory with no fixed version may be accepted in the tools only, by an entry in `web/audit-exceptions.json`: the advisory, its package, the reason and a review date, past which the audit fails again. What ships never has exceptions.
 - **Secrets**: a false positive is either annotated inline (`gitleaks:allow` with the reason) or, for a past commit, listed in `.gitleaksignore`.
 
 ## Configuring the repository
