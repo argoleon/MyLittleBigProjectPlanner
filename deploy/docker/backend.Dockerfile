@@ -10,19 +10,30 @@
 # - Runtime: distroless (glibc, CA certificates, no shell), user nonroot.
 # - Queries are checked against backend/.sqlx: no database needed to build.
 # - Migrations are embedded in the api binary: `api migrate` runs them.
+# - The dependencies are compiled in a layer of their own (cargo-chef): it
+#   only changes with Cargo.lock, so a layer cache (CI: a registry cache,
+#   see deploy/compose.ci-cache.yaml) leaves only our crates to compile.
+#   No cache mount: what they hold is not part of a layer cache.
 
 ARG RUST_IMAGE=rust:1.99.1-trixie
 ARG RUNTIME_IMAGE=gcr.io/distroless/cc-debian13:nonroot
 
-FROM ${RUST_IMAGE} AS build
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    cargo install --locked cargo-auditable@0.7.7
+FROM ${RUST_IMAGE} AS chef
+RUN cargo install --locked cargo-auditable@0.7.7 cargo-chef@0.1.78 \
+    && rm -rf /usr/local/cargo/registry
 WORKDIR /src
+
+# The recipe: manifests and lock file only, the same while they are.
+FROM chef AS plan
+COPY backend/ ./
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM chef AS build
+COPY --from=plan /src/recipe.json recipe.json
+RUN cargo chef cook --release --locked -p api -p worker -p mcp --recipe-path recipe.json
 COPY backend/ ./
 ENV SQLX_OFFLINE=true
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/src/target \
-    cargo auditable build --release --locked -p api -p worker -p mcp \
+RUN cargo auditable build --release --locked -p api -p worker -p mcp \
     && mkdir -p /out \
     && cp target/release/api target/release/worker target/release/mcp /out/
 

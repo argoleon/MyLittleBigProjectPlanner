@@ -4,8 +4,13 @@
 # `api` (server with live reload) services of deploy/compose.dev.yaml.
 # Nothing in it is shipped: production images come with L01-US06.
 
+# CI pulls it from ghcr.io, tagged with this file's hash, instead of
+# compiling the tools on every run (`just ci-dev-image`).
+
 # Keep in sync with backend/rust-toolchain.toml.
 FROM rust:1.99.1-trixie
+LABEL org.opencontainers.image.source="https://github.com/argoleon/MyLittleBigProjectPlanner" \
+      org.opencontainers.image.description="Development toolchain of My Little Big Project Planner (not shipped)"
 
 RUN rustup component add rustfmt clippy \
     && apt-get update \
