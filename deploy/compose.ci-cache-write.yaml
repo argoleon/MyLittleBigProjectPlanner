@@ -1,0 +1,14 @@
+# CI only, on pushes to the long-lived branches: saves the layers of the Rust
+# build, every stage included (mode=max), in the registry cache read by
+# compose.ci-cache.yaml. The justfile adds this file when
+# MLBPP_BUILD_CACHE_WRITE is "true"; exporting a cache needs a BuildKit
+# builder of the docker-container driver (`just ci-builder`).
+#
+# The api image alone writes it: the three Rust images share the stage that
+# compiles them, and the cache holds it once.
+
+services:
+  api:
+    build:
+      cache_to:
+        - type=registry,ref=${MLBPP_BUILD_CACHE:?}:backend,mode=max

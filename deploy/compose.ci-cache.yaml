@@ -1,0 +1,22 @@
+# CI only: the Rust images reuse the layers of an earlier build, above all
+# the compiled dependencies (deploy/docker/backend.Dockerfile), from a
+# registry cache. The justfile adds this file when MLBPP_BUILD_CACHE names
+# the cache (e.g. ghcr.io/argoleon/mlbpp-build-cache); a missing cache only
+# makes the build slower. compose.ci-cache-write.yaml writes it.
+#
+# Never used to build a release: the release workflow does not set
+# MLBPP_BUILD_CACHE.
+
+services:
+  api:
+    build:
+      cache_from:
+        - type=registry,ref=${MLBPP_BUILD_CACHE:?}:backend
+  worker:
+    build:
+      cache_from:
+        - type=registry,ref=${MLBPP_BUILD_CACHE:?}:backend
+  mcp:
+    build:
+      cache_from:
+        - type=registry,ref=${MLBPP_BUILD_CACHE:?}:backend

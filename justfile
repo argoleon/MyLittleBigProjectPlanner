@@ -140,20 +140,18 @@ openapi:
 generate-client: openapi web-deps
     {{fe}} npx ng-openapi-gen --config ng-openapi-gen.json
 
-# (on disk: in CI, the committed ones)
-# Fail, showing the diff, if the contract or the client is out of date with the code
-client-check:
+# (CI job "web", without Rust: the unit test committed_contract_is_up_to_date of the
+# api crate ties backend/openapi.json to the code, in the backend job)
+# Fail, showing the diff, if the generated client is out of date with backend/openapi.json
+client-check: web-deps
     #!/usr/bin/env bash
     set -euo pipefail
     before=$(mktemp -d)
     trap 'rm -rf "$before"' EXIT
-    mkdir -p "$before/generated"
-    cp backend/openapi.json "$before/openapi.json" 2>/dev/null || true
-    cp -r web/projects/ui/src/lib/api/generated/. "$before/generated/" 2>/dev/null || true
-    just generate-client
-    if ! diff -ruN "$before/openapi.json" backend/openapi.json \
-        || ! diff -ruN "$before/generated" web/projects/ui/src/lib/api/generated; then
-        echo "The OpenAPI contract or the generated client was out of date: it is now regenerated, review and commit it." >&2
+    cp -r web/projects/ui/src/lib/api/generated/. "$before/" 2>/dev/null || true
+    {{fe}} npx ng-openapi-gen --config ng-openapi-gen.json
+    if ! diff -ruN "$before" web/projects/ui/src/lib/api/generated; then
+        echo "The generated client was out of date with backend/openapi.json: it is now regenerated, review and commit it." >&2
         exit 1
     fi
 
@@ -204,7 +202,13 @@ web-check: web-lint web-i18n client-check web-licenses web-test e2e
 # Run locally with compose.local.yaml: images built from the sources,
 # https://localhost:18443 with a self-signed certificate. See deploy/README.md.
 
-stack := "MLBPP_DOMAIN=localhost MLBPP_REGISTRY=mlbpp-local MLBPP_VERSION=local MLBPP_PUBLIC_PORT=:18443 BOOTSTRAP_ADMIN_EMAIL=root@example.test docker compose -f deploy/compose.yaml -f deploy/compose.local.yaml"
+# (CI: MLBPP_BUILD_CACHE reads a registry cache of the Rust build, and
+# MLBPP_BUILD_CACHE_WRITE=true writes it; see deploy/compose.ci-cache*.yaml.)
+# Writing goes through the builder of `just ci-builder`.
+cache_write := if env("MLBPP_BUILD_CACHE", "") == "" { "false" } else { env("MLBPP_BUILD_CACHE_WRITE", "false") }
+stack_cache := if env("MLBPP_BUILD_CACHE", "") == "" { "" } else if cache_write == "true" { " -f deploy/compose.ci-cache.yaml -f deploy/compose.ci-cache-write.yaml" } else { " -f deploy/compose.ci-cache.yaml" }
+stack_builder := if cache_write == "true" { "BUILDX_BUILDER=mlbpp-ci " } else { "" }
+stack := "MLBPP_DOMAIN=localhost MLBPP_REGISTRY=mlbpp-local MLBPP_VERSION=local MLBPP_PUBLIC_PORT=:18443 BOOTSTRAP_ADMIN_EMAIL=root@example.test " + stack_builder + "docker compose -f deploy/compose.yaml -f deploy/compose.local.yaml" + stack_cache
 
 # Lint the scripts (shellcheck) and the CI workflows (actionlint), validate the compose files
 deploy-lint: compose-secrets
@@ -248,11 +252,21 @@ compose-down:
 compose-reset:
     {{stack}} --profile sso --profile observability down --volumes
 
-# (nginx, its Content-Security-Policy, Traefik; from the e2e container on its network)
+# (nginx, its Content-Security-Policy, Traefik; from the e2e container on its
+# network. Every test by default; Playwright options pass through, e.g.
+# `just compose-e2e --grep=axe-core`.)
 # Run the end-to-end tests against the local production stack
+[positional-arguments]
 compose-e2e *args: web-deps
     {{compose}} --profile e2e build e2e
-    deploy/tests/e2e.sh {{args}}
+    deploy/tests/e2e.sh "$@"
+
+# What compose-test runs on the stack: the tests that need it (*-stack), and
+# each screen's axe-core pass in one theme and language, which loads it
+# behind nginx and its Content-Security-Policy. Every test, in every theme
+# and language, already runs on the production build (`just e2e`, CI job
+# "web"): the mocked ones gain nothing more here.
+stack_e2e := "--grep=-stack\\.spec\\.ts|light mode, fr .*axe-core"
 
 # Deployment tests: smoke, backups, scaling, optional profiles, end to end
 compose-test: compose-up
@@ -260,15 +274,55 @@ compose-test: compose-up
     deploy/tests/backup.sh
     deploy/tests/scale.sh
     deploy/tests/profiles.sh
-    just compose-e2e
+    just compose-e2e {{quote(stack_e2e)}}
 
 # --- Continuous integration ---------------------------------------------------
 # GitHub Actions runs one job per ci-* recipe (.github/workflows/ci.yml) and
-# nothing else: `just ci` reproduces the whole pipeline locally.
+# nothing else: `just ci` reproduces the whole pipeline locally. The ci-disk-*
+# and ci-dev-image recipes only prepare a GitHub runner.
 
 # Secret scan of the git history (gitleaks), with a self-test
 gitleaks:
     scripts/gitleaks.sh
+
+# (GitHub runners only) Start deleting the unused preinstalled toolchains, in the background
+ci-disk-free:
+    scripts/ci-disk.sh free
+
+# (GitHub runners only) Wait until ci-disk-free is done
+ci-disk-wait:
+    scripts/ci-disk.sh wait
+
+# (Tagged with its Dockerfile's hash: an image is never reused for another
+# Dockerfile. DEV_IMAGE_PUSH=true publishes it when built: pushes to the
+# long-lived branches only, so a pull request never writes what they use.)
+# Pull the development image of the Rust toolchain, or build it when none is published for its Dockerfile
+ci-dev-image registry="ghcr.io/argoleon":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    tag=$(sha256sum deploy/dev/backend.Dockerfile | cut -c1-16)
+    ref="{{registry}}/mlbpp-dev-backend:$tag"
+    if docker pull --quiet "$ref" > /dev/null 2>&1; then
+        docker tag "$ref" mlbpp-dev-backend
+        echo "mlbpp-dev-backend: pulled $ref"
+        exit 0
+    fi
+    echo "mlbpp-dev-backend: $ref not published, built"
+    {{compose}} build backend
+    if [ "${DEV_IMAGE_PUSH:-false}" = true ]; then
+        docker tag mlbpp-dev-backend "$ref"
+        docker push --quiet "$ref"
+    fi
+
+# (The default docker driver can read a registry cache, not write one.)
+# BuildKit builder that writes the cache of the Rust images, when MLBPP_BUILD_CACHE_WRITE=true
+ci-builder:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ "{{cache_write}}" = true ]; then
+        docker buildx inspect mlbpp-ci > /dev/null 2>&1 \
+            || docker buildx create --name mlbpp-ci --driver docker-container --bootstrap
+    fi
 
 # CI job "backend": quality gates and dependency policy of the Rust code
 ci-backend: check deny
@@ -277,7 +331,7 @@ ci-backend: check deny
 ci-web: web-check web-audit
 
 # CI job "deploy": images, compose stack and end-to-end tests on it
-ci-deploy: deploy-lint images-test compose-test
+ci-deploy: ci-builder deploy-lint images-test compose-test
 
 # CI job "security": secrets in the repository
 ci-security: gitleaks
