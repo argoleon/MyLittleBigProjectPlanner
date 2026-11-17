@@ -192,7 +192,7 @@ test('the builder writes the query: project PLAT and status In progress', async 
   // The same query, in the editor.
   await page.getByRole('radio', { name: 'Query' }).click();
   await expect(page.getByRole('combobox', { name: 'Query' })).toHaveValue('project IN (PLAT) AND status IN (in_progress)');
-  expect(queries.at(-1)).toBe('project IN (PLAT) AND status IN (in_progress)');
+  await expect.poll(() => queries.at(-1)).toBe('project IN (PLAT) AND status IN (in_progress)');
 });
 
 test('typing stat suggests status, then its keys with their labels, with the keyboard alone', async ({ page }) => {
@@ -216,7 +216,7 @@ test('typing stat suggests status, then its keys with their labels, with the key
   await page.keyboard.press('Escape');
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/q=status%20%3D%20in_progress$/);
-  expect(queries.at(-1)).toBe('status = in_progress');
+  await expect.poll(() => queries.at(-1)).toBe('status = in_progress');
 });
 
 test('a query the builder can show opens in it with the same criteria; another stays in the editor', async ({ page }) => {
