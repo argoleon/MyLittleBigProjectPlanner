@@ -35,9 +35,28 @@ function result(n: number, overrides: Partial<SearchResult> = {}): SearchResult 
   };
 }
 
+/** What the API suggests after `<field> IN (`: the builder's lists. */
+const LISTS: Record<string, object[]> = {
+  'status IN (': [
+    { kind: 'value', text: 'todo', label: 'To do', detail: 'todo' },
+    { kind: 'value', text: 'in_progress', label: 'In progress', detail: 'in_progress' },
+  ],
+};
+
+/** The tree of `status IN (<keys>)`, as `POST /search/parse` returns it. */
+function statusTree(query: string, ...keys: string[]) {
+  return {
+    query,
+    filter: { kind: 'clause', field: 'status', operator: 'IN', values: keys.map((value) => ({ kind: 'text', value })) },
+    orderBy: [],
+  };
+}
+
 describe('the search screen', () => {
-  async function open(url: string) {
+  /** The screen at `url`, in the query mode unless told (`null`: never chosen yet). */
+  async function open(url: string, mode: 'query' | 'builder' | null = 'query') {
     localStorage.clear();
+    if (mode) localStorage.setItem('mlbpp.search.mode', mode);
     TestBed.configureTestingModule({
       providers: [
         provideRouter([{ path: 'search', component: SearchPage }], withComponentInputBinding()),
@@ -49,9 +68,14 @@ describe('the search screen', () => {
     });
     const http = TestBed.inject(HttpTestingController);
     // The table draws the rows of the viewport's range on an animation frame.
+    // The editor's suggestions are answered with none.
     const settle = async () => {
       for (let i = 0; i < 4; i++) {
         await new Promise((resolve) => setTimeout(resolve, 20));
+        for (const asked of http.match((r) => r.url === '/api/v1/search/suggestions')) {
+          const query = (asked.request.body as { query: string }).query;
+          asked.flush({ from: 0, to: 0, suggestions: LISTS[query] ?? [] });
+        }
         TestBed.tick();
       }
     };
@@ -62,6 +86,17 @@ describe('the search screen', () => {
         if (!request) await new Promise((resolve) => setTimeout(resolve, 20));
       }
       if (!request) throw new Error('no search request');
+      request.flush(body, { status, statusText: status < 400 ? 'OK' : 'Error' });
+      await settle();
+      return request;
+    };
+    const parsed = async (body: object, status = 200): Promise<TestRequest> => {
+      let request: TestRequest | undefined;
+      for (let i = 0; i < 50 && !request; i++) {
+        [request] = http.match((r) => r.url === '/api/v1/search/parse');
+        if (!request) await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      if (!request) throw new Error('no parse request');
       request.flush(body, { status, statusText: status < 400 ? 'OK' : 'Error' });
       await settle();
       return request;
@@ -78,7 +113,7 @@ describe('the search screen', () => {
       (element as HTMLElement).click();
       await settle();
     };
-    return { http, harness, settle, searched, root, page, text, texts, field, click };
+    return { http, harness, settle, searched, parsed, root, page, text, texts, field, click };
   }
 
   it('runs the query of the address and shows the results with their total', async () => {
@@ -210,5 +245,62 @@ describe('the search screen', () => {
     await click(page().querySelector('ui-error-state button'));
     await searched({ items: [result(1)], nextCursor: null, total: 1 });
     expect(page().querySelector('ui-error-state')).toBeNull();
+  });
+
+  it('opens in the builder the first time, and runs the query its criteria write', async () => {
+    const { searched, parsed, page, root, click } = await open('/search', null);
+    expect((await parsed({ query: '', filter: null, orderBy: [] })).request.body).toEqual({ query: '' });
+    await searched({ items: [], nextCursor: null, total: 0 });
+    expect(page().querySelector('app-query-builder')).not.toBeNull();
+    expect(page().querySelector('app-query-editor')).toBeNull();
+    const toggle = page().querySelector('mat-button-toggle.builder-mode button');
+    expect([toggle?.getAttribute('role'), toggle?.getAttribute('aria-checked')]).toEqual(['radio', 'true']);
+
+    await click(page().querySelector('mat-select.statuses'));
+    await click(Array.from(root().querySelectorAll('mat-option')).find((o) => o.textContent?.includes('In progress')));
+    const run = await searched({ items: [result(1)], nextCursor: null, total: 1 });
+    expect(run.request.body).toEqual({ query: 'status IN (in_progress)', limit: 50 });
+    expect(decodeURIComponent(TestBed.inject(Router).url)).toBe('/search?q=status IN (in_progress)');
+    expect(await axeViolations(page())).toEqual([]);
+  });
+
+  it('shows the same query in the editor, and back in the builder, the mode remembered', async () => {
+    const { searched, parsed, page, click, field } = await open('/search?q=status%20IN%20(todo)');
+    await searched({ items: [], nextCursor: null, total: 0 });
+    expect(field().value).toBe('status IN (todo)');
+
+    await click(page().querySelector('mat-button-toggle.builder-mode button'));
+    await parsed(statusTree('status IN (todo)', 'todo'));
+    expect(page().querySelector('mat-select.statuses')?.textContent).toContain('To do');
+    expect(localStorage.getItem('mlbpp.search.mode')).toBe('builder');
+
+    await click(page().querySelector('mat-button-toggle.query-mode button'));
+    expect(field().value).toBe('status IN (todo)');
+    expect(localStorage.getItem('mlbpp.search.mode')).toBe('query');
+  });
+
+  it('keeps in the editor a query the builder cannot show, and says why', async () => {
+    const query = 'status = todo OR status = done';
+    const { searched, parsed, page, text, click, field } = await open(`/search?q=${encodeURIComponent(query)}`);
+    await searched({ items: [], nextCursor: null, total: 0 });
+    await click(page().querySelector('mat-button-toggle.builder-mode button'));
+    await parsed({
+      query,
+      filter: {
+        kind: 'or',
+        operands: [
+          { kind: 'clause', field: 'status', operator: '=', values: [{ kind: 'text', value: 'todo' }] },
+          { kind: 'clause', field: 'status', operator: '=', values: [{ kind: 'text', value: 'done' }] },
+        ],
+      },
+      orderBy: [],
+    });
+    expect(page().querySelector('app-query-builder')).toBeNull();
+    expect(page().querySelector('mat-button-toggle.query-mode button')?.getAttribute('aria-checked'), 'the toggle goes back').toBe('true');
+    expect(field().value).toBe(query);
+    expect(text(page().querySelector('.notice[role="status"]'))).toBe(
+      'This query cannot be shown in the builder: it stays in the editor.',
+    );
+    expect(localStorage.getItem('mlbpp.search.mode')).toBe('query');
   });
 });

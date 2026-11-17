@@ -1771,6 +1771,60 @@
       "too_many_clauses": "The query has too many conditions.",
       "too_many_values": "The list has too many values.",
       "too_many_order_keys": "The query sorts by too many fields."
+    },
+    "mode": {
+      "label": "How to write the query",
+      "builder": "Builder",
+      "query": "Query"
+    },
+    "builder": {
+      "label": "Search criteria",
+      "cannot": "This query cannot be shown in the builder: it stays in the editor.",
+      "remove": "Remove {{ value }}",
+      "addProject": "Add a project…",
+      "addPerson": "Add a person…",
+      "me": "Me",
+      "any": "Any",
+      "custom": "Custom range…",
+      "due": {
+        "overdue": "Overdue",
+        "this_week": "This week",
+        "this_month": "This month",
+        "none": "No due date"
+      },
+      "created": {
+        "last_7_days": "Last 7 days",
+        "last_30_days": "Last 30 days"
+      },
+      "dueFrom": "Due from",
+      "dueTo": "Due to",
+      "createdFrom": "Created from",
+      "createdTo": "Created to",
+      "text": "Text contains"
+    },
+    "suggestion": {
+      "field": "field",
+      "operator": "operator",
+      "keyword": "keyword",
+      "function": "function",
+      "value": "value"
+    },
+    "fields": {
+      "key": "Key",
+      "project": "Project",
+      "type": "Type",
+      "status": "Status",
+      "priority": "Priority",
+      "assignee": "Assignee",
+      "reporter": "Reporter",
+      "summary": "Summary",
+      "description": "Description",
+      "text": "Text (summary and description)",
+      "created": "Created",
+      "updated": "Updated",
+      "due": "Due",
+      "start": "Start",
+      "parent": "Parent"
     }
   }
 }

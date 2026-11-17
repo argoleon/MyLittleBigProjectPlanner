@@ -1,9 +1,7 @@
-import { TextFieldModule } from '@angular/cdk/text-field';
 import { ListRange } from '@angular/cdk/collections';
 import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
 import {
   Component,
-  ElementRef,
   computed,
   effect,
   inject,
@@ -13,11 +11,9 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatButtonToggleGroup, MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSortModule, Sort } from '@angular/material/sort';
@@ -36,12 +32,16 @@ import {
   TypeChip,
   errorTranslationKey,
   isApiProblem,
+  parseQuery,
   searchWithQuery,
 } from 'ui';
 
 import { chipCategory, chipKind } from '../issues/issue-fields';
+import { Criteria, NO_CRITERIA, criteriaOf, queryOf } from './criteria';
+import { QueryBuilder } from './query-builder';
+import { QueryEditor } from './query-editor';
 import { QueryErrorMessage, queryErrorMessage } from './query-error';
-import { sortOf, withSort } from './query-order';
+import { orderByIndex, sortOf, withSort } from './query-order';
 
 /** Results per page. */
 const PAGE_SIZE = 50;
@@ -51,6 +51,20 @@ const ROW_HEIGHT = 52;
 const PREFETCH_ROWS = 10;
 /** Where the columns chosen by the member are kept, in this browser. */
 const COLUMNS_KEY = 'mlbpp.search.columns';
+/** Where the last mode the member chose is kept, in this browser. */
+const MODE_KEY = 'mlbpp.search.mode';
+
+/** How the query is written: with the visual builder, or as text. */
+export type SearchMode = 'builder' | 'query';
+
+/** The mode last chosen in this browser; the builder the first time. */
+function storedMode(): SearchMode {
+  try {
+    return localStorage.getItem(MODE_KEY) === 'query' ? 'query' : 'builder';
+  } catch {
+    return 'builder';
+  }
+}
 
 /** A column of the results, and the field of the language that sorts it. */
 export interface SearchColumn {
@@ -107,19 +121,18 @@ function storedColumns(): readonly string[] {
     InstantPipe,
     LocalDatePipe,
     MatButtonModule,
-    MatFormFieldModule,
+    MatButtonToggleModule,
     MatIconModule,
-    MatInputModule,
     MatMenuModule,
     MatProgressBarModule,
     MatSortModule,
     MatTableModule,
     Priority,
-    ReactiveFormsModule,
+    QueryBuilder,
+    QueryEditor,
     RouterLink,
     ScrollingModule,
     StatusChip,
-    TextFieldModule,
     TranslocoPipe,
     TypeChip,
   ],
@@ -133,7 +146,8 @@ export class SearchPage {
   private readonly api = inject(Api);
   private readonly router = inject(Router);
   private readonly transloco = inject(TranslocoService);
-  private readonly field = viewChild<ElementRef<HTMLTextAreaElement>>('queryInput');
+  private readonly editor = viewChild(QueryEditor);
+  private readonly modes = viewChild(MatButtonToggleGroup);
   private readonly viewport = viewChild(CdkVirtualScrollViewport);
 
   protected readonly rowHeight = ROW_HEIGHT;
@@ -141,7 +155,12 @@ export class SearchPage {
   protected readonly allColumns = SEARCH_COLUMNS;
   protected readonly chipCategory = chipCategory;
   protected readonly chipKind = chipKind;
-  protected readonly queryControl = new FormControl('', { nonNullable: true });
+  /** The query being written, in the editor or by the builder. */
+  protected readonly draft = signal('');
+  protected readonly mode = signal<SearchMode>(storedMode());
+  protected readonly criteria = signal<Criteria>(NO_CRITERIA);
+  /** Said when a query cannot be shown in the builder. */
+  protected readonly notice = signal<string | null>(null);
 
   /** The query run: the address's. */
   protected readonly ran = computed(() => (this.q() ?? '').trim());
@@ -194,7 +213,8 @@ export class SearchPage {
       const query = this.ran();
       this.runs();
       untracked(() => {
-        this.queryControl.setValue(query, { emitEvent: false });
+        this.draft.set(query);
+        if (this.mode() === 'builder') void this.showInBuilder(query);
         this.more.set([]);
         this.moreCursor.set(undefined);
         this.moreError.set(null);
@@ -208,13 +228,13 @@ export class SearchPage {
       const subscription = viewport.renderedRangeStream.subscribe((range) => this.range.set(range));
       onCleanup(() => subscription.unsubscribe());
     });
-    // A refused query: the field gets the focus, the part concerned selected.
+    // A refused query: the editor, the part concerned selected.
     effect(() => {
       const error = this.queryError();
-      const field = this.field()?.nativeElement;
-      if (!error || !field) return;
-      field.focus();
-      field.setSelectionRange(error.start, Math.max(error.start, error.end));
+      if (!error) return;
+      untracked(() => this.mode.set('query'));
+      const editor = this.editor();
+      if (editor) editor.focusRange(error.start, Math.max(error.start, error.end));
     });
     // Close to the end of what is loaded: the next page.
     effect(() => {
@@ -225,9 +245,9 @@ export class SearchPage {
     });
   }
 
-  /** Runs the query of the field: in the address, so the history keeps it. */
+  /** Runs the query written: in the address, so the history keeps it. */
   protected run(): void {
-    const query = this.queryControl.value.trim();
+    const query = this.draft().trim();
     if (query === this.ran()) {
       this.runs.update((n) => n + 1);
       return;
@@ -235,18 +255,57 @@ export class SearchPage {
     void this.router.navigate([], { queryParams: { q: query || null }, queryParamsHandling: 'merge' });
   }
 
-  /** Enter runs the query; Shift+Enter goes to the next line. */
-  protected onEnter(event: Event): void {
-    if ((event as KeyboardEvent).shiftKey) return;
-    event.preventDefault();
+  /** The builder changed: its query runs, sorted as before. */
+  protected built(criteria: Criteria): void {
+    this.criteria.set(criteria);
+    const at = orderByIndex(this.ran());
+    this.draft.set(queryOf(criteria, at < 0 ? '' : this.ran().slice(at)));
     this.run();
+  }
+
+  /** Switches the mode; the builder only for a query it can show. */
+  protected async setMode(mode: SearchMode): Promise<void> {
+    this.notice.set(null);
+    if (mode === 'builder' && !(await this.showInBuilder(this.draft()))) {
+      // The toggle the member pressed goes back to the editor.
+      const modes = this.modes();
+      if (modes) modes.value = 'query';
+      return;
+    }
+    this.mode.set(mode);
+    try {
+      localStorage.setItem(MODE_KEY, mode);
+    } catch {
+      // Not kept in this browser.
+    }
+  }
+
+  /**
+   * Shows `query` in the builder when it can; otherwise the editor, with a
+   * word why. Whether it could.
+   */
+  private async showInBuilder(query: string): Promise<boolean> {
+    let criteria: Criteria | null = null;
+    try {
+      criteria = criteriaOf(await this.api.invoke(parseQuery, { body: { query } }));
+    } catch {
+      // A wrong query: the editor shows why.
+    }
+    if (criteria) {
+      this.criteria.set(criteria);
+      this.mode.set('builder');
+      return true;
+    }
+    this.mode.set('query');
+    this.notice.set('search.builder.cannot');
+    return false;
   }
 
   /** Sorting a column sorts the query by its field. */
   protected sortBy(sort: Sort): void {
     const column = SEARCH_COLUMNS.find((c) => c.id === sort.active);
     if (!column) return;
-    this.queryControl.setValue(withSort(this.queryControl.value || this.ran(), column.field, sort.direction));
+    this.draft.set(withSort(this.draft() || this.ran(), column.field, sort.direction));
     this.run();
   }
 

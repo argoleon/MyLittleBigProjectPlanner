@@ -11,6 +11,10 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
   - `POST /api/v1/search` with `{query, fields, expand, cursor, limit}`: the tickets of the projects the member sees, the total on the first page, a cursor for the next ones. A query that cannot run answers `query.invalid` with the reason, the character position and what was expected.
   - The Search screen (mockup 15): the query runs on Enter and stays in the address (`/search?q=…`); results in a virtualized table with the total, the next page loaded while scrolling, columns chosen from a menu (kept in the browser), and sorting a column sorts the query. A refused query is explained at its position, the part concerned selected in the field.
   - `sprint` and `fixVersion` are understood but answer `unsupported` until sprints and versions come (L09); `text ~` matches the summary and the description until full text comes (#177).
+- **Writing queries without knowing the syntax** (#173)
+  - A visual builder: projects, types, statuses, assignees ("Me" included), priorities, due date and creation date (presets such as "Overdue" or "Last 7 days", or a custom range), text; it writes the query, and reads back a query made of such criteria. Any other query stays in the editor, with a word why. The screen opens in the last mode used (the builder the first time).
+  - The query editor suggests what may come at the cursor: fields (custom ones included), the operators of a field, keywords, functions, and values with their labels (statuses, types, priorities, members, the projects and nodes the member sees). Arrows, Enter and Escape, or Ctrl+Space to ask.
+  - `POST /api/v1/search/suggestions` (`{query, cursor}`) and `POST /api/v1/search/parse` (the query as a tree).
 
 ### Changed
 

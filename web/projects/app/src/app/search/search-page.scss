@@ -118,3 +118,17 @@
 .loading-more {
   margin-top: var(--app-space-2);
 }
+
+.mode {
+  margin-top: var(--app-space-4);
+}
+
+.notice {
+  margin: var(--app-space-2) 0 0;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+app-query-builder {
+  margin: var(--app-space-4) 0 var(--app-space-2);
+}

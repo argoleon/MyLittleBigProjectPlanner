@@ -1771,6 +1771,60 @@
       "too_many_clauses": "La requête a trop de conditions.",
       "too_many_values": "La liste a trop de valeurs.",
       "too_many_order_keys": "La requête trie selon trop de champs."
+    },
+    "mode": {
+      "label": "Mode de saisie",
+      "builder": "Constructeur",
+      "query": "Requête"
+    },
+    "builder": {
+      "label": "Critères de recherche",
+      "cannot": "Cette requête ne peut pas s’afficher dans le constructeur : elle reste dans l’éditeur.",
+      "remove": "Retirer {{ value }}",
+      "addProject": "Ajouter un projet…",
+      "addPerson": "Ajouter une personne…",
+      "me": "Moi",
+      "any": "Toutes",
+      "custom": "Période personnalisée…",
+      "due": {
+        "overdue": "En retard",
+        "this_week": "Cette semaine",
+        "this_month": "Ce mois-ci",
+        "none": "Sans échéance"
+      },
+      "created": {
+        "last_7_days": "7 derniers jours",
+        "last_30_days": "30 derniers jours"
+      },
+      "dueFrom": "Échéance du",
+      "dueTo": "Échéance au",
+      "createdFrom": "Créé du",
+      "createdTo": "Créé au",
+      "text": "Texte contenu"
+    },
+    "suggestion": {
+      "field": "champ",
+      "operator": "opérateur",
+      "keyword": "mot-clé",
+      "function": "fonction",
+      "value": "valeur"
+    },
+    "fields": {
+      "key": "Clé",
+      "project": "Projet",
+      "type": "Type",
+      "status": "Statut",
+      "priority": "Priorité",
+      "assignee": "Responsable",
+      "reporter": "Rapporteur",
+      "summary": "Résumé",
+      "description": "Description",
+      "text": "Texte (résumé et description)",
+      "created": "Création",
+      "updated": "Modification",
+      "due": "Échéance",
+      "start": "Début",
+      "parent": "Parent"
     }
   }
 }

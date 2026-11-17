@@ -27,30 +27,39 @@
   </mat-menu>
 </div>
 
-<form class="query" role="search" [attr.aria-label]="'search.title' | transloco" (submit)="$event.preventDefault(); run()">
-  <mat-form-field appearance="outline" class="field">
-    <mat-label>{{ 'search.query.label' | transloco }}</mat-label>
-    <textarea
-      #queryInput
-      matInput
-      class="code"
-      cdkTextareaAutosize
-      cdkAutosizeMinRows="1"
-      cdkAutosizeMaxRows="6"
-      spellcheck="false"
-      autocomplete="off"
-      [formControl]="queryControl"
-      [attr.aria-describedby]="queryError() ? 'query-error' : null"
-      [attr.aria-invalid]="queryError() ? true : null"
-      (keydown.enter)="onEnter($event)"
-    ></textarea>
-    <mat-hint>{{ 'search.query.hint' | transloco }}</mat-hint>
-  </mat-form-field>
-  <button matButton="filled" type="submit" class="run">
-    <mat-icon aria-hidden="true">search</mat-icon>
-    {{ 'search.run' | transloco }}
-  </button>
-</form>
+<div class="mode">
+  <mat-button-toggle-group
+    hideSingleSelectionIndicator
+    [attr.aria-label]="'search.mode.label' | transloco"
+    [value]="mode()"
+    (change)="setMode($event.value)"
+  >
+    <mat-button-toggle value="builder" class="builder-mode">{{ 'search.mode.builder' | transloco }}</mat-button-toggle>
+    <mat-button-toggle value="query" class="query-mode">{{ 'search.mode.query' | transloco }}</mat-button-toggle>
+  </mat-button-toggle-group>
+</div>
+
+@if (notice(); as notice) {
+  <p class="notice" role="status">{{ notice | transloco }}</p>
+}
+
+@if (mode() === 'builder') {
+  <app-query-builder [criteria]="criteria()" (criteriaChange)="built($event)" />
+} @else {
+  <form class="query" role="search" [attr.aria-label]="'search.title' | transloco" (submit)="$event.preventDefault(); run()">
+    <app-query-editor
+      class="field"
+      [(value)]="draft"
+      [describedBy]="queryError() ? 'query-error' : null"
+      [invalid]="!!queryError()"
+      (submitted)="run()"
+    />
+    <button matButton="filled" type="submit" class="run">
+      <mat-icon aria-hidden="true">search</mat-icon>
+      {{ 'search.run' | transloco }}
+    </button>
+  </form>
+}
 
 @if (queryError(); as error) {
   <div id="query-error" class="message error query-error" role="alert">

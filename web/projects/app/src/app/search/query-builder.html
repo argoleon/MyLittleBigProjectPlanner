@@ -1,0 +1,147 @@
+@let current = criteria();
+<div class="criteria" role="group" [attr.aria-label]="'search.builder.label' | transloco">
+  <mat-form-field appearance="outline" class="wide">
+    <mat-label>{{ 'search.columns.project' | transloco }}</mat-label>
+    <mat-chip-grid #projectGrid [attr.aria-label]="'search.columns.project' | transloco">
+      @for (key of current.projects; track key) {
+        <mat-chip-row (removed)="remove('projects', key)">
+          {{ label(key) }}
+          <button matChipRemove type="button" [attr.aria-label]="'search.builder.remove' | transloco: { value: label(key) }">
+            <mat-icon aria-hidden="true">cancel</mat-icon>
+          </button>
+        </mat-chip-row>
+      }
+    </mat-chip-grid>
+    <!-- Beside the grid, which holds only its rows. -->
+    <input
+      #projectInput
+      class="chip-input projects"
+      [placeholder]="'search.builder.addProject' | transloco"
+      [matChipInputFor]="projectGrid"
+      [matAutocomplete]="projectOptions"
+      (input)="search('projects', projectInput.value)"
+      (focus)="search('projects', projectInput.value)"
+    />
+    <mat-autocomplete #projectOptions="matAutocomplete" (optionSelected)="add('projects', $event, projectInput)">
+      @for (choice of projectChoices(); track choice.key) {
+        <mat-option [value]="choice">{{ choice.key }} · {{ choice.label }}</mat-option>
+      }
+    </mat-autocomplete>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>{{ 'search.columns.type' | transloco }}</mat-label>
+    <mat-select multiple class="types" [value]="current.types" (valueChange)="setList('types', $event)">
+      @for (choice of types(); track choice.key) {
+        <mat-option [value]="choice.key">{{ choice.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>{{ 'search.columns.status' | transloco }}</mat-label>
+    <mat-select multiple class="statuses" [value]="current.statuses" (valueChange)="setList('statuses', $event)">
+      @for (choice of statuses(); track choice.key) {
+        <mat-option [value]="choice.key">{{ choice.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="wide">
+    <mat-label>{{ 'search.columns.assignee' | transloco }}</mat-label>
+    <mat-chip-grid #assigneeGrid [attr.aria-label]="'search.columns.assignee' | transloco">
+      @for (key of current.assignees; track key) {
+        @let shown = key === currentUser ? ('search.builder.me' | transloco) : label(key);
+        <mat-chip-row (removed)="remove('assignees', key)">
+          {{ shown }}
+          <button matChipRemove type="button" [attr.aria-label]="'search.builder.remove' | transloco: { value: shown }">
+            <mat-icon aria-hidden="true">cancel</mat-icon>
+          </button>
+        </mat-chip-row>
+      }
+    </mat-chip-grid>
+    <input
+      #assigneeInput
+      class="chip-input assignees"
+      [placeholder]="'search.builder.addPerson' | transloco"
+      [matChipInputFor]="assigneeGrid"
+      [matAutocomplete]="assigneeOptions"
+      (input)="search('assignees', assigneeInput.value)"
+      (focus)="search('assignees', assigneeInput.value)"
+    />
+    <mat-autocomplete #assigneeOptions="matAutocomplete" (optionSelected)="add('assignees', $event, assigneeInput)">
+      <mat-option [value]="{ key: currentUser, label: currentUser }">{{ 'search.builder.me' | transloco }}</mat-option>
+      @for (choice of assigneeChoices(); track choice.key) {
+        <mat-option [value]="choice">{{ choice.label }} · {{ choice.key }}</mat-option>
+      }
+    </mat-autocomplete>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>{{ 'search.columns.priority' | transloco }}</mat-label>
+    <mat-select multiple class="priorities" [value]="current.priorities" (valueChange)="setList('priorities', $event)">
+      @for (priority of priorities; track priority) {
+        <mat-option [value]="priority">{{ 'priority.' + priority | transloco }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <div class="dates">
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'search.columns.due' | transloco }}</mat-label>
+      <mat-select class="due" [value]="dueChoice()" (valueChange)="setDue($event)">
+        <mat-option value="any">{{ 'search.builder.any' | transloco }}</mat-option>
+        @for (preset of duePresets; track preset) {
+          <mat-option [value]="preset">{{ 'search.builder.due.' + preset | transloco }}</mat-option>
+        }
+        <mat-option value="custom">{{ 'search.builder.custom' | transloco }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+    @if (dueChoice() === 'custom') {
+      <mat-form-field appearance="outline" class="date">
+        <mat-label>{{ 'search.builder.dueFrom' | transloco }}</mat-label>
+        <input matInput class="due-from" [matDatepicker]="dueFrom" [value]="dueRange().from" (dateChange)="setRange('due', 'from', $event.value)" />
+        <mat-datepicker-toggle matIconSuffix [for]="dueFrom" />
+        <mat-datepicker #dueFrom />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="date">
+        <mat-label>{{ 'search.builder.dueTo' | transloco }}</mat-label>
+        <input matInput class="due-to" [matDatepicker]="dueTo" [value]="dueRange().to" (dateChange)="setRange('due', 'to', $event.value)" />
+        <mat-datepicker-toggle matIconSuffix [for]="dueTo" />
+        <mat-datepicker #dueTo />
+      </mat-form-field>
+    }
+  </div>
+
+  <div class="dates">
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'search.columns.created' | transloco }}</mat-label>
+      <mat-select class="created" [value]="createdChoice()" (valueChange)="setCreated($event)">
+        <mat-option value="any">{{ 'search.builder.any' | transloco }}</mat-option>
+        @for (preset of createdPresets; track preset) {
+          <mat-option [value]="preset">{{ 'search.builder.created.' + preset | transloco }}</mat-option>
+        }
+        <mat-option value="custom">{{ 'search.builder.custom' | transloco }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+    @if (createdChoice() === 'custom') {
+      <mat-form-field appearance="outline" class="date">
+        <mat-label>{{ 'search.builder.createdFrom' | transloco }}</mat-label>
+        <input matInput class="created-from" [matDatepicker]="createdFrom" [value]="createdRange().from" (dateChange)="setRange('created', 'from', $event.value)" />
+        <mat-datepicker-toggle matIconSuffix [for]="createdFrom" />
+        <mat-datepicker #createdFrom />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="date">
+        <mat-label>{{ 'search.builder.createdTo' | transloco }}</mat-label>
+        <input matInput class="created-to" [matDatepicker]="createdTo" [value]="createdRange().to" (dateChange)="setRange('created', 'to', $event.value)" />
+        <mat-datepicker-toggle matIconSuffix [for]="createdTo" />
+        <mat-datepicker #createdTo />
+      </mat-form-field>
+    }
+  </div>
+
+  <mat-form-field appearance="outline" class="wide">
+    <mat-label>{{ 'search.builder.text' | transloco }}</mat-label>
+    <input matInput class="text" [formControl]="text" />
+  </mat-form-field>
+</div>
