@@ -7,10 +7,10 @@
 
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
-use chrono::DateTime;
 use infra::pagination::Keyset;
 use infra::uuid::Uuid;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 
 use crate::problem::{ErrorCode, Problem};
 
@@ -55,7 +55,7 @@ const VERSION: &str = "v1";
 pub fn encode_cursor(keyset: Keyset) -> String {
     let raw = format!(
         "{VERSION}:{}:{}",
-        keyset.created_at.timestamp_micros(),
+        keyset.created_at.unix_timestamp_nanos() / 1_000,
         keyset.id.simple()
     );
     URL_SAFE_NO_PAD.encode(raw)
@@ -74,7 +74,7 @@ pub fn decode_cursor(cursor: &str) -> Option<Keyset> {
         return None;
     }
     Some(Keyset {
-        created_at: DateTime::from_timestamp_micros(micros)?,
+        created_at: OffsetDateTime::from_unix_timestamp_nanos(i128::from(micros) * 1_000).ok()?,
         id,
     })
 }
@@ -85,7 +85,7 @@ mod tests {
 
     fn keyset() -> Keyset {
         Keyset {
-            created_at: DateTime::from_timestamp_micros(1_762_646_400_123_456).unwrap(),
+            created_at: OffsetDateTime::from_unix_timestamp_nanos(1_762_646_400_123_456_000).unwrap(),
             id: Uuid::from_u128(0x0194_0000_0000_7000_8000_0000_0000_0001),
         }
     }

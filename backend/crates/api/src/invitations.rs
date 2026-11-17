@@ -12,7 +12,6 @@
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{AppendHeaders, IntoResponse, Response};
-use chrono::{DateTime, Utc};
 use domain::account::{MAX_SIGN_INS_PER_IP, SIGN_IN_WINDOW, validate_display_name, validate_password};
 use domain::auth_policy::{PasswordSignIn, password_allowed};
 use domain::members::{Access, INVITATION_LIFETIME, InvitationInput, InvitationStatus, validate_invitation};
@@ -22,6 +21,7 @@ use infra::email::{EMAIL_JOB, EmailJob, EmailMessage};
 use infra::invitations::{self as repo, Invitation, InvitationFilter, NewInvitation, WriteConflict};
 use infra::uuid::Uuid;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
 use crate::auth::{ClientIp, SESSION_COOKIE, SessionView, TenantRoleView, cookie};
@@ -72,11 +72,13 @@ pub struct InvitationView {
     tenant_role: TenantRoleView,
     status: InvitationStatusView,
     /// The link works until then.
-    expires_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    expires_at: OffsetDateTime,
     /// Name of the admin who sent it, if their account still exists.
     #[schema(example = "Lucas Bernard")]
     invited_by: Option<String>,
-    created_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    created_at: OffsetDateTime,
     #[schema(example = 1)]
     version: i64,
 }
@@ -84,7 +86,7 @@ pub struct InvitationView {
 impl InvitationView {
     fn new(invitation: Invitation) -> Self {
         Self {
-            status: invitation.status(Utc::now()).into(),
+            status: invitation.status(OffsetDateTime::now_utc()).into(),
             id: invitation.id,
             email: invitation.email,
             account_type: invitation.account_type.into(),
@@ -146,8 +148,8 @@ fn conflict_problem(conflict: WriteConflict) -> Problem {
     }
 }
 
-fn expiry() -> DateTime<Utc> {
-    Utc::now() + chrono::Duration::from_std(INVITATION_LIFETIME).unwrap_or(chrono::Duration::days(7))
+fn expiry() -> OffsetDateTime {
+    OffsetDateTime::now_utc() + INVITATION_LIFETIME
 }
 
 /// Queues the invitation email of `invitation`, with its new `token`.
@@ -412,7 +414,8 @@ pub struct InvitationPreview {
     /// No account has this email yet: accepting creates it, with the name and
     /// password chosen then. Otherwise the existing account joins, unchanged.
     new_account: bool,
-    expires_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    expires_at: OffsetDateTime,
 }
 
 /// Accepting an invitation.

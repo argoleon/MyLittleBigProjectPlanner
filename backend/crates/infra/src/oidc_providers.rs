@@ -3,8 +3,8 @@
 //! the provider id as associated data); the callers encrypt and decrypt.
 //! A tenant has few providers: lists are not paginated.
 
-use chrono::{DateTime, Utc};
 use sqlx::postgres::PgConnection;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 /// Unique constraint of (tenant, issuer, client id).
@@ -22,8 +22,8 @@ pub struct Provider {
     pub email_claim: String,
     pub enabled: bool,
     pub version: i64,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: OffsetDateTime,
+    pub updated_at: OffsetDateTime,
 }
 
 /// A provider as shown on the sign-in page.

@@ -1,9 +1,9 @@
 //! SQL of links between tickets (L05-US03). Row-level security scopes every
 //! query to the current tenant.
 
-use chrono::{DateTime, Utc};
 use domain::links::{Link, LinkType};
 use sqlx::postgres::PgConnection;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 /// A link as stored.
@@ -13,7 +13,7 @@ pub struct StoredLink {
     pub source_id: Uuid,
     pub target_id: Uuid,
     pub link_type: LinkType,
-    pub created_at: DateTime<Utc>,
+    pub created_at: OffsetDateTime,
 }
 
 impl StoredLink {
@@ -40,7 +40,7 @@ struct Row {
     source_id: Uuid,
     target_id: Uuid,
     link_type: String,
-    created_at: DateTime<Utc>,
+    created_at: OffsetDateTime,
 }
 
 impl Row {

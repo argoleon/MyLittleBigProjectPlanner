@@ -3,9 +3,9 @@
 //! every query to the current tenant; accounts are visible through their
 //! membership only.
 
-use chrono::{DateTime, Utc};
 use domain::members::Access;
 use sqlx::postgres::PgConnection;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::invitations::like_pattern;
@@ -30,7 +30,7 @@ pub struct TenantMember {
     /// Version of the membership.
     pub version: i64,
     membership_id: Uuid,
-    created_at: DateTime<Utc>,
+    created_at: OffsetDateTime,
 }
 
 impl TenantMember {
@@ -60,7 +60,7 @@ struct Row {
     mfa_enabled: bool,
     version: i64,
     membership_id: Uuid,
-    created_at: DateTime<Utc>,
+    created_at: OffsetDateTime,
 }
 
 impl From<Row> for TenantMember {

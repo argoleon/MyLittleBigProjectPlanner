@@ -342,7 +342,7 @@ mod tests {
     }
 
     fn claims(changes: &serde_json::Value) -> serde_json::Value {
-        let now = chrono::Utc::now().timestamp();
+        let now = time::OffsetDateTime::now_utc().unix_timestamp();
         let mut claims = serde_json::json!({
             "iss": "https://idp.example.org/realms/acme", "aud": "mlbpp", "sub": "user-1",
             "exp": now + 300, "iat": now, "nonce": "the-nonce",
@@ -379,7 +379,7 @@ mod tests {
     #[test]
     fn id_tokens_are_checked_claim_by_claim() {
         let (pkcs8, keys) = key_pair("k1");
-        let past = chrono::Utc::now().timestamp() - 3600;
+        let past = time::OffsetDateTime::now_utc().unix_timestamp() - 3600;
         for (case, changes) in [
             ("expired", serde_json::json!({"exp": past})),
             ("other audience", serde_json::json!({"aud": "another-client"})),
