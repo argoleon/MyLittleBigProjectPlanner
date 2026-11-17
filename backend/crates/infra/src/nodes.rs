@@ -4,10 +4,10 @@
 //! matrix and refuses cycles (`node_edge` triggers). Whatever changes the
 //! aggregates of a node marks them stale (`crate::aggregates`).
 
-use chrono::{DateTime, NaiveDate, Utc};
 use domain::hierarchy::{Health, NodeType};
 use sha2::{Digest, Sha256};
 use sqlx::postgres::PgConnection;
+use time::{Date, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::id::new_id;
@@ -38,15 +38,15 @@ pub struct Node {
     pub key: String,
     pub description: String,
     pub objectives: String,
-    pub start_date: Option<NaiveDate>,
-    pub end_date: Option<NaiveDate>,
+    pub start_date: Option<Date>,
+    pub end_date: Option<Date>,
     pub health: Health,
     pub archived: bool,
     pub confidential: bool,
     pub owners: Vec<Owner>,
     pub parents: Vec<NodeRef>,
     pub version: i64,
-    pub created_at: DateTime<Utc>,
+    pub created_at: OffsetDateTime,
 }
 
 impl Node {
@@ -67,8 +67,8 @@ pub struct NodeFields<'a> {
     pub key: Option<&'a str>,
     pub description: &'a str,
     pub objectives: &'a str,
-    pub start_date: Option<NaiveDate>,
-    pub end_date: Option<NaiveDate>,
+    pub start_date: Option<Date>,
+    pub end_date: Option<Date>,
     pub health: Health,
     pub owners: &'a [Uuid],
 }
@@ -244,13 +244,13 @@ struct Row {
     key: String,
     description: String,
     objectives: String,
-    start_date: Option<NaiveDate>,
-    end_date: Option<NaiveDate>,
+    start_date: Option<Date>,
+    end_date: Option<Date>,
     health: String,
     archived: bool,
     confidential: bool,
     version: i64,
-    created_at: DateTime<Utc>,
+    created_at: OffsetDateTime,
 }
 
 impl Row {

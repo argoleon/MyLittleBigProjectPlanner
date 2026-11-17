@@ -2,10 +2,10 @@
 //! files kept in the storage (`crate::storage`), and the jobs that scan
 //! them and remove their content.
 
-use chrono::{DateTime, Utc};
 use domain::attachments::Status;
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgConnection;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 /// Job scanning an uploaded file (antivirus, SHA-256, thumbnail).
@@ -49,8 +49,8 @@ pub struct Attachment {
     pub uploaded_by: Option<Uuid>,
     /// "Deleted user #N" once erased, none when no longer a member.
     pub uploader_name: Option<String>,
-    pub scanned_at: Option<DateTime<Utc>>,
-    pub created_at: DateTime<Utc>,
+    pub scanned_at: Option<OffsetDateTime>,
+    pub created_at: OffsetDateTime,
     pub version: i64,
 }
 
@@ -68,8 +68,8 @@ struct Row {
     signature: Option<String>,
     uploaded_by: Option<Uuid>,
     uploader_name: Option<String>,
-    scanned_at: Option<DateTime<Utc>>,
-    created_at: DateTime<Utc>,
+    scanned_at: Option<OffsetDateTime>,
+    created_at: OffsetDateTime,
     version: i64,
 }
 

@@ -15,7 +15,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use axum::extract::State;
 use axum::http::{HeaderMap, HeaderValue, header};
 use axum::response::{IntoResponse, Response};
-use chrono::NaiveDate;
 use domain::fields::{Step, Value};
 use domain::issues::{
     Current, IssueChanges, Landing, Moving, Priority, TargetType, kept_values, plan_move, validate_changes,
@@ -29,6 +28,7 @@ use infra::issues::{self as repo, Issue};
 use infra::nodes::Node;
 use infra::uuid::Uuid;
 use serde::{Deserialize, Deserializer, Serialize};
+use time::Date;
 use utoipa::ToSchema;
 
 use crate::etag::{etag, require_if_match};
@@ -76,10 +76,10 @@ pub struct ChangesBody {
     assignee_id: Option<Option<Uuid>>,
     #[serde(default, deserialize_with = "present")]
     #[schema(value_type = Option<String>, format = Date)]
-    start_date: Option<Option<NaiveDate>>,
+    start_date: Option<Option<Date>>,
     #[serde(default, deserialize_with = "present")]
     #[schema(value_type = Option<String>, format = Date)]
-    due_date: Option<Option<NaiveDate>>,
+    due_date: Option<Option<Date>>,
     /// Custom field values to change, by field id; `null` clears one.
     #[serde(default)]
     fields: BTreeMap<Uuid, serde_json::Value>,
@@ -1045,7 +1045,7 @@ mod tests {
         }))
         .unwrap();
         assert_eq!(body.assignee_id, Some(None));
-        assert_eq!(body.start_date, Some(NaiveDate::from_ymd_opt(2026, 12, 1)));
+        assert_eq!(body.start_date, Some(Some(time::macros::date!(2026 - 12 - 01))));
         assert_eq!(body.due_date, None);
         assert_eq!(body.description, None);
         assert!(serde_json::from_value::<ChangesBody>(serde_json::json!({"type": "x"})).is_err());

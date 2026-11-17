@@ -5,7 +5,6 @@
 
 #![allow(clippy::unwrap_used)]
 
-use chrono::NaiveDate;
 use domain::hierarchy::{Health, NodeType};
 use domain::query::{QueryErrorKind, parse};
 use infra::accounts::TenantRole;
@@ -17,6 +16,7 @@ use infra::search::{self, Context, SearchError, SearchPage};
 use infra::sqlx::{self, PgConnection};
 use infra::uuid::Uuid;
 use testkit::TestDb;
+use time::Date;
 
 async fn node(
     conn: &mut PgConnection,
@@ -55,7 +55,7 @@ struct Ticket<'a> {
     status: &'a str,
     priority: &'a str,
     assignee: Option<Uuid>,
-    due: Option<NaiveDate>,
+    due: Option<Date>,
     created_days_ago: i32,
     points: Option<f64>,
     description: Option<&'a str>,
@@ -339,7 +339,7 @@ async fn relative_dates_are_evaluated_in_the_members_time_zone() {
     let plat = node(&mut tx, NodeType::Project, "Platform", "PLAT", None, admin).await;
     // UTC+14 and UTC-11: 25 hours apart, so never the same date.
     let (east, west) = ("Pacific/Kiritimati", "Pacific/Pago_Pago");
-    let today_east: NaiveDate = sqlx::query_scalar("SELECT (now() AT TIME ZONE $1)::date")
+    let today_east: Date = sqlx::query_scalar("SELECT (now() AT TIME ZONE $1)::date")
         .bind(east)
         .fetch_one(&mut *tx)
         .await
@@ -560,7 +560,9 @@ async fn pages_follow_the_sort_order_through_a_cursor() {
         let key = format!("PLAT-{n}");
         let priority = priorities[(n % 5) as usize];
         // Every third ticket has no due date: those come last.
-        let due = (n % 3 != 0).then(|| NaiveDate::from_ymd_opt(2026, 12, n % 7 + 1).unwrap());
+        let due = (n % 3 != 0).then(|| {
+            Date::from_calendar_date(2026, time::Month::December, u8::try_from(n % 7 + 1).unwrap()).unwrap()
+        });
         expected.push((5 - (n % 5), due.is_none(), due, key.clone()));
         insert(
             &mut tx,

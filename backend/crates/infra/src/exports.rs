@@ -8,11 +8,12 @@
 
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
 use fred::prelude::KeysInterface;
 use fred::types::{Expiration, SetOptions};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgConnection;
+use time::OffsetDateTime;
+use time::format_description::well_known::Rfc3339;
 use uuid::Uuid;
 
 use crate::credentials::{random_token, token_hash_hex};
@@ -39,7 +40,8 @@ pub struct ExportJob {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Export {
     pub account_id: Uuid,
-    pub expires_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    pub expires_at: OffsetDateTime,
     /// `None` until the worker has collected the data.
     pub content: Option<serde_json::Value>,
 }
@@ -69,8 +71,7 @@ impl ExportStore {
         let id = random_token();
         let export = Export {
             account_id,
-            expires_at: Utc::now()
-                + chrono::Duration::from_std(EXPORT_LIFETIME).unwrap_or(chrono::Duration::minutes(15)),
+            expires_at: OffsetDateTime::now_utc() + EXPORT_LIFETIME,
             content: None,
         };
         let _: () = self
@@ -122,7 +123,10 @@ pub async fn collect(conn: &mut PgConnection) -> Result<Option<serde_json::Value
     Ok(data.map(|mut data| {
         if let Some(object) = data.as_object_mut() {
             object.insert("format".to_owned(), EXPORT_FORMAT.into());
-            object.insert("exportedAt".to_owned(), Utc::now().to_rfc3339().into());
+            object.insert(
+                "exportedAt".to_owned(),
+                OffsetDateTime::now_utc().format(&Rfc3339).ok().into(),
+            );
         }
         data
     }))

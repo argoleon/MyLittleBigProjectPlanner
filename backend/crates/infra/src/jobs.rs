@@ -9,9 +9,9 @@
 
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
 use domain::jobs::DEFAULT_MAX_ATTEMPTS;
 use sqlx::postgres::{PgConnection, PgPool};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::id::new_id;
@@ -130,7 +130,7 @@ pub async fn fail(
     id: Uuid,
     worker: &str,
     error: &str,
-    retry_at: Option<DateTime<Utc>>,
+    retry_at: Option<OffsetDateTime>,
 ) -> Result<bool, sqlx::Error> {
     let done = sqlx::query_scalar!(
         r#"SELECT app_fail_job($1, $2, $3, $4) AS "done!""#,

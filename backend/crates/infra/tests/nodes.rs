@@ -4,7 +4,6 @@
 
 #![allow(clippy::unwrap_used)]
 
-use chrono::NaiveDate;
 use domain::hierarchy::{Health, NodeType};
 use infra::accounts::TenantRole;
 use infra::db::begin_tenant_tx;
@@ -20,8 +19,8 @@ fn fields<'a>(name: &'a str, owners: &'a [Uuid]) -> NodeFields<'a> {
         name,
         description: "",
         objectives: "",
-        start_date: NaiveDate::from_ymd_opt(2026, 1, 5),
-        end_date: NaiveDate::from_ymd_opt(2026, 12, 18),
+        start_date: Some(time::macros::date!(2026 - 01 - 05)),
+        end_date: Some(time::macros::date!(2026 - 12 - 18)),
         health: Health::OnTrack,
         owners,
     }
@@ -750,7 +749,7 @@ async fn an_archived_project_leaves_the_active_lists_until_it_is_restored() {
         .unwrap();
     assert!(archived.archived);
     assert_eq!(archived.version, cyber.version + 1);
-    let archived_at: Option<chrono::DateTime<chrono::Utc>> =
+    let archived_at: Option<time::OffsetDateTime> =
         sqlx::query_scalar("SELECT archived_at FROM node WHERE id = $1")
             .bind(cyber.id)
             .fetch_one(&mut *tx)
@@ -772,7 +771,7 @@ async fn an_archived_project_leaves_the_active_lists_until_it_is_restored() {
         .await
         .unwrap()
         .unwrap();
-    let again: Option<chrono::DateTime<chrono::Utc>> =
+    let again: Option<time::OffsetDateTime> =
         sqlx::query_scalar("SELECT archived_at FROM node WHERE id = $1")
             .bind(cyber.id)
             .fetch_one(&mut *tx)

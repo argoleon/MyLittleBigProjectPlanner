@@ -3,9 +3,9 @@
 //! field or other action ([`domain::audit`]). The table is partitioned by
 //! month (`app_ensure_audit_partitions`).
 
-use chrono::{DateTime, Utc};
 use domain::audit::{Action, Origin};
 use sqlx::postgres::PgConnection;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::id::new_id;
@@ -114,7 +114,7 @@ pub struct Recorded {
     /// when no longer a member.
     pub actor_name: Option<String>,
     pub origin: Origin,
-    pub created_at: DateTime<Utc>,
+    pub created_at: OffsetDateTime,
 }
 
 struct Row {
@@ -127,7 +127,7 @@ struct Row {
     actor_id: Option<Uuid>,
     actor_name: Option<String>,
     origin: String,
-    created_at: DateTime<Utc>,
+    created_at: OffsetDateTime,
 }
 
 impl Row {

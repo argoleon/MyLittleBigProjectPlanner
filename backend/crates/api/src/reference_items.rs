@@ -22,12 +22,12 @@ use std::collections::BTreeMap;
 
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
-use chrono::{DateTime, Utc};
 use domain::reference_item::{ReferenceItemInput, validate};
 use infra::idempotency::{Claim, StoredResponse};
 use infra::reference_items::{self as repo, ReferenceItem, WriteConflict};
 use infra::uuid::Uuid;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
 use crate::etag::{etag, if_none_match, require_if_match};
@@ -131,8 +131,10 @@ pub struct ReferenceItemView {
     quantity: i32,
     /// Incremented on every change; the `ETag` is this value in quotes.
     version: i64,
-    created_at: DateTime<Utc>,
-    updated_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    created_at: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    updated_at: OffsetDateTime,
 }
 
 // Documentation only: `list` builds a `PageBody` of JSON values, restricted

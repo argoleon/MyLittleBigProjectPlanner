@@ -17,7 +17,6 @@
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::{IntoResponse, Response};
-use chrono::{Datelike, NaiveDate};
 use domain::account::TenantRole;
 use domain::grants::{Projection, locks_out, projection};
 use domain::hierarchy::{
@@ -32,6 +31,7 @@ use infra::nodes::{
 };
 use infra::uuid::Uuid;
 use serde::{Deserialize, Serialize};
+use time::Date;
 use utoipa::{IntoParams, ToSchema};
 
 use crate::etag::{etag, if_none_match, require_if_match};
@@ -157,9 +157,9 @@ pub struct NodeView {
     description: String,
     objectives: String,
     /// Local planning date.
-    start_date: Option<NaiveDate>,
+    start_date: Option<Date>,
     /// Local planning date, not before `startDate`.
-    end_date: Option<NaiveDate>,
+    end_date: Option<Date>,
     health: HealthView,
     /// Read-only, out of the active lists (L03-US06).
     archived: bool,
@@ -499,9 +499,9 @@ pub struct ChangesBody {
     #[serde(default)]
     objectives: String,
     #[serde(default)]
-    start_date: Option<NaiveDate>,
+    start_date: Option<Date>,
     #[serde(default)]
-    end_date: Option<NaiveDate>,
+    end_date: Option<Date>,
     #[serde(default)]
     health: HealthView,
     /// Members of the tenant, 20 at most.
@@ -534,9 +534,9 @@ pub struct CreateBody {
     #[serde(default)]
     objectives: String,
     #[serde(default)]
-    start_date: Option<NaiveDate>,
+    start_date: Option<Date>,
     #[serde(default)]
-    end_date: Option<NaiveDate>,
+    end_date: Option<Date>,
     #[serde(default)]
     health: HealthView,
     #[serde(default)]
@@ -546,8 +546,8 @@ pub struct CreateBody {
     parent_id: Option<Uuid>,
 }
 
-fn ymd(date: Option<NaiveDate>) -> Option<(i32, u32, u32)> {
-    date.map(|d| (d.year(), d.month(), d.day()))
+fn ymd(date: Option<Date>) -> Option<(i32, u32, u32)> {
+    date.map(|d| (d.year(), u32::from(u8::from(d.month())), u32::from(d.day())))
 }
 
 /// What `validate_node` checks; an empty key is a missing one.
@@ -1412,7 +1412,7 @@ mod tests {
             owners: vec![],
             parents: vec![],
             version: 1,
-            created_at: chrono::DateTime::UNIX_EPOCH,
+            created_at: time::OffsetDateTime::UNIX_EPOCH,
         };
         assert!(ensure_changeable(&node(false)).is_ok());
         let problem = ensure_changeable(&node(true)).err();
@@ -1501,7 +1501,7 @@ mod tests {
             key: "PLAT".to_owned(),
             description: "The secret plan".to_owned(),
             objectives: "Ship in March".to_owned(),
-            start_date: NaiveDate::from_ymd_opt(2026, 1, 5),
+            start_date: Some(time::macros::date!(2026 - 01 - 05)),
             end_date: None,
             health: Health::AtRisk,
             archived: false,
@@ -1515,7 +1515,7 @@ mod tests {
                 node_ref(PROGRAM, NodeType::Program, "Classified program"),
             ],
             version: 4,
-            created_at: chrono::DateTime::UNIX_EPOCH,
+            created_at: time::OffsetDateTime::UNIX_EPOCH,
         }
     }
 
