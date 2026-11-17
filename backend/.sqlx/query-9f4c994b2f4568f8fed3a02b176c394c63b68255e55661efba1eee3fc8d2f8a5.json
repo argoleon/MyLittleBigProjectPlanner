@@ -1,0 +1,54 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT DISTINCT ON (s.key) s.key, s.label AS \"label: Json<Labels>\", s.category\n        FROM workflow_status s\n        JOIN project_config_version v ON v.id = s.version_id AND v.state = 'published'\n        WHERE s.key LIKE $1\n           OR EXISTS (SELECT 1 FROM jsonb_each_text(s.label) l WHERE lower(l.value) LIKE $2)\n        ORDER BY s.key, s.updated_at DESC\n        LIMIT $3\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "workflow_status",
+            "name": "key"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "label: Json<Labels>",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "workflow_status",
+            "name": "label"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "category",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "workflow_status",
+            "name": "category"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "9f4c994b2f4568f8fed3a02b176c394c63b68255e55661efba1eee3fc8d2f8a5"
+}
