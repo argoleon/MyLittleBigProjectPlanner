@@ -326,7 +326,10 @@ async fn sessions_are_listed_with_their_device_and_revoked_one_by_one() {
         (Some("Safari"), Some("iOS"))
     );
     for field in ["createdAt", "lastSeenAt", "expiresAt"] {
-        assert!(current[field].is_string(), "{field}");
+        // RFC 3339 in UTC, the format of every time in the API.
+        let value = current[field].as_str().unwrap_or_default();
+        let parsed = time::OffsetDateTime::parse(value, &time::format_description::well_known::Rfc3339);
+        assert!(value.ends_with('Z') && parsed.is_ok(), "{field}: {value}");
     }
     let id = |session: &Value| session["id"].as_str().unwrap().to_owned();
 

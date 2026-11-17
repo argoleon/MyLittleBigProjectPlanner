@@ -16,13 +16,13 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use chrono::{DateTime, NaiveDate, Utc};
 use domain::account::TenantRole;
 use domain::notifications::{Event, TicketPeople, resolve};
 use domain::notify::{Change, Choice, Preferences, events_of, one_per_recipient};
 use domain::permissions::Permission;
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgConnection;
+use time::{Date, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::email::{EMAIL_JOB, EmailJob, EmailMessage, NotificationLine};
@@ -577,8 +577,8 @@ pub struct Notification {
     pub actor_id: Option<Uuid>,
     pub actor_name: Option<String>,
     pub details: serde_json::Value,
-    pub read_at: Option<DateTime<Utc>>,
-    pub created_at: DateTime<Utc>,
+    pub read_at: Option<OffsetDateTime>,
+    pub created_at: OffsetDateTime,
 }
 
 /// The signed-in account's notifications, of every organization or of
@@ -699,7 +699,7 @@ pub struct DigestCandidate {
     pub email: String,
     pub display_name: String,
     pub locale: String,
-    pub local_date: NaiveDate,
+    pub local_date: Date,
     /// 1 Monday … 7 Sunday.
     pub local_weekday: u8,
     pub local_hour: u8,
@@ -764,7 +764,7 @@ pub async fn waiting_for_digest(conn: &mut PgConnection, account: Uuid) -> Resul
 pub async fn digest_sent(
     conn: &mut PgConnection,
     account: Uuid,
-    local_date: NaiveDate,
+    local_date: Date,
     ids: &[Uuid],
 ) -> Result<(), sqlx::Error> {
     sqlx::query!("SELECT app_digest_sent($1, $2, $3)", account, local_date, ids)

@@ -9,11 +9,11 @@
 //! (`app_my_notifications`…), across its organizations.
 
 use axum::extract::State;
-use chrono::{DateTime, Utc};
 use domain::notifications::Event;
 use domain::notify::{Choice, Preferences};
 use infra::uuid::Uuid;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
 use crate::extract::{ApiJson, ApiPath, ApiQuery};
@@ -92,7 +92,8 @@ pub struct NotificationView {
     #[schema(required = true)]
     excerpt: Option<String>,
     read: bool,
-    created_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    created_at: OffsetDateTime,
 }
 
 /// A page of notifications.

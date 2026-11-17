@@ -3,10 +3,10 @@
 
 use std::collections::BTreeMap;
 
-use chrono::{DateTime, Utc};
 use domain::permissions::{Permission, PermissionSet, RoleInput};
 use sqlx::postgres::PgConnection;
 use sqlx::types::Json;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::pagination::{Keyset, Page, page_from_rows};
@@ -21,7 +21,7 @@ pub struct Role {
     pub label_translations: BTreeMap<String, String>,
     pub permissions: PermissionSet,
     pub version: i64,
-    pub created_at: DateTime<Utc>,
+    pub created_at: OffsetDateTime,
 }
 
 impl Role {
@@ -38,7 +38,7 @@ struct Row {
     label: Json<BTreeMap<String, String>>,
     permissions: Vec<String>,
     version: i64,
-    created_at: DateTime<Utc>,
+    created_at: OffsetDateTime,
 }
 
 impl From<Row> for Role {

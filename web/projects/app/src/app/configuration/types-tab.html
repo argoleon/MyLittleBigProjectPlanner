@@ -72,7 +72,7 @@
               type="button"
               class="up"
               [disabled]="i === 0 || moving()"
-              (click)="move(i, i - 1)"
+              (click)="shift(item, -1)"
               [attr.aria-label]="'config.types.moveUp' | transloco: { name: item.labelTranslations | translated }"
             >
               <mat-icon aria-hidden="true">arrow_upward</mat-icon>
@@ -82,7 +82,7 @@
               type="button"
               class="down"
               [disabled]="i === items().length - 1 || moving()"
-              (click)="move(i, i + 1)"
+              (click)="shift(item, 1)"
               [attr.aria-label]="'config.types.moveDown' | transloco: { name: item.labelTranslations | translated }"
             >
               <mat-icon aria-hidden="true">arrow_downward</mat-icon>

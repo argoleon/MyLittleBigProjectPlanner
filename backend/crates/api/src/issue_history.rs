@@ -16,7 +16,6 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use axum::extract::State;
 use axum::response::{IntoResponse, Response};
-use chrono::{DateTime, Utc};
 use domain::audit::{Action, Change, Field as AuditField, Origin, Snapshot, diff};
 use domain::fields::Kind;
 use domain::links::Relation;
@@ -26,6 +25,7 @@ use infra::issues::{self as repo, Issue};
 use infra::uuid::Uuid;
 use serde::Serialize;
 use serde_json::{Value as Json, json};
+use time::OffsetDateTime;
 use utoipa::ToSchema;
 
 use crate::extract::{AcceptLanguage, ApiJson, ApiPath, ApiQuery};
@@ -341,7 +341,8 @@ pub struct EntryView {
     #[schema(required = true)]
     actor: Option<PersonView>,
     origin: OriginView,
-    created_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    created_at: OffsetDateTime,
 }
 
 /// A page of the history of a ticket.

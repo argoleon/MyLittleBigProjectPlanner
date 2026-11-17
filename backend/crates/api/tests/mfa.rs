@@ -63,7 +63,7 @@ async fn send(request: reqwest::RequestBuilder) -> (u16, Value) {
 }
 
 fn now() -> u64 {
-    u64::try_from(chrono::Utc::now().timestamp()).unwrap()
+    u64::try_from(time::OffsetDateTime::now_utc().unix_timestamp()).unwrap()
 }
 
 /// The code the authenticator app shows `offset_secs` from now.

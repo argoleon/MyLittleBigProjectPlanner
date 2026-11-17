@@ -9,7 +9,6 @@ use std::collections::HashMap;
 
 use axum::extract::State;
 use axum::http::StatusCode;
-use chrono::{DateTime, Utc};
 use domain::account::{
     MAX_FAILED_SIGN_INS_PER_EMAIL, Preferences, SIGN_IN_WINDOW, validate_password, validate_preferences,
 };
@@ -19,6 +18,7 @@ use infra::credentials;
 use infra::sessions::{ListedSession, SessionStore};
 use infra::uuid::Uuid;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use utoipa::ToSchema;
 
 use crate::extract::{ApiJson, ApiPath};
@@ -70,11 +70,14 @@ pub struct SessionView {
     #[schema(example = "Linux")]
     os: Option<String>,
     /// Sign-in.
-    created_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    created_at: OffsetDateTime,
     /// Latest request, to the minute.
-    last_seen_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    last_seen_at: OffsetDateTime,
     /// The session ends at this time at the latest.
-    expires_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    expires_at: OffsetDateTime,
 }
 
 /// The list of sessions: the current one first, then by latest activity.
@@ -281,15 +284,13 @@ pub async fn revoke_session(
 
 #[cfg(test)]
 mod tests {
-    use chrono::Duration;
     use infra::sessions::{Session, SessionStage};
+    use time::Duration;
 
     use super::*;
 
     fn listed(id: &str, tenant: Uuid, user_agent: Option<&str>, minutes_ago: Option<i64>) -> ListedSession {
-        let created_at = DateTime::parse_from_rfc3339("2026-11-11T08:00:00Z")
-            .map(|t| t.with_timezone(&Utc))
-            .unwrap_or_default();
+        let created_at = time::macros::datetime!(2026-11-11 08:00 UTC);
         let now = created_at + Duration::hours(2);
         ListedSession {
             id: id.to_owned(),

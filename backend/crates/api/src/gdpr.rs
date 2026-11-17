@@ -16,7 +16,6 @@
 use axum::extract::State;
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{AppendHeaders, IntoResponse, Response};
-use chrono::{DateTime, Utc};
 use domain::account::{MAX_FAILED_SIGN_INS_PER_EMAIL, SIGN_IN_WINDOW};
 use domain::erasure::{Reauthentication, confirms, reauthentication};
 use domain::permissions::PermissionChange;
@@ -28,6 +27,7 @@ use infra::exports::{EXPORT_JOB, ExportJob, ExportStore};
 use infra::members as members_repo;
 use infra::uuid::Uuid;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use utoipa::ToSchema;
 
 use crate::etag::require_if_match;
@@ -59,7 +59,8 @@ pub struct ExportView {
     id: String,
     status: ExportStatus,
     /// The export is gone after this time, downloaded or not.
-    expires_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    expires_at: OffsetDateTime,
 }
 
 /// `POST /me/erasure` body.
@@ -202,7 +203,7 @@ pub async fn download_export(
     let body = serde_json::to_vec_pretty(&content).map_err(|e| Problem::internal(&e))?;
     let name = format!(
         "attachment; filename=\"personal-data-{}.json\"",
-        Utc::now().format("%Y-%m-%d")
+        OffsetDateTime::now_utc().date()
     );
     Ok((
         [
@@ -254,8 +255,7 @@ pub async fn erase_me(
         errors.push(FieldError::new("confirmation", "mismatch"));
     }
     let hash = accounts::password_hash(&mut tx, account).await?;
-    let session_age = (Utc::now() - tx.session().created_at)
-        .to_std()
+    let session_age = std::time::Duration::try_from(OffsetDateTime::now_utc() - tx.session().created_at)
         .unwrap_or_default();
     // Same counter as the password change: both guess the password.
     let failures_key = format!("password-change:{account}");

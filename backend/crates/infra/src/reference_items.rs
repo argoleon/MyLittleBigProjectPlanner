@@ -8,10 +8,10 @@
 
 use std::collections::BTreeMap;
 
-use chrono::{DateTime, Utc};
 use domain::reference_item::ReferenceItemInput;
 use sqlx::postgres::PgConnection;
 use sqlx::types::Json;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::pagination::{Keyset, Page, page_from_rows};
@@ -27,8 +27,8 @@ pub struct ReferenceItem {
     pub label_translations: BTreeMap<String, String>,
     pub quantity: i32,
     pub version: i64,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: OffsetDateTime,
+    pub updated_at: OffsetDateTime,
 }
 
 /// Row as returned by SQL; JSON columns are wrapped in `Json`. Converted
@@ -39,8 +39,8 @@ struct Row {
     label: Json<BTreeMap<String, String>>,
     quantity: i32,
     version: i64,
-    created_at: DateTime<Utc>,
-    updated_at: DateTime<Utc>,
+    created_at: OffsetDateTime,
+    updated_at: OffsetDateTime,
 }
 
 impl From<Row> for ReferenceItem {

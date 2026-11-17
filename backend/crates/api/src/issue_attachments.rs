@@ -19,7 +19,6 @@
 use axum::extract::State;
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
-use chrono::{DateTime, Utc};
 use domain::attachments::{Acting, Status, UploadRefusal, can_delete, check_upload, clean_name};
 use domain::permissions::Permission;
 use domain::validation::FieldError;
@@ -29,6 +28,7 @@ use infra::nodes::Node;
 use infra::storage::Storage;
 use infra::uuid::Uuid;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use utoipa::ToSchema;
 
 use crate::extract::{ApiJson, ApiPath};
@@ -86,7 +86,8 @@ pub struct AttachmentView {
     /// None: an erased account; "Deleted user #N" once erased.
     #[schema(required = true)]
     uploaded_by: Option<PersonView>,
-    created_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    created_at: OffsetDateTime,
     /// An image's thumbnail can be read (`…/thumbnail`).
     has_thumbnail: bool,
     /// The member reading may remove it.

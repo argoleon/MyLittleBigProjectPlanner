@@ -13,7 +13,6 @@
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::{IntoResponse, Response};
-use chrono::{DateTime, Utc};
 use domain::audit::Action;
 use domain::comments::{Acting, Visibility, can_delete, can_edit};
 use domain::permissions::Permission;
@@ -24,6 +23,7 @@ use infra::issues::Issue;
 use infra::nodes::Node;
 use infra::uuid::Uuid;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use utoipa::ToSchema;
 
 use crate::etag::{etag, require_if_match};
@@ -84,9 +84,11 @@ pub struct CommentView {
     #[schema(required = true)]
     content_html: Option<String>,
     deleted: bool,
-    created_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    created_at: OffsetDateTime,
     #[schema(required = true)]
-    edited_at: Option<DateTime<Utc>>,
+    #[serde(with = "time::serde::rfc3339::option")]
+    edited_at: Option<OffsetDateTime>,
     version: i64,
     /// The member reading may edit it.
     can_edit: bool,

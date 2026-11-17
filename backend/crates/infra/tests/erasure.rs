@@ -4,7 +4,6 @@
 
 #![allow(clippy::unwrap_used)]
 
-use chrono::{Duration, Utc};
 use domain::members::{Access, GroupInput};
 use infra::accounts::{self, AccountType, NewMember, TenantRole};
 use infra::db::{begin_tenant_tx, set_account};
@@ -14,6 +13,7 @@ use infra::id::new_id;
 use infra::sqlx::{self, PgConnection};
 use infra::uuid::Uuid;
 use testkit::{SeedTenant, TestDb, TestMember};
+use time::{Duration, OffsetDateTime};
 
 /// A transaction of `tenant` on behalf of `account` (`app.account_id`), as
 /// the API opens them.
@@ -82,7 +82,7 @@ async fn member_with_data(db: &TestDb) -> TestMember {
             &mut tx,
             member.account_id,
             &[1; 32],
-            Utc::now() + Duration::hours(1),
+            OffsetDateTime::now_utc() + Duration::hours(1),
         )
         .await
         .unwrap();
@@ -96,7 +96,7 @@ async fn member_with_data(db: &TestDb) -> TestMember {
                     tenant_role: TenantRole::Member,
                 },
                 token_hash: &new_id().into_bytes(),
-                expires_at: Utc::now() + Duration::days(7),
+                expires_at: OffsetDateTime::now_utc() + Duration::days(7),
                 invited_by: member.account_id,
             },
         )
@@ -444,7 +444,7 @@ async fn the_export_holds_the_accounts_data_only_and_expires() {
 
     let (id, opened) = store.open(member.account_id).await.unwrap();
     assert_eq!(opened.content, None);
-    let left = opened.expires_at - Utc::now();
+    let left = opened.expires_at - OffsetDateTime::now_utc();
     assert!(
         left > Duration::minutes(14) && left <= Duration::minutes(15),
         "{left}"

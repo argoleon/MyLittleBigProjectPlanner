@@ -368,6 +368,36 @@ describe('the transition dialog with its rules', () => {
     });
   });
 
+  it('moves the post-function whose button is pressed, even before the list shows the move made just before', async () => {
+    const { tab, dialog, root, reply, click, type, text } = await openWorkflows();
+    await click(tab().querySelectorAll('button.edit-transition')[0]);
+    await reply((url) => url.endsWith('/transition-roles'), REFERENCES.roles);
+    for (let i = 0; i < 3; i++) await click(dialog().querySelector('button.add-post'));
+    const posts = () => dialog().querySelectorAll('li.post');
+    // The panel just opened: an earlier one may still be closing.
+    const option = (label: string) =>
+      Array.from(root().querySelectorAll('mat-option'))
+        .filter((o) => text(o)?.startsWith(label))
+        .at(-1);
+    for (const n of [1, 2]) {
+      await click(posts()[n].querySelector('mat-select .mat-mdc-select-trigger'));
+      await click(option('Add a comment'));
+      await type(posts()[n].querySelector('textarea'), `Comment ${n}`);
+    }
+    // Twice down in a row, faster than the next rendering (a slow machine).
+    const down = posts()[0].querySelector('button.down') as HTMLElement;
+    down.click();
+    await click(down);
+
+    await click(dialog().querySelector('button.confirm'));
+    const saved = await reply((url, method) => url.endsWith('/workflow-transitions/x1') && method === 'PUT', STANDARD);
+    expect((saved.request.body as { rules: TransitionRules }).rules.postFunctions).toEqual([
+      { kind: 'add_comment', text: 'Comment 1' },
+      { kind: 'add_comment', text: 'Comment 2' },
+      { kind: 'assign', assignTo: 'current_user' },
+    ]);
+  });
+
   it('shows the error of the API on the post-function it names', async () => {
     const { tab, dialog, reply, click, text } = await openWorkflows();
     await click(tab().querySelectorAll('button.edit-transition')[1]);

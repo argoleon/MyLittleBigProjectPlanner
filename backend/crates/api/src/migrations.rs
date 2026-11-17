@@ -15,7 +15,6 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
-use chrono::{DateTime, Utc};
 use domain::migration::{
     MappingError, Required, State, StatusOption, TypeOption, percent, suggest_status, suggest_type,
     tickets_to_move, validate_mapping,
@@ -26,6 +25,7 @@ use infra::config_migrations::{self as repo, Mapping, Migration, NewMigration};
 use infra::configs as configs_repo;
 use infra::uuid::Uuid;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use utoipa::ToSchema;
 
 use crate::configs::{TAG, require_config_admin};
@@ -141,9 +141,11 @@ pub struct MigrationView {
     percent: u8,
     #[schema(required = true)]
     error: Option<String>,
-    created_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    created_at: OffsetDateTime,
     #[schema(required = true)]
-    finished_at: Option<DateTime<Utc>>,
+    #[serde(with = "time::serde::rfc3339::option")]
+    finished_at: Option<OffsetDateTime>,
 }
 
 impl From<Migration> for MigrationView {
@@ -588,7 +590,7 @@ mod tests {
             ticket_total: 2172,
             tickets_migrated: 1086,
             error: None,
-            created_at: Utc::now(),
+            created_at: OffsetDateTime::now_utc(),
             finished_at: None,
         };
         assert_eq!(MigrationView::from(migration.clone()).percent, 50);
