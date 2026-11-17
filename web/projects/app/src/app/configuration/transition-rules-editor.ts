@@ -126,12 +126,19 @@ export class TransitionRulesEditor {
     this.form().controls.postFunctions.push(postFunctionForm(null, null, this.fields()));
   }
 
-  protected remove(index: number): void {
-    this.form().controls.postFunctions.removeAt(index);
+  // The buttons name their post-function, whose position is read now: the
+  // one the list shows may be a change behind (two quick presses).
+  protected remove(post: PostFunctionForm): void {
+    const posts = this.form().controls.postFunctions;
+    const index = posts.controls.indexOf(post);
+    if (index >= 0) posts.removeAt(index);
   }
 
-  protected move(from: number, to: number): void {
-    movePostFunction(this.form().controls.postFunctions, from, to);
+  /** Moves `post` one place up (-1) or down (1). */
+  protected shift(post: PostFunctionForm, by: -1 | 1): void {
+    const posts = this.form().controls.postFunctions;
+    const from = posts.controls.indexOf(post);
+    if (from >= 0) movePostFunction(posts, from, from + by);
   }
 
   /** A new field for "Set a field": its value starts again. */
