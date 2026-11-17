@@ -3,13 +3,13 @@
 
 #![allow(clippy::unwrap_used)]
 
-use chrono::{Duration, Utc};
 use infra::accounts::{self, AccountType, NewMember, TenantRole};
 use infra::credentials::token_hash;
 use infra::db::begin_tenant_tx;
 use infra::sqlx;
 use infra::uuid::Uuid;
 use testkit::TestDb;
+use time::{Duration, OffsetDateTime};
 
 #[tokio::test]
 async fn a_member_is_found_in_its_tenant_only() {
@@ -116,9 +116,14 @@ async fn an_external_member_cannot_hold_an_administration_role() {
 
 async fn reset(db: &TestDb, tenant: Uuid, account: Uuid, token: &str, expires_in: Duration) {
     let mut tx = begin_tenant_tx(&db.app_pool, tenant).await.unwrap();
-    accounts::create_password_reset(&mut tx, account, &token_hash(token), Utc::now() + expires_in)
-        .await
-        .unwrap();
+    accounts::create_password_reset(
+        &mut tx,
+        account,
+        &token_hash(token),
+        OffsetDateTime::now_utc() + expires_in,
+    )
+    .await
+    .unwrap();
     tx.commit().await.unwrap();
 }
 

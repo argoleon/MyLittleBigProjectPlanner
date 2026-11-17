@@ -14,7 +14,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use axum::extract::State;
 use axum::http::{HeaderMap, header};
 use axum::response::{IntoResponse, Response};
-use chrono::{DateTime, NaiveDate, Utc};
 use domain::fields::{Kind, ListValue, Mode, Rules, Step, Value};
 use domain::issue_types::TypeNode;
 use domain::issues::{FieldDef, NewIssue, Parent, Priority, parse_key, validate_new};
@@ -28,6 +27,7 @@ use infra::nodes::Node;
 use infra::uuid::Uuid;
 use infra::workflows::Workflows;
 use serde::{Deserialize, Serialize};
+use time::{Date, OffsetDateTime};
 use utoipa::{IntoParams, ToSchema};
 
 use crate::config_fields::{KindView, ModeView};
@@ -194,9 +194,9 @@ pub struct IssueView {
     #[schema(required = true)]
     assignee: Option<PersonView>,
     #[schema(required = true)]
-    start_date: Option<NaiveDate>,
+    start_date: Option<Date>,
     #[schema(required = true)]
-    due_date: Option<NaiveDate>,
+    due_date: Option<Date>,
     /// The custom fields that hold a value, in the order of the
     /// configuration.
     fields: Vec<FieldValueView>,
@@ -206,8 +206,10 @@ pub struct IssueView {
     /// The ticket it sits under; `null`: at the top.
     #[schema(required = true)]
     parent_id: Option<Uuid>,
-    created_at: DateTime<Utc>,
-    updated_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    created_at: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    updated_at: OffsetDateTime,
     #[schema(example = 1)]
     version: i64,
     /// `expand=children`: its sub-tasks, oldest first.
@@ -233,7 +235,8 @@ pub struct SummaryView {
     priority: PriorityView,
     #[schema(required = true)]
     assignee: Option<PersonView>,
-    updated_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    updated_at: OffsetDateTime,
 }
 
 /// A page of tickets.
@@ -281,9 +284,9 @@ pub struct NewIssueBody {
     #[serde(default)]
     assignee_id: Option<Uuid>,
     #[serde(default)]
-    start_date: Option<NaiveDate>,
+    start_date: Option<Date>,
     #[serde(default)]
-    due_date: Option<NaiveDate>,
+    due_date: Option<Date>,
     /// Custom field values, by field id, as the field takes them.
     #[serde(default)]
     fields: BTreeMap<Uuid, serde_json::Value>,

@@ -13,7 +13,6 @@ use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
 
-use chrono::Utc;
 use domain::jobs::{AfterFailure, after_failure};
 use infra::aggregates::AGGREGATE_JOB;
 use infra::attachments::{
@@ -27,6 +26,7 @@ use infra::jobs::ClaimedJob;
 use infra::notifications::{DISPATCH_JOB, DispatchJob, PUBLISH_JOB, PublishJob};
 use infra::platform::PURGE_TENANT_JOB;
 use infra::sqlx::postgres::{PgConnection, PgPool};
+use time::OffsetDateTime;
 
 use crate::Batch;
 
@@ -334,8 +334,7 @@ impl JobRunner {
             Err(JobError::Retry(reason)) => match after_failure(job.attempt, job.max_attempts) {
                 AfterFailure::RetryIn(delay) => {
                     tracing::warn!(%reason, retry_in_secs = delay.as_secs(), "job failed, will retry");
-                    let retry_at =
-                        Utc::now() + chrono::Duration::from_std(delay).unwrap_or(chrono::Duration::hours(1));
+                    let retry_at = OffsetDateTime::now_utc() + delay;
                     infra::jobs::fail(&self.pool, job.id, &self.worker_id, reason, Some(retry_at)).await
                 }
                 AfterFailure::GiveUp => {

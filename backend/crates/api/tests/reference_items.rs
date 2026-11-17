@@ -63,7 +63,10 @@ async fn create_returns_201_with_location_etag_and_resource() {
     assert_eq!(item["quantity"], 3);
     assert_eq!(item["version"], 1);
     assert!(item.get("labelTranslations").is_none(), "only on request");
-    assert!(item["createdAt"].as_str().is_some());
+    // RFC 3339 in UTC, the format of every time in the API.
+    let created_at = item["createdAt"].as_str().unwrap_or_default();
+    let parsed = time::OffsetDateTime::parse(created_at, &time::format_description::well_known::Rfc3339);
+    assert!(created_at.ends_with('Z') && parsed.is_ok(), "{created_at}");
 }
 
 #[tokio::test]

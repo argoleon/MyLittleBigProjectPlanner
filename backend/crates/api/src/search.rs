@@ -10,13 +10,13 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use axum::response::{IntoResponse, Response};
-use chrono::{DateTime, NaiveDate, Utc};
 use domain::issues::Priority;
 use domain::query::{QueryError, QueryErrorKind};
 use domain::validation::FieldError;
 use infra::search::{Context, SearchError};
 use infra::uuid::Uuid;
 use serde::{Deserialize, Serialize};
+use time::{Date, OffsetDateTime};
 use utoipa::ToSchema;
 
 use crate::extract::{AcceptLanguage, ApiJson};
@@ -106,16 +106,18 @@ pub struct ResultView {
     #[schema(required = true)]
     reporter: Option<PersonView>,
     #[schema(required = true)]
-    start_date: Option<NaiveDate>,
+    start_date: Option<Date>,
     #[schema(required = true)]
-    due_date: Option<NaiveDate>,
+    due_date: Option<Date>,
     #[schema(required = true)]
     parent_id: Option<Uuid>,
     /// `expand=parent`: the ticket it sits under.
     #[serde(skip_serializing_if = "Option::is_none")]
     parent: Option<IssueRefView>,
-    created_at: DateTime<Utc>,
-    updated_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    created_at: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    updated_at: OffsetDateTime,
 }
 
 /// A page of results.

@@ -6,9 +6,9 @@
 //! (`migrations/20261111000001_tenant_settings_and_platform.sql`): the
 //! runtime role cannot write the tenant table otherwise.
 
-use chrono::{DateTime, Utc};
 use domain::tenant::{OverloadMode, TenantSettingsInput};
 use sqlx::postgres::PgConnection;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::pagination::{Keyset, Page, page_from_rows};
@@ -45,8 +45,8 @@ pub struct Tenant {
     pub api_rate_limit_per_minute: Option<i32>,
     pub status: TenantStatus,
     pub version: i64,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: OffsetDateTime,
+    pub updated_at: OffsetDateTime,
 }
 
 impl Tenant {
@@ -71,8 +71,8 @@ struct Row {
     api_rate_limit_per_minute: Option<i32>,
     status: String,
     version: i64,
-    created_at: DateTime<Utc>,
-    updated_at: DateTime<Utc>,
+    created_at: OffsetDateTime,
+    updated_at: OffsetDateTime,
 }
 
 impl From<Row> for Tenant {

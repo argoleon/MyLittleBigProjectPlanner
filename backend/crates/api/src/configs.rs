@@ -18,7 +18,6 @@ use std::collections::BTreeMap;
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::{IntoResponse, Response};
-use chrono::{DateTime, Utc};
 use domain::configuration::{
     DeletionRefusal, Item, ItemKind, Removal, deletion_refusal, manages_configurations, publish_impact,
     validate_name,
@@ -29,6 +28,7 @@ use infra::configs::{self as repo, Config, ConfigProject, WriteConflict};
 use infra::nodes::Node;
 use infra::uuid::Uuid;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
 use crate::etag::{etag, if_none_match, require_if_match};
@@ -78,7 +78,8 @@ pub struct PublishedView {
     /// 1, then one more per publication.
     #[schema(example = 2)]
     number: i32,
-    published_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    published_at: OffsetDateTime,
 }
 
 /// The draft of a configuration, shared by its admins.
@@ -91,7 +92,8 @@ pub struct DraftView {
     /// Items it changed, each once however many times it was edited.
     #[schema(example = 2)]
     change_count: i64,
-    created_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    created_at: OffsetDateTime,
 }
 
 /// A page of configurations.

@@ -13,12 +13,12 @@
 
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
 pub use domain::auth_policy::Proof;
 pub use domain::mfa::SessionStage;
 use fred::prelude::{KeysInterface, SetsInterface};
 use fred::types::Expiration;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::credentials::{random_token, token_hash_hex};
@@ -31,9 +31,11 @@ pub struct Session {
     pub tenant_id: Uuid,
     /// Sent back by the front end in `X-CSRF-Token` on every change.
     pub csrf_token: String,
-    pub created_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: OffsetDateTime,
     /// Absolute end of the session, whatever its use.
-    pub expires_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    pub expires_at: OffsetDateTime,
     /// Only a `Complete` session reaches the application; the others wait
     /// for two-step verification. Sessions stored before stages existed
     /// were complete.
@@ -49,8 +51,8 @@ pub struct Session {
     pub user_agent: Option<String>,
     /// Latest request, to the minute ([`ACTIVITY_STEP`]); `None` for
     /// sessions stored before it was recorded.
-    #[serde(default)]
-    pub last_seen_at: Option<DateTime<Utc>>,
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    pub last_seen_at: Option<OffsetDateTime>,
 }
 
 impl Session {
@@ -183,8 +185,8 @@ impl SessionStore {
     ) -> Result<NewSession, ValkeyError> {
         let lifetime = self.lifetime_of(stage);
         let token = random_token();
-        let now = Utc::now();
-        let max_age = chrono::Duration::from_std(lifetime.max_age).unwrap_or(chrono::Duration::days(7));
+        let now = OffsetDateTime::now_utc();
+        let max_age = lifetime.max_age;
         let session = Session {
             account_id,
             tenant_id,
@@ -229,7 +231,8 @@ impl SessionStore {
         let Some(session) = json.and_then(|json| serde_json::from_str::<Session>(&json).ok()) else {
             return Ok(None);
         };
-        let remaining = (session.expires_at - Utc::now()).to_std().unwrap_or_default();
+        let remaining =
+            std::time::Duration::try_from(session.expires_at - OffsetDateTime::now_utc()).unwrap_or_default();
         if remaining.is_zero() {
             self.forget(&hash, session.account_id).await?;
             return Ok(None);
@@ -247,9 +250,9 @@ impl SessionStore {
         let Some(mut session) = self.get(token).await? else {
             return Ok(None);
         };
-        let now = Utc::now();
+        let now = OffsetDateTime::now_utc();
         let user_agent = user_agent.and_then(domain::devices::kept_user_agent);
-        let step = chrono::Duration::from_std(ACTIVITY_STEP).unwrap_or(chrono::Duration::minutes(1));
+        let step = ACTIVITY_STEP;
         let stale = session.last_seen_at.is_none_or(|seen| now - seen >= step);
         let moved = user_agent.is_some() && user_agent != session.user_agent;
         if !stale && !moved {
@@ -259,7 +262,7 @@ impl SessionStore {
         if user_agent.is_some() {
             session.user_agent = user_agent;
         }
-        let remaining = (session.expires_at - now).to_std().unwrap_or_default();
+        let remaining = std::time::Duration::try_from(session.expires_at - now).unwrap_or_default();
         let ttl = remaining.min(self.lifetime_of(session.stage).idle);
         let json = serde_json::to_string(&session)
             .map_err(|e| ValkeyError::new(fred::error::ErrorKind::Parse, e.to_string()))?;
@@ -291,10 +294,12 @@ impl SessionStore {
         for hash in hashes {
             let json: Option<String> = self.valkey.get(self.session_key(&hash)).await?;
             match json.and_then(|json| serde_json::from_str::<Session>(&json).ok()) {
-                Some(session) if session.expires_at > Utc::now() => sessions.push(ListedSession {
-                    id: public_id(&hash),
-                    session,
-                }),
+                Some(session) if session.expires_at > OffsetDateTime::now_utc() => {
+                    sessions.push(ListedSession {
+                        id: public_id(&hash),
+                        session,
+                    });
+                }
                 _ => {
                     let _: () = self.valkey.srem(&account_key, &hash).await?;
                 }
@@ -398,4 +403,51 @@ fn public_id(hash: &str) -> String {
 
 fn secs(duration: Duration) -> i64 {
     i64::try_from(duration.as_secs()).unwrap_or(i64::MAX)
+}
+
+#[cfg(test)]
+mod tests {
+    use time::macros::datetime;
+
+    use super::*;
+
+    /// A session as written by the versions before `time` (chrono, RFC 3339
+    /// with microseconds), still in Valkey after an upgrade.
+    const STORED_BEFORE: &str = r#"{
+        "account_id": "01940000-0000-7000-8000-000000000001",
+        "tenant_id": "01940000-0000-7000-8000-000000000002",
+        "csrf_token": "csrf",
+        "created_at": "2026-11-11T08:00:00.123456Z",
+        "expires_at": "2026-11-18T08:00:00.123456Z",
+        "stage": "complete",
+        "second_factor": true,
+        "sso": false,
+        "user_agent": "Firefox",
+        "last_seen_at": "2026-11-11T09:30:00Z"
+    }"#;
+
+    #[test]
+    fn sessions_stored_by_earlier_versions_still_read() {
+        let session: Session = serde_json::from_str(STORED_BEFORE).unwrap();
+        assert_eq!(session.created_at, datetime!(2026-11-11 08:00:00.123456 UTC));
+        assert_eq!(session.expires_at, datetime!(2026-11-18 08:00:00.123456 UTC));
+        assert_eq!(session.last_seen_at, Some(datetime!(2026-11-11 09:30 UTC)));
+    }
+
+    #[test]
+    fn sessions_without_activity_still_read() {
+        let mut json: serde_json::Value = serde_json::from_str(STORED_BEFORE).unwrap();
+        json.as_object_mut().unwrap().remove("last_seen_at");
+        let session: Session = serde_json::from_value(json).unwrap();
+        assert_eq!(session.last_seen_at, None);
+    }
+
+    #[test]
+    fn sessions_are_stored_with_rfc_3339_times() {
+        let session: Session = serde_json::from_str(STORED_BEFORE).unwrap();
+        let json = serde_json::to_value(&session).unwrap();
+        assert_eq!(json["created_at"], "2026-11-11T08:00:00.123456Z");
+        assert_eq!(json["last_seen_at"], "2026-11-11T09:30:00Z");
+        assert_eq!(serde_json::from_value::<Session>(json).unwrap(), session);
+    }
 }
