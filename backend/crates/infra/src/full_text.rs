@@ -162,26 +162,24 @@ pub fn push_matches(qb: &mut QueryBuilder<Postgres>, scope: Scope, terms: &[Term
         Scope::All => None,
     };
     let query = tsquery(terms, weight, true);
-    if scope != Scope::All {
-        qb.push("i.search_vector @@ ");
+    qb.push("(i.search_vector @@ ");
+    push_tsquery(qb, &query);
+    if scope == Scope::All {
+        qb.push(" OR i.id IN (SELECT c.issue_id FROM comment c WHERE c.deleted_at IS NULL");
+        push_audience(qb, audience);
+        qb.push(" AND c.search_vector @@ ");
         push_tsquery(qb, &query);
-        return;
+        qb.push(")");
     }
-    // The tickets found by their text, then by their comments: each through
-    // its index. (`… OR EXISTS (comments)` would read every ticket.)
-    qb.push("i.id IN (SELECT m.id FROM issue m WHERE m.search_vector @@ ");
-    push_tsquery(qb, &query);
-    qb.push(" UNION ALL SELECT c.issue_id FROM comment c WHERE c.deleted_at IS NULL");
-    push_audience(qb, audience);
-    qb.push(" AND c.search_vector @@ ");
-    push_tsquery(qb, &query);
     qb.push(")");
 }
 
 /// How well a ticket matches the searched `texts` (as `real`, higher first):
-/// its own text, the corrected words counting half, then half its best
-/// comment.
-pub fn push_relevance(qb: &mut QueryBuilder<Postgres>, texts: &[&[Term]], audience: Audience) {
+/// by its own text, the title weighing more; words found through a
+/// correction count half. Tickets found by a comment alone rank 0, after the
+/// others: ranking every match by its comments too took a subquery per
+/// ticket, too slow on a common word (20,000 matches).
+pub fn push_relevance(qb: &mut QueryBuilder<Postgres>, texts: &[&[Term]]) {
     let either = |corrected| {
         texts
             .iter()
@@ -195,15 +193,13 @@ pub fn push_relevance(qb: &mut QueryBuilder<Postgres>, texts: &[&[Term]], audien
         qb.push("0::real");
         return;
     }
-    qb.push("((ts_rank(i.search_vector, ");
+    qb.push("(ts_rank(i.search_vector, ");
     push_tsquery(qb, &exact);
-    qb.push(") + 0.5 * ts_rank(i.search_vector, ");
-    push_tsquery(qb, &all);
-    qb.push(") + 0.5 * COALESCE((SELECT max(ts_rank(c.search_vector, ");
-    push_tsquery(qb, &all);
-    qb.push(")) FROM comment c WHERE c.issue_id = i.id AND c.deleted_at IS NULL");
-    push_audience(qb, audience);
-    qb.push("), 0))::real)");
+    if all != exact {
+        qb.push(") + 0.5 * ts_rank(i.search_vector, ");
+        push_tsquery(qb, &all);
+    }
+    qb.push("))::real");
 }
 
 fn push_audience(qb: &mut QueryBuilder<Postgres>, audience: Audience) {
@@ -213,11 +209,11 @@ fn push_audience(qb: &mut QueryBuilder<Postgres>, audience: Audience) {
 }
 
 /// `query` read with French and with English stemming: a word matches in
-/// either language. In a subquery, so that PostgreSQL builds it once per
-/// search: written bare, a prepared statement's generic plan rebuilds it for
-/// every row (seven times slower on 20,000 matches).
+/// either language. Searches plan each query with its values
+/// (`search::search`): PostgreSQL builds the query once, and knows how many
+/// tickets it matches.
 fn push_tsquery(qb: &mut QueryBuilder<Postgres>, query: &str) {
-    qb.push("(SELECT to_tsquery('mlbpp_fr', ")
+    qb.push("(to_tsquery('mlbpp_fr', ")
         .push_bind(query.to_owned())
         .push(") || to_tsquery('mlbpp_en', ")
         .push_bind(query.to_owned())

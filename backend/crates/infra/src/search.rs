@@ -131,10 +131,18 @@ pub async fn search(
     limit: usize,
     count: bool,
 ) -> Result<SearchPage, SearchError> {
-    // Queries over many tickets look costly to the planner (ranking, text
-    // search), which then compiles them (JIT): seven times what they take
-    // to run (L06-US03, 100,000 tickets). For the rest of the transaction.
-    sqlx::query!("SET LOCAL jit = off").execute(&mut *conn).await?;
+    // For the rest of the transaction (L06-US03, measured on 100,000
+    // tickets):
+    // - no JIT: queries over many tickets look costly to the planner, which
+    //   then compiles them, for seven times what they take to run;
+    // - each query planned with its values: a prepared statement's generic
+    //   plan would rebuild the text query for every row, and guess how many
+    //   tickets it matches.
+    sqlx::query!(
+        r#"SELECT set_config('jit', 'off', true) AS "jit!", set_config('plan_cache_mode', 'force_custom_plan', true) AS "plans!""#
+    )
+    .fetch_one(&mut *conn)
+    .await?;
     let custom = custom_fields(conn, query).await?;
     let (searched, ranked) = searched_texts(query);
     let texts = full_text::prepare(conn, &searched).await?;
@@ -344,7 +352,6 @@ enum SortExpr {
     /// How well the ticket matches the searched texts.
     Relevance {
         texts: Vec<Vec<domain::text_search::Term>>,
-        audience: Audience,
     },
 }
 
@@ -400,9 +407,9 @@ impl SortKey {
             SortExpr::Sql(sql, _) => {
                 qb.push(*sql);
             }
-            SortExpr::Relevance { texts, audience } => {
+            SortExpr::Relevance { texts } => {
                 let texts: Vec<&[domain::text_search::Term]> = texts.iter().map(Vec::as_slice).collect();
-                full_text::push_relevance(qb, &texts, *audience);
+                full_text::push_relevance(qb, &texts);
             }
             SortExpr::Custom { items, kind } => {
                 qb.push("COALESCE(");
@@ -1088,7 +1095,6 @@ impl Compiler<'_> {
                             .iter()
                             .map(|text| self.texts.terms(text).to_vec())
                             .collect(),
-                        audience: self.context.audience,
                     },
                     descending: true,
                 });
@@ -1330,9 +1336,9 @@ mod tests {
         ));
         assert!(sql("priority >= high").contains("WHEN 'high' THEN 4 ELSE 5 END >= $1"));
         assert!(sql("text ~ outage").contains(
-            "i.id IN (SELECT m.id FROM issue m WHERE m.search_vector @@ (SELECT to_tsquery('mlbpp_fr', $1) || to_tsquery('mlbpp_en', $2)) UNION ALL SELECT c.issue_id FROM comment c"
+            "(i.search_vector @@ (to_tsquery('mlbpp_fr', $1) || to_tsquery('mlbpp_en', $2)) OR i.id IN (SELECT c.issue_id FROM comment c"
         ));
-        assert!(sql("summary ~ outage").contains("i.search_vector @@ (SELECT to_tsquery('mlbpp_fr', $1)"));
+        assert!(sql("summary ~ outage").contains("(i.search_vector @@ (to_tsquery('mlbpp_fr', $1)"));
         assert!(sql("NOT key = PLAT-1").contains("NOT COALESCE(("));
     }
 
