@@ -9,6 +9,7 @@ use domain::hierarchy::{Health, NodeType};
 use domain::query::{QueryErrorKind, parse};
 use infra::accounts::TenantRole;
 use infra::db::begin_tenant_tx;
+use infra::full_text::Audience;
 use infra::grants::{self, Grantee, NewGrant};
 use infra::id::new_id;
 use infra::nodes::{self, NewNode, NodeFields};
@@ -126,6 +127,7 @@ fn admin_context(account_id: Uuid) -> Context<'static> {
         account_id,
         time_zone: "Europe/Paris",
         visible_projects: None,
+        audience: Audience::Members,
     }
 }
 
@@ -279,6 +281,7 @@ async fn descendants_of_a_portfolio_come_once_each_and_only_those_in_sight() {
         account_id: reader,
         time_zone: "Europe/Paris",
         visible_projects: Some(&sight),
+        audience: Audience::Members,
     };
     assert_eq!(
         keys(&mut tx, query, &context).await,
@@ -606,4 +609,381 @@ async fn pages_follow_the_sort_order_through_a_cursor() {
     assert!(matches!(result, Err(SearchError::Cursor)));
     let result = search::search(&mut tx, &query, &context, Some("garbage"), 5, false).await;
     assert!(matches!(result, Err(SearchError::Cursor)));
+}
+
+// --- Full text (L06-US03) ----------------------------------------------------
+
+/// A comment on the ticket `key`, straight in SQL; `None` text: deleted.
+async fn comment(conn: &mut PgConnection, key: &str, text: Option<&str>, visibility: &str) {
+    let content = text.map(|text| {
+        serde_json::json!({"type": "doc", "content": [{"type": "paragraph", "content": [{"type": "text", "text": text}]}]})
+    });
+    sqlx::query(
+        r#"
+        INSERT INTO comment (id, tenant_id, issue_id, visibility, content, content_html, deleted_at)
+        VALUES ($1, app_current_tenant(), (SELECT id FROM issue WHERE key = $2), $3, $4,
+                CASE WHEN $4::jsonb IS NULL THEN NULL ELSE '<p>…</p>' END,
+                CASE WHEN $4::jsonb IS NULL THEN now() END)
+        "#,
+    )
+    .bind(new_id())
+    .bind(key)
+    .bind(visibility)
+    .bind(content)
+    .execute(&mut *conn)
+    .await
+    .unwrap();
+}
+
+/// The keys found by `query`, in key order (`keys` keeps the query's order).
+async fn sorted_keys(conn: &mut PgConnection, query: &str, context: &Context<'_>) -> Vec<String> {
+    let mut found = keys(conn, query, context).await;
+    found.sort();
+    found
+}
+
+#[tokio::test]
+async fn text_matches_stemmed_words_in_french_and_in_english_without_accents() {
+    let db = TestDb::new().await;
+    let me = db
+        .add_member(&db.tenant_a, TenantRole::TenantAdmin)
+        .await
+        .account_id;
+    let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+    let plat = node(&mut tx, NodeType::Project, "Platform", "PLAT", None, me).await;
+    insert(
+        &mut tx,
+        &Ticket {
+            summary: "Pannes électriques du bâtiment",
+            ..ticket(plat, "PLAT-1")
+        },
+    )
+    .await;
+    insert(
+        &mut tx,
+        &Ticket {
+            description: Some("The servers keep running out of memory"),
+            ..ticket(plat, "PLAT-2")
+        },
+    )
+    .await;
+    insert(
+        &mut tx,
+        &Ticket {
+            summary: "Nothing to see",
+            ..ticket(plat, "PLAT-3")
+        },
+    )
+    .await;
+    let context = admin_context(me);
+    // French: plural and singular, accents or not, any case.
+    for query in [
+        "text ~ panne",
+        "text ~ electrique",
+        "text ~ \"ÉLECTRIQUE\"",
+        "text ~ batiment",
+    ] {
+        assert_eq!(keys(&mut tx, query, &context).await, ["PLAT-1"], "{query}");
+    }
+    // English: "running" and "servers" from their stems.
+    for query in ["text ~ run", "text ~ server", "text ~ \"memory running\""] {
+        assert_eq!(keys(&mut tx, query, &context).await, ["PLAT-2"], "{query}");
+    }
+    // Every word is needed.
+    assert!(
+        keys(&mut tx, "text ~ \"server panne\"", &context)
+            .await
+            .is_empty()
+    );
+    // The title only, the description only.
+    assert_eq!(keys(&mut tx, "summary ~ panne", &context).await, ["PLAT-1"]);
+    assert!(keys(&mut tx, "summary ~ memory", &context).await.is_empty());
+    assert_eq!(keys(&mut tx, "description ~ memory", &context).await, ["PLAT-2"]);
+    assert_eq!(
+        sorted_keys(&mut tx, "text !~ panne", &context).await,
+        ["PLAT-2", "PLAT-3"]
+    );
+}
+
+#[tokio::test]
+async fn a_typo_finds_the_ticket_but_not_the_words_it_merely_resembles() {
+    let db = TestDb::new().await;
+    let me = db
+        .add_member(&db.tenant_a, TenantRole::TenantAdmin)
+        .await
+        .account_id;
+    let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+    let plat = node(&mut tx, NodeType::Project, "Platform", "PLAT", None, me).await;
+    insert(
+        &mut tx,
+        &Ticket {
+            description: Some("outage of the directory"),
+            ..ticket(plat, "PLAT-1")
+        },
+    )
+    .await;
+    for (key, summary) in [
+        ("PLAT-2", "Output of the export"),
+        ("PLAT-3", "Outlook calendar"),
+        ("PLAT-4", "Outbound mail"),
+    ] {
+        insert(
+            &mut tx,
+            &Ticket {
+                summary,
+                ..ticket(plat, key)
+            },
+        )
+        .await;
+    }
+    let context = admin_context(me);
+    for query in [
+        "text ~ outgae",
+        "text ~ otuage",
+        "text ~ \"directroy outgae\"",
+        "description ~ outage",
+    ] {
+        assert_eq!(keys(&mut tx, query, &context).await, ["PLAT-1"], "{query}");
+    }
+    // A word the tenant wrote is never corrected.
+    assert_eq!(keys(&mut tx, "text ~ output", &context).await, ["PLAT-2"]);
+    // Too far from any word, or too short to correct.
+    assert!(keys(&mut tx, "text ~ outrageous", &context).await.is_empty());
+    assert!(keys(&mut tx, "text ~ otu", &context).await.is_empty());
+}
+
+#[tokio::test]
+async fn the_best_matches_come_first_and_their_pages_follow() {
+    let db = TestDb::new().await;
+    let me = db
+        .add_member(&db.tenant_a, TenantRole::TenantAdmin)
+        .await
+        .account_id;
+    let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+    let plat = node(&mut tx, NodeType::Project, "Platform", "PLAT", None, me).await;
+    // In the description only, the newest; in the title; in a comment only.
+    insert(
+        &mut tx,
+        &Ticket {
+            description: Some("an outage of the directory"),
+            ..ticket(plat, "PLAT-1")
+        },
+    )
+    .await;
+    insert(
+        &mut tx,
+        &Ticket {
+            summary: "Directory outage",
+            created_days_ago: 3,
+            ..ticket(plat, "PLAT-2")
+        },
+    )
+    .await;
+    insert(
+        &mut tx,
+        &Ticket {
+            created_days_ago: 5,
+            ..ticket(plat, "PLAT-3")
+        },
+    )
+    .await;
+    comment(&mut tx, "PLAT-3", Some("the directory outage again"), "internal").await;
+    let context = admin_context(me);
+    let ranked = ["PLAT-2", "PLAT-1", "PLAT-3"];
+    assert_eq!(
+        keys(&mut tx, "text ~ \"directory outage\"", &context).await,
+        ranked
+    );
+    // One by one, each page after the cursor of the one before.
+    let query = parse("text ~ \"directory outage\"").unwrap();
+    let mut cursor: Option<String> = None;
+    let mut paged = Vec::new();
+    loop {
+        let page = search::search(&mut tx, &query, &context, cursor.as_deref(), 1, false)
+            .await
+            .unwrap();
+        paged.extend(page.items.into_iter().map(|found| found.key));
+        match page.next_cursor {
+            Some(next) => cursor = Some(next),
+            None => break,
+        }
+    }
+    assert_eq!(paged, ranked);
+    // An explicit order wins.
+    assert_eq!(
+        keys(&mut tx, "text ~ \"directory outage\" ORDER BY key", &context).await,
+        ["PLAT-1", "PLAT-2", "PLAT-3"]
+    );
+}
+
+#[tokio::test]
+async fn comments_count_for_members_and_only_public_ones_for_the_portal() {
+    let db = TestDb::new().await;
+    let me = db
+        .add_member(&db.tenant_a, TenantRole::TenantAdmin)
+        .await
+        .account_id;
+    let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+    let plat = node(&mut tx, NodeType::Project, "Platform", "PLAT", None, me).await;
+    for key in ["PLAT-1", "PLAT-2", "PLAT-3"] {
+        insert(&mut tx, &ticket(plat, key)).await;
+    }
+    comment(
+        &mut tx,
+        "PLAT-1",
+        Some("Internal note: the directory outage"),
+        "internal",
+    )
+    .await;
+    comment(
+        &mut tx,
+        "PLAT-2",
+        Some("We are fixing the directory outage"),
+        "public",
+    )
+    .await;
+    comment(&mut tx, "PLAT-3", None, "public").await;
+    let members = admin_context(me);
+    let portal = Context {
+        audience: Audience::Portal,
+        ..admin_context(me)
+    };
+    let query = "text ~ \"directory outage\"";
+    assert_eq!(sorted_keys(&mut tx, query, &members).await, ["PLAT-1", "PLAT-2"]);
+    assert_eq!(keys(&mut tx, query, &portal).await, ["PLAT-2"]);
+    // A typo corrected through a word of an internal comment still finds
+    // nothing the portal may not read.
+    assert_eq!(
+        keys(&mut tx, "text ~ \"directroy outgae\"", &portal).await,
+        ["PLAT-2"]
+    );
+    // Comments are not the title.
+    assert!(keys(&mut tx, "summary ~ outage", &members).await.is_empty());
+}
+
+#[tokio::test]
+async fn neither_the_tickets_nor_the_words_of_another_tenant_are_used() {
+    let db = TestDb::new().await;
+    let a = db
+        .add_member(&db.tenant_a, TenantRole::TenantAdmin)
+        .await
+        .account_id;
+    let b = db
+        .add_member(&db.tenant_b, TenantRole::TenantAdmin)
+        .await
+        .account_id;
+    {
+        let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_b.id).await.unwrap();
+        let other = node(&mut tx, NodeType::Project, "Other", "OTHR", None, b).await;
+        insert(
+            &mut tx,
+            &Ticket {
+                summary: "Directory outage",
+                ..ticket(other, "OTHR-1")
+            },
+        )
+        .await;
+        tx.commit().await.unwrap();
+    }
+    let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+    let plat = node(&mut tx, NodeType::Project, "Platform", "PLAT", None, a).await;
+    insert(
+        &mut tx,
+        &Ticket {
+            summary: "Printer jam",
+            ..ticket(plat, "PLAT-1")
+        },
+    )
+    .await;
+    let context = admin_context(a);
+    assert!(keys(&mut tx, "text ~ outage", &context).await.is_empty());
+    let words: Vec<String> = sqlx::query_scalar("SELECT word FROM search_word ORDER BY word")
+        .fetch_all(&mut *tx)
+        .await
+        .unwrap();
+    assert_eq!(
+        words,
+        ["printer"],
+        "only this tenant's words, of 4 letters or more"
+    );
+    // "outgae" is a typo of nothing tenant A wrote.
+    insert(
+        &mut tx,
+        &Ticket {
+            summary: "Outrage",
+            ..ticket(plat, "PLAT-2")
+        },
+    )
+    .await;
+    assert!(keys(&mut tx, "text ~ outgae", &context).await.is_empty());
+}
+
+#[tokio::test]
+async fn new_words_are_found_as_tickets_and_comments_change() {
+    let db = TestDb::new().await;
+    let me = db
+        .add_member(&db.tenant_a, TenantRole::TenantAdmin)
+        .await
+        .account_id;
+    let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+    let plat = node(&mut tx, NodeType::Project, "Platform", "PLAT", None, me).await;
+    insert(&mut tx, &ticket(plat, "PLAT-1")).await;
+    let context = admin_context(me);
+    assert!(keys(&mut tx, "text ~ firewal", &context).await.is_empty());
+    sqlx::query("UPDATE issue SET summary = 'Firewall rules' WHERE key = 'PLAT-1'")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    assert_eq!(keys(&mut tx, "text ~ firewal", &context).await, ["PLAT-1"]);
+    sqlx::query(
+        "UPDATE issue SET description = '{\"type\": \"doc\", \"content\": [{\"type\": \"text\", \"text\": \"certificate renewal\"}]}' \
+         WHERE key = 'PLAT-1'",
+    )
+    .execute(&mut *tx)
+    .await
+    .unwrap();
+    assert_eq!(
+        keys(&mut tx, "description ~ certifcate", &context).await,
+        ["PLAT-1"]
+    );
+    comment(&mut tx, "PLAT-1", Some("Rebooting the gateway"), "internal").await;
+    assert_eq!(
+        keys(&mut tx, "text ~ \"rebootign gatewya\"", &context).await,
+        ["PLAT-1"]
+    );
+}
+
+#[tokio::test]
+async fn any_text_is_searched_as_words_never_as_operators() {
+    let db = TestDb::new().await;
+    let me = db
+        .add_member(&db.tenant_a, TenantRole::TenantAdmin)
+        .await
+        .account_id;
+    let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+    let plat = node(&mut tx, NodeType::Project, "Platform", "PLAT", None, me).await;
+    insert(
+        &mut tx,
+        &Ticket {
+            summary: "O'Brien's laptop",
+            ..ticket(plat, "PLAT-1")
+        },
+    )
+    .await;
+    let context = admin_context(me);
+    assert_eq!(keys(&mut tx, "text ~ \"o'brien\"", &context).await, ["PLAT-1"]);
+    for query in [
+        r#"text ~ "a | b & !c""#,
+        r#"text ~ "x:* <-> (y""#,
+        r#"text ~ "\\ ' '' \"""#,
+        r#"text ~ "!!! ???""#,
+        r#"text ~ "the of a""#,
+    ] {
+        let found = run(&mut tx, query, &context).await;
+        assert!(found.is_ok(), "{query}: {found:?}");
+    }
+    assert!(
+        keys(&mut tx, r#"text ~ "!!! ???""#, &context).await.is_empty(),
+        "no word: nothing"
+    );
 }

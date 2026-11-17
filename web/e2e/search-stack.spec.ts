@@ -4,6 +4,8 @@
  * with tickets of several priorities; the search screen then finds the
  * tickets of the portfolio's projects, highest priority first, sorts them
  * by key from a column, and shows a refused query at its position.
+ * Full text (L06-US03): words with typos find the tickets holding them,
+ * those with the words in their title first.
  *
  * Runs with `just compose-e2e` only: deploy/tests/e2e.sh creates the admin
  * and passes E2E_ADMIN_EMAIL and E2E_ADMIN_SECRET.
@@ -99,4 +101,47 @@ test('the tickets under a portfolio are found by a query, sorted by priority, th
   await field.press('Enter');
   await expect(page.locator('#query-error')).toContainText('Character 10: expected a value, found the end of the query.');
   await expect(field).toBeFocused();
+});
+
+test('words with typos find the tickets holding them, those with the words in their title first', async ({ page }) => {
+  test.setTimeout(120_000);
+  // Unique per run: the stack keeps its data.
+  const run = Date.now().toString(36).toUpperCase().slice(-5);
+  const project = `FT${run}`;
+  await signIn(page, adminEmail!, adminSecret!);
+  await page.goto('/');
+  await page.evaluate(async (project) => {
+    const session = (await (await fetch('/api/v1/auth/session')).json()) as { csrfToken: string };
+    const headers = { 'content-type': 'application/json', 'x-csrf-token': session.csrfToken };
+    const created = await fetch('/api/v1/nodes', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ type: 'project', name: `Project ${project}`, key: project }),
+    });
+    if (created.status !== 201) throw new Error(`project: ${created.status}`);
+    const form = (await (await fetch(`/api/v1/projects/${project}/issue-form`)).json()) as { types: { id: string; key: string }[] };
+    const story = form.types.find((type) => type.key === 'story');
+    const doc = (text: string) => ({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text }] }] });
+    // In the description of the first, in the title of the second.
+    for (const body of [
+      { summary: 'Accounts locked this morning', description: doc('Outage of the directory') },
+      { summary: 'Directory outage', description: doc('Nobody can sign in') },
+      { summary: 'Printer jam', description: doc('Second floor') },
+    ]) {
+      const response = await fetch(`/api/v1/projects/${project}/issues`, {
+        method: 'POST',
+        headers: { ...headers, 'idempotency-key': crypto.randomUUID() },
+        body: JSON.stringify({ ...body, typeId: story?.id, priority: 'medium' }),
+      });
+      if (response.status !== 201) throw new Error(`ticket: ${response.status} ${await response.text()}`);
+    }
+  }, project);
+
+  await page.getByRole('link', { name: 'Search' }).click();
+  await page.getByRole('radio', { name: 'Query' }).click();
+  const field = page.getByRole('combobox', { name: 'Query' });
+  await field.fill(`project = ${project} AND text ~ "directroy outgae"`);
+  await field.press('Enter');
+  await expect(page.getByText('Results: 2')).toBeVisible();
+  await expect(page.locator('td.key a')).toHaveText([`${project}-2`, `${project}-1`]);
 });

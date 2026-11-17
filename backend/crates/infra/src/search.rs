@@ -19,6 +19,9 @@
 //!   while `assignee != currentUser()` does not.
 //! - Pages follow a cursor over the sort keys (empty values last), then the
 //!   ticket id; a cursor only fits the order it came from.
+//! - Text (`text ~`, `summary ~`, `description ~`): full text, typos
+//!   corrected ([`crate::full_text`]). Without `ORDER BY`, a query searching
+//!   text lists the best matches first.
 
 use std::collections::HashMap;
 use std::fmt::Write as _;
@@ -35,7 +38,7 @@ use sqlx::postgres::PgConnection;
 use sqlx::{Postgres, QueryBuilder, Row as _};
 use uuid::Uuid;
 
-use crate::full_text::{self, Scope};
+use crate::full_text::{self, Audience, Scope, Texts};
 use crate::issues::Issue;
 
 /// Who searches.
@@ -46,6 +49,8 @@ pub struct Context<'a> {
     pub time_zone: &'a str,
     /// The projects the member sees; `None`: all of them (tenant admins).
     pub visible_projects: Option<&'a [Uuid]>,
+    /// Members, or the portal: which comments the text search reads.
+    pub audience: Audience,
 }
 
 /// One page of tickets.
@@ -126,12 +131,19 @@ pub async fn search(
     limit: usize,
     count: bool,
 ) -> Result<SearchPage, SearchError> {
+    // Queries over many tickets look costly to the planner (ranking, text
+    // search), which then compiles them (JIT): seven times what they take
+    // to run (L06-US03, 100,000 tickets). For the rest of the transaction.
+    sqlx::query!("SET LOCAL jit = off").execute(&mut *conn).await?;
     let custom = custom_fields(conn, query).await?;
+    let (searched, ranked) = searched_texts(query);
+    let texts = full_text::prepare(conn, &searched).await?;
     let compiler = Compiler {
         context,
         custom: &custom,
+        texts: &texts,
     };
-    let sort = compiler.sort_keys(&query.order_by)?;
+    let sort = compiler.sort_keys(&query.order_by, &ranked)?;
     let order_text = order_fingerprint(query);
     let after = cursor
         .map(|c| decode_cursor(c, &order_text, sort.len()))
@@ -216,6 +228,41 @@ struct CustomDef {
     options: Options,
 }
 
+/// The texts `query` searches (`~`, `!~`), and those whose matches it keeps
+/// (`~`, or `!~` under a `NOT`, an even number of negations in all): what
+/// relevance is measured on.
+fn searched_texts(query: &Query) -> (Vec<String>, Vec<String>) {
+    fn walk(expr: &Expr, negated: bool, all: &mut Vec<String>, kept: &mut Vec<String>) {
+        match expr {
+            Expr::And(left, right) | Expr::Or(left, right) => {
+                walk(left, negated, all, kept);
+                walk(right, negated, all, kept);
+            }
+            Expr::Not(inner) => walk(inner, !negated, all, kept),
+            Expr::Clause(Clause {
+                condition: Condition::Contains { negated: not, text },
+                ..
+            }) => {
+                all.push(text.clone());
+                // `!~` under a `NOT` keeps its matches, like `~` under none.
+                if negated == *not {
+                    kept.push(text.clone());
+                }
+            }
+            Expr::Clause(_) => {}
+        }
+    }
+    let (mut all, mut kept) = (Vec::new(), Vec::new());
+    if let Some(filter) = &query.filter {
+        walk(filter, false, &mut all, &mut kept);
+    }
+    all.sort();
+    all.dedup();
+    kept.sort();
+    kept.dedup();
+    (all, kept)
+}
+
 /// Every custom key `query` names.
 fn custom_keys(query: &Query) -> Vec<String> {
     fn walk(expr: &Expr, keys: &mut Vec<String>) {
@@ -294,6 +341,11 @@ enum SortExpr {
     Sql(&'static str, &'static str),
     /// A custom field read under several item ids: the first one set.
     Custom { items: Vec<Uuid>, kind: CustomSort },
+    /// How well the ticket matches the searched texts.
+    Relevance {
+        texts: Vec<Vec<domain::text_search::Term>>,
+        audience: Audience,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -321,6 +373,7 @@ impl SortKey {
         match &self.expr {
             SortExpr::Sql(sql, _) => !NEVER_EMPTY.contains(sql),
             SortExpr::Custom { .. } => true,
+            SortExpr::Relevance { .. } => false,
         }
     }
 
@@ -332,6 +385,7 @@ impl SortKey {
     fn cast(&self) -> &'static str {
         match &self.expr {
             SortExpr::Sql(_, cast) => cast,
+            SortExpr::Relevance { .. } => "real",
             SortExpr::Custom { kind, .. } => match kind {
                 CustomSort::Number => "numeric",
                 CustomSort::Date => "date",
@@ -345,6 +399,10 @@ impl SortKey {
         match &self.expr {
             SortExpr::Sql(sql, _) => {
                 qb.push(*sql);
+            }
+            SortExpr::Relevance { texts, audience } => {
+                let texts: Vec<&[domain::text_search::Term]> = texts.iter().map(Vec::as_slice).collect();
+                full_text::push_relevance(qb, &texts, *audience);
             }
             SortExpr::Custom { items, kind } => {
                 qb.push("COALESCE(");
@@ -486,6 +544,7 @@ fn push_after(qb: &mut QueryBuilder<Postgres>, sort: &[SortKey], after: &CursorD
 struct Compiler<'a> {
     context: &'a Context<'a>,
     custom: &'a HashMap<String, Vec<CustomDef>>,
+    texts: &'a Texts,
 }
 
 /// The values of a condition (`IN` lists and single comparisons alike).
@@ -641,14 +700,16 @@ impl Compiler<'_> {
         }
         qb.push("(");
         match (field, condition) {
-            (SystemField::Summary, Condition::Contains { text, .. }) => {
-                full_text::push_contains(qb, Scope::Summary, text);
-            }
-            (SystemField::Description, Condition::Contains { text, .. }) => {
-                full_text::push_contains(qb, Scope::Description, text);
-            }
-            (SystemField::Text, Condition::Contains { text, .. }) => {
-                full_text::push_contains(qb, Scope::All, text);
+            (
+                SystemField::Summary | SystemField::Description | SystemField::Text,
+                Condition::Contains { text, .. },
+            ) => {
+                let scope = match field {
+                    SystemField::Summary => Scope::Summary,
+                    SystemField::Description => Scope::Description,
+                    _ => Scope::All,
+                };
+                full_text::push_matches(qb, scope, self.texts.terms(text), self.context.audience);
             }
             (SystemField::Description, Condition::Empty { .. }) => {
                 qb.push("i.description IS NULL");
@@ -1011,13 +1072,29 @@ impl Compiler<'_> {
     }
 
     /// The SQL sort keys of `order_by`; newest first by default.
-    fn sort_keys(&self, order_by: &[OrderKey]) -> Result<Vec<SortKey>, QueryError> {
+    /// The sort keys of `order_by`; without one, the newest tickets first,
+    /// after the best matches of the `ranked` texts when there are some.
+    fn sort_keys(&self, order_by: &[OrderKey], ranked: &[String]) -> Result<Vec<SortKey>, QueryError> {
         let key = |sql, cast, descending| SortKey {
             expr: SortExpr::Sql(sql, cast),
             descending,
         };
         if order_by.is_empty() {
-            return Ok(vec![key("i.created_at", "timestamptz", true)]);
+            let mut keys = Vec::new();
+            if !ranked.is_empty() {
+                keys.push(SortKey {
+                    expr: SortExpr::Relevance {
+                        texts: ranked
+                            .iter()
+                            .map(|text| self.texts.terms(text).to_vec())
+                            .collect(),
+                        audience: self.context.audience,
+                    },
+                    descending: true,
+                });
+            }
+            keys.push(key("i.created_at", "timestamptz", true));
+            return Ok(keys);
         }
         let mut keys = Vec::new();
         for order in order_by {
@@ -1185,13 +1262,16 @@ fn check_custom(clause: &Clause, def: &CustomDef) -> Result<(), QueryError> {
 /// For tests and logs: the SQL `query` compiles to, without running it.
 pub fn sql_of(query: &Query, context: &Context<'_>) -> Result<String, QueryError> {
     let custom = HashMap::new();
+    let (searched, ranked) = searched_texts(query);
+    let texts = Texts::split(searched.iter().map(String::as_str));
     let compiler = Compiler {
         context,
         custom: &custom,
+        texts: &texts,
     };
     let mut qb = QueryBuilder::new("SELECT i.id FROM issue i WHERE ");
     compiler.push_filter(&mut qb, query.filter.as_ref())?;
-    let sort = compiler.sort_keys(&query.order_by)?;
+    let sort = compiler.sort_keys(&query.order_by, &ranked)?;
     let mut sql = qb.into_string();
     let _ = write!(sql, " /* {} sort keys */", sort.len());
     Ok(sql)
@@ -1208,6 +1288,7 @@ mod tests {
             account_id: Uuid::nil(),
             time_zone: "Europe/Paris",
             visible_projects: None,
+            audience: Audience::Members,
         }
     }
 
@@ -1248,8 +1329,36 @@ mod tests {
             "(i.due_date::timestamp) < (date_trunc('week', (now() AT TIME ZONE $1)) + interval '1 week' - interval '1 microsecond')"
         ));
         assert!(sql("priority >= high").contains("WHEN 'high' THEN 4 ELSE 5 END >= $1"));
-        assert!(sql("text ~ outage").contains("i.summary ILIKE $1 OR COALESCE(jsonb_path_query_array"));
+        assert!(sql("text ~ outage").contains(
+            "i.id IN (SELECT m.id FROM issue m WHERE m.search_vector @@ (SELECT to_tsquery('mlbpp_fr', $1) || to_tsquery('mlbpp_en', $2)) UNION ALL SELECT c.issue_id FROM comment c"
+        ));
+        assert!(sql("summary ~ outage").contains("i.search_vector @@ (SELECT to_tsquery('mlbpp_fr', $1)"));
         assert!(sql("NOT key = PLAT-1").contains("NOT COALESCE(("));
+    }
+
+    #[test]
+    fn without_order_a_text_search_lists_the_best_matches_first() {
+        assert!(sql("text ~ outage").ends_with("/* 2 sort keys */"));
+        assert!(sql("status = todo OR summary ~ outage").ends_with("/* 2 sort keys */"));
+        // Nothing to rank on: the newest tickets first.
+        for query in [
+            "status = todo",
+            "text !~ outage",
+            "NOT text ~ outage",
+            "text ~ outage ORDER BY due",
+        ] {
+            assert!(sql(query).ends_with("/* 1 sort keys */"), "{query}");
+        }
+    }
+
+    #[test]
+    fn the_texts_kept_are_those_under_no_negation() {
+        let query =
+            parse("text ~ a AND NOT (summary ~ b OR description !~ c) AND text !~ d OR NOT NOT text ~ e")
+                .unwrap();
+        let (all, kept) = searched_texts(&query);
+        assert_eq!(all, ["a", "b", "c", "d", "e"]);
+        assert_eq!(kept, ["a", "c", "e"]);
     }
 
     #[test]

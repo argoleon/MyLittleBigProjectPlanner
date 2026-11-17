@@ -34,6 +34,7 @@ pub mod rich_text;
 pub mod screens;
 pub mod tenancy;
 pub mod tenant;
+pub mod text_search;
 pub mod transitions;
 pub mod validation;
 pub mod workflows;
