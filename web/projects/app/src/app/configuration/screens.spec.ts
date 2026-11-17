@@ -283,6 +283,20 @@ describe('ScreensTab', () => {
     expect(texts('[role="status"]')).toEqual(['Screen “View” saved in the draft.']);
   });
 
+  it('moves the field whose button is pressed, even before the list shows the change made just before', async () => {
+    const { tab, panel, texts, click, button } = await openScreens();
+    await click(tab().querySelectorAll('button.item')[2]);
+    await click(button('Put Environment on the screen'));
+    expect(texts('.on-screen .label', panel())).toEqual(['Points', 'Application', 'Environment']);
+    // Two presses in a row, faster than the next rendering (a slow machine).
+    (button('Take Points off the screen') as HTMLElement).click();
+    await click(button('Move Environment up'));
+    expect(texts('.on-screen .label', panel())).toEqual(['Environment', 'Application']);
+    (button('Move Environment down') as HTMLElement).click();
+    await click(button('Move Environment down'));
+    expect(texts('.on-screen .label', panel())).toEqual(['Application', 'Environment']);
+  });
+
   it('shows the fields a rule hides, disabled, in the preview', async () => {
     const { tab, panel, root, texts, click, text } = await openScreens();
     await click(tab().querySelectorAll('button.item')[0]);
