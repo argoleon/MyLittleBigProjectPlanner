@@ -332,6 +332,8 @@ test('the Activity tab tells who changed what on a ticket, a deleted comment for
   await page.getByRole('tab', { name: 'Activity' }).click();
   const entries = page.locator('app-issue-activity .entry .sentence');
   await expect(entries.first()).toContainText('deleted a comment');
+  // The list may still be filling in: wait for the entry before, then read them all.
+  await expect(entries.nth(1)).toContainText('commented');
   const said = (await entries.allTextContents()).map((s) => s.replace(/\s+/g, ' ').trim());
   expect(said[1]).toContain('commented');
   for (const change of [
