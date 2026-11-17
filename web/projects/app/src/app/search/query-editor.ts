@@ -78,6 +78,10 @@ export class QueryEditor {
     });
     this.control.valueChanges.subscribe(() => {
       this.value.set(this.text());
+      // The suggestions were for the text before: none may be chosen now
+      // (each one rewrites that older text). New ones come shortly.
+      this.options.set([]);
+      this.asked++;
       this.schedule();
     });
     inject(DestroyRef).onDestroy(() => clearTimeout(this.timer));

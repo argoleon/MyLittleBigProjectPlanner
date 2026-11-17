@@ -122,6 +122,29 @@ describe('the query editor', () => {
     expect(await axeViolations(document.body)).toEqual([]);
   });
 
+  it('drops the suggestions of an older text as soon as the text changes', async () => {
+    const { fixture, textarea, type, suggested, options, until, expanded, key, settle } = await setUp();
+    await type('s');
+    await suggested(0, 1, [field('key'), field('status')]);
+    await until(expanded);
+    expect(options()).toHaveLength(2);
+    // Typed on, before the new suggestions come: none of the old ones may be chosen.
+    textarea.value = 'stat';
+    textarea.setSelectionRange(4, 4);
+    textarea.dispatchEvent(new Event('input'));
+    await settle(); // drawn again, well before new suggestions are asked (150 ms)
+    expect(options()).toEqual([]);
+    await key('ArrowDown');
+    await key('Enter');
+    // Nothing to choose: Enter ran the query as typed.
+    expect(textarea.value).toBe('stat');
+    expect(fixture.componentInstance.runs()).toBe(1);
+    await type('statu');
+    await suggested(0, 5, [field('status')]);
+    await until(() => options().length > 0);
+    expect(options()).toEqual(['status, Status, field']);
+  });
+
   it('opens on Ctrl+Space, closes on Escape, and runs the query on Enter otherwise', async () => {
     const { fixture, textarea, type, suggested, key, settle, until, expanded } = await setUp();
     await type('status = todo');
