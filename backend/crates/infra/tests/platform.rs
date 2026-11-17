@@ -271,9 +271,14 @@ async fn fill_beta(db: &TestDb) -> (TestMember, TestMember) {
     )
     .await
     .unwrap();
-    infra::accounts::create_password_reset(&mut tx, only_beta.account_id, b"hash", chrono::Utc::now())
-        .await
-        .unwrap();
+    infra::accounts::create_password_reset(
+        &mut tx,
+        only_beta.account_id,
+        b"hash",
+        time::OffsetDateTime::now_utc(),
+    )
+    .await
+    .unwrap();
     infra::jobs::enqueue(&mut tx, "test.job", &serde_json::json!({}))
         .await
         .unwrap();
@@ -318,7 +323,7 @@ async fn fill_beta(db: &TestDb) -> (TestMember, TestMember) {
                 tenant_role: TenantRole::Member,
             },
             token_hash: b"invitation",
-            expires_at: chrono::Utc::now(),
+            expires_at: time::OffsetDateTime::now_utc(),
             invited_by: only_beta.account_id,
         },
     )

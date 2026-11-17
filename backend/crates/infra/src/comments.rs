@@ -1,9 +1,9 @@
 //! SQL of comments (L05-US04). Row-level security scopes every query to the
 //! current tenant.
 
-use chrono::{DateTime, Utc};
 use domain::comments::Visibility;
 use sqlx::postgres::PgConnection;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 /// Who wrote a comment: a member, or a transition's "add a comment".
@@ -35,9 +35,9 @@ pub struct Comment {
     pub content: Option<serde_json::Value>,
     pub content_html: Option<String>,
     pub mentions: Vec<Uuid>,
-    pub edited_at: Option<DateTime<Utc>>,
-    pub deleted_at: Option<DateTime<Utc>>,
-    pub created_at: DateTime<Utc>,
+    pub edited_at: Option<OffsetDateTime>,
+    pub deleted_at: Option<OffsetDateTime>,
+    pub created_at: OffsetDateTime,
     pub version: i64,
 }
 
@@ -60,9 +60,9 @@ struct Row {
     content: Option<serde_json::Value>,
     content_html: Option<String>,
     mentions: Vec<Uuid>,
-    edited_at: Option<DateTime<Utc>>,
-    deleted_at: Option<DateTime<Utc>>,
-    created_at: DateTime<Utc>,
+    edited_at: Option<OffsetDateTime>,
+    deleted_at: Option<OffsetDateTime>,
+    created_at: OffsetDateTime,
     version: i64,
 }
 

@@ -1,9 +1,9 @@
 //! SQL of a tenant's groups of members (L02-US06). Row-level security
 //! scopes every query to the current tenant.
 
-use chrono::{DateTime, Utc};
 use domain::members::GroupInput;
 use sqlx::postgres::PgConnection;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::id::new_id;
@@ -20,7 +20,7 @@ pub struct Group {
     pub description: Option<String>,
     pub member_count: i64,
     pub version: i64,
-    pub created_at: DateTime<Utc>,
+    pub created_at: OffsetDateTime,
 }
 
 impl Group {

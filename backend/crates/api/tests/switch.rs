@@ -597,7 +597,7 @@ async fn a_second_factor_is_asked_unless_the_session_left_checked_it() {
     .await;
     assert_eq!(status, 200, "{setup}");
     let secret = setup["secret"].as_str().unwrap();
-    let now = u64::try_from(chrono::Utc::now().timestamp()).unwrap();
+    let now = u64::try_from(time::OffsetDateTime::now_utc().unix_timestamp()).unwrap();
     let code = infra::mfa::code_for_base32(secret, now).unwrap();
     let (status, enabled) = send(
         call(

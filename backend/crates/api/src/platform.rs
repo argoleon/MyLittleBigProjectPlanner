@@ -16,7 +16,6 @@ use axum::extract::{FromRequestParts, State};
 use axum::http::request::Parts;
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
-use chrono::{DateTime, Utc};
 use domain::tenancy::Tenancy;
 use domain::tenant::{TenantSettingsInput, validate_new_tenant, validate_settings};
 use domain::validation::FieldError;
@@ -24,6 +23,7 @@ use infra::idempotency::{Claim, StoredResponse};
 use infra::platform::{self as repo, PlatformConflict, Tenant, TenantSettings, TenantStatus};
 use infra::uuid::Uuid;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
 use crate::etag::{etag, if_none_match, require_if_match};
@@ -274,8 +274,10 @@ pub struct TenantView {
     status: TenantStatusView,
     /// Incremented on every change; the `ETag` is this value in quotes.
     version: i64,
-    created_at: DateTime<Utc>,
-    updated_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    created_at: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    updated_at: OffsetDateTime,
 }
 
 impl TenantView {

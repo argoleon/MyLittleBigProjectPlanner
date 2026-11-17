@@ -3,7 +3,6 @@
 
 #![allow(clippy::unwrap_used)]
 
-use chrono::{Duration, Utc};
 use domain::members::{Access, GroupInput, InvitationStatus};
 use infra::accounts::{AccountType, TenantRole};
 use infra::db::begin_tenant_tx;
@@ -11,6 +10,7 @@ use infra::groups::{self, MemberChange, WriteConflict};
 use infra::id::new_id;
 use infra::invitations::{self, InvitationFilter, NewInvitation};
 use testkit::TestDb;
+use time::{Duration, OffsetDateTime};
 
 fn group(name: &str) -> GroupInput {
     GroupInput {
@@ -108,7 +108,7 @@ async fn invitations_are_isolated_and_open_once_per_email() {
         email,
         access: MEMBER,
         token_hash,
-        expires_at: Utc::now() + Duration::days(7),
+        expires_at: OffsetDateTime::now_utc() + Duration::days(7),
         invited_by: admin.account_id,
     };
     let hash: &'static [u8] = Box::leak(hash.into_boxed_slice());
@@ -119,7 +119,10 @@ async fn invitations_are_isolated_and_open_once_per_email() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(invitation.status(Utc::now()), InvitationStatus::Pending);
+    assert_eq!(
+        invitation.status(OffsetDateTime::now_utc()),
+        InvitationStatus::Pending
+    );
     assert_eq!(invitation.invited_by_name.as_deref(), Some("Test Member"));
     assert_eq!(
         invitations::find_by_token(&mut tx, hash)
@@ -169,5 +172,8 @@ async fn invitations_are_isolated_and_open_once_per_email() {
         Err(invitations::WriteConflict::Closed)
     );
     let accepted = invitations::find(&mut tx, invitation.id).await.unwrap().unwrap();
-    assert_eq!(accepted.status(Utc::now()), InvitationStatus::Accepted);
+    assert_eq!(
+        accepted.status(OffsetDateTime::now_utc()),
+        InvitationStatus::Accepted
+    );
 }

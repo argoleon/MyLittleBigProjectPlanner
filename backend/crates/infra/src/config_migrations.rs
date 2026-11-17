@@ -12,13 +12,13 @@
 
 use std::collections::BTreeMap;
 
-use chrono::{DateTime, Utc};
 use domain::audit::{Action, Origin};
 use domain::migration::{Move, State, Ticket, moves};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value as JsonValue, json};
 use sqlx::postgres::PgConnection;
 use sqlx::types::Json;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 /// The kind of the job that runs a migration; its payload: [`MigrationJob`].
@@ -52,8 +52,8 @@ pub struct Migration {
     pub ticket_total: i64,
     pub tickets_migrated: i64,
     pub error: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub finished_at: Option<DateTime<Utc>>,
+    pub created_at: OffsetDateTime,
+    pub finished_at: Option<OffsetDateTime>,
 }
 
 struct Row {
@@ -66,8 +66,8 @@ struct Row {
     ticket_total: i64,
     tickets_migrated: i64,
     error: Option<String>,
-    created_at: DateTime<Utc>,
-    finished_at: Option<DateTime<Utc>>,
+    created_at: OffsetDateTime,
+    finished_at: Option<OffsetDateTime>,
 }
 
 impl From<Row> for Migration {

@@ -23,8 +23,8 @@ tracing = "0.1.44"
 domain.workspace = true
 base64 = "0.23.1"
 sha2 = "0.11.1"
-chrono.workspace = true
-utoipa = { version = "6.0.0", features = ["uuid", "chrono", "axum_extras"] }
+time.workspace = true
+utoipa = { version = "6.0.0", features = ["uuid", "time", "axum_extras"] }
 utoipa-axum = "0.3.0"
 utoipa-swagger-ui = { version = "10.0.2", default-features = false, features = ["axum", "vendored"] }
 opentelemetry = { version = "0.33.1", default-features = false, features = ["trace", "metrics"] }
