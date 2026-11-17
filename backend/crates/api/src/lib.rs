@@ -41,6 +41,7 @@ pub mod pagination;
 pub mod permissions;
 pub mod platform;
 pub mod problem;
+pub mod query_assist;
 pub mod reference_items;
 pub mod roles;
 mod routes;

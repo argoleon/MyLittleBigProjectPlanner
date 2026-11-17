@@ -21,11 +21,13 @@
 //! `parse_syntax(q.to_string())` gives `q` back.
 
 mod check;
+mod complete;
 mod lexer;
 mod parser;
 mod print;
 
-pub use check::check;
+pub use check::{check, is_sortable, operators_of};
+pub use complete::{Completion, complete};
 pub use parser::parse_syntax;
 
 /// Longest query, in characters.

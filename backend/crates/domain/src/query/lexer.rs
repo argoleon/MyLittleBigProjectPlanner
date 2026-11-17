@@ -22,6 +22,9 @@ pub(super) enum TokenKind {
     Number(String),
     Relative(Relative),
     End,
+    /// Where the member is typing (completion): the parser stops there,
+    /// telling what it expects.
+    Cursor,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

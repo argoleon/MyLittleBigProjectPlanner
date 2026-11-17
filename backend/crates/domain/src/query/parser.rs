@@ -47,8 +47,45 @@ pub fn parse_syntax(input: &str) -> Result<Query, QueryError> {
         position: 0,
         depth: 0,
         clauses: 0,
+        context: Context::default(),
     };
     parser.query()
+}
+
+/// Where the parser stands: what the next token completes.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(super) struct Context {
+    /// The field of the condition being read.
+    pub field: Option<Field>,
+    /// Inside the values of an `IN`.
+    pub list: bool,
+    /// Inside the arguments of this function (lowercase name).
+    pub function: Option<String>,
+    /// After `ORDER BY`.
+    pub sorting: bool,
+}
+
+/// What `tokens`, the text before the cursor ending with `End`, expect
+/// next, and in which context; `None` when that text is already wrong.
+pub(super) fn expectations(chars: Vec<char>, mut tokens: Vec<Token>) -> Option<(Vec<Expected>, Context)> {
+    let last = tokens.last_mut()?;
+    last.kind = TokenKind::Cursor;
+    let cursor = last.span;
+    let mut parser = Parser {
+        chars,
+        tokens,
+        position: 0,
+        depth: 0,
+        clauses: 0,
+        context: Context::default(),
+    };
+    match parser.query() {
+        Err(QueryError {
+            span,
+            kind: QueryErrorKind::Unexpected { expected, .. },
+        }) if span == cursor => Some((expected, parser.context)),
+        _ => None,
+    }
 }
 
 struct Parser {
@@ -57,6 +94,7 @@ struct Parser {
     position: usize,
     depth: usize,
     clauses: usize,
+    context: Context,
 }
 
 const COMPARISONS: [Expected; 11] = [
@@ -91,7 +129,7 @@ impl Parser {
 
     fn bump(&mut self) -> Token {
         let token = self.tokens[self.position].clone();
-        if token.kind != TokenKind::End {
+        if !matches!(token.kind, TokenKind::End | TokenKind::Cursor) {
             self.position += 1;
         }
         token
@@ -118,7 +156,7 @@ impl Parser {
     /// The next token, refused: what was found instead of `expected`.
     fn unexpected(&self, expected: Vec<Expected>) -> QueryError {
         let token = self.peek();
-        let found = (token.kind != TokenKind::End).then(|| {
+        let found = (!matches!(token.kind, TokenKind::End | TokenKind::Cursor)).then(|| {
             self.chars[token.span.start..token.span.start + token.span.len]
                 .iter()
                 .collect()
@@ -164,6 +202,7 @@ impl Parser {
         let mut order_by = Vec::new();
         if self.eat_keyword("ORDER") {
             self.expect_keyword("BY")?;
+            self.context.sorting = true;
             loop {
                 if order_by.len() == MAX_ORDER_KEYS {
                     return Err(QueryError::new(
@@ -259,6 +298,7 @@ impl Parser {
             Expected::Token("("),
             Expected::Token("NOT"),
         ])?;
+        self.context.field = Some(field.clone());
         self.clauses += 1;
         if self.clauses > MAX_CLAUSES {
             return Err(QueryError::new(start, QueryErrorKind::TooManyClauses));
@@ -308,6 +348,7 @@ impl Parser {
             }
             _ => return Err(self.unexpected(COMPARISONS.to_vec())),
         };
+        self.context.field = None;
         Ok(Clause {
             field,
             condition,
@@ -319,6 +360,7 @@ impl Parser {
     fn in_operands(&mut self, negated: bool) -> Result<Condition, QueryError> {
         let values = if matches!(self.peek_kind(), TokenKind::LParen) {
             self.bump();
+            self.context.list = true;
             let mut values = vec![self.value()?];
             while matches!(self.peek_kind(), TokenKind::Comma) {
                 self.bump();
@@ -331,6 +373,7 @@ impl Parser {
                 &TokenKind::RParen,
                 vec![Expected::Token(","), Expected::Token(")")],
             )?;
+            self.context.list = false;
             values
         } else if matches!(self.peek_kind(), TokenKind::Word(_))
             && matches!(self.peek_second(), TokenKind::LParen)
@@ -389,6 +432,7 @@ impl Parser {
         };
         self.enter()?;
         self.bump(); // (
+        let outer = self.context.function.replace(lower.clone());
         let mut arguments = Vec::new();
         if !matches!(self.peek_kind(), TokenKind::RParen) {
             arguments.push(self.value()?);
@@ -401,6 +445,7 @@ impl Parser {
             &TokenKind::RParen,
             vec![Expected::Token(","), Expected::Token(")")],
         )?;
+        self.context.function = outer;
         self.leave();
         let wrong = || {
             QueryError::new(

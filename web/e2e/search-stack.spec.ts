@@ -73,7 +73,9 @@ test('the tickets under a portfolio are found by a query, sorted by priority, th
 
   await page.getByRole('link', { name: 'Search' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Search');
-  const field = page.getByRole('textbox', { name: 'Query' });
+  // The builder the first time: this query goes in the editor.
+  await page.getByRole('radio', { name: 'Query' }).click();
+  const field = page.getByRole('combobox', { name: 'Query' });
   await field.fill(`project IN descendantsOf("${portfolio}") ORDER BY priority DESC`);
   await field.press('Enter');
   await expect(page.getByText('Results: 4')).toBeVisible();

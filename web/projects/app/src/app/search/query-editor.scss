@@ -1,0 +1,27 @@
+:host {
+  display: block;
+}
+
+.field {
+  width: 100%;
+}
+
+.code {
+  font-family: var(--app-font-mono);
+}
+
+.suggestion {
+  .text {
+    margin-right: var(--app-space-3);
+  }
+
+  .label {
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  .kind {
+    margin-left: var(--app-space-3);
+    font: var(--mat-sys-label-small);
+    color: var(--mat-sys-on-surface-variant);
+  }
+}

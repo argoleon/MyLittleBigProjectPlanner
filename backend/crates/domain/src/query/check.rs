@@ -235,6 +235,17 @@ fn check_value(values: Values, value: &Value, in_list: bool, field: &str) -> Res
     if ok { Ok(()) } else { Err(not_allowed()) }
 }
 
+/// The operators `field` takes, as written (`=`, `NOT IN`, `IS EMPTY`…).
+/// A custom field takes them all here; its kind decides when the query runs.
+pub fn operators_of(field: &Field) -> Vec<String> {
+    allowed(&rule_of(field))
+}
+
+/// Whether tickets can be sorted by `field`.
+pub fn is_sortable(field: &Field) -> bool {
+    rule_of(field).sortable
+}
+
 fn check_order(key: &OrderKey) -> Result<(), QueryError> {
     if rule_of(&key.field).sortable {
         Ok(())

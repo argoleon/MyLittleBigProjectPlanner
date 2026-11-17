@@ -1,0 +1,56 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT n.key, n.name, n.node_type\n        FROM node n\n        WHERE n.archived_at IS NULL\n          AND ($1 OR n.node_type = 'project')\n          AND ($2::uuid[] IS NULL OR n.id = ANY($2))\n          AND (lower(n.key) LIKE $3 OR lower(n.name) LIKE $4)\n        ORDER BY n.key\n        LIMIT $5\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "key"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "node_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "node_type"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "UuidArray",
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "2bd8d00e97e9bcf482f9a74b71dcf7572f54f5f5bf19f8687561e3f3cbb6d6a3"
+}

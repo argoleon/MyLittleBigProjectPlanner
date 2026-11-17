@@ -12538,6 +12538,144 @@
         }
       }
     },
+    "/api/v1/search/parse": {
+      "post": {
+        "tags": [
+          "search"
+        ],
+        "summary": "Read a query of the language as a tree",
+        "description": "Parses and checks the query, then returns it as a tree (`and` and `or` chains flattened) with its canonical text: the visual builder reads its criteria from it. Nothing is run.",
+        "operationId": "parseQuery",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The query read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParsedQuery"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`query.invalid` (see `query`), `invalid_json`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/search/suggestions": {
+      "post": {
+        "tags": [
+          "search"
+        ],
+        "summary": "Suggest what may come at the cursor of a query",
+        "description": "Reads the query up to `cursor` in a tolerant way and suggests what the language accepts there: fields (custom ones included), the operators of the field being written, keywords, functions, and values with their labels in the member's language (types, statuses, priorities, members, the projects and nodes the member sees, list values). A suggestion replaces the characters `from`..`to` (the word or string being typed). Nothing is suggested after a mistake.",
+        "operationId": "suggestQuery",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of the labels",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuggestionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The suggestions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Suggestions"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`invalid_json`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/tenant": {
       "get": {
         "tags": [
@@ -20654,6 +20792,52 @@
           "forbidden"
         ]
       },
+      "ParseRequest": {
+        "type": "object",
+        "description": "A query to read.",
+        "properties": {
+          "query": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "query": "project = PLAT AND status IN (in_progress)"
+        }
+      },
+      "ParsedQuery": {
+        "type": "object",
+        "description": "A query read.",
+        "required": [
+          "query",
+          "filter",
+          "orderBy"
+        ],
+        "properties": {
+          "filter": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/QueryNode",
+                "description": "`null` for a query without filter."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "orderBy": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuerySortKey"
+            }
+          },
+          "query": {
+            "type": "string",
+            "description": "The canonical text of the query.",
+            "example": "project = PLAT AND status IN (in_progress)"
+          }
+        }
+      },
       "PasswordChange": {
         "type": "object",
         "description": "`POST /me/password` body.",
@@ -21235,6 +21419,47 @@
           }
         }
       },
+      "QueryNode": {
+        "type": "object",
+        "description": "A node of the tree of a query: `and` and `or` hold their operands\n(chains flattened), `not` one, `clause` a condition.",
+        "required": [
+          "kind"
+        ],
+        "properties": {
+          "field": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "For a clause: the field, as the query writes it."
+          },
+          "kind": {
+            "type": "string",
+            "description": "`and`, `or`, `not` or `clause`.",
+            "example": "clause"
+          },
+          "operands": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueryNode"
+            }
+          },
+          "operator": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "For a clause: `=`, `IN`, `IS EMPTY`…"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueryValue"
+            },
+            "description": "For a clause: its values (none for `IS EMPTY`); the text of `~`."
+          }
+        }
+      },
       "QueryProblem": {
         "type": "object",
         "description": "Where and why a query of the language was refused (`query.invalid`).",
@@ -21297,6 +21522,42 @@
           "length": 0,
           "position": 9,
           "reason": "syntax"
+        }
+      },
+      "QuerySortKey": {
+        "type": "object",
+        "description": "A sort key.",
+        "required": [
+          "field",
+          "descending"
+        ],
+        "properties": {
+          "descending": {
+            "type": "boolean"
+          },
+          "field": {
+            "type": "string"
+          }
+        }
+      },
+      "QueryValue": {
+        "type": "object",
+        "description": "A value of a condition.",
+        "required": [
+          "kind",
+          "value"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "`text`, `number`, `relative` or `function`.",
+            "example": "text"
+          },
+          "value": {
+            "type": "string",
+            "description": "The text or number as is; a duration (`-7d`) or a call\n(`endOfWeek()`) as the query writes it.",
+            "example": "in_progress"
+          }
         }
       },
       "RealtimeSignal": {
@@ -22108,6 +22369,110 @@
           "password": {
             "type": "string",
             "format": "password"
+          }
+        }
+      },
+      "Suggestion": {
+        "type": "object",
+        "description": "One suggestion.",
+        "required": [
+          "kind",
+          "text",
+          "label",
+          "detail"
+        ],
+        "properties": {
+          "caret": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Where to put the cursor in `text` once inserted, when not at its end\n(inside the parentheses of `descendantsOf(\"\")`).",
+            "minimum": 0
+          },
+          "detail": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "More to tell it apart: a status category, a node type, a field kind."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SuggestionKind"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "What it reads as, in the member's language (a status label, a\nproject or member name); `null` for the language's own words.",
+            "example": "In progress"
+          },
+          "text": {
+            "type": "string",
+            "description": "What replaces `from`..`to` once chosen, as the query writes it.",
+            "example": "in_progress"
+          }
+        }
+      },
+      "SuggestionKind": {
+        "type": "string",
+        "description": "What a suggestion is.",
+        "enum": [
+          "field",
+          "operator",
+          "keyword",
+          "function",
+          "value"
+        ]
+      },
+      "SuggestionRequest": {
+        "type": "object",
+        "description": "Where the member is typing.",
+        "properties": {
+          "cursor": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "The cursor: a character offset from 0; the end of the query when left out.",
+            "minimum": 0
+          },
+          "query": {
+            "type": "string",
+            "description": "The query as typed so far."
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "cursor": 14,
+          "query": "status = in_pr"
+        }
+      },
+      "Suggestions": {
+        "type": "object",
+        "description": "The suggestions at the cursor.",
+        "required": [
+          "from",
+          "to",
+          "suggestions"
+        ],
+        "properties": {
+          "from": {
+            "type": "integer",
+            "description": "The part of the query a suggestion replaces: from this character…",
+            "minimum": 0
+          },
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Suggestion"
+            }
+          },
+          "to": {
+            "type": "integer",
+            "description": "…to this one (excluded).",
+            "minimum": 0
           }
         }
       },

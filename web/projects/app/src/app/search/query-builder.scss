@@ -1,0 +1,33 @@
+:host {
+  display: block;
+}
+
+.criteria {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--app-space-3);
+
+  > mat-form-field {
+    flex: 1 1 180px;
+  }
+
+  > .wide {
+    flex: 2 1 280px;
+  }
+}
+
+.dates {
+  display: flex;
+  flex: 2 1 280px;
+  flex-wrap: wrap;
+  gap: 0 var(--app-space-3);
+
+  > mat-form-field {
+    flex: 1 1 160px;
+  }
+}
+
+.chip-input {
+  width: 100%;
+  margin-top: var(--app-space-1);
+}

@@ -45,6 +45,7 @@ use crate::notifications;
 use crate::openapi;
 use crate::platform;
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
+use crate::query_assist;
 use crate::reference_items;
 use crate::roles;
 use crate::screens;
@@ -191,6 +192,8 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(issues::form))
         .routes(routes!(issues::mine))
         .routes(routes!(search::search))
+        .routes(routes!(query_assist::suggestions))
+        .routes(routes!(query_assist::parse))
         .routes(routes!(issues::people))
         .routes(routes!(migrations::plan_of))
         .routes(routes!(migrations::start))

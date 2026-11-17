@@ -45,6 +45,7 @@ pub mod outbox;
 pub mod pagination;
 pub mod permissions;
 pub mod platform;
+pub mod query_suggestions;
 pub mod rate_limit;
 pub mod reference_items;
 pub mod rich_text;

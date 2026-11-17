@@ -3,10 +3,11 @@ import type { Page } from '@playwright/test';
 import { accessibilityViolations, expect, test } from './fixtures';
 
 /**
- * Search (L06-US01), with the API mocked: a query typed and run with the
- * keyboard, its results in the virtualized table, a column sorting the
- * query, the next page loaded while scrolling, a refused query shown at its
- * position; axe-core in both themes and languages.
+ * Search (L06-US01, L06-US02), with the API mocked: a query typed and run
+ * with the keyboard, its results in the virtualized table, a column sorting
+ * the query, the next page loaded while scrolling, a refused query shown at
+ * its position; the visual builder writing the query, the editor's
+ * suggestions with the keyboard alone; axe-core in both themes and languages.
  */
 
 function result(n: number, priority = 'high') {
@@ -28,9 +29,60 @@ function result(n: number, priority = 'high') {
   };
 }
 
-/** The queries the mocked API received, in order. */
-async function mockSearch(page: Page): Promise<string[]> {
+const value = (text: string, label: string, detail: string | null = null) => ({ kind: 'value', text, label, detail });
+const STATUSES = [value('todo', 'To do', 'todo'), value('in_progress', 'In progress', 'in_progress')];
+const PROJECTS = [value('PLAT', 'Identity platform', 'project'), value('WEB', 'Website', 'project')];
+const FIELDS = ['key', 'project', 'type', 'status', 'priority', 'assignee'];
+
+/** What the mocked API suggests: enough of the language for these tests. */
+function suggestions(query: string, cursor: number) {
+  const before = query.slice(0, cursor);
+  const partial = /[\w.@-]*$/.exec(before)?.[0] ?? '';
+  const from = before.length - partial.length;
+  const head = before.slice(0, from);
+  const starting = (list: { text: string }[]) => list.filter((s) => s.text.toLowerCase().startsWith(partial.toLowerCase()));
+  let found: object[] = [];
+  if (head.trim() === '' || /\bAND\s+$/i.test(head)) {
+    found = starting(FIELDS.map((text) => ({ kind: 'field', text, label: null, detail: null })));
+  } else if (/\bstatus\s+$/i.test(head)) {
+    found = ['=', '!=', 'IN', 'NOT IN'].map((text) => ({ kind: /\w/.test(text) ? 'keyword' : 'operator', text, label: null, detail: null }));
+  } else if (/\bstatus\s*(=|IN \(|IN \([^)]*,)\s*$/i.test(head)) {
+    found = starting(STATUSES);
+  } else if (/\bproject\s*(=|IN \()\s*$/i.test(head)) {
+    found = starting(PROJECTS);
+  }
+  return { from, to: from + partial.length, suggestions: found };
+}
+
+/** The tree of a query made of `field IN (…)` and `field = …` clauses joined by AND. */
+function tree(query: string) {
+  const filter = query.replace(/\s+ORDER BY .*$/i, '').trim();
+  if (!filter) return { query, filter: null, orderBy: [] };
+  if (/\sOR\s/i.test(filter)) return { query, filter: { kind: 'or', operands: [] }, orderBy: [] };
+  const clauses = filter.split(/\s+AND\s+/i).map((clause) => {
+    const [, field, operator, values] = /^(\w+)\s*(IN|=)\s*\(?([^)]*)\)?$/i.exec(clause) ?? [];
+    return {
+      kind: 'clause',
+      field,
+      operator: operator?.toUpperCase(),
+      values: (values ?? '').split(',').map((v) => ({ kind: 'text', value: v.trim() })),
+    };
+  });
+  return { query, filter: clauses.length === 1 ? clauses[0] : { kind: 'and', operands: clauses }, orderBy: [] };
+}
+
+/** The queries the mocked API received, in order; the screen in `mode` (`null`: never chosen yet). */
+async function mockSearch(page: Page, mode: 'query' | 'builder' | null = 'query'): Promise<string[]> {
   const queries: string[] = [];
+  if (mode) await page.addInitScript((m) => localStorage.setItem('mlbpp.search.mode', m), mode);
+  await page.route('**/api/v1/search/suggestions', (route) => {
+    const body = route.request().postDataJSON() as { query: string; cursor?: number };
+    return route.fulfill({ json: suggestions(body.query, body.cursor ?? body.query.length) });
+  });
+  await page.route('**/api/v1/search/parse', (route) => {
+    const body = route.request().postDataJSON() as { query: string };
+    return route.fulfill({ json: tree(body.query) });
+  });
   await page.route('**/api/v1/search', (route) => {
     const body = route.request().postDataJSON() as { query: string; cursor?: string };
     queries.push(body.cursor ? `${body.query} @${body.cursor}` : body.query);
@@ -67,7 +119,7 @@ test('a query is run with the keyboard, sorted from a column, and its next page 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Search');
   await expect(page.getByText('Results: 70')).toBeVisible();
 
-  const field = page.getByRole('textbox', { name: 'Query' });
+  const field = page.getByRole('combobox', { name: 'Query' });
   await field.fill('status = in_progress');
   await field.press('Enter');
   await expect(page).toHaveURL(/\/search\?q=status%20%3D%20in_progress$/);
@@ -106,7 +158,7 @@ test('a refused query says where, the part concerned selected in the field', asy
   await page.goto('/search?q=status%20%3D');
   const alert = page.locator('#query-error');
   await expect(alert).toHaveText(/Character 9: expected a value, found the end of the query\./);
-  const field = page.getByRole('textbox', { name: 'Query' });
+  const field = page.getByRole('combobox', { name: 'Query' });
   await expect(field).toBeFocused();
   await expect(field).toHaveAttribute('aria-invalid', 'true');
   expect(await field.evaluate((textarea: HTMLTextAreaElement) => textarea.selectionStart)).toBe(8);
@@ -121,6 +173,69 @@ test('the columns are chosen from a menu and kept for the next visit', async ({ 
   await expect(page.getByRole('columnheader', { name: 'Reporter' })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('columnheader', { name: 'Reporter' })).toBeVisible();
+});
+
+test('the builder writes the query: project PLAT and status In progress', async ({ page }) => {
+  const queries = await mockSearch(page, null);
+  await page.goto('/search');
+  // The builder the first time.
+  await expect(page.getByRole('radio', { name: 'Builder' })).toBeChecked();
+  const projects = page.getByPlaceholder('Add a project…');
+  await projects.fill('PL');
+  await page.getByRole('option', { name: 'PLAT · Identity platform' }).click();
+  await expect(page).toHaveURL(/q=project%20IN%20\(PLAT\)$/);
+  await page.getByRole('combobox', { name: 'Status' }).click();
+  await page.getByRole('option', { name: 'In progress' }).click();
+  await page.keyboard.press('Escape');
+  await expect(page).toHaveURL(/q=project%20IN%20\(PLAT\)%20AND%20status%20IN%20\(in_progress\)$/);
+
+  // The same query, in the editor.
+  await page.getByRole('radio', { name: 'Query' }).click();
+  await expect(page.getByRole('combobox', { name: 'Query' })).toHaveValue('project IN (PLAT) AND status IN (in_progress)');
+  await expect.poll(() => queries.at(-1)).toBe('project IN (PLAT) AND status IN (in_progress)');
+});
+
+test('typing stat suggests status, then its keys with their labels, with the keyboard alone', async ({ page }) => {
+  const queries = await mockSearch(page);
+  await page.goto('/search');
+  const editor = page.getByRole('combobox', { name: 'Query' });
+  await editor.click();
+  await editor.pressSequentially('stat');
+  await expect(page.getByRole('option', { name: /^status/ })).toBeVisible();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect(editor).toHaveValue('status ');
+  // Its operators, then its values with their labels.
+  await expect(page.getByRole('option', { name: /^IN/ })).toBeVisible();
+  await editor.pressSequentially('= ');
+  await expect(page.getByRole('option').filter({ hasText: 'In progress' })).toBeVisible();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect(editor).toHaveValue('status = in_progress ');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/q=status%20%3D%20in_progress$/);
+  await expect.poll(() => queries.at(-1)).toBe('status = in_progress');
+});
+
+test('a query the builder can show opens in it with the same criteria; another stays in the editor', async ({ page }) => {
+  await mockSearch(page);
+  await page.goto('/search?q=status%20IN%20(in_progress)');
+  await page.getByRole('radio', { name: 'Builder' }).click();
+  await expect(page.getByRole('combobox', { name: 'Status' })).toContainText('In progress');
+
+  // Another query, then the builder asked for: it stays in the editor, with a word why.
+  await page.getByRole('radio', { name: 'Query' }).click();
+  const editor = page.getByRole('combobox', { name: 'Query' });
+  await editor.fill('status = todo OR status = in_progress');
+  await editor.press('Escape');
+  await editor.press('Enter');
+  await expect(page).toHaveURL(/OR%20status/);
+  await page.getByRole('radio', { name: 'Builder' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'cannot be shown in the builder' })).toBeVisible();
+  await expect(editor).toHaveValue('status = todo OR status = in_progress');
+  await expect(page.getByRole('radio', { name: 'Query' })).toBeChecked();
 });
 
 for (const theme of ['light', 'dark'] as const) {
@@ -143,6 +258,23 @@ for (const theme of ['light', 'dark'] as const) {
 
         await page.goto('/search?q=status%20%3D');
         await expect(page.locator('#query-error')).toBeVisible();
+        await animationsDone(page);
+        expect(await accessibilityViolations(page)).toEqual([]);
+      });
+
+      test('the builder and the open suggestions have no axe-core violation', async ({ page }) => {
+        await mockSearch(page, 'builder');
+        await page.goto('/search?q=project%20IN%20(PLAT)');
+        await expect(page.locator('app-query-builder mat-chip-row')).toHaveCount(1);
+        await animationsDone(page);
+        expect(await accessibilityViolations(page)).toEqual([]);
+
+        await page.locator('mat-button-toggle.query-mode button').click();
+        const editor = page.locator('app-query-editor textarea');
+        await editor.click();
+        await editor.press('End');
+        await editor.pressSequentially(' AND st');
+        await expect(page.locator('mat-option').first()).toBeVisible();
         await animationsDone(page);
         expect(await accessibilityViolations(page)).toEqual([]);
       });

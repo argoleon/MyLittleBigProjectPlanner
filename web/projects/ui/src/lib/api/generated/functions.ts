@@ -283,6 +283,10 @@ export type { DeleteReferenceItem$Params as DeleteReferenceItem$Params } from '.
 export { deleteReferenceItem as deleteReferenceItem } from './fn/reference-items/delete-reference-item';
 export type { SearchWithQuery$Params as SearchWithQuery$Params } from './fn/search/search-with-query';
 export { searchWithQuery as searchWithQuery } from './fn/search/search-with-query';
+export type { ParseQuery$Params as ParseQuery$Params } from './fn/search/parse-query';
+export { parseQuery as parseQuery } from './fn/search/parse-query';
+export type { SuggestQuery$Params as SuggestQuery$Params } from './fn/search/suggest-query';
+export { suggestQuery as suggestQuery } from './fn/search/suggest-query';
 export type { GetAuthPolicy$Params as GetAuthPolicy$Params } from './fn/authentication-settings/get-auth-policy';
 export { getAuthPolicy as getAuthPolicy } from './fn/authentication-settings/get-auth-policy';
 export type { UpdateAuthPolicy$Params as UpdateAuthPolicy$Params } from './fn/authentication-settings/update-auth-policy';
