@@ -333,4 +333,20 @@ describe('TypesTab', () => {
     const keys = Array.from(tab().querySelectorAll('code.key')).map((k) => text(k));
     expect(keys).toEqual(['story', 'epic', 'task', 'bug', 'subtask']);
   });
+
+  it('moves a type once at a time, even when pressed again before the list shows the move', async () => {
+    const { tab, text, configRead } = await openTypes();
+    const http = TestBed.inject(HttpTestingController);
+    const down = tab().querySelectorAll('button.down')[0] as HTMLButtonElement;
+    // Twice in a row, faster than the next rendering (a slow machine): the
+    // second press would reorder the list as it was before the first.
+    down.click();
+    down.click();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const sent = http.match((r) => r.url.endsWith('/issue-types/order') && r.method === 'PUT');
+    expect(sent.map((r) => r.request.body)).toEqual([{ ids: ['t2', 't1', 't3', 't4', 't5'] }]);
+    sent[0].flush({ stage: 'draft', items: [STORY, EPIC, TASK, BUG, SUBTASK] });
+    await configRead(2);
+    expect(text(tab().querySelector('[role="status"]'))).toBe('Epic moved to position 2.');
+  });
 });

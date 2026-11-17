@@ -106,10 +106,24 @@ export class TypesTab {
     if (event.previousIndex !== event.currentIndex) void this.move(event.previousIndex, event.currentIndex);
   }
 
-  /** Moves the type at `from` to `to`: the keyboard alternative to dragging. */
+  /**
+   * Moves `type` one place up (-1) or down (1): the keyboard alternative to
+   * dragging. Its position is read now: the one the list shows may be a
+   * change behind (two quick presses).
+   */
+  protected shift(type: IssueType, by: -1 | 1): void {
+    const from = this.items().findIndex((t) => t.id === type.id);
+    if (from >= 0) void this.move(from, from + by);
+  }
+
+  /**
+   * Moves the type at `from` to `to`, one move at a time: a press during a
+   * move, before its button shows as disabled, would reorder the list as it
+   * was before.
+   */
   protected async move(from: number, to: number): Promise<void> {
     const id = this.configId();
-    if (!id || to < 0 || to >= this.items().length) return;
+    if (!id || this.moving() || to < 0 || to >= this.items().length) return;
     const moved = this.items()[from];
     this.moving.set(true);
     try {
