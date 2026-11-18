@@ -153,7 +153,7 @@ async fn listed(api: &TestApi, tenant: &SeedTenant, session: &Session) -> Vec<St
     names
 }
 
-const PROJECT_MANAGER: [&str; 8] = [
+const PROJECT_MANAGER: [&str; 9] = [
     "view",
     "create_ticket",
     "edit",
@@ -162,6 +162,7 @@ const PROJECT_MANAGER: [&str; 8] = [
     "assign_resources",
     "force_overload",
     "manage_sprints",
+    "manage_boards",
 ];
 
 #[tokio::test]
@@ -810,14 +811,14 @@ async fn a_confidential_project_is_closed_to_those_above_it_and_veiled_in_their_
             .await
             .unwrap()
             .len(),
-        10
+        domain::permissions::Permission::ALL.len()
     );
     assert_eq!(
         permissions_of(&api, t, &camille_session, &cyber)
             .await
             .unwrap()
             .len(),
-        10
+        domain::permissions::Permission::ALL.len()
     );
 
     // To Lucas, the project shows veiled wherever its parent shows: its type

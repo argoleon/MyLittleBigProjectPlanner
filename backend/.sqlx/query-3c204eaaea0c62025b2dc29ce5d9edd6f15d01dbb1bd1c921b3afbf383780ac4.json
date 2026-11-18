@@ -1,0 +1,193 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT b.id, b.node_id, n.key AS node_key, n.name AS node_name, n.node_type,\n               (n.archived_at IS NOT NULL) AS \"node_archived!\",\n               b.name, b.kind, b.filter, b.estimation, b.swimlanes, b.quick_filters,\n               b.version, b.created_at, b.updated_at\n        FROM board b JOIN node n ON n.id = b.node_id\n        WHERE ($1::uuid[] IS NULL OR b.node_id = ANY($1))\n          AND ($2::uuid IS NULL OR b.node_id = $2)\n          AND ($3::uuid IS NULL OR b.id = $3)\n        ORDER BY lower(n.name), n.id, lower(b.name), b.id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "board",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "node_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "board",
+            "name": "node_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "node_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "key"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "node_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "node_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "node_type"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "node_archived!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "board",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "board",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "filter",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "board",
+            "name": "filter"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "estimation",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "board",
+            "name": "estimation"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "swimlanes",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "board",
+            "name": "swimlanes"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "quick_filters",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "board",
+            "name": "quick_filters"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "version",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "board",
+            "name": "version"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "board",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "board",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      null,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "3c204eaaea0c62025b2dc29ce5d9edd6f15d01dbb1bd1c921b3afbf383780ac4"
+}

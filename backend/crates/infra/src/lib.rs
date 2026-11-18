@@ -7,6 +7,7 @@ pub mod antivirus;
 pub mod attachments;
 pub mod audit;
 pub mod auth_policy;
+pub mod boards;
 pub mod bootstrap;
 pub mod comments;
 pub mod config;

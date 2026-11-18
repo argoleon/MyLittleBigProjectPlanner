@@ -61,7 +61,10 @@ async fn every_tenant_starts_with_four_roles_shown_in_the_users_language() {
     let labels: Vec<&str> = english.iter().map(|r| r["label"].as_str().unwrap()).collect();
     assert_eq!(labels, ["Reader", "Contributor", "Project manager", "Node admin"]);
     assert_eq!(english[0]["permissions"], json!(["view"]));
-    assert_eq!(english[3]["permissions"].as_array().unwrap().len(), 10);
+    assert_eq!(
+        english[3]["permissions"].as_array().unwrap().len(),
+        domain::permissions::Permission::ALL.len()
+    );
     assert_eq!(english[0]["grantCount"], 0);
     let french = roles_of(&api, &db.tenant_a, "fr-FR").await;
     assert_eq!(french[2]["label"], "Chef de projet");

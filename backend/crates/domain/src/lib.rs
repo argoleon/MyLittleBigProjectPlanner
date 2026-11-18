@@ -8,6 +8,7 @@ pub mod aggregates;
 pub mod attachments;
 pub mod audit;
 pub mod auth_policy;
+pub mod boards;
 pub mod comments;
 pub mod configuration;
 pub mod devices;

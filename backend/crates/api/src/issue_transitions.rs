@@ -26,6 +26,7 @@ use domain::transitions::{Actor, Change, Condition, Refusal, Rules, Ticket, allo
 use domain::validation::FieldError;
 use infra::comments::Source;
 use infra::issues::{self as repo, Issue};
+use infra::nodes::Node;
 use infra::uuid::Uuid;
 use infra::workflows::Transition;
 use serde::{Deserialize, Serialize};
@@ -60,6 +61,28 @@ pub struct TransitionView {
     fields: Vec<FormFieldView>,
 }
 
+/// How `transition` shows to the member about to run it on `issue`.
+pub(crate) fn transition_view(
+    language: &Language,
+    content: &Content,
+    transition: &Transition,
+    issue: &Issue,
+) -> TransitionView {
+    TransitionView {
+        id: transition.item_id,
+        name: language.label(&transition.name_translations),
+        to_status: language.status_view(content, transition.to_status_id),
+        fields: screen_fields_of(language, content, transition, issue),
+    }
+}
+
+impl TransitionView {
+    /// It runs at once: no field to fill before.
+    pub(crate) fn immediate(&self) -> bool {
+        self.fields.is_empty()
+    }
+}
+
 /// A transition to run.
 #[derive(Debug, Clone, Default, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -74,7 +97,11 @@ pub struct RunBody {
 
 /// Who runs transitions: their account, roles on the project, groups;
 /// tenant admins meet every condition.
-async fn actor(state: &AppState, tx: &mut TenantTx, project: Uuid) -> Result<(Actor, bool), Problem> {
+pub(crate) async fn actor(
+    state: &AppState,
+    tx: &mut TenantTx,
+    project: Uuid,
+) -> Result<(Actor, bool), Problem> {
     let account = tx.account_id();
     let roles = state.grants.roles_of(tx, account, Some(project)).await?;
     let groups = infra::groups::of_members(tx, &[account]).await?;
@@ -103,7 +130,7 @@ fn rules_for(transition: &Transition, admin: bool) -> Rules {
 
 /// The transitions of the workflow of `issue`'s type that leave its status
 /// (or any status).
-fn leaving<'a>(content: &'a Content, issue: &Issue) -> Vec<&'a Transition> {
+pub(crate) fn leaving<'a>(content: &'a Content, issue: &Issue) -> Vec<&'a Transition> {
     let Some(workflow) = content
         .types
         .iter()
@@ -122,7 +149,7 @@ fn leaving<'a>(content: &'a Content, issue: &Issue) -> Vec<&'a Transition> {
 /// The fields `transition` takes for `issue`: those of its transition
 /// screen, its validators (required), then those required at the target
 /// status, the rules of the target status applied.
-fn screen_fields_of(
+pub(crate) fn screen_fields_of(
     language: &Language,
     content: &Content,
     transition: &Transition,
@@ -210,12 +237,7 @@ pub async fn list(
     let views: Vec<TransitionView> = leaving(&content, &issue)
         .into_iter()
         .filter(|t| admin || allowed(&t.rules.condition, &actor))
-        .map(|t| TransitionView {
-            id: t.item_id,
-            name: language.label(&t.name_translations),
-            to_status: language.status_view(&content, t.to_status_id),
-            fields: screen_fields_of(&language, &content, t, &issue),
-        })
+        .map(|t| transition_view(&language, &content, t, &issue))
         .collect();
     let mut response = ApiJson(views).into_response();
     language.headers(&mut response);
@@ -273,25 +295,65 @@ pub async fn run(
         .find(|t| t.item_id == body.transition_id)
         .ok_or_else(|| Problem::validation(vec![FieldError::new("transitionId", "not_found")]))?;
     let (actor, admin) = actor(&state, &mut tx, project.id).await?;
+    let language = Language::of(&tx, &accept);
+    let ran = Run {
+        project: &project,
+        content: &content,
+        transition,
+        actor: &actor,
+        admin,
+    };
+    let view = perform(&state, &mut tx, &language, &ran, issue, &body.fields).await?;
+    tx.commit().await?;
+    Ok(ticket_response(view, &language))
+}
+
+/// A transition about to run on a ticket of `project`.
+pub(crate) struct Run<'a> {
+    pub(crate) project: &'a Node,
+    pub(crate) content: &'a Content,
+    pub(crate) transition: &'a Transition,
+    pub(crate) actor: &'a Actor,
+    pub(crate) admin: bool,
+}
+
+/// Runs `run.transition` on `issue`, locked and its version checked, with
+/// the values `fields` of its transition screen: its condition, the rules
+/// of the target status, its validators and post-functions, then the
+/// history, comments and `issue.transitioned` event. The ticket moved.
+pub(crate) async fn perform(
+    state: &AppState,
+    tx: &mut TenantTx,
+    language: &Language,
+    run: &Run<'_>,
+    issue: Issue,
+    fields: &BTreeMap<Uuid, serde_json::Value>,
+) -> Result<IssueView, Problem> {
+    let Run {
+        project,
+        content,
+        transition,
+        actor,
+        admin,
+    } = *run;
     let rules = rules_for(transition, admin);
-    if !allowed(&rules.condition, &actor) {
+    if !allowed(&rules.condition, actor) {
         return Err(Problem::new(ErrorCode::PermissionDenied).with_detail("the transition is restricted"));
     }
-    let language = Language::of(&tx, &accept);
     let type_id = issue.type_id.as_u128();
     let to = transition.to_status_id;
 
     // The values it takes: the fields it lists only, at the target status.
     let mut errors = Vec::new();
-    let given = read_fields(&body.fields).unwrap_or_else(|e| {
+    let given = read_fields(fields).unwrap_or_else(|e| {
         errors.extend(e);
         BTreeMap::new()
     });
-    let on_screen: BTreeSet<u128> = screen_fields_of(&language, &content, transition, &issue)
+    let on_screen: BTreeSet<u128> = screen_fields_of(language, content, transition, &issue)
         .iter()
         .map(|f| f.field_id().as_u128())
         .collect();
-    for id in body.fields.keys() {
+    for id in fields.keys() {
         if !on_screen.contains(&id.as_u128()) {
             errors.push(FieldError::new(format!("fields.{id}"), "not_applicable"));
         }
@@ -314,7 +376,7 @@ pub async fn run(
     {
         errors.extend(e);
     }
-    let unknown = unknown_references(&mut tx, &content.fields, &given, &errors).await?;
+    let unknown = unknown_references(tx, &content.fields, &given, &errors).await?;
     errors.extend(unknown);
     if !errors.is_empty() {
         return Err(Problem::validation(errors));
@@ -334,7 +396,7 @@ pub async fn run(
         assignee: issue.assignee_id.map(|id| id.as_u128()),
         fields: with_screen,
     };
-    let post = evaluate(&rules, &ticket, &actor).map_err(|refusals| {
+    let post = evaluate(&rules, &ticket, actor).map_err(|refusals| {
         if refusals.contains(&Refusal::NotAllowed) {
             return Problem::new(ErrorCode::PermissionDenied).with_detail("the transition is restricted");
         }
@@ -364,7 +426,7 @@ pub async fn run(
 
     // What is stored: the screen values as given, then the post-functions.
     let mut stored = issue.fields.as_object().cloned().unwrap_or_default();
-    for (id, json) in &body.fields {
+    for (id, json) in fields {
         if given.get(&id.as_u128()).is_some_and(Value::is_empty) {
             stored.remove(&id.to_string());
         } else {
@@ -402,25 +464,25 @@ pub async fn run(
     }
     let stored = serde_json::Value::Object(stored);
     let from = issue.status_id;
-    let moved = repo::transition(&mut tx, issue.id, to, assignee, &stored).await?;
+    let moved = repo::transition(tx, issue.id, to, assignee, &stored).await?;
     let entries = crate::issue_history::changes(
-        &crate::issue_history::snapshot(&issue, &content),
-        &crate::issue_history::snapshot(&moved, &content),
+        &crate::issue_history::snapshot(&issue, content),
+        &crate::issue_history::snapshot(&moved, content),
     );
-    crate::issue_history::record(&mut tx, moved.id, &entries).await?;
+    crate::issue_history::record(tx, moved.id, &entries).await?;
     if let Some(assignee) = moved.assignee_id.filter(|a| Some(*a) != issue.assignee_id) {
-        infra::watchers::watch(&mut tx, moved.id, assignee).await?;
+        infra::watchers::watch(tx, moved.id, assignee).await?;
     }
     for text in &comments {
         let doc = Doc(vec![Block::Paragraph(vec![Inline::Text {
             text: text.clone(),
             marks: Vec::new(),
         }])]);
-        crate::issue_comments::write(&mut tx, &moved, Source::Transition, Visibility::Internal, &doc).await?;
+        crate::issue_comments::write(tx, &moved, Source::Transition, Visibility::Internal, &doc).await?;
     }
     let actor_id = tx.account_id();
     infra::outbox::record(
-        &mut tx,
+        tx,
         &infra::outbox::Event {
             kind: "issue.transitioned",
             aggregate_type: "issue",
@@ -439,7 +501,5 @@ pub async fn run(
     )
     .await?;
     tracing::info!(target: "audit", actor = %actor_id, issue = %moved.id, key = %moved.key, transition = %transition.item_id, "ticket transitioned");
-    let view = issue_view(&state, &mut tx, &language, moved, &project, true).await?;
-    tx.commit().await?;
-    Ok(ticket_response(view, &language))
+    issue_view(state, tx, language, moved, project, true).await
 }
