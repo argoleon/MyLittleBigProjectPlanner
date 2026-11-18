@@ -456,6 +456,7 @@ describe('NodePage', () => {
     const links = Array.from(page().querySelectorAll('.actions a')).map((a) => [text(a), a.getAttribute('href')]);
     expect(links).toEqual([
       ['view_timeline Program Gantt', `/gantt?node=${PROGRAM.id}`],
+      ['view_kanban Boards', `/boards?node=${PROGRAM.id}`],
       ['groups Team workload', `/workload?node=${PROGRAM.id}`],
       ['settings Settings', `/nodes/${PROGRAM.id}/general`],
     ]);

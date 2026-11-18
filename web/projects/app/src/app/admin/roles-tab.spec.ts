@@ -40,6 +40,7 @@ const PERMISSION_LABELS = [
   'Assign resources',
   'Force an overload',
   'Manage sprints',
+  'Manage boards',
   'Manage members',
   'Administer the node',
 ];
@@ -133,7 +134,7 @@ describe('RolesTab', () => {
 
   it('lists the roles and shows the first one with a switch per permission', async () => {
     const { root, editor, text, checked, listItem } = await open();
-    expect(text(listItem('Project manager'))).toBe('Project manager 8 / 10 permissions · Grants: 3');
+    expect(text(listItem('Project manager'))).toBe('Project manager 8 / 11 permissions · Grants: 3');
     expect(root().querySelector('mat-selection-list')!.getAttribute('aria-label')).toBe('Roles of the organization');
     expect(listItem('Project manager').getAttribute('aria-selected')).toBe('true');
     expect(listItem('Reader').getAttribute('aria-selected')).toBe('false');

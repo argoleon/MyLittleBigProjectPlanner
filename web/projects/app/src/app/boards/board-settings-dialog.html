@@ -1,0 +1,195 @@
+<h2 mat-dialog-title>{{ (editing ? 'boards.settings.title' : 'boards.settings.newTitle') | transloco }}</h2>
+<mat-dialog-content>
+  @if (errorKey(); as key) {
+    <p class="message error" role="alert">{{ key | transloco }}</p>
+  }
+  <form id="board-settings" class="form" [formGroup]="form" (ngSubmit)="save()">
+    @if (!editing) {
+      <mat-form-field appearance="outline" class="node">
+        <mat-label>{{ 'boards.settings.node' | transloco }}</mat-label>
+        <mat-select formControlName="nodeId">
+          @for (node of nodeChoices(); track node.id) {
+            <mat-option [value]="node.id">{{ node.name }} ({{ node.key }})</mat-option>
+          }
+        </mat-select>
+        <mat-hint>{{ 'boards.settings.nodeHint' | transloco }}</mat-hint>
+        @if (form.controls.nodeId.getError('api'); as key) {
+          <mat-error>{{ key | transloco }}</mat-error>
+        } @else {
+          <mat-error>{{ 'errors.field.required' | transloco }}</mat-error>
+        }
+      </mat-form-field>
+    }
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'boards.settings.name' | transloco }}</mat-label>
+      <input matInput formControlName="name" maxlength="100" autocomplete="off" />
+      @if (form.controls.name.getError('api'); as key) {
+        <mat-error>{{ key | transloco }}</mat-error>
+      } @else {
+        <mat-error>{{ 'errors.field.required' | transloco }}</mat-error>
+      }
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'boards.settings.filter' | transloco }}</mat-label>
+      <textarea matInput class="query" formControlName="filter" rows="2" spellcheck="false"></textarea>
+      <mat-hint>{{ 'boards.settings.filterHint' | transloco }}</mat-hint>
+      @if (filterError(); as error) {
+        <mat-error>{{ error.key | transloco: error.params }}</mat-error>
+      }
+    </mat-form-field>
+    <div class="pair">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'boards.settings.estimation' | transloco }}</mat-label>
+        <mat-select formControlName="estimation">
+          @for (estimation of estimations; track estimation) {
+            <mat-option [value]="estimation">{{ 'boards.estimation.' + estimation | transloco }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'boards.settings.swimlanes' | transloco }}</mat-label>
+        <mat-select formControlName="swimlanes">
+          @for (mode of swimlaneModes; track mode) {
+            <mat-option [value]="mode">{{ 'boards.swimlanes.' + mode | transloco }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    @if (editing) {
+      <section class="section" formArrayName="columns" [attr.aria-labelledby]="'board-columns-title'">
+        <h3 class="section-title" id="board-columns-title">{{ 'boards.settings.columns' | transloco }}</h3>
+        @if (columns.getError('api'); as key) {
+          <p class="message error" role="alert">{{ key | transloco }}</p>
+        }
+        @for (column of columns.controls; track column; let i = $index; let first = $first; let last = $last) {
+          <div class="row column-row" [formGroupName]="i">
+            <mat-form-field appearance="outline" class="column-name">
+              <mat-label>{{ 'boards.settings.columnName' | transloco: { n: i + 1 } }}</mat-label>
+              <input matInput formControlName="name" maxlength="40" autocomplete="off" />
+              @if (column.controls.name.getError('api'); as key) {
+                <mat-error>{{ key | transloco }}</mat-error>
+              } @else {
+                <mat-error>{{ 'errors.field.required' | transloco }}</mat-error>
+              }
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="column-statuses">
+              <mat-label>{{ 'boards.settings.statuses' | transloco }}</mat-label>
+              <mat-select formControlName="statuses" multiple>
+                @for (option of statuses.hasValue() ? statuses.value() : []; track option.key) {
+                  <mat-option [value]="option.key">
+                    {{ option.label ?? option.key }}
+                    @if (takenElsewhere(column, option.key)) {
+                      <span class="taken">({{ 'boards.settings.taken' | transloco }})</span>
+                    }
+                  </mat-option>
+                }
+              </mat-select>
+              @if (column.controls.statuses.getError('api'); as key) {
+                <mat-error>{{ key | transloco }}</mat-error>
+              }
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="column-wip">
+              <mat-label>{{ 'boards.settings.wipLimit' | transloco }}</mat-label>
+              <input matInput type="number" formControlName="wipLimit" min="1" max="999" />
+              @if (column.controls.wipLimit.getError('api'); as key) {
+                <mat-error>{{ key | transloco }}</mat-error>
+              } @else {
+                <mat-error>{{ 'errors.field.out_of_range' | transloco }}</mat-error>
+              }
+            </mat-form-field>
+            <div class="row-actions">
+              <button
+                matIconButton
+                type="button"
+                class="up"
+                [disabled]="first"
+                [attr.aria-label]="'boards.settings.columnUp' | transloco: { name: column.controls.name.value }"
+                (click)="moveColumn(column, -1)"
+              >
+                <mat-icon aria-hidden="true">arrow_upward</mat-icon>
+              </button>
+              <button
+                matIconButton
+                type="button"
+                class="down"
+                [disabled]="last"
+                [attr.aria-label]="'boards.settings.columnDown' | transloco: { name: column.controls.name.value }"
+                (click)="moveColumn(column, 1)"
+              >
+                <mat-icon aria-hidden="true">arrow_downward</mat-icon>
+              </button>
+              <button
+                matIconButton
+                type="button"
+                class="remove-column"
+                [disabled]="columns.length === 1"
+                [attr.aria-label]="'boards.settings.columnRemove' | transloco: { name: column.controls.name.value }"
+                (click)="removeColumn(column)"
+              >
+                <mat-icon aria-hidden="true">delete</mat-icon>
+              </button>
+            </div>
+          </div>
+        }
+        <button matButton type="button" class="add-column" [disabled]="columns.length >= maxColumns" (click)="addColumn()">
+          <mat-icon aria-hidden="true">add</mat-icon>
+          {{ 'boards.settings.addColumn' | transloco }}
+        </button>
+      </section>
+
+      <section class="section" formArrayName="quickFilters" [attr.aria-labelledby]="'board-quick-title'">
+        <h3 class="section-title" id="board-quick-title">{{ 'boards.quickFilters' | transloco }}</h3>
+        @for (quick of quickFilters.controls; track quick; let i = $index) {
+          <div class="row quick-row" [formGroupName]="i">
+            <mat-form-field appearance="outline" class="quick-label">
+              <mat-label>{{ 'boards.settings.quickLabel' | transloco }}</mat-label>
+              <input matInput formControlName="label" maxlength="40" autocomplete="off" />
+              @if (quick.controls.label.getError('api'); as key) {
+                <mat-error>{{ key | transloco }}</mat-error>
+              } @else {
+                <mat-error>{{ 'errors.field.required' | transloco }}</mat-error>
+              }
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="quick-query">
+              <mat-label>{{ 'boards.settings.quickQuery' | transloco }}</mat-label>
+              <input matInput class="query" formControlName="query" autocomplete="off" spellcheck="false" />
+              @if (quick.controls.query.getError('api'); as key) {
+                <mat-error>{{ key | transloco }}</mat-error>
+              } @else {
+                <mat-error>{{ 'errors.field.required' | transloco }}</mat-error>
+              }
+            </mat-form-field>
+            <div class="row-actions">
+              <button
+                matIconButton
+                type="button"
+                class="remove-quick"
+                [attr.aria-label]="'boards.settings.quickRemove' | transloco: { label: quick.controls.label.value }"
+                (click)="removeQuick(quick)"
+              >
+                <mat-icon aria-hidden="true">delete</mat-icon>
+              </button>
+            </div>
+          </div>
+        }
+        <button matButton type="button" class="add-quick" [disabled]="quickFilters.length >= maxQuick" (click)="addQuick()">
+          <mat-icon aria-hidden="true">add</mat-icon>
+          {{ 'boards.settings.addQuick' | transloco }}
+        </button>
+      </section>
+    } @else {
+      <p class="note">{{ 'boards.settings.defaults' | transloco }}</p>
+    }
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions class="actions">
+  @if (editing) {
+    <button matButton type="button" class="delete" (click)="delete()">{{ 'boards.settings.delete.button' | transloco }}</button>
+  }
+  <span class="spacer"></span>
+  <button matButton type="button" mat-dialog-close>{{ 'dialog.cancel' | transloco }}</button>
+  <button matButton="filled" type="submit" form="board-settings" class="save" [disabled]="saving()">
+    {{ (editing ? 'boards.settings.save' : 'boards.settings.create') | transloco }}
+  </button>
+</mat-dialog-actions>

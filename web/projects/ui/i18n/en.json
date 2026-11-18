@@ -436,7 +436,8 @@
       "not_in_workflow": "Not a status of this type’s workflow.",
       "self": "A ticket cannot be linked to itself.",
       "cycle": "This ticket sits under the one you are changing.",
-      "immutable": "This value cannot be changed."
+      "immutable": "This value cannot be changed.",
+      "order_by_not_allowed": "A quick filter cannot sort: remove ORDER BY."
     },
     "invitation": {
       "invalid": "This invitation link is invalid, has expired or was already used. Ask for a new one.",
@@ -452,6 +453,10 @@
     },
     "saved_filter": {
       "name_taken": "You already have a filter with this name."
+    },
+    "board": {
+      "name_taken": "This node already has a board with this name.",
+      "no_transition": "No transition of the workflow leads to this column."
     },
     "permission": {
       "denied": "You do not have the permission this needs."
@@ -557,6 +562,7 @@
     "assign_resources": "Assign resources",
     "force_overload": "Force an overload",
     "manage_sprints": "Manage sprints",
+    "manage_boards": "Manage boards",
     "manage_members": "Manage members",
     "administer_node": "Administer the node"
   },
@@ -808,6 +814,7 @@
         "project": "Project Gantt"
       },
       "workload": "Team workload",
+      "boards": "Boards",
       "owners": "Owners: {{ names }}",
       "planned": "Planned load",
       "project": "{{ count }} distinct project",
@@ -1888,6 +1895,109 @@
         "support_agent": "Support",
         "bolt": "Bolt",
         "label": "Label"
+      }
+    }
+  },
+  "avatar": {
+    "nobody": "Unassigned"
+  },
+  "boards": {
+    "loading": "Loading the board…",
+    "breadcrumb": "Location",
+    "new": "New board",
+    "of": "Boards of {{ name }}",
+    "all": "All boards",
+    "none": {
+      "title": "No board yet",
+      "message": "Create a board to follow the work of a project through its workflow."
+    },
+    "kind": {
+      "kanban": "Kanban"
+    },
+    "total": "{{ count }} tickets",
+    "unmapped": "{{ count }} without a column",
+    "archived": "Archived: read-only",
+    "configure": "Configure the board",
+    "newTicket": "New ticket",
+    "filter": "Board filter",
+    "filterEmpty": "Every ticket you may see",
+    "openSearch": "Open in search",
+    "quickFilters": "Quick filters",
+    "swimlanes": {
+      "label": "Swimlanes",
+      "none": "No swimlanes",
+      "assignee": "By assignee",
+      "epic": "By epic"
+    },
+    "estimation": {
+      "points": "Story points",
+      "hours": "Hours (remaining work)"
+    },
+    "truncated": "This board shows the first 1,000 tickets of its filter: narrow the filter to see the others.",
+    "wip": {
+      "exceeded": "Limit exceeded · {{ count }} / {{ limit }}",
+      "reached": "Limit reached · {{ count }} / {{ limit }}",
+      "under": "{{ count }} / {{ limit }}"
+    },
+    "lane": {
+      "none": "Tickets",
+      "assignee": "Unassigned",
+      "epic": "No epic"
+    },
+    "cell": "Column {{ column }}",
+    "more": "Show {{ count }} more tickets",
+    "empty": "No ticket matches this board.",
+    "move": {
+      "noTransition": "{{ key }} went back: no transition of its workflow leads from {{ status }} to {{ column }}.",
+      "restricted": "{{ key }} went back: you may not run the transition to {{ column }}.",
+      "conflict": "{{ key }} changed in the meantime: the board shows it as it is now. Move it again if needed."
+    },
+    "card": {
+      "blockedBy": "Blocked by {{ keys }}",
+      "priority": "Priority: {{ priority }}",
+      "estimate": {
+        "points": "{{ value }} points",
+        "hours": "{{ value }} hours remaining"
+      },
+      "move": "Move {{ key }}",
+      "moveTo": "Move to {{ column }}"
+    },
+    "choose": {
+      "title": "Move {{ key }}",
+      "message": "Several transitions lead to this column. Which one?"
+    },
+    "settings": {
+      "title": "Configure the board",
+      "newTitle": "New board",
+      "node": "Portfolio, program or project",
+      "nodeHint": "Who sees it sees the board; managing boards needs the permission there.",
+      "name": "Name",
+      "filter": "Filter",
+      "filterHint": "A query of the search language, e.g. project = PLAT AND status != cancelled",
+      "estimation": "Estimation",
+      "swimlanes": "Swimlanes when it opens",
+      "columns": "Columns",
+      "columnName": "Column {{ n }}",
+      "statuses": "Statuses",
+      "taken": "in another column",
+      "wipLimit": "WIP limit",
+      "columnUp": "Move the column {{ name }} up",
+      "columnDown": "Move the column {{ name }} down",
+      "columnRemove": "Remove the column {{ name }}",
+      "addColumn": "Add a column",
+      "quickLabel": "Label",
+      "quickQuery": "Query",
+      "quickRemove": "Remove the quick filter {{ label }}",
+      "addQuick": "Add a quick filter",
+      "defaults": "The board starts with a column per status category (To do, In progress, Done) and the quick filters \"My tickets\" and \"Bugs\": change them once it is created.",
+      "save": "Save",
+      "create": "Create the board",
+      "conflict": "Someone changed this board in the meantime: close and open it again.",
+      "delete": {
+        "button": "Delete the board",
+        "title": "Delete the board?",
+        "message": "The board {{ name }} will be deleted for everyone. Its tickets stay as they are.",
+        "confirm": "Delete"
       }
     }
   }

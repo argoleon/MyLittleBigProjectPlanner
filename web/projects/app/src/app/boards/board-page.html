@@ -1,0 +1,164 @@
+@if (board.error()) {
+  <ui-error-state [error]="board.error()" (retry)="retry()" />
+} @else if (!board.hasValue()) {
+  <ui-loading-state [label]="'boards.loading' | transloco" />
+} @else {
+  @let b = board.value();
+  <nav class="crumbs" [attr.aria-label]="'boards.breadcrumb' | transloco">
+    <a [routerLink]="['/nodes', b.node.id]">{{ b.node.name }}</a>
+    <span aria-hidden="true">›</span>
+    <a routerLink="/boards">{{ 'nav.boards' | transloco }}</a>
+  </nav>
+  <div class="header">
+    <div>
+      <h1 class="title">{{ b.name }}</h1>
+      <p class="subtitle" role="status">
+        {{ 'boards.kind.' + b.kind | transloco }}
+        @if (cards.hasValue()) {
+          · {{ 'boards.total' | transloco: { count: cards.value().total } }}
+          @if (cards.value().unmapped > 0) {
+            · {{ 'boards.unmapped' | transloco: { count: cards.value().unmapped } }}
+          }
+        }
+        @if (b.node.archived) {
+          · {{ 'boards.archived' | transloco }}
+        }
+      </p>
+    </div>
+    <div class="header-actions">
+      @if (b.canManage && !b.node.archived) {
+        <button matButton="outlined" type="button" class="configure" (click)="configure()">
+          <mat-icon aria-hidden="true">tune</mat-icon>
+          {{ 'boards.configure' | transloco }}
+        </button>
+      }
+      @if (canCreate()) {
+        <button matFab extended type="button" class="new-ticket" (click)="newTicket()">
+          <mat-icon aria-hidden="true">add</mat-icon>
+          {{ 'boards.newTicket' | transloco }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="filter">
+      <span class="filter-label" id="board-filter-label">{{ 'boards.filter' | transloco }}</span>
+      <code class="filter-query" aria-labelledby="board-filter-label">{{ b.filter || ('boards.filterEmpty' | transloco) }}</code>
+      <a matButton class="open-search" routerLink="/search" [queryParams]="{ q: b.filter }">{{ 'boards.openSearch' | transloco }}</a>
+    </div>
+    <div class="controls">
+      @if (b.quickFilters.length > 0) {
+        <mat-chip-listbox multiple class="quick" [attr.aria-label]="'boards.quickFilters' | transloco">
+          @for (quick of b.quickFilters; track $index) {
+            <mat-chip-option [selected]="isQuickOn($index)" (selectionChange)="toggleQuick($index, $event.selected)">
+              {{ quick.label }}
+            </mat-chip-option>
+          }
+        </mat-chip-listbox>
+      }
+      <mat-button-toggle-group
+        hideSingleSelectionIndicator
+        class="swimlanes"
+        [aria-label]="'boards.swimlanes.label' | transloco"
+        [value]="swimlanes()"
+        (change)="setSwimlanes($event.value)"
+      >
+        <mat-button-toggle value="none">{{ 'boards.swimlanes.none' | transloco }}</mat-button-toggle>
+        <mat-button-toggle value="assignee">{{ 'boards.swimlanes.assignee' | transloco }}</mat-button-toggle>
+        <mat-button-toggle value="epic">{{ 'boards.swimlanes.epic' | transloco }}</mat-button-toggle>
+      </mat-button-toggle-group>
+    </div>
+  </div>
+
+  @if (message(); as m) {
+    <div class="message error" role="alert">
+      <mat-icon aria-hidden="true">undo</mat-icon>
+      <span>{{ m.key | transloco: m.params }}</span>
+    </div>
+  }
+  @if (cards.hasValue() && cards.value().truncated) {
+    <p class="message warning" role="status">{{ 'boards.truncated' | transloco }}</p>
+  }
+  @if (cards.isLoading()) {
+    <mat-progress-bar mode="indeterminate" class="progress" [attr.aria-label]="'boards.loading' | transloco" />
+  }
+
+  @if (cards.error()) {
+    <ui-error-state [error]="cards.error()" (retry)="retry()" />
+  } @else if (cards.hasValue()) {
+    <div class="board" cdkDropListGroup [style.--board-columns]="gridColumns()">
+      <div class="columns" role="presentation">
+        @for (column of columns(); track column.id) {
+          <div class="column-head" [attr.data-wip]="column.wip">
+            <h2 class="column-name">
+              {{ column.name }} <span class="count">{{ column.count }}</span>
+            </h2>
+            @if (column.wipLimit) {
+              <span class="wip" [attr.data-wip]="column.wip">
+                @if (column.wip === 'exceeded') {
+                  {{ 'boards.wip.exceeded' | transloco: { count: column.count, limit: column.wipLimit } }}
+                } @else if (column.wip === 'reached') {
+                  {{ 'boards.wip.reached' | transloco: { count: column.count, limit: column.wipLimit } }}
+                } @else {
+                  {{ 'boards.wip.under' | transloco: { count: column.count, limit: column.wipLimit } }}
+                }
+              </span>
+            }
+          </div>
+        }
+      </div>
+      @for (lane of lanes(); track lane.id ?? 'none'; let l = $index) {
+        <section class="lane" [attr.aria-label]="lane.label ?? ('boards.lane.' + swimlanes() | transloco)">
+          @if (swimlanes() !== 'none') {
+            <h3 class="lane-title">
+              @if (swimlanes() === 'assignee') {
+                <ui-avatar [name]="lane.label" />
+              } @else if (lane.key) {
+                <span class="lane-key">{{ lane.key }}</span>
+              }
+              {{ lane.label ?? ('boards.lane.' + swimlanes() | transloco) }}
+              <span class="count">{{ laneCount(lane) }}</span>
+            </h3>
+          }
+          <div class="cells">
+            @for (column of columns(); track column.id; let c = $index) {
+              <div
+                class="cell"
+                role="group"
+                cdkDropList
+                [cdkDropListData]="cellOf(l, column.id)"
+                [cdkDropListDisabled]="!canMove() || moving() !== null"
+                [attr.data-wip]="column.wip"
+                [attr.aria-label]="'boards.cell' | transloco: { column: column.name }"
+                (cdkDropListDropped)="dropped($event)"
+              >
+                @for (card of shown(lane.cells[c], column.id); track card.id) {
+                  <app-board-card
+                    cdkDrag
+                    [cdkDragData]="card"
+                    [card]="card"
+                    [columns]="columns()"
+                    [columnId]="column.id"
+                    [movable]="canMove()"
+                    [busy]="moving() === card.id"
+                    [showEpic]="swimlanes() !== 'epic'"
+                    [estimation]="b.estimation"
+                    (moveTo)="move(card, $event.id)"
+                  />
+                }
+                @if (lane.cells[c].length > cellLimit && !expanded().has(column.id)) {
+                  <button matButton type="button" class="more" (click)="showAll(column.id)">
+                    {{ 'boards.more' | transloco: { count: lane.cells[c].length - cellLimit } }}
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        </section>
+      } @empty {
+        <p class="empty">{{ 'boards.empty' | transloco }}</p>
+      }
+    </div>
+  }
+}
