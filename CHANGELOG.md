@@ -12,6 +12,10 @@ Security fix of 0.5.0: the email client had known vulnerabilities, and the depen
 
 - **lettre 0.11.24** (#537), the SMTP client sending every email (invitations, password resets, notifications): fixes RUSTSEC-2026-0560 to 0565. These cover STARTTLS response injection by a man in the middle, SMTP command injection through bare CR or LF, a quoted local part sent to another address, panics on an `EHLO` reply or a display name holding CR or LF, and unbounded buffering of an SMTP reply.
 
+### Fixed
+
+- **The status menu of a ticket** no longer closes by itself right after a transition (#526). The page reads the ticket again on the real-time echo of the member's own change; meanwhile the menu turned into a plain status for an instant, which closed it when it was open. It now keeps the transitions shown until the new ones are read.
+
 ### Changed
 
 - **Dates and times** are handled by `time` instead of `chrono` (#531), which is no longer maintained (RUSTSEC-2026-0543). The API answers exactly as before: times in RFC 3339 (UTC), dates as `YYYY-MM-DD`, the same OpenAPI contract.
