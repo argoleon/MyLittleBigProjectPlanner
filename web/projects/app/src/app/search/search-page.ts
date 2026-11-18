@@ -13,6 +13,7 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleGroup, MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -27,10 +28,12 @@ import {
   InstantPipe,
   LocalDatePipe,
   Priority,
+  SavedFilter,
   SearchResult,
   StatusChip,
   TypeChip,
   errorTranslationKey,
+  getSavedFilter,
   isApiProblem,
   parseQuery,
   searchWithQuery,
@@ -42,6 +45,8 @@ import { QueryBuilder } from './query-builder';
 import { QueryEditor } from './query-editor';
 import { QueryErrorMessage, queryErrorMessage } from './query-error';
 import { orderByIndex, sortOf, withSort } from './query-order';
+import { SaveFilterData, SaveFilterDialog } from './save-filter-dialog';
+import { SavedFilters } from './saved-filters';
 
 /** Results per page. */
 const PAGE_SIZE = 50;
@@ -112,6 +117,10 @@ function storedColumns(): readonly string[] {
  * is loaded on the way), the columns of the
  * member's choice, sorting a column sorting the query. The query is in the
  * address (`?q=`) so it can be shared and comes back with the history.
+ *
+ * Saved filters (L06-US04): the panel lists the member's and those shared
+ * with them; `?filter=` opens one (its query runs, unless `?q=` says
+ * otherwise: the member changed it). "Save the filter" keeps the query run.
  */
 @Component({
   selector: 'app-search-page',
@@ -131,6 +140,7 @@ function storedColumns(): readonly string[] {
     QueryBuilder,
     QueryEditor,
     RouterLink,
+    SavedFilters,
     ScrollingModule,
     StatusChip,
     TranslocoPipe,
@@ -142,6 +152,8 @@ function storedColumns(): readonly string[] {
 export class SearchPage {
   /** The query of the address (`?q=`). */
   readonly q = input<string>();
+  /** The saved filter of the address (`?filter=`). */
+  readonly filter = input<string>();
 
   private readonly api = inject(Api);
   private readonly router = inject(Router);
@@ -149,6 +161,8 @@ export class SearchPage {
   private readonly editor = viewChild(QueryEditor);
   private readonly modes = viewChild(MatButtonToggleGroup);
   private readonly viewport = viewChild(CdkVirtualScrollViewport);
+  private readonly savedFilters = viewChild(SavedFilters);
+  private readonly dialog = inject(MatDialog);
 
   protected readonly rowHeight = ROW_HEIGHT;
 
@@ -162,13 +176,34 @@ export class SearchPage {
   /** Said when a query cannot be shown in the builder. */
   protected readonly notice = signal<string | null>(null);
 
-  /** The query run: the address's. */
-  protected readonly ran = computed(() => (this.q() ?? '').trim());
+  /** The saved filter open, if any; bumped when saved again. */
+  private readonly filterRead = signal(0);
+  protected readonly openFilter = resource({
+    params: () => {
+      const id = this.filter();
+      return id ? { id, read: this.filterRead() } : undefined;
+    },
+    loader: ({ params }) => this.api.invoke(getSavedFilter, { id: params.id }),
+  });
+  protected readonly active = computed<SavedFilter | null>(() =>
+    this.filter() && this.openFilter.hasValue() ? this.openFilter.value() : null,
+  );
+  /** The query run: the address's; else the open filter's. */
+  protected readonly ran = computed(() => (this.q() ?? this.active()?.query ?? '').trim());
+  /** The query run is no longer the open filter's. */
+  protected readonly changed = computed(() => {
+    const active = this.active();
+    return !!active && this.ran() !== active.query.trim();
+  });
   /** Bumped to run the same query again. */
   private readonly runs = signal(0);
 
   protected readonly first = resource({
-    params: () => ({ query: this.ran(), run: this.runs() }),
+    // Nothing runs while the filter of the address is being read.
+    params: () =>
+      this.filter() !== undefined && this.q() === undefined && this.openFilter.isLoading()
+        ? undefined
+        : { query: this.ran(), run: this.runs() },
     loader: ({ params }) =>
       this.api.invoke(searchWithQuery, { body: { query: params.query, limit: PAGE_SIZE } }),
   });
@@ -330,6 +365,39 @@ export class SearchPage {
 
   protected retry(): void {
     this.runs.update((n) => n + 1);
+  }
+
+  /** Saves the query run: into the open filter when it is the member's, else as a new one. */
+  protected saveFilter(): void {
+    const active = this.active();
+    this.openSaveDialog({ query: this.ran(), filter: active?.canEdit ? active : undefined });
+  }
+
+  /** Changes one of the member's filters, from the panel. */
+  protected editFilter(filter: SavedFilter): void {
+    this.openSaveDialog({ query: filter.id === this.active()?.id ? this.ran() : filter.query, filter });
+  }
+
+  private openSaveDialog(data: SaveFilterData): void {
+    this.dialog
+      .open<SaveFilterDialog, SaveFilterData, SavedFilter>(SaveFilterDialog, { data })
+      .afterClosed()
+      .subscribe((saved) => {
+        if (!saved) return;
+        this.notice.set('search.filters.saved');
+        this.savedFilters()?.reload();
+        this.filterRead.update((n) => n + 1);
+        // The filter saved opens, its query as saved.
+        void this.router.navigate([], { queryParams: { filter: saved.id, q: null }, queryParamsHandling: 'merge' });
+      });
+  }
+
+  /** A filter was deleted: the open one closes, its results stay. */
+  protected filterDeleted(filter: SavedFilter): void {
+    this.notice.set('search.filters.deleted');
+    if (filter.id === this.filter()) {
+      void this.router.navigate([], { queryParams: { filter: null, q: this.ran() || null }, queryParamsHandling: 'merge' });
+    }
   }
 
   protected async loadMore(): Promise<void> {

@@ -4,13 +4,14 @@
  * with their total, Enter running a query, a refused query shown at its
  * position, sorting a column sorting the query, the next page loaded
  * through the cursor, the columns of the member's choice, empty and failed
- * searches, and accessibility.
+ * searches, and accessibility; a saved filter opened, saved and gone
+ * (L06-US04).
  */
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { SearchResult, provideApi, provideMaterialDefaults } from 'ui';
+import { SavedFilter, SearchResult, provideApi, provideMaterialDefaults } from 'ui';
 import { axeViolations, provideI18nTesting } from 'ui/testing';
 
 import { SearchPage } from './search-page';
@@ -52,9 +53,26 @@ function statusTree(query: string, ...keys: string[]) {
   };
 }
 
+/** A filter shared with a group, of another member. */
+const LATE: SavedFilter = {
+  id: 'f1',
+  name: 'Late',
+  icon: 'schedule',
+  query: 'due < now()',
+  owner: { accountId: 'a2', displayName: 'Camille Martin', member: true },
+  sharing: { all: false, groups: [{ id: 'g1', name: 'Platform' }] },
+  mine: false,
+  canEdit: false,
+  canDelete: false,
+  version: 1,
+};
+
 describe('the search screen', () => {
-  /** The screen at `url`, in the query mode unless told (`null`: never chosen yet). */
-  async function open(url: string, mode: 'query' | 'builder' | null = 'query') {
+  /**
+   * The screen at `url`, in the query mode unless told (`null`: never chosen
+   * yet); `filters`: the saved filters the member sees.
+   */
+  async function open(url: string, mode: 'query' | 'builder' | null = 'query', filters: readonly SavedFilter[] = []) {
     localStorage.clear();
     if (mode) localStorage.setItem('mlbpp.search.mode', mode);
     TestBed.configureTestingModule({
@@ -68,13 +86,17 @@ describe('the search screen', () => {
     });
     const http = TestBed.inject(HttpTestingController);
     // The table draws the rows of the viewport's range on an animation frame.
-    // The editor's suggestions are answered with none.
+    // The editor's suggestions are answered with none; the saved filters
+    // with `filters`.
     const settle = async () => {
       for (let i = 0; i < 4; i++) {
         await new Promise((resolve) => setTimeout(resolve, 20));
         for (const asked of http.match((r) => r.url === '/api/v1/search/suggestions')) {
           const query = (asked.request.body as { query: string }).query;
           asked.flush({ from: 0, to: 0, suggestions: LISTS[query] ?? [] });
+        }
+        for (const asked of http.match((r) => r.url === '/api/v1/saved-filters' && r.method === 'GET')) {
+          asked.flush({ items: filters });
         }
         TestBed.tick();
       }
@@ -101,6 +123,17 @@ describe('the search screen', () => {
       await settle();
       return request;
     };
+    const replied = async (match: (url: string, method: string) => boolean, body: object | null, status = 200): Promise<TestRequest> => {
+      let request: TestRequest | undefined;
+      for (let i = 0; i < 50 && !request; i++) {
+        [request] = http.match((r) => match(r.urlWithParams, r.method));
+        if (!request) await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      if (!request) throw new Error('no matching request');
+      request.flush(body, { status, statusText: status < 400 ? 'OK' : 'Error' });
+      await settle();
+      return request;
+    };
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl(url);
     await settle();
@@ -113,7 +146,7 @@ describe('the search screen', () => {
       (element as HTMLElement).click();
       await settle();
     };
-    return { http, harness, settle, searched, parsed, root, page, text, texts, field, click };
+    return { http, harness, settle, searched, parsed, replied, root, page, text, texts, field, click };
   }
 
   it('runs the query of the address and shows the results with their total', async () => {
@@ -302,5 +335,57 @@ describe('the search screen', () => {
       'This query cannot be shown in the builder: it stays in the editor.',
     );
     expect(localStorage.getItem('mlbpp.search.mode')).toBe('query');
+  });
+
+  it('opens a saved filter from the address: its query runs, its name and sharing above the results', async () => {
+    const { searched, replied, settle, page, text, field } = await open('/search?filter=f1', 'query', [LATE]);
+    const read = await replied((url) => url === '/api/v1/saved-filters/f1', LATE);
+    expect(read.request.method).toBe('GET');
+    const ran = await searched({ items: [result(1), result(2)], nextCursor: null, total: 2 });
+    expect(ran.request.body).toEqual({ query: 'due < now()', limit: 50 });
+    expect(field().value).toBe('due < now()');
+    expect(text(page().querySelector('.subtitle'))).toBe('Filter “Late” · shared · Results: 2');
+    expect(page().querySelector('app-saved-filters a.link')?.getAttribute('aria-current')).toBe('page');
+    expect(await axeViolations(page())).toEqual([]);
+
+    // Changed: still the filter, said so; the address keeps both.
+    field().value = 'due < now() AND status != done';
+    field().dispatchEvent(new Event('input'));
+    field().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    await settle();
+    await searched({ items: [result(1)], nextCursor: null, total: 1 });
+    expect(text(page().querySelector('.subtitle'))).toBe('Filter “Late” · shared · query changed · Results: 1');
+    expect(decodeURIComponent(TestBed.inject(Router).url)).toBe('/search?filter=f1&q=due < now() AND status != done');
+  });
+
+  it('saves the query run as a filter, then opens it', async () => {
+    const { searched, replied, page, text, click } = await open('/search?q=type%20%3D%20bug');
+    await searched({ items: [result(1)], nextCursor: null, total: 1 });
+    await click(page().querySelector('button.save-filter'));
+    const dialog = document.querySelector('mat-dialog-container')!;
+    expect(text(dialog.querySelector('.query'))).toBe('type = bug');
+    const name = dialog.querySelector('input[formControlName="name"]') as HTMLInputElement;
+    name.value = 'Bugs';
+    name.dispatchEvent(new Event('input'));
+    await click(dialog.querySelector('button.save'));
+    const saved = await replied((url, method) => url === '/api/v1/saved-filters' && method === 'POST', { ...LATE, id: 'f9', name: 'Bugs', query: 'type = bug', sharing: { all: false, groups: [] } }, 201);
+    expect((saved.request.body as { query: string }).query).toBe('type = bug');
+    await replied((url) => url === '/api/v1/saved-filters/f9', { ...LATE, id: 'f9', name: 'Bugs', query: 'type = bug', sharing: { all: false, groups: [] } });
+    await searched({ items: [result(1)], nextCursor: null, total: 1 });
+    expect(decodeURIComponent(TestBed.inject(Router).url)).toBe('/search?filter=f9');
+    expect(text(page().querySelector('.notice'))).toBe('Filter saved.');
+    expect(text(page().querySelector('.subtitle'))).toBe('Filter “Bugs” · personal · Results: 1');
+  });
+
+  it('says when the filter of the address can no longer be read, and searches everything', async () => {
+    const { searched, replied, page, text } = await open('/search?filter=gone');
+    await replied(
+      (url) => url === '/api/v1/saved-filters/gone',
+      { type: 'urn:mlbpp:problem:not_found', title: 'Not found', status: 404, code: 'not_found' },
+      404,
+    );
+    const ran = await searched({ items: [], nextCursor: null, total: 0 });
+    expect(ran.request.body).toEqual({ query: '', limit: 50 });
+    expect(text(page().querySelector('.filter-error'))).toBe('This filter no longer exists, or is no longer shared with you.');
   });
 });

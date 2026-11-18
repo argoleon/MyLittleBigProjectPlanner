@@ -203,8 +203,9 @@ pub async fn update_access(
     }
 }
 
-/// Removes the member from the tenant, with their group memberships. Their
-/// global account stays (other tenants, erasure: L02-US09).
+/// Removes the member from the tenant, with their group memberships and
+/// their private saved filters (their shared ones stay). Their global
+/// account stays (other tenants, erasure: L02-US09).
 pub async fn remove(
     conn: &mut PgConnection,
     account_id: Uuid,
@@ -218,6 +219,7 @@ pub async fn remove(
     .execute(&mut *conn)
     .await?;
     if removed.rows_affected() == 1 {
+        crate::saved_filters::delete_private_of(conn, account_id).await?;
         Ok(Ok(()))
     } else {
         Ok(Err(missing_or_stale(conn, account_id).await?))

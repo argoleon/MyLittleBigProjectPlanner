@@ -521,3 +521,49 @@ async fn purging_a_tenant_keeps_an_account_another_tenant_shows_under_a_pseudony
         "alpha still shows it as Deleted user #N"
     );
 }
+
+#[tokio::test]
+async fn an_erased_members_private_filters_go_and_their_shared_ones_stay() {
+    use infra::saved_filters::{self, FilterInput};
+
+    let db = TestDb::new().await;
+    let member = db.add_member(&db.tenant_a, TenantRole::Member).await;
+    let id = member.account_id;
+    let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+    for (name, shared_with_all) in [("Mine", false), ("Late", true)] {
+        let input = FilterInput {
+            name,
+            icon: "filter_alt",
+            query: "due < now()",
+            shared_with_all,
+            groups: &[],
+        };
+        saved_filters::insert(&mut tx, new_id(), id, &input)
+            .await
+            .unwrap()
+            .unwrap();
+    }
+    tx.commit().await.unwrap();
+    let steps: Vec<Box<dyn ErasureStep>> = erasure::steps()
+        .into_iter()
+        .filter(|step| step.name() == "saved_filters")
+        .collect();
+    let erased = ErasedMember {
+        account_id: id,
+        pseudonym_number: 9,
+        purge_comments: false,
+    };
+    // A second run changes nothing.
+    for expected in [1, 0] {
+        let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+        let done = erasure::anonymize(&mut tx, &erased, &steps).await.unwrap();
+        tx.commit().await.unwrap();
+        assert_eq!(done, [("saved_filters", expected)]);
+    }
+    let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+    let left: Vec<String> = sqlx::query_scalar("SELECT name FROM saved_filter ORDER BY name")
+        .fetch_all(&mut *tx)
+        .await
+        .unwrap();
+    assert_eq!(left, ["Late"]);
+}

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO saved_filter_group (id, tenant_id, filter_id, group_id)\n        SELECT s.id, app_current_tenant(), $1, s.group_id FROM unnest($2::uuid[], $3::uuid[]) AS s(id, group_id)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "575192c3f9de5ac292bf365b30ad0711e3839e1e34b9ea5ab5c218f8c97f6495"
+}

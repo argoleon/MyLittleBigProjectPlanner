@@ -48,6 +48,7 @@ use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
 use crate::query_assist;
 use crate::reference_items;
 use crate::roles;
+use crate::saved_filters;
 use crate::screens;
 use crate::search;
 use crate::sso;
@@ -192,6 +193,13 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(issues::form))
         .routes(routes!(issues::mine))
         .routes(routes!(search::search))
+        .routes(routes!(saved_filters::list, saved_filters::create))
+        .routes(routes!(saved_filters::share_groups))
+        .routes(routes!(
+            saved_filters::read,
+            saved_filters::update,
+            saved_filters::delete
+        ))
         .routes(routes!(query_assist::suggestions))
         .routes(routes!(query_assist::parse))
         .routes(routes!(issues::people))

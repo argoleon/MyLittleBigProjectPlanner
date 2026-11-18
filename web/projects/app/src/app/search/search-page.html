@@ -1,172 +1,198 @@
 <div class="header">
   <div>
     <h1 class="title">{{ 'search.title' | transloco }}</h1>
-    @if (total() !== null) {
+    @if (active(); as filter) {
+      <p class="subtitle" role="status">
+        {{ 'search.filters.line' | transloco: { name: filter.name } }}
+        · {{ ((filter.sharing.all || filter.sharing.groups.length > 0) ? 'search.filters.lineShared' : 'search.filters.linePrivate') | transloco }}
+        @if (changed()) {
+          · {{ 'search.filters.lineChanged' | transloco }}
+        }
+        @if (total() !== null) {
+          · {{ 'search.total' | transloco: { count: total() } }}
+        }
+      </p>
+    } @else if (total() !== null) {
       <p class="subtitle" role="status">{{ 'search.total' | transloco: { count: total() } }}</p>
     }
   </div>
-  <button matButton="outlined" type="button" class="columns" [matMenuTriggerFor]="columnsMenu">
-    <mat-icon aria-hidden="true">view_column</mat-icon>
-    {{ 'search.columns.button' | transloco }}
-  </button>
-  <mat-menu #columnsMenu="matMenu" [attr.aria-label]="'search.columns.menu' | transloco">
-    @for (column of allColumns; track column.id) {
-      <button
-        mat-menu-item
-        type="button"
-        role="menuitemcheckbox"
-        class="column-choice"
-        [attr.aria-checked]="shows(column.id)"
-        [disabled]="column.id === 'key'"
-        (click)="$event.stopPropagation(); toggle(column.id)"
-      >
-        <mat-icon aria-hidden="true">{{ shows(column.id) ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
-        {{ 'search.columns.' + column.id | transloco }}
-      </button>
-    }
-  </mat-menu>
-</div>
-
-<div class="mode">
-  <mat-button-toggle-group
-    hideSingleSelectionIndicator
-    [attr.aria-label]="'search.mode.label' | transloco"
-    [value]="mode()"
-    (change)="setMode($event.value)"
-  >
-    <mat-button-toggle value="builder" class="builder-mode">{{ 'search.mode.builder' | transloco }}</mat-button-toggle>
-    <mat-button-toggle value="query" class="query-mode">{{ 'search.mode.query' | transloco }}</mat-button-toggle>
-  </mat-button-toggle-group>
-</div>
-
-@if (notice(); as notice) {
-  <p class="notice" role="status">{{ notice | transloco }}</p>
-}
-
-@if (mode() === 'builder') {
-  <app-query-builder [criteria]="criteria()" (criteriaChange)="built($event)" />
-} @else {
-  <form class="query" role="search" [attr.aria-label]="'search.title' | transloco" (submit)="$event.preventDefault(); run()">
-    <app-query-editor
-      class="field"
-      [(value)]="draft"
-      [describedBy]="queryError() ? 'query-error' : null"
-      [invalid]="!!queryError()"
-      (submitted)="run()"
-    />
-    <button matButton="filled" type="submit" class="run">
-      <mat-icon aria-hidden="true">search</mat-icon>
-      {{ 'search.run' | transloco }}
+  <div class="header-actions">
+    <button matButton="outlined" type="button" class="columns" [matMenuTriggerFor]="columnsMenu">
+      <mat-icon aria-hidden="true">view_column</mat-icon>
+      {{ 'search.columns.button' | transloco }}
     </button>
-  </form>
-}
-
-@if (queryError(); as error) {
-  <div id="query-error" class="message error query-error" role="alert">
-    <p class="reason">{{ error.key | transloco: error.params }}</p>
-    @let parts = excerpt(error);
-    <p class="excerpt code" aria-hidden="true">{{ parts[0] }}<mark>{{ parts[1] }}</mark>{{ parts[2] }}</p>
+    <mat-menu #columnsMenu="matMenu" [attr.aria-label]="'search.columns.menu' | transloco">
+      @for (column of allColumns; track column.id) {
+        <button
+          mat-menu-item
+          type="button"
+          role="menuitemcheckbox"
+          class="column-choice"
+          [attr.aria-checked]="shows(column.id)"
+          [disabled]="column.id === 'key'"
+          (click)="$event.stopPropagation(); toggle(column.id)"
+        >
+          <mat-icon aria-hidden="true">{{ shows(column.id) ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
+          {{ 'search.columns.' + column.id | transloco }}
+        </button>
+      }
+    </mat-menu>
+    <button matButton="filled" type="button" class="save-filter" [disabled]="!ran()" (click)="saveFilter()">
+      <mat-icon aria-hidden="true">bookmark_add</mat-icon>
+      {{ 'search.filters.save' | transloco }}
+    </button>
   </div>
-} @else if (loadError()) {
-  <ui-error-state [error]="loadError()" [headingLevel]="2" (retry)="retry()" />
-} @else if (!first.hasValue()) {
-  <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
-} @else if (rows().length === 0) {
-  <ui-empty-state icon="search_off" [title]="'search.empty' | transloco" [message]="'search.emptyHint' | transloco" />
-} @else {
-  <div class="table-card">
-    <cdk-virtual-scroll-viewport class="viewport" tabindex="0" [itemSize]="rowHeight" [attr.aria-label]="'search.results' | transloco">
-      <table
-        mat-table
-        class="table"
-        matSort
-        [dataSource]="rows()"
-        [trackBy]="trackRow"
-        [matSortActive]="sort()?.active ?? ''"
-        [matSortDirection]="sort()?.direction ?? ''"
-        [attr.aria-rowcount]="(total() ?? rows().length) + 1"
-        (matSortChange)="sortBy($event)"
+</div>
+
+<div class="body">
+  <app-saved-filters class="panel" [active]="active()?.id ?? null" (edit)="editFilter($event)" (deleted)="filterDeleted($event)" />
+  <div class="main">
+    @if (filter() && openFilter.error()) {
+      <p class="message error filter-error" role="alert">{{ 'search.filters.gone' | transloco }}</p>
+    }
+
+    <div class="mode">
+      <mat-button-toggle-group
+        hideSingleSelectionIndicator
+        [attr.aria-label]="'search.mode.label' | transloco"
+        [value]="mode()"
+        (change)="setMode($event.value)"
       >
-        <caption class="cdk-visually-hidden">{{ 'search.caption' | transloco }}</caption>
+        <mat-button-toggle value="builder" class="builder-mode">{{ 'search.mode.builder' | transloco }}</mat-button-toggle>
+        <mat-button-toggle value="query" class="query-mode">{{ 'search.mode.query' | transloco }}</mat-button-toggle>
+      </mat-button-toggle-group>
+    </div>
 
-        <ng-container matColumnDef="key">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.key' | transloco }}</th>
-          <td mat-cell *matCellDef="let row" class="key">
-            <a [routerLink]="['/issues', row.key]">{{ row.key }}</a>
-          </td>
-        </ng-container>
+    @if (notice(); as notice) {
+      <p class="notice" role="status">{{ notice | transloco }}</p>
+    }
 
-        <ng-container matColumnDef="summary">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.summary' | transloco }}</th>
-          <td mat-cell *matCellDef="let row" class="summary">{{ row.summary }}</td>
-        </ng-container>
+    @if (mode() === 'builder') {
+      <app-query-builder [criteria]="criteria()" (criteriaChange)="built($event)" />
+    } @else {
+      <form class="query" role="search" [attr.aria-label]="'search.title' | transloco" (submit)="$event.preventDefault(); run()">
+        <app-query-editor
+          class="field"
+          [(value)]="draft"
+          [describedBy]="queryError() ? 'query-error' : null"
+          [invalid]="!!queryError()"
+          (submitted)="run()"
+        />
+        <button matButton="filled" type="submit" class="run">
+          <mat-icon aria-hidden="true">search</mat-icon>
+          {{ 'search.run' | transloco }}
+        </button>
+      </form>
+    }
 
-        <ng-container matColumnDef="type">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.type' | transloco }}</th>
-          <td mat-cell *matCellDef="let row">
-            <ui-type-chip [kind]="chipKind(row.type.color)" [label]="row.type.label ?? row.type.key" [iconName]="row.type.icon" />
-          </td>
-        </ng-container>
+    @if (queryError(); as error) {
+      <div id="query-error" class="message error query-error" role="alert">
+        <p class="reason">{{ error.key | transloco: error.params }}</p>
+        @let parts = excerpt(error);
+        <p class="excerpt code" aria-hidden="true">{{ parts[0] }}<mark>{{ parts[1] }}</mark>{{ parts[2] }}</p>
+      </div>
+    } @else if (loadError()) {
+      <ui-error-state [error]="loadError()" [headingLevel]="2" (retry)="retry()" />
+    } @else if (!first.hasValue()) {
+      <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+    } @else if (rows().length === 0) {
+      <ui-empty-state icon="search_off" [title]="'search.empty' | transloco" [message]="'search.emptyHint' | transloco" />
+    } @else {
+      <div class="table-card">
+        <cdk-virtual-scroll-viewport class="viewport" tabindex="0" [itemSize]="rowHeight" [attr.aria-label]="'search.results' | transloco">
+          <table
+            mat-table
+            class="table"
+            matSort
+            [dataSource]="rows()"
+            [trackBy]="trackRow"
+            [matSortActive]="sort()?.active ?? ''"
+            [matSortDirection]="sort()?.direction ?? ''"
+            [attr.aria-rowcount]="(total() ?? rows().length) + 1"
+            (matSortChange)="sortBy($event)"
+          >
+            <caption class="cdk-visually-hidden">{{ 'search.caption' | transloco }}</caption>
 
-        <ng-container matColumnDef="status">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.status' | transloco }}</th>
-          <td mat-cell *matCellDef="let row">
-            <ui-status-chip [category]="chipCategory(row.status.category)" [label]="row.status.label ?? row.status.key" />
-          </td>
-        </ng-container>
+            <ng-container matColumnDef="key">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.key' | transloco }}</th>
+              <td mat-cell *matCellDef="let row" class="key">
+                <a [routerLink]="['/issues', row.key]">{{ row.key }}</a>
+              </td>
+            </ng-container>
 
-        <ng-container matColumnDef="assignee">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.assignee' | transloco }}</th>
-          <td mat-cell *matCellDef="let row">{{ row.assignee?.name ?? '' }}</td>
-        </ng-container>
+            <ng-container matColumnDef="summary">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.summary' | transloco }}</th>
+              <td mat-cell *matCellDef="let row" class="summary">{{ row.summary }}</td>
+            </ng-container>
 
-        <ng-container matColumnDef="reporter">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.reporter' | transloco }}</th>
-          <td mat-cell *matCellDef="let row">{{ row.reporter?.name ?? '' }}</td>
-        </ng-container>
+            <ng-container matColumnDef="type">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.type' | transloco }}</th>
+              <td mat-cell *matCellDef="let row">
+                <ui-type-chip [kind]="chipKind(row.type.color)" [label]="row.type.label ?? row.type.key" [iconName]="row.type.icon" />
+              </td>
+            </ng-container>
 
-        <ng-container matColumnDef="priority">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.priority' | transloco }}</th>
-          <td mat-cell *matCellDef="let row"><ui-priority [priority]="row.priority" /></td>
-        </ng-container>
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.status' | transloco }}</th>
+              <td mat-cell *matCellDef="let row">
+                <ui-status-chip [category]="chipCategory(row.status.category)" [label]="row.status.label ?? row.status.key" />
+              </td>
+            </ng-container>
 
-        <ng-container matColumnDef="due">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.due' | transloco }}</th>
-          <td mat-cell *matCellDef="let row">{{ row.dueDate | localDate: { dateStyle: 'medium' } }}</td>
-        </ng-container>
+            <ng-container matColumnDef="assignee">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.assignee' | transloco }}</th>
+              <td mat-cell *matCellDef="let row">{{ row.assignee?.name ?? '' }}</td>
+            </ng-container>
 
-        <ng-container matColumnDef="start">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.start' | transloco }}</th>
-          <td mat-cell *matCellDef="let row">{{ row.startDate | localDate: { dateStyle: 'medium' } }}</td>
-        </ng-container>
+            <ng-container matColumnDef="reporter">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.reporter' | transloco }}</th>
+              <td mat-cell *matCellDef="let row">{{ row.reporter?.name ?? '' }}</td>
+            </ng-container>
 
-        <ng-container matColumnDef="project">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.project' | transloco }}</th>
-          <td mat-cell *matCellDef="let row">{{ row.project.name }}</td>
-        </ng-container>
+            <ng-container matColumnDef="priority">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.priority' | transloco }}</th>
+              <td mat-cell *matCellDef="let row"><ui-priority [priority]="row.priority" /></td>
+            </ng-container>
 
-        <ng-container matColumnDef="created">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.created' | transloco }}</th>
-          <td mat-cell *matCellDef="let row">{{ row.createdAt | instant: { dateStyle: 'medium' } }}</td>
-        </ng-container>
+            <ng-container matColumnDef="due">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.due' | transloco }}</th>
+              <td mat-cell *matCellDef="let row">{{ row.dueDate | localDate: { dateStyle: 'medium' } }}</td>
+            </ng-container>
 
-        <ng-container matColumnDef="updated">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.updated' | transloco }}</th>
-          <td mat-cell *matCellDef="let row">{{ row.updatedAt | instant: { dateStyle: 'medium' } }}</td>
-        </ng-container>
+            <ng-container matColumnDef="start">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.start' | transloco }}</th>
+              <td mat-cell *matCellDef="let row">{{ row.startDate | localDate: { dateStyle: 'medium' } }}</td>
+            </ng-container>
 
-        <tr mat-header-row *matHeaderRowDef="columns(); sticky: true" aria-rowindex="1"></tr>
-        <tr mat-row *matRowDef="let row; columns: columns(); let i = index" [attr.aria-rowindex]="i + 2"></tr>
-      </table>
-    </cdk-virtual-scroll-viewport>
+            <ng-container matColumnDef="project">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.project' | transloco }}</th>
+              <td mat-cell *matCellDef="let row">{{ row.project.name }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="created">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.created' | transloco }}</th>
+              <td mat-cell *matCellDef="let row">{{ row.createdAt | instant: { dateStyle: 'medium' } }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="updated">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.updated' | transloco }}</th>
+              <td mat-cell *matCellDef="let row">{{ row.updatedAt | instant: { dateStyle: 'medium' } }}</td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="columns(); sticky: true" aria-rowindex="1"></tr>
+            <tr mat-row *matRowDef="let row; columns: columns(); let i = index" [attr.aria-rowindex]="i + 2"></tr>
+          </table>
+        </cdk-virtual-scroll-viewport>
+      </div>
+      @if (loadingMore()) {
+        <mat-progress-bar class="loading-more" mode="indeterminate" [attr.aria-label]="'search.loadingMore' | transloco" />
+      }
+      @if (moreError(); as message) {
+        <p class="message error" role="alert">
+          {{ message | transloco }}
+          <button matButton type="button" class="retry-more" (click)="moreError.set(null)">{{ 'state.retry' | transloco }}</button>
+        </p>
+      }
+    }
   </div>
-  @if (loadingMore()) {
-    <mat-progress-bar class="loading-more" mode="indeterminate" [attr.aria-label]="'search.loadingMore' | transloco" />
-  }
-  @if (moreError(); as message) {
-    <p class="message error" role="alert">
-      {{ message | transloco }}
-      <button matButton type="button" class="retry-more" (click)="moreError.set(null)">{{ 'state.retry' | transloco }}</button>
-    </p>
-  }
-}
+</div>

@@ -5,7 +5,9 @@
  * tickets of the portfolio's projects, highest priority first, sorts them
  * by key from a column, and shows a refused query at its position.
  * Full text (L06-US03): words with typos find the tickets holding them,
- * those with the words in their title first.
+ * those with the words in their title first. Saved filters (L06-US04): the
+ * admin saves one for the whole organization; a member runs it, never
+ * changes it.
  *
  * Runs with `just compose-e2e` only: deploy/tests/e2e.sh creates the admin
  * and passes E2E_ADMIN_EMAIL and E2E_ADMIN_SECRET.
@@ -15,6 +17,10 @@ import { type Page, expect, test } from '@playwright/test';
 import { accessibilityViolations } from './fixtures';
 
 const adminEmail = process.env['E2E_ADMIN_EMAIL'];
+// A member besides the admin. Not E2E_MEMBER_*: auth-stack.spec.ts resets
+// that member's password while the other tests run.
+const memberEmail = process.env['E2E_VIEWER_EMAIL'];
+const memberSecret = process.env['E2E_VIEWER_SECRET'];
 const adminSecret = process.env['E2E_ADMIN_SECRET'];
 
 test.skip(!adminEmail || !adminSecret, 'needs the compose stack (just compose-e2e)');
@@ -144,4 +150,31 @@ test('words with typos find the tickets holding them, those with the words in th
   await field.press('Enter');
   await expect(page.getByText('Results: 2')).toBeVisible();
   await expect(page.locator('td.key a')).toHaveText([`${project}-2`, `${project}-1`]);
+});
+
+test('a filter saved for the whole organization is run by a member, never changed by them', async ({ browser }) => {
+  test.skip(!memberEmail || !memberSecret, 'needs the member of the stack');
+  test.setTimeout(120_000);
+  // Unique per run: the stack keeps its data.
+  const name = `Ongoing ${Date.now().toString(36)}`;
+  const admin = await (await browser.newContext()).newPage();
+  await signIn(admin, adminEmail!, adminSecret!);
+  await admin.goto('/search?q=status%20%3D%20in_progress');
+  await admin.getByRole('button', { name: 'Save the filter' }).click();
+  const dialog = admin.getByRole('dialog');
+  await dialog.getByLabel('Name').fill(name);
+  await dialog.getByRole('radio', { name: 'The whole organization' }).check();
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(admin.getByText(`Filter “${name}” · shared`)).toBeVisible();
+
+  const member = await (await browser.newContext()).newPage();
+  await signIn(member, memberEmail!, memberSecret!);
+  await member.goto('/search');
+  const panel = member.getByRole('navigation', { name: 'Saved filters' });
+  const shared = panel.getByRole('link', { name: new RegExp(`^${name} \\(by `) });
+  await shared.click();
+  await expect(member.getByText(`Filter “${name}” · shared`)).toBeVisible();
+  await expect(member.getByRole('combobox', { name: 'Query' }).or(member.locator('app-query-builder'))).toBeVisible();
+  // Theirs to run, not to change.
+  await expect(panel.getByRole('button', { name: `Actions of the filter ${name}` })).toHaveCount(0);
 });

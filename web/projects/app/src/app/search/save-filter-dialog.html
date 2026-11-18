@@ -1,0 +1,85 @@
+<h2 mat-dialog-title>{{ (data.filter ? 'search.filters.dialog.editTitle' : 'search.filters.dialog.createTitle') | transloco }}</h2>
+<form [formGroup]="form" (ngSubmit)="save()" novalidate>
+  <mat-dialog-content class="fields">
+    @if (errorKey(); as key) {
+      <p class="message error" role="alert">{{ key | transloco }}</p>
+    }
+    <p class="query code" [attr.aria-label]="'search.filters.dialog.query' | transloco">{{ data.query }}</p>
+
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'search.filters.dialog.name' | transloco }}</mat-label>
+      <input matInput formControlName="name" maxlength="100" required />
+      @if (form.controls.name.getError('api'); as key) {
+        <mat-error>{{ key | transloco }}</mat-error>
+      } @else {
+        <mat-error>{{ 'errors.field.required' | transloco }}</mat-error>
+      }
+    </mat-form-field>
+
+    <div class="group">
+      <span class="group-label" id="filter-icon-label">{{ 'search.filters.dialog.icon' | transloco }}</span>
+      <mat-button-toggle-group class="icons" formControlName="icon" hideSingleSelectionIndicator aria-labelledby="filter-icon-label">
+        @for (icon of icons; track icon) {
+          <mat-button-toggle [value]="icon" [aria-label]="'search.filters.icons.' + icon | transloco">
+            <mat-icon aria-hidden="true">{{ icon }}</mat-icon>
+          </mat-button-toggle>
+        }
+      </mat-button-toggle-group>
+    </div>
+
+    <div class="group">
+      <span class="group-label" id="filter-sharing-label">{{ 'search.filters.dialog.sharing' | transloco }}</span>
+      <mat-radio-group class="sharing" formControlName="sharing" aria-labelledby="filter-sharing-label">
+        <mat-radio-button value="private">{{ 'search.filters.sharing.private' | transloco }}</mat-radio-button>
+        <mat-radio-button value="groups">{{ 'search.filters.sharing.groups' | transloco }}</mat-radio-button>
+        <mat-radio-button value="all">{{ 'search.filters.sharing.all' | transloco }}</mat-radio-button>
+      </mat-radio-group>
+    </div>
+
+    @if (sharing() === 'groups') {
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'search.filters.dialog.groups' | transloco }}</mat-label>
+        <mat-chip-grid #grid [attr.aria-label]="'search.filters.dialog.groups' | transloco">
+          @for (group of groups(); track group.id) {
+            <mat-chip-row (removed)="removeGroup(group)">
+              {{ group.name }}
+              <button matChipRemove type="button" [attr.aria-label]="'search.filters.dialog.removeGroup' | transloco: { name: group.name }">
+                <mat-icon aria-hidden="true">cancel</mat-icon>
+              </button>
+            </mat-chip-row>
+          }
+        </mat-chip-grid>
+        <!-- Out of the grid, which holds only its rows (axe); linked by matChipInputFor. -->
+        <input
+          #groupInput
+          class="group-search"
+          [placeholder]="'search.filters.dialog.searchGroup' | transloco"
+          [matChipInputFor]="grid"
+          [matAutocomplete]="auto"
+          (input)="groupSearch.set(groupInput.value)"
+        />
+        <mat-autocomplete #auto="matAutocomplete" (optionSelected)="addGroup($event, groupInput)">
+          @for (group of suggestions(); track group.id) {
+            <mat-option [value]="group">{{ group.name }}</mat-option>
+          } @empty {
+            @if (groupSearch().trim()) {
+              <mat-option disabled>{{ 'search.filters.dialog.noGroup' | transloco }}</mat-option>
+            }
+          }
+        </mat-autocomplete>
+      </mat-form-field>
+    }
+    @if (groupError(); as key) {
+      <p class="message error groups-error" role="alert">{{ key | transloco }}</p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button matButton type="button" mat-dialog-close>{{ 'dialog.cancel' | transloco }}</button>
+    @if (data.filter) {
+      <button matButton="outlined" type="button" class="save-new" [disabled]="saving()" (click)="save(true)">
+        {{ 'search.filters.dialog.saveAsNew' | transloco }}
+      </button>
+    }
+    <button matButton="filled" type="submit" class="save" [disabled]="saving()">{{ 'search.filters.dialog.save' | transloco }}</button>
+  </mat-dialog-actions>
+</form>

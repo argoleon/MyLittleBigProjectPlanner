@@ -45,6 +45,7 @@ pub mod query_assist;
 pub mod reference_items;
 pub mod roles;
 mod routes;
+pub mod saved_filters;
 pub mod screens;
 pub mod search;
 pub mod sso;
