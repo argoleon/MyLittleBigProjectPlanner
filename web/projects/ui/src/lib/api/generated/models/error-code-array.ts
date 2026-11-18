@@ -52,6 +52,8 @@ export const ERROR_CODE: ErrorCode[] = [
   'member.last_admin',
   'group.name_taken',
   'saved_filter.name_taken',
+  'board.name_taken',
+  'board.no_transition',
   'permission.denied',
   'role.label_taken',
   'role.in_use',

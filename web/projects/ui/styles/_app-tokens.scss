@@ -116,6 +116,12 @@
   --app-load-absence-on: var(--mat-sys-on-surface-variant);
 
   // ---------------------------------------------------------------------------
+  // Kanban board: columns, and a column over its work in progress limit
+  --app-board-column: var(--mat-sys-surface-container);
+  --app-board-column-on: var(--mat-sys-on-surface);
+  --app-board-column-over: var(--mat-sys-error-container);
+  --app-board-column-over-on: var(--mat-sys-on-error-container);
+  --app-board-drop-target: var(--mat-sys-secondary-container);
   // Gantt
   // ---------------------------------------------------------------------------
   --app-gantt-grid: var(--mat-sys-outline-variant);

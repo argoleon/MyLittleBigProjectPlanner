@@ -219,7 +219,7 @@ for (const theme of ['light', 'dark'] as const) {
       test('the roles tab has no axe-core violation', async ({ page }) => {
         await mockRoles(page);
         await page.goto('/admin/roles');
-        await expect(page.getByRole('switch')).toHaveCount(10);
+        await expect(page.getByRole('switch')).toHaveCount(11);
         await animationsDone(page);
         expect(await accessibilityViolations(page), 'roles').toEqual([]);
 

@@ -219,7 +219,7 @@ pub(crate) fn query_problem(error: &QueryError) -> Problem {
     )
 }
 
-fn search_problem(error: SearchError) -> Problem {
+pub(crate) fn search_problem(error: SearchError) -> Problem {
     match error {
         SearchError::Query(error) => query_problem(&error),
         SearchError::Cursor => Problem::validation(vec![FieldError::new("cursor", "invalid")]),

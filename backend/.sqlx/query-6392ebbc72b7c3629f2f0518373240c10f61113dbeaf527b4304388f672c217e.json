@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT n.id FROM node n\n        WHERE n.node_type = 'project'\n          AND (n.id = $1 OR EXISTS (\n              SELECT 1 FROM node_closure c WHERE c.ancestor_id = $1 AND c.descendant_id = n.id))\n        ORDER BY n.id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "6392ebbc72b7c3629f2f0518373240c10f61113dbeaf527b4304388f672c217e"
+}

@@ -50,7 +50,7 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       // Screens not built yet show "coming soon".
-      ...NAVIGATION.filter((item) => !['/admin', '/portfolios', '/search', '/tickets'].includes(item.route)).map((item) => ({
+      ...NAVIGATION.filter((item) => !['/admin', '/boards', '/portfolios', '/search', '/tickets'].includes(item.route)).map((item) => ({
         path: item.route.slice(1),
         pathMatch: 'full' as const,
         title: item.labelKey,
@@ -67,6 +67,18 @@ export const routes: Routes = [
         path: 'search',
         title: 'nav.search',
         loadComponent: () => import('./search/search-page').then((m) => m.SearchPage),
+      },
+      {
+        path: 'boards',
+        pathMatch: 'full',
+        title: 'nav.boards',
+        loadComponent: () => import('./boards/boards-page').then((m) => m.BoardsPage),
+      },
+      {
+        // A Kanban board, by its id.
+        path: 'boards/:id',
+        title: 'nav.boards',
+        loadComponent: () => import('./boards/board-page').then((m) => m.BoardPage),
       },
       {
         path: 'tickets',

@@ -1,0 +1,24 @@
+.avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--mat-sys-corner-full);
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+  font: var(--mat-sys-label-small);
+
+  &[data-size='medium'] {
+    width: 32px;
+    height: 32px;
+    font: var(--mat-sys-label-medium);
+  }
+
+  &.none {
+    border: 1px dashed var(--mat-sys-outline);
+    background: transparent;
+    color: var(--mat-sys-on-surface-variant);
+  }
+}

@@ -5,5 +5,5 @@
 /**
  * A permission of the catalog.
  */
-export type Permission = 'view' | 'create_ticket' | 'edit' | 'comment' | 'log_time' | 'assign_resources' | 'force_overload' | 'manage_sprints' | 'manage_members' | 'administer_node';
+export type Permission = 'view' | 'create_ticket' | 'edit' | 'comment' | 'log_time' | 'assign_resources' | 'force_overload' | 'manage_sprints' | 'manage_boards' | 'manage_members' | 'administer_node';
 

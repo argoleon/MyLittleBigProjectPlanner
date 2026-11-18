@@ -84,6 +84,8 @@ pub enum ErrorCode {
     MemberLastAdmin,
     GroupNameTaken,
     SavedFilterNameTaken,
+    BoardNameTaken,
+    BoardNoTransition,
     PermissionDenied,
     RoleLabelTaken,
     RoleInUse,
@@ -134,7 +136,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 90] = [
+    pub const ALL: [Self; 92] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -180,6 +182,8 @@ impl ErrorCode {
         Self::MemberLastAdmin,
         Self::GroupNameTaken,
         Self::SavedFilterNameTaken,
+        Self::BoardNameTaken,
+        Self::BoardNoTransition,
         Self::PermissionDenied,
         Self::RoleLabelTaken,
         Self::RoleInUse,
@@ -274,6 +278,8 @@ impl ErrorCode {
             Self::MemberLastAdmin => "member.last_admin",
             Self::GroupNameTaken => "group.name_taken",
             Self::SavedFilterNameTaken => "saved_filter.name_taken",
+            Self::BoardNameTaken => "board.name_taken",
+            Self::BoardNoTransition => "board.no_transition",
             Self::PermissionDenied => "permission.denied",
             Self::RoleLabelTaken => "role.label_taken",
             Self::RoleInUse => "role.in_use",
@@ -366,6 +372,8 @@ impl ErrorCode {
             | Self::MemberLastAdmin
             | Self::GroupNameTaken
             | Self::SavedFilterNameTaken
+            | Self::BoardNameTaken
+            | Self::BoardNoTransition
             | Self::RoleLabelTaken
             | Self::RoleInUse
             | Self::AccountNoPassword
@@ -464,6 +472,8 @@ impl ErrorCode {
             Self::MemberLastAdmin => "The tenant needs at least one active tenant admin",
             Self::GroupNameTaken => "Another group already has this name",
             Self::SavedFilterNameTaken => "You already have a saved filter with this name",
+            Self::BoardNameTaken => "This node already has a board with this name",
+            Self::BoardNoTransition => "No transition of the workflow leads to this column",
             Self::PermissionDenied => "You do not have the permission this needs",
             Self::RoleLabelTaken => "Another role already has this label",
             Self::RoleInUse => "Grants use this role: remove them first",
@@ -830,7 +840,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 90] = [
+        let expected: [(ErrorCode, u16); 92] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -876,6 +886,8 @@ mod tests {
             (ErrorCode::MemberLastAdmin, 409),
             (ErrorCode::GroupNameTaken, 409),
             (ErrorCode::SavedFilterNameTaken, 409),
+            (ErrorCode::BoardNameTaken, 409),
+            (ErrorCode::BoardNoTransition, 409),
             (ErrorCode::PermissionDenied, 403),
             (ErrorCode::RoleLabelTaken, 409),
             (ErrorCode::RoleInUse, 409),

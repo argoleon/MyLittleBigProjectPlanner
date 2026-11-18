@@ -201,6 +201,10 @@ Un langage de requête unique, inspiré de JQL, sert à la recherche, aux filtre
 **Boards (MVP)**
 
 - **Kanban** : colonnes associées à un ou plusieurs statuts, alimentées par un filtre, limites de travail en cours, couloirs par responsable ou par epic.
+  - Un board appartient à un nœud de la hiérarchie : qui voit le nœud voit le board (chacun n'y voit que les tickets qu'il peut voir), la permission « gérer les boards » sur le nœud permet de le créer, le configurer et le supprimer.
+  - Des filtres rapides propres au board (un libellé et une clause du langage de requête) s'ajoutent à son filtre quand on les active.
+  - Déplacer une carte vers une colonne lance la transition du workflow qui y mène, avec ses conditions, validateurs et post-fonctions ; sans transition possible, la carte revient à sa place et la raison s'affiche. Le clavier offre la même action qu'un glisser-déposer.
+  - Les cartes suivent l'ordre du filtre (`ORDER BY`) ; le rang manuel arrive avec le backlog Scrum.
 - **Scrum** : backlog, planification et clôture de sprint (les tickets non terminés sont reportés au sprint suivant ou au backlog), board du sprint actif.
 - **Estimation** : points ou heures, configurable par board. Le workload reste toujours en heures, via les affectations.
 - **Rapports** : burndown (en points ou en heures, à partir du reste à faire), vélocité sur les N derniers sprints.
@@ -459,7 +463,7 @@ Les droits reposent sur des rôles attribués sur les nœuds de la hiérarchie e
 **Modèle de droits**
 
 - **Rôles globaux** : super-admin de plateforme. Par tenant : admin du tenant, admin de configuration, utilisateur interne, utilisateur externe.
-- **Rôles sur les nœuds** : définis par chaque tenant, comme ensembles de permissions. Exemples de permissions : voir, créer un ticket, modifier, commenter, saisir du temps, affecter des ressources, forcer une surcharge, gérer les sprints, gérer les membres, administrer le nœud.
+- **Rôles sur les nœuds** : définis par chaque tenant, comme ensembles de permissions. Exemples de permissions : voir, créer un ticket, modifier, commenter, saisir du temps, affecter des ressources, forcer une surcharge, gérer les sprints, gérer les boards, gérer les membres, administrer le nœud.
 - **Attribution** : à des utilisateurs ou à des groupes, sur un nœud. Héritage vers le bas, union en multi-parent, blocage possible (section 4).
 - **Dans le MVP** : visibilité restreinte côté portail (un demandeur ne voit que ses tickets), commentaires internes ou publics, projets confidentiels.
 - **Après le MVP** : niveaux de sécurité par ticket et sécurité au niveau du champ.

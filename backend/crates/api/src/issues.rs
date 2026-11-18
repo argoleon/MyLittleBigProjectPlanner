@@ -716,6 +716,29 @@ impl IssueView {
 }
 
 /// `issue` in a few words.
+impl StatusView {
+    /// Its stable key: empty if the configuration no longer has it.
+    pub(crate) fn key(&self) -> &str {
+        &self.key
+    }
+}
+
+impl PersonView {
+    pub(crate) const fn id(&self) -> Uuid {
+        self.id
+    }
+
+    pub(crate) fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+impl IssueRefView {
+    pub(crate) const fn new(id: Uuid, key: String, summary: String) -> Self {
+        Self { id, key, summary }
+    }
+}
+
 pub(crate) fn issue_ref(issue: &Issue) -> IssueRefView {
     IssueRefView {
         id: issue.id,

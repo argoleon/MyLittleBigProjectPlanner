@@ -24,11 +24,14 @@ pub enum Permission {
     ManageSprints,
     ManageMembers,
     AdministerNode,
+    /// Declared last: the bit of each permission is its declaration order,
+    /// and cached sets must keep their meaning across versions.
+    ManageBoards,
 }
 
 impl Permission {
     /// The whole catalog, in display order.
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 11] = [
         Self::View,
         Self::CreateTicket,
         Self::Edit,
@@ -37,6 +40,7 @@ impl Permission {
         Self::AssignResources,
         Self::ForceOverload,
         Self::ManageSprints,
+        Self::ManageBoards,
         Self::ManageMembers,
         Self::AdministerNode,
     ];
@@ -51,6 +55,7 @@ impl Permission {
             Self::AssignResources => "assign_resources",
             Self::ForceOverload => "force_overload",
             Self::ManageSprints => "manage_sprints",
+            Self::ManageBoards => "manage_boards",
             Self::ManageMembers => "manage_members",
             Self::AdministerNode => "administer_node",
         }
@@ -258,6 +263,7 @@ pub const DEFAULT_ROLES: [DefaultRole; 4] = [
             Permission::AssignResources,
             Permission::ForceOverload,
             Permission::ManageSprints,
+            Permission::ManageBoards,
         ],
     },
     DefaultRole {
@@ -322,6 +328,7 @@ mod tests {
                 "assign_resources",
                 "force_overload",
                 "manage_sprints",
+                "manage_boards",
                 "manage_members",
                 "administer_node"
             ]
@@ -355,6 +362,43 @@ mod tests {
             .collect();
         assert_eq!(PermissionSet::from_bits(set.bits()), set);
         assert_eq!(PermissionSet::from_bits(u32::MAX), PermissionSet::all());
+    }
+
+    #[test]
+    fn the_bit_of_a_permission_never_changes() {
+        // Cached sets outlive a release: a new permission takes a new bit.
+        let bits: Vec<(&str, u32)> = [
+            Permission::View,
+            Permission::CreateTicket,
+            Permission::Edit,
+            Permission::Comment,
+            Permission::LogTime,
+            Permission::AssignResources,
+            Permission::ForceOverload,
+            Permission::ManageSprints,
+            Permission::ManageMembers,
+            Permission::AdministerNode,
+            Permission::ManageBoards,
+        ]
+        .into_iter()
+        .map(|p| (p.as_str(), PermissionSet::EMPTY.with(p).bits()))
+        .collect();
+        assert_eq!(
+            bits,
+            vec![
+                ("view", 1),
+                ("create_ticket", 1 << 1),
+                ("edit", 1 << 2),
+                ("comment", 1 << 3),
+                ("log_time", 1 << 4),
+                ("assign_resources", 1 << 5),
+                ("force_overload", 1 << 6),
+                ("manage_sprints", 1 << 7),
+                ("manage_members", 1 << 8),
+                ("administer_node", 1 << 9),
+                ("manage_boards", 1 << 10),
+            ]
+        );
     }
 
     #[test]

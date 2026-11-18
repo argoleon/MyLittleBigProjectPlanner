@@ -32,6 +32,10 @@
         <mat-icon aria-hidden="true">view_timeline</mat-icon>
         {{ 'hierarchy.view.gantt.' + current.type | transloco }}
       </a>
+      <a matButton="outlined" class="boards" routerLink="/boards" [queryParams]="{ node: current.id }">
+        <mat-icon aria-hidden="true">view_kanban</mat-icon>
+        {{ 'hierarchy.view.boards' | transloco }}
+      </a>
       <a matButton="outlined" routerLink="/workload" [queryParams]="{ node: current.id }">
         <mat-icon aria-hidden="true">groups</mat-icon>
         {{ 'hierarchy.view.workload' | transloco }}

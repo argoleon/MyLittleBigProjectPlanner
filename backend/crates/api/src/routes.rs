@@ -19,6 +19,7 @@ use utoipa_axum::routes;
 
 use crate::account;
 use crate::auth;
+use crate::boards;
 use crate::config_fields;
 use crate::configs;
 use crate::events;
@@ -193,6 +194,11 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(issues::form))
         .routes(routes!(issues::mine))
         .routes(routes!(search::search))
+        .routes(routes!(boards::list, boards::create))
+        .routes(routes!(boards::statuses))
+        .routes(routes!(boards::read, boards::update, boards::delete))
+        .routes(routes!(boards::cards))
+        .routes(routes!(boards::move_card))
         .routes(routes!(saved_filters::list, saved_filters::create))
         .routes(routes!(saved_filters::share_groups))
         .routes(routes!(

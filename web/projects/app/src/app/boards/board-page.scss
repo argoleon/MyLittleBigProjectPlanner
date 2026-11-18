@@ -1,0 +1,210 @@
+:host {
+  display: block;
+}
+
+.crumbs {
+  display: flex;
+  gap: var(--app-space-2);
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+
+  a {
+    color: inherit;
+  }
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--app-space-3);
+  margin-top: var(--app-space-2);
+}
+
+.title {
+  margin: 0;
+  font: var(--mat-sys-headline-medium);
+}
+
+.subtitle {
+  margin: var(--app-space-1) 0 0;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.header-actions,
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--app-space-2) var(--app-space-3);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--app-space-3);
+  margin: var(--app-space-4) 0;
+}
+
+.filter {
+  display: flex;
+  flex: 1 1 360px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--app-space-2);
+  min-width: 0;
+  padding: var(--app-space-2) var(--app-space-3);
+  border: 1px solid var(--mat-sys-outline);
+  border-radius: var(--mat-sys-corner-extra-small);
+}
+
+.filter-label {
+  font: var(--mat-sys-label-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.filter-query {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font: var(--mat-sys-body-medium);
+  font-family: var(--app-font-mono);
+}
+
+.message {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-2);
+  margin: 0 0 var(--app-space-3);
+  padding: var(--app-space-3) var(--app-space-4);
+  border-radius: var(--mat-sys-corner-small);
+  font: var(--mat-sys-body-medium);
+
+  &.error {
+    background: var(--mat-sys-error-container);
+    color: var(--mat-sys-on-error-container);
+  }
+
+  &.warning {
+    background: var(--mat-sys-tertiary-container);
+    color: var(--mat-sys-on-tertiary-container);
+  }
+}
+
+.progress {
+  margin-bottom: var(--app-space-2);
+}
+
+// The columns side by side; scrolled sideways when they do not fit.
+.board {
+  display: grid;
+  gap: var(--app-space-3);
+  overflow-x: auto;
+  padding-bottom: var(--app-space-2);
+}
+
+.columns,
+.cells {
+  display: grid;
+  grid-template-columns: var(--board-columns);
+  gap: var(--app-space-4);
+}
+
+.column-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--app-space-2);
+  padding: var(--app-space-3) var(--app-space-4);
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--app-board-column);
+  color: var(--app-board-column-on);
+
+  &[data-wip='exceeded'] {
+    background: var(--app-board-column-over);
+    color: var(--app-board-column-over-on);
+  }
+}
+
+.column-name {
+  margin: 0;
+  font: var(--mat-sys-title-medium);
+}
+
+.count {
+  font: var(--mat-sys-title-small);
+  color: inherit;
+  opacity: 0.8;
+}
+
+.wip {
+  padding: var(--app-space-1) var(--app-space-2);
+  border-radius: var(--mat-sys-corner-small);
+  background: var(--mat-sys-surface-container-high);
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-medium);
+
+  &[data-wip='exceeded'],
+  &[data-wip='reached'] {
+    background: var(--mat-sys-error);
+    color: var(--mat-sys-on-error);
+  }
+}
+
+.lane-title {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-2);
+  margin: var(--app-space-2) 0;
+  font: var(--mat-sys-title-small);
+}
+
+.lane-key {
+  font: var(--mat-sys-label-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-3);
+  min-height: 96px;
+  padding: var(--app-space-3);
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--app-board-column);
+
+  &[data-wip='exceeded'] {
+    background: var(--app-board-column-over);
+  }
+
+  &.cdk-drop-list-receiving {
+    outline: 2px dashed var(--mat-sys-primary);
+    background: var(--app-board-drop-target);
+  }
+}
+
+.more {
+  align-self: center;
+}
+
+.empty {
+  margin: 0;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.cdk-drag-preview {
+  box-shadow: var(--mat-sys-level3);
+}
+
+.cdk-drag-placeholder {
+  opacity: 0.4;
+}
+
+.cdk-drag-animating {
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}

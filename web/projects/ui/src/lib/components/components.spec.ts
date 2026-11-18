@@ -6,6 +6,7 @@ import { LocaleService } from '../i18n/locale.service';
 import { ThemeService } from '../theming/theme.service';
 import { axeViolations } from '../testing/axe';
 import { provideI18nTesting } from '../testing/i18n-testing';
+import { Avatar, initials } from './avatar';
 import { EmptyState } from './empty-state';
 import { ErrorState } from './error-state';
 import { LoadingState } from './loading-state';
@@ -29,6 +30,33 @@ const text = (fixture: ComponentFixture<unknown>) =>
   ((fixture.nativeElement as HTMLElement).textContent ?? '').replace(/\s+/g, ' ').trim();
 
 beforeEach(() => localStorage.clear());
+
+describe('Avatar', () => {
+  it('takes the first letters of the first two words of a name', () => {
+    expect(initials('Camille Martin')).toBe('CM');
+    expect(initials('Léa  de la Fontaine')).toBe('LD');
+    expect(initials('élodie')).toBe('É');
+    expect(initials('(external) Nathan Roux')).toBe('NR');
+    expect(initials('')).toBe('');
+  });
+
+  it('shows the initials and names the person for screen readers', async () => {
+    const fixture = await render(Avatar, { name: 'Camille Martin' });
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('[aria-hidden="true"]')?.textContent).toBe('CM');
+    expect(element.querySelector('.cdk-visually-hidden')?.textContent).toBe('Camille Martin');
+    expect(element.querySelector('.avatar')?.getAttribute('title')).toBe('Camille Martin');
+    expect(await axeViolations(element)).toEqual([]);
+  });
+
+  it('reads "Unassigned" without a person', async () => {
+    const fixture = await render(Avatar, { name: null, size: 'medium' });
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('.avatar')?.classList).toContain('none');
+    expect(element.querySelector('.avatar')?.getAttribute('data-size')).toBe('medium');
+    expect(element.querySelector('.cdk-visually-hidden')?.textContent).toBe('Unassigned');
+  });
+});
 
 describe('StatusChip', () => {
   it('names the category by default, prefixed for screen readers', async () => {

@@ -15,6 +15,7 @@ export const PERMISSION: Permission[] = [
   'assign_resources',
   'force_overload',
   'manage_sprints',
+  'manage_boards',
   'manage_members',
   'administer_node'
 ];
