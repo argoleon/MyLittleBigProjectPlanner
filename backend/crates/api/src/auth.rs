@@ -21,7 +21,6 @@ use axum::http::header::{SET_COOKIE, USER_AGENT};
 use axum::http::request::Parts;
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::{AppendHeaders, IntoResponse, Response};
-use chrono::{DateTime, Utc};
 use domain::account::{
     MAX_FAILED_SIGN_INS_PER_EMAIL, MAX_PASSWORD_RESETS_PER_EMAIL, MAX_SIGN_INS_PER_IP,
     PASSWORD_RESET_LIFETIME, SIGN_IN_WINDOW, normalize_email, validate_password,
@@ -43,6 +42,7 @@ use infra::tenant_switch::SwitchStore;
 use infra::uuid::Uuid;
 use infra::valkey::Valkey;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use utoipa::ToSchema;
 
 use crate::extract::{ApiJson, header_str};
@@ -361,7 +361,8 @@ pub struct SessionView {
     /// To send in `X-CSRF-Token` on every state-changing request.
     csrf_token: String,
     /// The session ends at this time at the latest, or earlier when unused.
-    expires_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    expires_at: OffsetDateTime,
 }
 
 impl SessionView {
@@ -487,7 +488,7 @@ async fn totp_step(
             &stored.secret_nonce,
         )
         .map_err(|e| Problem::internal(&e))?;
-    let now = u64::try_from(Utc::now().timestamp()).unwrap_or(0);
+    let now = u64::try_from(OffsetDateTime::now_utc().unix_timestamp()).unwrap_or(0);
     let last_used = stored.last_used_step.and_then(|s| u64::try_from(s).ok());
     let candidates = domain::mfa::candidate_steps(time_step(now), last_used);
     let Some(step) =
@@ -708,12 +709,12 @@ pub async fn request_password_reset(
     };
 
     let token = credentials::random_token();
-    let lifetime = chrono::Duration::from_std(PASSWORD_RESET_LIFETIME).unwrap_or(chrono::Duration::hours(1));
+    let lifetime = PASSWORD_RESET_LIFETIME;
     accounts::create_password_reset(
         &mut tx,
         member.account_id,
         &credentials::token_hash(&token),
-        Utc::now() + lifetime,
+        OffsetDateTime::now_utc() + lifetime,
     )
     .await?;
     let tenant_name = sqlx::query_scalar!("SELECT name FROM tenant")

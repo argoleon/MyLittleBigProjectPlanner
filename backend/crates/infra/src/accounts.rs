@@ -2,9 +2,9 @@
 //! transaction: row-level security shows the accounts of the current
 //! tenant's members only.
 
-use chrono::{DateTime, Utc};
 pub use domain::account::{AccountType, Preferences, TenantRole};
 use sqlx::postgres::PgConnection;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::id::new_id;
@@ -254,7 +254,7 @@ pub async fn create_password_reset(
     conn: &mut PgConnection,
     account_id: Uuid,
     token_hash: &[u8],
-    expires_at: DateTime<Utc>,
+    expires_at: OffsetDateTime,
 ) -> Result<(), sqlx::Error> {
     sqlx::query!(
         r#"

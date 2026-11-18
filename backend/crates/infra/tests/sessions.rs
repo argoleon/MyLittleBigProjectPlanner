@@ -157,7 +157,7 @@ async fn a_session_waiting_for_its_second_factor_is_short_lived() {
     assert_eq!(pending.session.stage, SessionStage::MfaChallenge);
     let found = store.get(&pending.token).await.unwrap().unwrap();
     assert_eq!(found.stage, SessionStage::MfaChallenge);
-    let lifetime = (found.expires_at - found.created_at).num_seconds();
+    let lifetime = (found.expires_at - found.created_at).whole_seconds();
     assert_eq!(lifetime, 300, "5 minutes, not the configured hour");
     let key = format!(
         "{prefix}session:{}",
@@ -171,7 +171,7 @@ async fn a_session_waiting_for_its_second_factor_is_short_lived() {
         .await
         .unwrap();
     assert_eq!(
-        (enrolling.session.expires_at - enrolling.session.created_at).num_seconds(),
+        (enrolling.session.expires_at - enrolling.session.created_at).whole_seconds(),
         900
     );
     let complete = store.create(new_id(), new_id()).await.unwrap();

@@ -1,0 +1,26 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "evil-tool": {
+      "name": "evil-tool",
+      "severity": "critical",
+      "isDirect": true,
+      "via": [
+        {
+          "source": 1000002,
+          "name": "evil-tool",
+          "dependency": "evil-tool",
+          "title": "Remote code execution",
+          "url": "https://github.com/advisories/GHSA-cccc-cccc-cccc",
+          "severity": "critical",
+          "range": "*"
+        }
+      ],
+      "effects": [],
+      "range": "*",
+      "nodes": ["node_modules/evil-tool"],
+      "fixAvailable": false
+    }
+  },
+  "metadata": { "vulnerabilities": { "info": 0, "low": 0, "moderate": 0, "high": 0, "critical": 1, "total": 1 } }
+}

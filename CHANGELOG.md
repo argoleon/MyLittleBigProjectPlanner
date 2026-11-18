@@ -4,6 +4,24 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-11-18
+
+Security fix of 0.5.0: the email client had known vulnerabilities, and the dependency checks no longer passed.
+
+### Security
+
+- **lettre 0.11.24** (#537), the SMTP client sending every email (invitations, password resets, notifications): fixes RUSTSEC-2026-0560 to 0565. These cover STARTTLS response injection by a man in the middle, SMTP command injection through bare CR or LF, a quoted local part sent to another address, panics on an `EHLO` reply or a display name holding CR or LF, and unbounded buffering of an SMTP reply.
+
+### Changed
+
+- **Dates and times** are handled by `time` instead of `chrono` (#531), which is no longer maintained (RUSTSEC-2026-0543). The API answers exactly as before: times in RFC 3339 (UTC), dates as `YYYY-MM-DD`, the same OpenAPI contract.
+- **npm audit** (#535): a high or critical advisory with no fixed version may be accepted in the build and test tools only, until a review date (`web/audit-exceptions.json`). What ships still has no exception. Accepted until 2027-01-15: picomatch (GHSA-fc5q-39xc-vjpf, ReDoS on crafted glob patterns), which never ships and only reads the glob patterns of the project's own configuration.
+
+### Upgrading from 0.5.0
+
+- Nothing to do besides pulling the 0.5.1 images: no migration, no new secret, no configuration change.
+- Signed-in members stay signed in: sessions written by 0.5.0 are read as they are.
+
 ## [0.5.0] - 2026-11-16
 
 Work package **L05 Tickets and collaboration**: tickets with their fields, workflow and relations, rich comments with mentions, attachments scanned by an antivirus, the history of every change, notifications in the app and by email, real-time updates, and the migration of tickets when a configuration change is published.
@@ -196,6 +214,7 @@ Work package **L01 Technical foundation**: the base every later work package bui
   - License policy enforced on Rust crates and npm packages, RustSec and npm advisories, secret scan of the git history.
   - CI: every step a `just` recipe (`just ci` locally), GitHub Actions only calls them; release workflow publishing the images to GitHub Container Registry.
 
+[0.5.1]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.5.1
 [0.5.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.5.0
 [0.4.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.4.0
 [0.3.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.3.0

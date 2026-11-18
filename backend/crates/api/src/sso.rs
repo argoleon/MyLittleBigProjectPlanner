@@ -15,7 +15,6 @@
 use axum::extract::State;
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{AppendHeaders, IntoResponse, Redirect, Response};
-use chrono::{DateTime, Utc};
 use domain::oidc::{EmailRefusal, ProviderInput, matching_email, validate_provider};
 use domain::validation::FieldError;
 use infra::accounts::{AccountType, TenantRole};
@@ -24,6 +23,7 @@ use infra::oidc::{ClientCredentials, PendingLogin};
 use infra::oidc_providers::{self as repo, Conflict, EncryptedSecret, Provider, ProviderFields};
 use infra::uuid::Uuid;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
 use crate::auth::{Auth, isolated_return_url};
@@ -236,8 +236,10 @@ pub struct ProviderView {
     #[schema(example = "https://acme.planner.example.org/api/v1/auth/oidc/callback")]
     redirect_uri: String,
     version: i64,
-    created_at: DateTime<Utc>,
-    updated_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    created_at: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    updated_at: OffsetDateTime,
 }
 
 impl ProviderView {

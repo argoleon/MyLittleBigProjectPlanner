@@ -13,13 +13,13 @@
 //! `(tenant_id, created_at, id)`) and never skips or repeats a row when
 //! rows are inserted between two pages.
 
-use chrono::{DateTime, Utc};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 /// Position after which the next page starts: the last row already seen.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Keyset {
-    pub created_at: DateTime<Utc>,
+    pub created_at: OffsetDateTime,
     pub id: Uuid,
 }
 
@@ -51,7 +51,7 @@ mod tests {
 
     fn key(n: u128) -> Keyset {
         Keyset {
-            created_at: DateTime::from_timestamp(1_700_000_000, 0).unwrap(),
+            created_at: OffsetDateTime::from_unix_timestamp(1_700_000_000).unwrap(),
             id: Uuid::from_u128(n),
         }
     }

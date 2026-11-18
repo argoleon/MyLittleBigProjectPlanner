@@ -5,8 +5,8 @@
 //! the project's counter (`project_issue_counter`): two creations in one
 //! project never share a key, whatever their order.
 
-use chrono::{DateTime, NaiveDate, Utc};
 use sqlx::postgres::PgConnection;
+use time::{Date, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::pagination::{Keyset, Page, page_from_rows};
@@ -30,12 +30,12 @@ pub struct Issue {
     pub reporter_name: Option<String>,
     pub assignee_id: Option<Uuid>,
     pub assignee_name: Option<String>,
-    pub start_date: Option<NaiveDate>,
-    pub due_date: Option<NaiveDate>,
+    pub start_date: Option<Date>,
+    pub due_date: Option<Date>,
     /// Custom field values, by field `item_id`.
     pub fields: serde_json::Value,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: OffsetDateTime,
+    pub updated_at: OffsetDateTime,
     pub version: i64,
 }
 
@@ -64,8 +64,8 @@ pub struct NewIssue<'a> {
     pub priority: &'a str,
     pub reporter_id: Uuid,
     pub assignee_id: Option<Uuid>,
-    pub start_date: Option<NaiveDate>,
-    pub due_date: Option<NaiveDate>,
+    pub start_date: Option<Date>,
+    pub due_date: Option<Date>,
     pub fields: &'a serde_json::Value,
 }
 
@@ -132,8 +132,8 @@ pub struct Edited<'a> {
     pub description: Option<&'a serde_json::Value>,
     pub priority: &'a str,
     pub assignee_id: Option<Uuid>,
-    pub start_date: Option<NaiveDate>,
-    pub due_date: Option<NaiveDate>,
+    pub start_date: Option<Date>,
+    pub due_date: Option<Date>,
     pub fields: &'a serde_json::Value,
 }
 
@@ -367,11 +367,11 @@ struct Row {
     reporter_name: Option<String>,
     assignee_id: Option<Uuid>,
     assignee_name: Option<String>,
-    start_date: Option<NaiveDate>,
-    due_date: Option<NaiveDate>,
+    start_date: Option<Date>,
+    due_date: Option<Date>,
     fields: serde_json::Value,
-    created_at: DateTime<Utc>,
-    updated_at: DateTime<Utc>,
+    created_at: OffsetDateTime,
+    updated_at: OffsetDateTime,
     version: i64,
 }
 

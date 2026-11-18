@@ -2,9 +2,9 @@
 //! scopes every query to the current tenant; only the SHA-256 of a token is
 //! stored.
 
-use chrono::{DateTime, Utc};
 use domain::members::{Access, InvitationStatus};
 use sqlx::postgres::PgConnection;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::pagination::{Keyset, Page, page_from_rows};
@@ -24,10 +24,10 @@ pub struct Invitation {
     /// As stored: `pending`, `accepted` or `revoked` ([`Invitation::status`]
     /// tells expired ones apart).
     pub stored_status: String,
-    pub expires_at: DateTime<Utc>,
+    pub expires_at: OffsetDateTime,
     pub invited_by_name: Option<String>,
     pub version: i64,
-    pub created_at: DateTime<Utc>,
+    pub created_at: OffsetDateTime,
 }
 
 impl Invitation {
@@ -38,8 +38,12 @@ impl Invitation {
         }
     }
 
-    pub fn status(&self, now: DateTime<Utc>) -> InvitationStatus {
-        InvitationStatus::at(&self.stored_status, self.expires_at.timestamp(), now.timestamp())
+    pub fn status(&self, now: OffsetDateTime) -> InvitationStatus {
+        InvitationStatus::at(
+            &self.stored_status,
+            self.expires_at.unix_timestamp(),
+            now.unix_timestamp(),
+        )
     }
 
     pub fn access(&self) -> Access {
@@ -56,10 +60,10 @@ struct Row {
     account_type: String,
     tenant_role: String,
     status: String,
-    expires_at: DateTime<Utc>,
+    expires_at: OffsetDateTime,
     invited_by_name: Option<String>,
     version: i64,
-    created_at: DateTime<Utc>,
+    created_at: OffsetDateTime,
 }
 
 impl From<Row> for Invitation {
@@ -87,7 +91,7 @@ pub struct NewInvitation<'a> {
     pub email: &'a str,
     pub access: Access,
     pub token_hash: &'a [u8],
-    pub expires_at: DateTime<Utc>,
+    pub expires_at: OffsetDateTime,
     pub invited_by: Uuid,
 }
 
@@ -209,7 +213,7 @@ pub async fn renew(
     id: Uuid,
     expected_versions: Option<&[i64]>,
     token_hash: &[u8],
-    expires_at: DateTime<Utc>,
+    expires_at: OffsetDateTime,
 ) -> WriteResult<Invitation> {
     let renewed = sqlx::query_scalar!(
         r#"

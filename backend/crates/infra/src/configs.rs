@@ -13,10 +13,10 @@
 
 use std::collections::BTreeMap;
 
-use chrono::{DateTime, Utc};
 use domain::configuration::Item;
 use sqlx::postgres::PgConnection;
 use sqlx::types::Json;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::pagination::{Keyset, Page, page_from_rows};
@@ -32,7 +32,7 @@ const NAME_UNIQUE: [&str; 2] = [
 pub struct Published {
     pub id: Uuid,
     pub number: i32,
-    pub published_at: DateTime<Utc>,
+    pub published_at: OffsetDateTime,
 }
 
 /// The draft of a configuration.
@@ -42,7 +42,7 @@ pub struct Draft {
     pub number: i32,
     /// Items it changed, each once.
     pub change_count: i64,
-    pub created_at: DateTime<Utc>,
+    pub created_at: OffsetDateTime,
 }
 
 /// A configuration as stored, with its versions and the number of projects
@@ -56,7 +56,7 @@ pub struct Config {
     pub published: Published,
     pub draft: Option<Draft>,
     pub version: i64,
-    pub created_at: DateTime<Utc>,
+    pub created_at: OffsetDateTime,
 }
 
 impl Config {
@@ -75,13 +75,13 @@ struct Row {
     project_count: i64,
     published_id: Uuid,
     published_number: i32,
-    published_at: DateTime<Utc>,
+    published_at: OffsetDateTime,
     draft_id: Option<Uuid>,
     draft_number: Option<i32>,
     draft_changes: i64,
-    draft_created_at: Option<DateTime<Utc>>,
+    draft_created_at: Option<OffsetDateTime>,
     version: i64,
-    created_at: DateTime<Utc>,
+    created_at: OffsetDateTime,
 }
 
 impl From<Row> for Config {
