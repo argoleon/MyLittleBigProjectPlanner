@@ -137,6 +137,15 @@ export class ScreenEditor {
     this.fieldIds.set(moved(this.fieldIds(), from, to));
   }
 
+  /**
+   * Moves `field` one place up (-1) or down (1). Its position is read now:
+   * the one the list shows may be a change behind (two quick presses).
+   */
+  protected shift(field: ConfigField, by: -1 | 1): void {
+    const from = this.fieldIds().indexOf(field.id);
+    if (from >= 0) this.move(from, from + by);
+  }
+
   /** Dropped on the screen: moved within it, or added from the available fields. */
   protected dropOnScreen(event: CdkDragDrop<ConfigField[], ConfigField[], ConfigField>): void {
     if (event.previousContainer === event.container) this.move(event.previousIndex, event.currentIndex);
