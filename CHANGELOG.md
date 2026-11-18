@@ -15,6 +15,7 @@ Security fix of 0.5.0: the email client had known vulnerabilities, and the depen
 ### Fixed
 
 - **The status menu of a ticket** no longer closes by itself right after a transition (#526). The page reads the ticket again on the real-time echo of the member's own change; meanwhile the menu turned into a plain status for an instant, which closed it when it was open. It now keeps the transitions shown until the new ones are read.
+- **The up and down buttons of the configuration lists** (fields of a screen, post-functions of a transition, issue types) move the item pressed, even pressed again before the list is drawn anew (#532). They used the row's position as last drawn: two quick presses could move another item, or reorder the issue types twice from the same order.
 
 ### Changed
 
