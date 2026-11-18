@@ -168,6 +168,20 @@ impl ErasureStep for InvitationsSent {
     }
 }
 
+/// The member's private saved filters go; their shared ones stay, shown
+/// under the pseudonym (L06-US04).
+struct SavedFilters;
+
+impl ErasureStep for SavedFilters {
+    fn name(&self) -> &'static str {
+        "saved_filters"
+    }
+
+    fn run<'a>(&'a self, conn: &'a mut PgConnection, member: &'a ErasedMember) -> StepFuture<'a> {
+        Box::pin(async move { crate::saved_filters::delete_private_of(conn, member.account_id).await })
+    }
+}
+
 /// The member's comments: emptied (the "Comment deleted" placeholder) when
 /// `purge_comments`, else kept, shown under the pseudonym.
 struct Comments;
@@ -253,6 +267,7 @@ pub fn steps() -> Vec<Box<dyn ErasureStep>> {
         Box::new(Comments),
         Box::new(History),
         Box::new(Notifications),
+        Box::new(SavedFilters),
     ]
 }
 

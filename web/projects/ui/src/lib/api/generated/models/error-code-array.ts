@@ -51,6 +51,7 @@ export const ERROR_CODE: ErrorCode[] = [
   'invitation.closed',
   'member.last_admin',
   'group.name_taken',
+  'saved_filter.name_taken',
   'permission.denied',
   'role.label_taken',
   'role.in_use',

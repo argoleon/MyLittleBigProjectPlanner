@@ -450,6 +450,9 @@
     "group": {
       "name_taken": "Another group already has this name."
     },
+    "saved_filter": {
+      "name_taken": "You already have a filter with this name."
+    },
     "permission": {
       "denied": "You do not have the permission this needs."
     },
@@ -1825,6 +1828,67 @@
       "due": "Due",
       "start": "Start",
       "parent": "Parent"
+    },
+    "filters": {
+      "title": "Saved filters",
+      "mine": "My filters",
+      "shared": "Shared with me",
+      "mineEmpty": "Save a search to find it here.",
+      "sharedEmpty": "No filter is shared with you.",
+      "loadError": "The filters could not be loaded.",
+      "sharedMark": "(shared)",
+      "by": "(by {{ name }})",
+      "actions": "Actions of the filter {{ name }}",
+      "editAction": "Edit",
+      "deleteAction": "Delete",
+      "delete": {
+        "title": "Delete the filter “{{ name }}”?",
+        "message": "It will be gone from your filters.",
+        "messageShared": "It will be gone for everyone it is shared with.",
+        "confirm": "Delete"
+      },
+      "save": "Save the filter",
+      "saved": "Filter saved.",
+      "deleted": "Filter deleted.",
+      "gone": "This filter no longer exists, or is no longer shared with you.",
+      "line": "Filter “{{ name }}”",
+      "lineShared": "shared",
+      "linePrivate": "personal",
+      "lineChanged": "query changed",
+      "sharing": {
+        "private": "Only me",
+        "groups": "Groups",
+        "all": "The whole organization"
+      },
+      "dialog": {
+        "createTitle": "Save the filter",
+        "editTitle": "Change the filter",
+        "query": "Query saved",
+        "name": "Name",
+        "icon": "Icon",
+        "sharing": "Shared with",
+        "groups": "Groups",
+        "searchGroup": "Search a group…",
+        "noGroup": "No group matches",
+        "removeGroup": "Remove {{ name }}",
+        "groupsRequired": "Choose at least one group.",
+        "groupsGone": "One of the groups chosen no longer exists: remove it.",
+        "queryInvalid": "The query is not valid: fix it before saving it.",
+        "save": "Save",
+        "saveAsNew": "Save as a new filter"
+      },
+      "icons": {
+        "filter_alt": "Filter",
+        "person": "Person",
+        "bug_report": "Bug",
+        "schedule": "Clock",
+        "shield": "Shield",
+        "flag": "Flag",
+        "star": "Star",
+        "support_agent": "Support",
+        "bolt": "Bolt",
+        "label": "Label"
+      }
     }
   }
 }

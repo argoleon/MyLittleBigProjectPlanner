@@ -51,6 +51,7 @@ pub mod reference_items;
 pub mod rich_text;
 pub mod roles;
 pub mod rule_references;
+pub mod saved_filters;
 pub mod screens;
 pub mod search;
 pub mod sessions;

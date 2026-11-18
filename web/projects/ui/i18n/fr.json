@@ -450,6 +450,9 @@
     "group": {
       "name_taken": "Un autre groupe porte déjà ce nom."
     },
+    "saved_filter": {
+      "name_taken": "Vous avez déjà un filtre de ce nom."
+    },
     "permission": {
       "denied": "Vous n’avez pas la permission nécessaire."
     },
@@ -1825,6 +1828,67 @@
       "due": "Échéance",
       "start": "Début",
       "parent": "Parent"
+    },
+    "filters": {
+      "title": "Filtres enregistrés",
+      "mine": "Mes filtres",
+      "shared": "Partagés",
+      "mineEmpty": "Enregistrez une recherche pour la retrouver ici.",
+      "sharedEmpty": "Aucun filtre n’est partagé avec vous.",
+      "loadError": "Les filtres n’ont pas pu être chargés.",
+      "sharedMark": "(partagé)",
+      "by": "(de {{ name }})",
+      "actions": "Actions du filtre {{ name }}",
+      "editAction": "Modifier",
+      "deleteAction": "Supprimer",
+      "delete": {
+        "title": "Supprimer le filtre « {{ name }} » ?",
+        "message": "Il disparaîtra de vos filtres.",
+        "messageShared": "Il disparaîtra pour toutes les personnes avec qui il est partagé.",
+        "confirm": "Supprimer"
+      },
+      "save": "Enregistrer le filtre",
+      "saved": "Filtre enregistré.",
+      "deleted": "Filtre supprimé.",
+      "gone": "Ce filtre n’existe plus, ou n’est plus partagé avec vous.",
+      "line": "Filtre « {{ name }} »",
+      "lineShared": "partagé",
+      "linePrivate": "personnel",
+      "lineChanged": "requête modifiée",
+      "sharing": {
+        "private": "Moi seulement",
+        "groups": "Des groupes",
+        "all": "Toute l’organisation"
+      },
+      "dialog": {
+        "createTitle": "Enregistrer le filtre",
+        "editTitle": "Modifier le filtre",
+        "query": "Requête enregistrée",
+        "name": "Nom",
+        "icon": "Icône",
+        "sharing": "Partagé avec",
+        "groups": "Groupes",
+        "searchGroup": "Rechercher un groupe…",
+        "noGroup": "Aucun groupe ne correspond",
+        "removeGroup": "Retirer {{ name }}",
+        "groupsRequired": "Choisissez au moins un groupe.",
+        "groupsGone": "Un des groupes choisis n’existe plus : retirez-le.",
+        "queryInvalid": "La requête n’est pas valide : corrigez-la avant de l’enregistrer.",
+        "save": "Enregistrer",
+        "saveAsNew": "Enregistrer comme nouveau filtre"
+      },
+      "icons": {
+        "filter_alt": "Filtre",
+        "person": "Personne",
+        "bug_report": "Bug",
+        "schedule": "Horloge",
+        "shield": "Bouclier",
+        "flag": "Drapeau",
+        "star": "Étoile",
+        "support_agent": "Support",
+        "bolt": "Éclair",
+        "label": "Étiquette"
+      }
     }
   }
 }

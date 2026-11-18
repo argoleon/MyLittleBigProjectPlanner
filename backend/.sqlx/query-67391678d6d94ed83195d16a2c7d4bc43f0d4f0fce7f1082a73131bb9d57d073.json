@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM saved_filter_group WHERE filter_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "67391678d6d94ed83195d16a2c7d4bc43f0d4f0fce7f1082a73131bb9d57d073"
+}

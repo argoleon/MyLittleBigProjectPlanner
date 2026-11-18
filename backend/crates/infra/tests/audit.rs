@@ -341,7 +341,8 @@ async fn erased_members_show_under_their_pseudonym_and_their_comments_can_be_pur
             ("invitations_sent", 0),
             ("comments", 1),
             ("history", 1),
-            ("notifications", 0)
+            ("notifications", 0),
+            ("saved_filters", 0)
         ]
     );
     let again = erasure::anonymize(&mut tx, &member, &erasure::steps())
@@ -353,7 +354,8 @@ async fn erased_members_show_under_their_pseudonym_and_their_comments_can_be_pur
             ("invitations_sent", 0),
             ("comments", 0),
             ("history", 0),
-            ("notifications", 0)
+            ("notifications", 0),
+            ("saved_filters", 0)
         ],
         "idempotent"
     );
@@ -402,7 +404,8 @@ async fn kept_comments_stay_in_the_history_when_not_purged() {
             ("invitations_sent", 0),
             ("comments", 0),
             ("history", 0),
-            ("notifications", 0)
+            ("notifications", 0),
+            ("saved_filters", 0)
         ]
     );
     let entries = audit::of_issue(&mut tx, issue.id, 10, None).await.unwrap().items;

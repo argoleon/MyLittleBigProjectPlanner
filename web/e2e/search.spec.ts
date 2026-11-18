@@ -7,7 +7,9 @@ import { accessibilityViolations, expect, test } from './fixtures';
  * with the keyboard, its results in the virtualized table, a column sorting
  * the query, the next page loaded while scrolling, a refused query shown at
  * its position; the visual builder writing the query, the editor's
- * suggestions with the keyboard alone; axe-core in both themes and languages.
+ * suggestions with the keyboard alone; a query saved as a filter, opened
+ * from the panel, changed and deleted (L06-US04); axe-core in both themes and
+ * languages.
  */
 
 function result(n: number, priority = 'high') {
@@ -71,10 +73,96 @@ function tree(query: string) {
   return { query, filter: clauses.length === 1 ? clauses[0] : { kind: 'and', operands: clauses }, orderBy: [] };
 }
 
+interface MockFilter {
+  id: string;
+  name: string;
+  icon: string;
+  query: string;
+  owner: { accountId: string; displayName: string; member: boolean };
+  sharing: { all: boolean; groups: { id: string; name: string }[] };
+  mine: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+  version: number;
+}
+
+const GROUPS = [
+  { id: 'g1', name: 'Platform' },
+  { id: 'g2', name: 'Payroll' },
+];
+
+/** A filter shared with the member by another one. */
+const SHARED_WITH_ME: MockFilter = {
+  id: 'shared-1',
+  name: 'Late',
+  icon: 'schedule',
+  query: 'due < now()',
+  owner: { accountId: 'a2', displayName: 'Camille Martin', member: true },
+  sharing: { all: false, groups: [GROUPS[0]] },
+  mine: false,
+  canEdit: false,
+  canDelete: false,
+  version: 1,
+};
+
+/** The saved filters of the mocked API, in memory: `filters` at first. */
+async function mockFilters(page: Page, filters: MockFilter[]) {
+  let next = 1;
+  const view = (body: { name: string; icon: string; query: string; sharing: { all: boolean; groupIds: string[] } }) => ({
+    name: body.name,
+    icon: body.icon,
+    query: body.query,
+    sharing: { all: body.sharing.all, groups: GROUPS.filter((g) => body.sharing.groupIds.includes(g.id)) },
+  });
+  await page.route(
+    (url) => url.pathname.startsWith('/api/v1/saved-filters'),
+    async (route) => {
+      const request = route.request();
+      const path = new URL(request.url()).pathname;
+      if (path === '/api/v1/saved-filters/share-groups') {
+        const search = new URL(request.url()).searchParams.get('search')?.toLowerCase() ?? '';
+        return route.fulfill({ json: GROUPS.filter((g) => g.name.toLowerCase().includes(search)) });
+      }
+      if (path === '/api/v1/saved-filters') {
+        if (request.method() === 'GET') {
+          return route.fulfill({ json: { items: [...filters].sort((a, b) => a.name.localeCompare(b.name)) } });
+        }
+        const created: MockFilter = {
+          id: `mine-${next++}`,
+          ...view(request.postDataJSON()),
+          owner: { accountId: 'a1', displayName: 'Lucas Bernard', member: true },
+          mine: true,
+          canEdit: true,
+          canDelete: true,
+          version: 1,
+        };
+        filters.push(created);
+        return route.fulfill({ status: 201, json: created });
+      }
+      const at = filters.findIndex((f) => path.endsWith(`/${f.id}`));
+      if (at < 0) {
+        return route.fulfill({
+          status: 404,
+          contentType: 'application/problem+json',
+          body: JSON.stringify({ type: 'urn:mlbpp:problem:not_found', title: 'Not found', status: 404, code: 'not_found' }),
+        });
+      }
+      if (request.method() === 'PUT') {
+        filters[at] = { ...filters[at], ...view(request.postDataJSON()), version: filters[at].version + 1 };
+      } else if (request.method() === 'DELETE') {
+        filters.splice(at, 1);
+        return route.fulfill({ status: 204 });
+      }
+      return route.fulfill({ json: filters[at] });
+    },
+  );
+}
+
 /** The queries the mocked API received, in order; the screen in `mode` (`null`: never chosen yet). */
-async function mockSearch(page: Page, mode: 'query' | 'builder' | null = 'query'): Promise<string[]> {
+async function mockSearch(page: Page, mode: 'query' | 'builder' | null = 'query', filters: MockFilter[] = []): Promise<string[]> {
   const queries: string[] = [];
   if (mode) await page.addInitScript((m) => localStorage.setItem('mlbpp.search.mode', m), mode);
+  await mockFilters(page, filters);
   await page.route('**/api/v1/search/suggestions', (route) => {
     const body = route.request().postDataJSON() as { query: string; cursor?: number };
     return route.fulfill({ json: suggestions(body.query, body.cursor ?? body.query.length) });
@@ -238,6 +326,47 @@ test('a query the builder can show opens in it with the same criteria; another s
   await expect(page.getByRole('radio', { name: 'Query' })).toBeChecked();
 });
 
+test('a query is saved as a filter for the whole organization, opened from the panel, changed, then deleted', async ({ page }) => {
+  const queries = await mockSearch(page, 'query', [SHARED_WITH_ME]);
+  await page.goto('/search?q=status%20%3D%20in_progress');
+  await expect(page.getByText('Results: 70')).toBeVisible();
+  const panel = page.getByRole('navigation', { name: 'Saved filters' });
+  await expect(panel.getByRole('link', { name: 'Late (by Camille Martin)' })).toBeVisible();
+  await expect(panel.getByText('Save a search to find it here.')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Save the filter' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('heading')).toHaveText('Save the filter');
+  await dialog.getByLabel('Name').fill('In progress');
+  await dialog.getByRole('radio', { name: 'Flag' }).click();
+  await dialog.getByRole('radio', { name: 'The whole organization' }).check();
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page).toHaveURL(/\?filter=mine-1$/);
+  await expect(page.getByText('Filter “In progress” · shared · Results: 70')).toBeVisible();
+  const mine = panel.getByRole('link', { name: 'In progress (shared)' });
+  await expect(mine).toHaveAttribute('aria-current', 'page');
+
+  // Somewhere else, then back through the panel: its query runs again.
+  await page.goto('/search?q=priority%20%3D%20high');
+  await expect(page.getByText('Results: 70')).toBeVisible();
+  await mine.click();
+  await expect(page).toHaveURL(/\?filter=mine-1$/);
+  await expect.poll(() => queries.at(-1)).toBe('status = in_progress');
+
+  // Renamed, then deleted.
+  await panel.getByRole('button', { name: 'Actions of the filter In progress' }).click();
+  await page.getByRole('menuitem', { name: 'Edit' }).click();
+  await dialog.getByLabel('Name').fill('Ongoing');
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(panel.getByRole('link', { name: 'Ongoing (shared)' })).toBeVisible();
+  await panel.getByRole('button', { name: 'Actions of the filter Ongoing' }).click();
+  await page.getByRole('menuitem', { name: 'Delete' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
+  await expect(panel.getByText('Save a search to find it here.')).toBeVisible();
+  await expect(page).not.toHaveURL(/filter=/);
+  await expect(page.getByRole('status').filter({ hasText: 'Filter deleted.' })).toBeVisible();
+});
+
 for (const theme of ['light', 'dark'] as const) {
   for (const language of ['fr', 'en'] as const) {
     test.describe(`accessibility of search, ${theme} mode, ${language}`, () => {
@@ -258,6 +387,24 @@ for (const theme of ['light', 'dark'] as const) {
 
         await page.goto('/search?q=status%20%3D');
         await expect(page.locator('#query-error')).toBeVisible();
+        await animationsDone(page);
+        expect(await accessibilityViolations(page)).toEqual([]);
+      });
+
+      test('the saved filters and the dialog saving one have no axe-core violation', async ({ page }) => {
+        const mineOne: MockFilter = { ...SHARED_WITH_ME, id: 'mine-0', name: 'Bugs', icon: 'bug_report', mine: true, canEdit: true, canDelete: true };
+        await mockSearch(page, 'query', [mineOne, SHARED_WITH_ME]);
+        await page.goto('/search?filter=mine-0');
+        await expect(page.locator('app-saved-filters a.link[aria-current="page"]')).toBeVisible();
+        await expect(page.getByRole('link', { name: 'PLAT-1', exact: true })).toBeVisible();
+        await animationsDone(page);
+        expect(await accessibilityViolations(page)).toEqual([]);
+
+        await page.locator('button.save-filter').click();
+        const dialog = page.locator('mat-dialog-container');
+        await expect(dialog.locator('mat-chip-row')).toHaveCount(1);
+        await dialog.locator('input.group-search').fill('pay');
+        await expect(page.locator('mat-option')).toHaveCount(1);
         await animationsDone(page);
         expect(await accessibilityViolations(page)).toEqual([]);
       });

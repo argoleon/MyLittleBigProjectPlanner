@@ -281,6 +281,18 @@ export type { UpdateReferenceItem$Params as UpdateReferenceItem$Params } from '.
 export { updateReferenceItem as updateReferenceItem } from './fn/reference-items/update-reference-item';
 export type { DeleteReferenceItem$Params as DeleteReferenceItem$Params } from './fn/reference-items/delete-reference-item';
 export { deleteReferenceItem as deleteReferenceItem } from './fn/reference-items/delete-reference-item';
+export type { ListSavedFilters$Params as ListSavedFilters$Params } from './fn/search/list-saved-filters';
+export { listSavedFilters as listSavedFilters } from './fn/search/list-saved-filters';
+export type { CreateSavedFilter$Params as CreateSavedFilter$Params } from './fn/search/create-saved-filter';
+export { createSavedFilter as createSavedFilter } from './fn/search/create-saved-filter';
+export type { ListSavedFilterShareGroups$Params as ListSavedFilterShareGroups$Params } from './fn/search/list-saved-filter-share-groups';
+export { listSavedFilterShareGroups as listSavedFilterShareGroups } from './fn/search/list-saved-filter-share-groups';
+export type { GetSavedFilter$Params as GetSavedFilter$Params } from './fn/search/get-saved-filter';
+export { getSavedFilter as getSavedFilter } from './fn/search/get-saved-filter';
+export type { UpdateSavedFilter$Params as UpdateSavedFilter$Params } from './fn/search/update-saved-filter';
+export { updateSavedFilter as updateSavedFilter } from './fn/search/update-saved-filter';
+export type { DeleteSavedFilter$Params as DeleteSavedFilter$Params } from './fn/search/delete-saved-filter';
+export { deleteSavedFilter as deleteSavedFilter } from './fn/search/delete-saved-filter';
 export type { SearchWithQuery$Params as SearchWithQuery$Params } from './fn/search/search-with-query';
 export { searchWithQuery as searchWithQuery } from './fn/search/search-with-query';
 export type { ParseQuery$Params as ParseQuery$Params } from './fn/search/parse-query';

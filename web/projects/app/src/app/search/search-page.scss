@@ -15,6 +15,32 @@
   font: var(--mat-sys-headline-medium);
 }
 
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--app-space-2);
+}
+
+// The saved filters beside the search (mockup 15); above it on a narrow screen.
+.body {
+  display: grid;
+  grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
+  gap: var(--app-space-4);
+  margin-top: var(--app-space-4);
+
+  @media (width < 840px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.panel {
+  align-self: start;
+}
+
+.main {
+  min-width: 0;
+}
+
 .subtitle {
   margin: var(--app-space-1) 0 0;
   font: var(--mat-sys-body-medium);

@@ -83,6 +83,7 @@ pub enum ErrorCode {
     InvitationClosed,
     MemberLastAdmin,
     GroupNameTaken,
+    SavedFilterNameTaken,
     PermissionDenied,
     RoleLabelTaken,
     RoleInUse,
@@ -133,7 +134,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 89] = [
+    pub const ALL: [Self; 90] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -178,6 +179,7 @@ impl ErrorCode {
         Self::InvitationClosed,
         Self::MemberLastAdmin,
         Self::GroupNameTaken,
+        Self::SavedFilterNameTaken,
         Self::PermissionDenied,
         Self::RoleLabelTaken,
         Self::RoleInUse,
@@ -271,6 +273,7 @@ impl ErrorCode {
             Self::InvitationClosed => "invitation.closed",
             Self::MemberLastAdmin => "member.last_admin",
             Self::GroupNameTaken => "group.name_taken",
+            Self::SavedFilterNameTaken => "saved_filter.name_taken",
             Self::PermissionDenied => "permission.denied",
             Self::RoleLabelTaken => "role.label_taken",
             Self::RoleInUse => "role.in_use",
@@ -362,6 +365,7 @@ impl ErrorCode {
             | Self::InvitationClosed
             | Self::MemberLastAdmin
             | Self::GroupNameTaken
+            | Self::SavedFilterNameTaken
             | Self::RoleLabelTaken
             | Self::RoleInUse
             | Self::AccountNoPassword
@@ -459,6 +463,7 @@ impl ErrorCode {
             Self::InvitationClosed => "This invitation was already accepted or revoked",
             Self::MemberLastAdmin => "The tenant needs at least one active tenant admin",
             Self::GroupNameTaken => "Another group already has this name",
+            Self::SavedFilterNameTaken => "You already have a saved filter with this name",
             Self::PermissionDenied => "You do not have the permission this needs",
             Self::RoleLabelTaken => "Another role already has this label",
             Self::RoleInUse => "Grants use this role: remove them first",
@@ -825,7 +830,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 89] = [
+        let expected: [(ErrorCode, u16); 90] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -870,6 +875,7 @@ mod tests {
             (ErrorCode::InvitationClosed, 409),
             (ErrorCode::MemberLastAdmin, 409),
             (ErrorCode::GroupNameTaken, 409),
+            (ErrorCode::SavedFilterNameTaken, 409),
             (ErrorCode::PermissionDenied, 403),
             (ErrorCode::RoleLabelTaken, 409),
             (ErrorCode::RoleInUse, 409),
