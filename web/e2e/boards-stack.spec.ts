@@ -89,7 +89,7 @@ test('a board made from a filter moves a card through the workflow and puts back
 
   // From the project's page to its boards, then a new one on it.
   await page.goto(`/nodes/${id}`);
-  await page.getByRole('link', { name: 'Boards' }).click();
+  await page.locator('.actions').getByRole('link', { name: 'Boards' }).click();
   await expect(page.getByText(`Boards of Board project ${key}`)).toBeVisible();
   await page.getByRole('button', { name: 'New board' }).click();
   const dialog = page.getByRole('dialog');
@@ -99,7 +99,8 @@ test('a board made from a filter moves a card through the workflow and puts back
   await dialog.getByRole('button', { name: 'Create the board' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Board ${key}`);
   await expect(page.locator('.column-name')).toHaveText(['To do 2', 'In progress 0', 'Done 0']);
-  await expect(column(page, 0).locator('.key')).toHaveText([`${key}-1`, `${key}-2`].sort());
+  // Same priority: the last changed first.
+  await expect(column(page, 0).locator('.key')).toHaveText([`${key}-2`, `${key}-1`]);
   expect(await accessibilityViolations(page)).toEqual([]);
 
   // To do → In progress: "Start".
