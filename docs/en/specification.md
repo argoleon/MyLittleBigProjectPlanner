@@ -201,6 +201,10 @@ A single query language, inspired by JQL, powers search, filters, boards, the Ga
 **Boards (MVP)**
 
 - **Kanban**: columns mapped to one or more statuses, fed by a filter, work-in-progress limits, swimlanes by assignee or epic.
+  - A board belongs to a node of the hierarchy: whoever sees the node sees the board (each only sees the tickets they may see), and the "manage boards" permission on the node lets them create, configure and delete it.
+  - Quick filters of the board's own (a label and a clause of the query language) join its filter when toggled on.
+  - Moving a card to a column runs the workflow transition that leads there, with its conditions, validators and post-functions; when none can, the card goes back and the reason shows. The keyboard offers the same action as drag and drop.
+  - Cards follow the filter's order (`ORDER BY`); manual ranking comes with the Scrum backlog.
 - **Scrum**: backlog, sprint planning and closing (unfinished tickets move to the next sprint or the backlog), active sprint board.
 - **Estimation**: points or hours, configurable per board. Workload always stays in hours, through assignments.
 - **Reports**: burndown (in points or hours, based on remaining work), velocity over the last N sprints.
@@ -459,7 +463,7 @@ Permissions rely on roles granted on hierarchy nodes and inherited downwards. Po
 **Permission model**
 
 - **Global roles**: platform super admin. Per tenant: tenant admin, configuration admin, internal user, external user.
-- **Node roles**: defined by each tenant as sets of permissions. Example permissions: view, create a ticket, edit, comment, log time, assign resources, force an overload, manage sprints, manage members, administer the node.
+- **Node roles**: defined by each tenant as sets of permissions. Example permissions: view, create a ticket, edit, comment, log time, assign resources, force an overload, manage sprints, manage boards, manage members, administer the node.
 - **Grants**: to users or groups, on a node. Inherited downwards, union in multi-parent, can be blocked (section 4).
 - **In the MVP**: restricted visibility on the portal (requesters only see their own tickets), internal or public comments, confidential projects.
 - **After the MVP**: per-ticket security levels and field-level security.

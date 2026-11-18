@@ -15,6 +15,17 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
   - A visual builder: projects, types, statuses, assignees ("Me" included), priorities, due date and creation date (presets such as "Overdue" or "Last 7 days", or a custom range), text; it writes the query, and reads back a query made of such criteria. Any other query stays in the editor, with a word why. The screen opens in the last mode used (the builder the first time).
   - The query editor suggests what may come at the cursor: fields (custom ones included), the operators of a field, keywords, functions, and values with their labels (statuses, types, priorities, members, the projects and nodes the member sees). Arrows, Enter and Escape, or Ctrl+Space to ask.
   - `POST /api/v1/search/suggestions` (`{query, cursor}`) and `POST /api/v1/search/parse` (the query as a tree).
+- **Full-text search** (#177)
+  - `text ~ "outage"` searches the title, the description and the comments, with French and English stemming, accents ignored. Without `ORDER BY`, the most relevant tickets come first, those holding the words in their own text before those holding them in a comment only.
+  - Typos are corrected against the words already written in the organization, by edit distance (swapping two letters counts as one edit): none under 4 letters, one edit up to 7, two beyond. Corrected matches rank below exact ones.
+- **Saved filters** (#180)
+  - A query is saved under a name and an icon, private or shared with groups or the whole organization; the panel of the Search screen lists the member's own and those shared with them. Its owner alone changes it; an organization admin may delete a shared one. A member who leaves takes their private filters with them; shared ones stay.
+  - `/api/v1/saved-filters` (list, create, read, change, delete) and `GET /api/v1/saved-filters/share-groups`.
+- **Kanban boards** (#183)
+  - A board belongs to a portfolio, program or project, and shows the tickets of its filter in columns mapped to statuses (by key, across configurations). A column may cap its work in progress: reached, then highlighted once exceeded. Cards are grouped in swimlanes by assignee or by epic, narrowed by the board's quick filters, and show their type, blockers, epic, estimate (points or hours, per board), priority and assignee.
+  - Dragging a card to another column runs the transition of its workflow that leads there, with its conditions, validators and post-functions; a transition with fields opens its form first, several leading there are offered to choose from. Where none leads, or its condition is not met, the card goes back and the reason shows. Each card's menu moves it with the keyboard alone. Moves by others show as they happen.
+  - Whoever sees the node sees its boards, each seeing only the tickets they may see; the new permission **Manage boards** on the node creates, configures and deletes them. A new board starts with a column per status category and the quick filters "My tickets" and "Bugs". The boards of a node are a link away from its page.
+  - `/api/v1/boards` (list, create, read, change, delete), `GET /api/v1/boards/statuses`, `GET /api/v1/boards/{id}/cards` and `POST /api/v1/boards/{id}/moves`.
 
 ### Changed
 
@@ -26,6 +37,8 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
 
 ### Upgrading from 0.5.1
 
+- **Manage boards**: the migration gives the new permission to every role that manages sprints (the default "Project manager" and "Node admin" roles among them). Review the roles that should manage boards in Administration, Roles. Permissions cached before the upgrade expire within 5 minutes.
+- **Full text**: the migration indexes the text of every existing ticket and comment, and builds each organization's word list for typo correction; on large organizations, it takes a few minutes.
 - **Node keys**: the migration gives every existing portfolio and program a key made of its type and name (`PORTF-RESSOURCES-HUM`, `PROG-MODERNISATION-D`, numbered when taken). Administrators should review them in each node's General tab before saving filters that use them.
 
 ## [0.5.1] - 2026-11-18
