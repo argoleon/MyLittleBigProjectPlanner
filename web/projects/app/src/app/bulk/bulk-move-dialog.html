@@ -1,0 +1,85 @@
+<h2 mat-dialog-title>{{ 'bulk.move.title' | transloco: { count: data.count } }}</h2>
+<mat-dialog-content class="fields">
+  @if (errorKey(); as key) {
+    <p class="message error" role="alert">{{ key | transloco }}</p>
+  }
+  <mat-form-field appearance="outline">
+    <mat-label>{{ 'issue.move.project' | transloco }}</mat-label>
+    <mat-select class="project" [formControl]="project" required [aria-label]="'issue.move.project' | transloco">
+      @for (choice of choices(); track choice.id) {
+        <mat-option [value]="choice.key">{{ choice.name }} ({{ choice.key }})</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  @if (plan.error()) {
+    <ui-error-state [error]="plan.error()" [headingLevel]="3" (retry)="plan.reload()" />
+  } @else if (plan.hasValue()) {
+    @let current = plan.value();
+    <section class="plan" aria-live="polite">
+      <p class="note">{{ 'bulk.move.tickets' | transloco: { count: current.tickets } }}</p>
+      @if (current.subtasksAlone > 0) {
+        <p class="message warning">{{ 'bulk.move.subtasksAlone' | transloco: { count: current.subtasksAlone } }}</p>
+      }
+      @if (current.sameConfiguration) {
+        <p class="note">{{ 'issue.move.sameConfiguration' | transloco }}</p>
+      }
+      @if (current.types.length > 0 || current.statuses.length > 0) {
+        <h3 class="section">{{ 'issue.move.mapping' | transloco }}</h3>
+        @for (need of current.types; track need.id) {
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'issue.move.typeOf' | transloco: { label: need.label ?? need.key } }}</mat-label>
+            <mat-select
+              class="type-mapping"
+              [value]="types()[need.id] ?? null"
+              [aria-label]="'issue.move.typeOf' | transloco: { label: need.label ?? need.key }"
+              (selectionChange)="setType(need.id, $event.value)"
+            >
+              @for (target of typeOptions(current, need); track target.id) {
+                <mat-option [value]="target.id">{{ target.label }}</mat-option>
+              }
+            </mat-select>
+            @if (problemOf(current, 'typeMappings.' + need.id); as problem) {
+              <mat-hint class="field-error" role="alert">{{ problem | transloco }}</mat-hint>
+            }
+          </mat-form-field>
+        }
+        @for (need of current.statuses; track need.id) {
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'issue.move.statusOf' | transloco: { label: need.label ?? need.key } }}</mat-label>
+            <mat-select
+              class="status-mapping"
+              [value]="statuses()[need.id] ?? null"
+              [aria-label]="'issue.move.statusOf' | transloco: { label: need.label ?? need.key }"
+              (selectionChange)="setStatus(need.id, $event.value)"
+            >
+              @for (target of statusOptions(current, need); track target.id) {
+                <mat-option [value]="target.id">{{ target.label }}</mat-option>
+              }
+            </mat-select>
+            @if (problemOf(current, 'statusMappings.' + need.id); as problem) {
+              <mat-hint class="field-error" role="alert">{{ problem | transloco }}</mat-hint>
+            }
+          </mat-form-field>
+        }
+      }
+      @if (current.droppedFields.length > 0) {
+        <p class="message warning dropped">{{ 'issue.move.dropped' | transloco: { fields: labels(current.droppedFields) } }}</p>
+      }
+    </section>
+  } @else if (plan.isLoading()) {
+    <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button matButton type="button" mat-dialog-close>{{ 'dialog.cancel' | transloco }}</button>
+  <button
+    matButton="filled"
+    type="button"
+    class="confirm"
+    [disabled]="running() || !plan.hasValue() || plan.isLoading() || plan.value().problems.length > 0 || plan.value().tickets === 0"
+    (click)="run()"
+  >
+    {{ 'bulk.move.confirm' | transloco: { count: data.count } }}
+  </button>
+</mat-dialog-actions>

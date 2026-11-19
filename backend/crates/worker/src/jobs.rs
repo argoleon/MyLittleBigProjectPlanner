@@ -18,6 +18,7 @@ use infra::aggregates::AGGREGATE_JOB;
 use infra::attachments::{
     AttachmentJob, DELETE_OBJECTS_JOB, DeleteObjects, EXPIRE_JOB, SCAN_JOB, ScanError, Scanned,
 };
+use infra::bulk_actions::{self, ItemJob as BulkItemJob, PurgeJob as BulkPurgeJob};
 use infra::config_migrations::{MIGRATION_JOB, MigrationJob, Outcome};
 use infra::email::{EMAIL_JOB, EmailJob, MailError, Mailer, render};
 use infra::erasure::{ERASURE_JOB, ErasedMember};
@@ -226,6 +227,20 @@ impl JobHandler for Jobs {
                         }
                         Ran::Nothing => {}
                     }
+                    Ok(())
+                }
+                bulk_actions::ITEM_JOB => {
+                    let item: BulkItemJob = payload(job)?;
+                    let outcome = bulk_actions::run_job(conn, &item).await.map_err(retry)?;
+                    if let Some(outcome) = outcome {
+                        tracing::info!(bulk = %item.bulk_id, item = %item.item_id, outcome = outcome.as_str(), "bulk item done");
+                    }
+                    Ok(())
+                }
+                bulk_actions::PURGE_JOB => {
+                    let purge: BulkPurgeJob = payload(job)?;
+                    let deleted = bulk_actions::delete(conn, purge.bulk_id).await.map_err(retry)?;
+                    tracing::info!(bulk = %purge.bulk_id, deleted, "bulk action expired");
                     Ok(())
                 }
                 list_exports::PURGE_JOB => {

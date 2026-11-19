@@ -182,8 +182,8 @@ fn plain(content: Option<&serde_json::Value>) -> String {
         .unwrap_or_default()
 }
 
-/// Writes `doc` as a comment of `issue` and its `comment.created` event; it
-/// as stored. Used by members and by transitions' "add a comment".
+/// Writes `doc` on `issue` as the member of `tx`: the comment, its history
+/// entry and its `comment.created` event.
 pub(crate) async fn write(
     tx: &mut TenantTx,
     issue: &Issue,
@@ -191,58 +191,9 @@ pub(crate) async fn write(
     visibility: Visibility,
     doc: &Doc,
 ) -> Result<Comment, Problem> {
-    let author = tx.account_id();
-    // Those who comment follow the ticket.
-    infra::watchers::watch(tx, issue.id, author).await?;
-    let content = infra::rich_text::to_json(doc);
-    let html = doc.to_html();
-    let mentions: Vec<Uuid> = doc.mentions().into_iter().map(Uuid::from_u128).collect();
-    let comment = repo::insert(
-        tx,
-        infra::id::new_id(),
-        issue.id,
-        author,
-        source,
-        &Written {
-            visibility,
-            content: &content,
-            content_html: &html,
-            mentions: &mentions,
-        },
-    )
-    .await?;
-    crate::issue_history::record(
-        tx,
-        issue.id,
-        &[crate::issue_history::comment(
-            Action::CommentCreated,
-            comment.id,
-            None,
-            Some(&content),
-        )],
-    )
-    .await?;
-    infra::outbox::record(
-        tx,
-        &infra::outbox::Event {
-            kind: "comment.created",
-            aggregate_type: "issue",
-            aggregate_id: issue.id,
-            payload: serde_json::json!({
-                "commentId": comment.id,
-                "key": issue.key,
-                "projectId": issue.project_id,
-                "visibility": visibility.as_str(),
-                "source": source.as_str(),
-                "mentions": mentions,
-                "issueRefs": doc.issue_refs(),
-                "text": doc.plain_text(),
-            }),
-            actor_id: Some(author),
-        },
-    )
-    .await?;
-    Ok(comment)
+    let author = tx.author();
+    let account = tx.account_id();
+    Ok(infra::tickets::comments::write(tx, &author, account, issue, source, visibility, doc).await?)
 }
 
 /// `GET /api/v1/issues/{idOrKey}/comments`.

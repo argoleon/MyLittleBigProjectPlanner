@@ -1349,13 +1349,22 @@ pub async fn move_card(
             let view = transition_view(&language, &content, transition, &issue);
             if view.immediate() {
                 let run = Run {
-                    project: &project,
+                    project: project.id,
                     content: &content,
                     transition,
                     actor: &actor,
                     admin,
                 };
-                let moved = perform(&state, &mut tx, &language, &run, issue, &BTreeMap::new()).await?;
+                let moved = perform(
+                    &state,
+                    &mut tx,
+                    &language,
+                    &run,
+                    &project,
+                    issue,
+                    &BTreeMap::new(),
+                )
+                .await?;
                 (MoveOutcome::Moved, Vec::new(), moved)
             } else {
                 (

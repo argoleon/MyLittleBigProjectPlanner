@@ -1,0 +1,97 @@
+<h2 mat-dialog-title>{{ 'bulk.modify.title' | transloco: { count: data.count } }}</h2>
+<mat-dialog-content class="fields">
+  @if (errorKey(); as key) {
+    <p class="message error" role="alert">{{ key | transloco }}</p>
+  }
+  <p class="note">{{ 'bulk.modify.hint' | transloco }}</p>
+
+  <mat-form-field appearance="outline">
+    <mat-label>{{ 'bulk.modify.priority' | transloco }}</mat-label>
+    <mat-select class="priority" [formControl]="priority">
+      <mat-option value="keep">{{ 'bulk.modify.keep' | transloco }}</mat-option>
+      @for (p of priorities; track p) {
+        <mat-option [value]="p">{{ 'priority.' + p | transloco }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <div class="change">
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'bulk.modify.assignee' | transloco }}</mat-label>
+      <mat-select class="assignee-mode" [formControl]="assigneeMode">
+        @for (mode of modes; track mode) {
+          <mat-option [value]="mode">{{ 'bulk.modify.modes.' + mode | transloco }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    @if (assigneeMode.value === 'set' && options.hasValue() && options.value().projectKey; as projectKey) {
+      <app-people-picker [formControl]="assignee" [projectKey]="projectKey" [label]="'bulk.modify.assigneeNew' | transloco" />
+    }
+  </div>
+
+  <div class="change">
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'bulk.modify.startDate' | transloco }}</mat-label>
+      <mat-select class="start-mode" [formControl]="startMode">
+        @for (mode of modes; track mode) {
+          <mat-option [value]="mode">{{ 'bulk.modify.modes.' + mode | transloco }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    @if (startMode.value === 'set') {
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'bulk.modify.startDateNew' | transloco }}</mat-label>
+        <input matInput class="start-date" [matDatepicker]="start" [formControl]="startDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="start" />
+        <mat-datepicker #start />
+      </mat-form-field>
+    }
+  </div>
+
+  <div class="change">
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'bulk.modify.dueDate' | transloco }}</mat-label>
+      <mat-select class="due-mode" [formControl]="dueMode">
+        @for (mode of modes; track mode) {
+          <mat-option [value]="mode">{{ 'bulk.modify.modes.' + mode | transloco }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    @if (dueMode.value === 'set') {
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'bulk.modify.dueDateNew' | transloco }}</mat-label>
+        <input matInput class="due-date" [matDatepicker]="due" [formControl]="dueDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="due" />
+        <mat-datepicker #due />
+      </mat-form-field>
+    }
+  </div>
+
+  @if (options.error()) {
+    <ui-error-state [error]="options.error()" [headingLevel]="3" (retry)="options.reload()" />
+  } @else if (!options.hasValue()) {
+    <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+  } @else if (fields().length > 0) {
+    <h3 class="section">{{ 'bulk.modify.fields' | transloco }}</h3>
+    @for (field of fields(); track field.fieldId) {
+      @if (changing.controls[field.fieldId] && values.controls[field.fieldId] && options.value().projectKey; as projectKey) {
+        <div class="change custom">
+          <mat-checkbox class="change-field" [formControl]="changing.controls[field.fieldId]">
+            {{ 'bulk.modify.changeField' | transloco: { field: field.label ?? field.key } }}
+          </mat-checkbox>
+          @if (changing.controls[field.fieldId].value) {
+            <app-field-input [field]="field" [control]="values.controls[field.fieldId]" [projectKey]="projectKey" />
+          }
+        </div>
+      }
+    }
+  } @else {
+    <p class="note">{{ 'bulk.modify.noFields' | transloco }}</p>
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button matButton type="button" mat-dialog-close>{{ 'dialog.cancel' | transloco }}</button>
+  <button matButton="filled" type="button" class="confirm" [disabled]="running()" (click)="run()">
+    {{ 'bulk.modify.confirm' | transloco: { count: data.count } }}
+  </button>
+</mat-dialog-actions>

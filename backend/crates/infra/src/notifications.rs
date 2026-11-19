@@ -327,6 +327,8 @@ pub async fn dispatch(
     };
     let mut dispatched = if pending.kind == EXPORT_READY {
         notify_export(conn, event_id, &pending, link_of).await?
+    } else if pending.kind == crate::bulk_actions::DONE {
+        notify_bulk(conn, event_id, &pending, link_of).await?
     } else {
         notify(conn, event_id, &pending, link_of).await?
     };
@@ -635,6 +637,98 @@ async fn notify_export(
                 rows,
                 link: link_of(&tenant.slug, &format!("exports/{}", pending.aggregate_id)),
                 valid_hours: domain::export::FILE_LIFETIME_HOURS,
+            },
+        };
+        let payload = serde_json::to_value(&job).map_err(|e| sqlx::Error::Encode(Box::new(e)))?;
+        crate::jobs::enqueue(conn, EMAIL_JOB, &payload).await?;
+        dispatched.emailed = 1;
+    }
+    Ok(dispatched)
+}
+
+/// Notifies the member whose background bulk action `pending` is done, as
+/// their preferences say; an active member of the tenant only.
+async fn notify_bulk(
+    conn: &mut PgConnection,
+    event_id: Uuid,
+    pending: &Pending,
+    link_of: LinkOf<'_>,
+) -> Result<Dispatched, sqlx::Error> {
+    let payload = &pending.payload;
+    let Some(account) = payload
+        .get("accountId")
+        .and_then(serde_json::Value::as_str)
+        .and_then(|id| Uuid::parse_str(id).ok())
+    else {
+        return Ok(Dispatched::default());
+    };
+    let count = |name: &str| {
+        payload
+            .get(name)
+            .and_then(serde_json::Value::as_i64)
+            .unwrap_or_default()
+    };
+    let kind = payload
+        .get("kind")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_default()
+        .to_owned();
+    let Some(recipient) = recipients(conn, &[account]).await?.pop() else {
+        return Ok(Dispatched::default());
+    };
+    let notice = Notice::BulkDone;
+    let preferences = &recipient.preferences;
+    if !preferences.records(notice) {
+        return Ok(Dispatched::default());
+    }
+    let in_app = preferences.wants(notice, domain::notify::Channel::InApp);
+    let emails_now = preferences.emails_now(notice);
+    let details = serde_json::json!({
+        "bulkId": pending.aggregate_id,
+        "kind": kind,
+        "total": count("total"),
+        "changed": count("changed"),
+        "unchanged": count("unchanged"),
+        "refused": count("refused"),
+    });
+    sqlx::query!(
+        r#"
+        INSERT INTO notification (id, tenant_id, account_id, event, issue_id, actor_id, details, outbox_event_id,
+                                  in_app, email_wanted, emailed_at)
+        VALUES ($1, app_current_tenant(), $2, $3, NULL, NULL, $4, $5, $6, $7, CASE WHEN $8 THEN now() END)
+        "#,
+        crate::id::new_id(),
+        account,
+        notice.as_str(),
+        details,
+        event_id,
+        in_app,
+        preferences.wants(notice, domain::notify::Channel::Email),
+        emails_now
+    )
+    .execute(&mut *conn)
+    .await?;
+    let mut dispatched = Dispatched {
+        notified: 1,
+        ..Dispatched::default()
+    };
+    if in_app {
+        dispatched.in_app.push(account);
+    }
+    if emails_now {
+        let tenant = sqlx::query!("SELECT slug, name FROM tenant WHERE id = app_current_tenant()")
+            .fetch_one(&mut *conn)
+            .await?;
+        let job = EmailJob {
+            to: recipient.email.clone(),
+            locale: recipient.locale.clone(),
+            message: EmailMessage::BulkDone {
+                tenant_name: tenant.name,
+                kind,
+                total: count("total"),
+                changed: count("changed"),
+                refused: count("refused"),
+                link: link_of(&tenant.slug, &format!("bulk-actions/{}", pending.aggregate_id)),
             },
         };
         let payload = serde_json::to_value(&job).map_err(|e| sqlx::Error::Encode(Box::new(e)))?;

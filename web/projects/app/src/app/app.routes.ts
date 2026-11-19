@@ -75,6 +75,12 @@ export const routes: Routes = [
         loadComponent: () => import('./boards/boards-page').then((m) => m.BoardsPage),
       },
       {
+        // The report of a bulk action, where its notification leads.
+        path: 'bulk-actions/:id',
+        title: 'bulk.report.page',
+        loadComponent: () => import('./bulk/bulk-action-page').then((m) => m.BulkActionPage),
+      },
+      {
         // An export of the member's, where its notification leads.
         path: 'exports/:id',
         title: 'exports.title',

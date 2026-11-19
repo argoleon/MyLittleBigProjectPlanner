@@ -3,9 +3,10 @@
 
 
 /**
- * What notifies a member: an event of a ticket, or their export ready.
+ * What notifies a member: an event of a ticket, or something of their own
+ * (an export ready, a bulk action done).
  * (The rules of a configuration name the ticket events only:
  * `NotificationEvent`.)
  */
-export type MemberNotificationEvent = 'created' | 'assigned' | 'status_changed' | 'commented' | 'mentioned' | 'export_ready';
+export type MemberNotificationEvent = 'created' | 'assigned' | 'status_changed' | 'commented' | 'mentioned' | 'export_ready' | 'bulk_done';
 

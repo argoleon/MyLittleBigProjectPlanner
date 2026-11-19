@@ -24,7 +24,8 @@ use crate::tenant::{AppState, TenantTx};
 
 const TAG: &str = "notifications";
 
-/// What notifies a member: an event of a ticket, or their export ready.
+/// What notifies a member: an event of a ticket, or something of their own
+/// (an export ready, a bulk action done).
 /// (The rules of a configuration name the ticket events only:
 /// `NotificationEvent`.)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, ToSchema)]
@@ -37,6 +38,7 @@ pub enum EventView {
     Commented,
     Mentioned,
     ExportReady,
+    BulkDone,
 }
 
 impl From<Notice> for EventView {
@@ -48,6 +50,7 @@ impl From<Notice> for EventView {
             Notice::Ticket(Event::Commented) => Self::Commented,
             Notice::Ticket(Event::Mentioned) => Self::Mentioned,
             Notice::ExportReady => Self::ExportReady,
+            Notice::BulkDone => Self::BulkDone,
         }
     }
 }
@@ -61,6 +64,7 @@ impl From<EventView> for Notice {
             EventView::Commented => Self::Ticket(Event::Commented),
             EventView::Mentioned => Self::Ticket(Event::Mentioned),
             EventView::ExportReady => Self::ExportReady,
+            EventView::BulkDone => Self::BulkDone,
         }
     }
 }
@@ -93,6 +97,9 @@ pub struct NotificationView {
     /// The export ready (`export_ready`).
     #[schema(required = true)]
     export: Option<ExportRefView>,
+    /// The bulk action done (`bulk_done`).
+    #[schema(required = true)]
+    bulk: Option<BulkRefView>,
     /// Who made the change; "Deleted user #N" once erased.
     #[schema(required = true)]
     actor_name: Option<String>,
@@ -116,6 +123,20 @@ pub struct ExportRefView {
     #[schema(example = "search-2026-11-18.csv")]
     file_name: String,
     rows: i64,
+}
+
+/// A bulk action a notification is about.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(as = NotificationBulk)]
+pub struct BulkRefView {
+    id: Uuid,
+    /// `modify`, `transition` or `move`.
+    kind: String,
+    total: i64,
+    changed: i64,
+    unchanged: i64,
+    refused: i64,
 }
 
 /// A page of notifications.
@@ -243,6 +264,24 @@ fn view(notification: infra::notifications::Notification, locale: &str) -> Notif
                         .get("rows")
                         .and_then(serde_json::Value::as_i64)
                         .unwrap_or_default(),
+                })
+            })
+            .flatten(),
+        bulk: (notification.event == Notice::BulkDone)
+            .then(|| {
+                let count = |name: &str| {
+                    details
+                        .get(name)
+                        .and_then(serde_json::Value::as_i64)
+                        .unwrap_or_default()
+                };
+                Some(BulkRefView {
+                    id: text("bulkId")?.parse().ok()?,
+                    kind: text("kind").unwrap_or_default(),
+                    total: count("total"),
+                    changed: count("changed"),
+                    unchanged: count("unchanged"),
+                    refused: count("refused"),
                 })
             })
             .flatten(),

@@ -95,23 +95,27 @@ pub fn one_per_recipient(events: &[(Event, BTreeSet<u128>)]) -> BTreeMap<u128, E
 pub enum Notice {
     Ticket(Event),
     ExportReady,
+    /// A bulk action run in the background is done (L06-US08).
+    BulkDone,
 }
 
 impl Notice {
     /// Every notice, in display order: the ticket events, then the others.
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 7] = [
         Self::Ticket(Event::Created),
         Self::Ticket(Event::Assigned),
         Self::Ticket(Event::StatusChanged),
         Self::Ticket(Event::Commented),
         Self::Ticket(Event::Mentioned),
         Self::ExportReady,
+        Self::BulkDone,
     ];
 
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Ticket(event) => event.as_str(),
             Self::ExportReady => "export_ready",
+            Self::BulkDone => "bulk_done",
         }
     }
 
@@ -411,7 +415,8 @@ mod tests {
                 "status_changed",
                 "commented",
                 "mentioned",
-                "export_ready"
+                "export_ready",
+                "bulk_done"
             ]
         );
         for notice in Notice::ALL {

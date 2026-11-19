@@ -155,7 +155,7 @@ describe('the search screen', () => {
     expect(request.request.body).toEqual({ query: 'status = todo', limit: 50 });
     expect(field().value).toBe('status = todo');
     expect(text(page().querySelector('.subtitle'))).toBe('Results: 2');
-    expect(texts('th')).toEqual(['Key', 'Summary', 'Type', 'Status', 'Assignee', 'Priority', 'Due']);
+    expect(texts('th:not(.select)')).toEqual(['Key', 'Summary', 'Type', 'Status', 'Assignee', 'Priority', 'Due']);
     expect(texts('td.key a')).toEqual(['PLAT-1', 'PLAT-2']);
     expect(page().querySelector('td.key a')?.getAttribute('href')).toBe('/issues/PLAT-1');
     expect(texts('tr.mat-mdc-row')[0]).toContain('Lucas Bernard');
@@ -254,7 +254,7 @@ describe('the search screen', () => {
     expect((choices[0] as HTMLButtonElement).disabled).toBe(true);
     await click(choices.find((c) => c.textContent?.includes('Reporter')));
     await click(choices.find((c) => c.textContent?.includes('Type')));
-    expect(texts('th')).toEqual(['Key', 'Summary', 'Status', 'Assignee', 'Reporter', 'Priority', 'Due']);
+    expect(texts('th:not(.select)')).toEqual(['Key', 'Summary', 'Status', 'Assignee', 'Reporter', 'Priority', 'Due']);
     expect(JSON.parse(localStorage.getItem('mlbpp.search.columns') ?? '[]')).toEqual([
       'key',
       'summary',
@@ -285,6 +285,59 @@ describe('the search screen', () => {
     asked!.flush({ id: 'e1', fileName: 'search.csv', format: 'csv', status: 'queued', downloadPath: null }, { status: 202, statusText: 'Accepted' });
     await settle();
     expect(page().querySelector('app-export-menu [role="status"]')).not.toBeNull();
+  });
+
+  it('selects tickets, then all the results of the query, for a bulk action', async () => {
+    const { searched, page, root, text, texts, click, replied } = await open('/search?q=status%20%3D%20todo');
+    const first = Array.from({ length: 3 }, (_, i) => result(i + 1));
+    await searched({ items: first, nextCursor: null, total: 120 });
+    expect(page().querySelector('.bulk-bar')).toBeNull();
+    // One row ticked: the bar, with its count.
+    await click(page().querySelector('td.select mat-checkbox input'));
+    expect(text(page().querySelector('.bulk-count'))).toBe('1 selected');
+    expect(page().querySelector('button.select-all')).toBeNull();
+    // Every loaded row ticked: all the results offered, then chosen.
+    await click(page().querySelector('th.select mat-checkbox input'));
+    expect(text(page().querySelector('.bulk-count'))).toBe('3 selected');
+    await click(page().querySelector('button.select-all'));
+    expect(text(page().querySelector('.bulk-count'))).toBe('120 selected');
+    expect(await axeViolations(page())).toEqual([]);
+    // Change status: the dialog asks the options of the query.
+    await click(page().querySelector('button.bulk-status'));
+    const asked = await replied((url, method) => url === '/api/v1/bulk-actions/options' && method === 'POST', {
+      total: 120,
+      background: true,
+      projectKey: 'PLAT',
+      fields: [],
+      statuses: [{ key: 'done', label: 'Done', category: 'done', reachable: 120 }],
+    });
+    expect(asked.request.body).toEqual({ query: 'status = todo' });
+    await click(root().querySelector('mat-dialog-container mat-radio-button input'));
+    await click(root().querySelector('mat-dialog-container button.confirm'));
+    const run = await replied((url, method) => url === '/api/v1/bulk-actions' && method === 'POST', {
+      id: 'b1',
+      kind: 'transition',
+      status: 'running',
+      background: true,
+      total: 120,
+      counts: { changed: 0, unchanged: 0, refused: 0, withParent: 0, waiting: 120 },
+      items: [],
+      createdAt: '2026-11-19T09:00:00Z',
+      completedAt: null,
+      expiresAt: '2026-11-26T09:00:00Z',
+    }, 202);
+    expect(run.request.body).toEqual({ selection: { query: 'status = todo' }, action: { kind: 'transition', statusKey: 'done' } });
+    // Running in the background: said so, with where to follow it; the search run again.
+    await searched({ items: first, nextCursor: null, total: 120 });
+    expect(text(page().querySelector('.bulk-running'))).toBe('120 tickets are being changed in the background: you will be notified when it is done. Follow it');
+    expect(page().querySelector('.bulk-running a')?.getAttribute('href')).toBe('/bulk-actions/b1');
+    // The search run again starts with nothing selected; the selection can also be cleared.
+    expect(page().querySelector('.bulk-bar')).toBeNull();
+    await click(page().querySelector('td.select mat-checkbox input'));
+    expect(text(page().querySelector('.bulk-count'))).toBe('1 selected');
+    await click(page().querySelector('button.bulk-clear'));
+    expect(page().querySelector('.bulk-bar')).toBeNull();
+    expect(texts('td.key a')).toEqual(['PLAT-1', 'PLAT-2', 'PLAT-3']);
   });
 
   it('says when nothing matches, and when the search failed', async () => {

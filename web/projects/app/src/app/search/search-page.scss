@@ -158,3 +158,41 @@
 app-query-builder {
   margin: var(--app-space-4) 0 var(--app-space-2);
 }
+
+// The selection's actions (mockup 15), above the results.
+.bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--app-space-2);
+  margin-bottom: var(--app-space-2);
+  padding: var(--app-space-2) var(--app-space-3);
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+}
+
+.bulk-count {
+  font: var(--mat-sys-title-small);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.select {
+  width: 48px;
+}
+
+.message.info {
+  margin: 0 0 var(--app-space-2);
+  padding: var(--app-space-2) var(--app-space-3);
+  border-radius: var(--mat-sys-corner-small);
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  font: var(--mat-sys-body-medium);
+
+  a {
+    color: inherit;
+  }
+}

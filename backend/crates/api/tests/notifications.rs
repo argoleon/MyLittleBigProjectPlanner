@@ -529,6 +529,7 @@ async fn preferences_have_defaults_apply_everywhere_and_the_digest_gathers_the_e
                 {"event": "commented", "inApp": true, "email": false},
                 {"event": "mentioned", "inApp": true, "email": true},
                 {"event": "export_ready", "inApp": true, "email": false},
+                {"event": "bulk_done", "inApp": true, "email": false},
             ],
             "dailyDigest": false
         })
