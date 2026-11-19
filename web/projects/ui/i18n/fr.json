@@ -535,6 +535,9 @@
     },
     "query": {
       "invalid": "La requête ne peut pas être exécutée."
+    },
+    "bulk": {
+      "too_many": "Plus de tickets qu’une action groupée n’en prend (10 000)."
     }
   },
   "dialog": {
@@ -1690,7 +1693,8 @@
       "status_changed": "Changements de statut",
       "commented": "Commentaires",
       "created": "Nouveaux tickets",
-      "export_ready": "Exports"
+      "export_ready": "Exports",
+      "bulk_done": "Actions groupées"
     },
     "empty": "Aucune notification.",
     "more": "Voir les notifications plus anciennes",
@@ -1708,7 +1712,8 @@
       "status_changed": "{{ actor }} a passé {{ key }} à {{ status }}",
       "commented": "{{ actor }} a commenté {{ key }}",
       "created": "{{ actor }} a créé {{ key }}",
-      "export_ready": "Votre export {{ file }} est prêt"
+      "export_ready": "Votre export {{ file }} est prêt",
+      "bulk_done": "Votre {{ action }} groupé est terminé"
     },
     "preferences": {
       "title": "Préférences de notification",
@@ -1724,7 +1729,8 @@
         "status_changed": "Changement de statut",
         "commented": "Nouveau commentaire",
         "mentioned": "Mentions",
-        "export_ready": "Export prêt"
+        "export_ready": "Export prêt",
+        "bulk_done": "Action groupée terminée"
       },
       "digest": "Résumé quotidien par email",
       "digestHint": "Chaque jour ouvré à 8 h, au lieu d’un email par événement."
@@ -2026,6 +2032,95 @@
       "queryInvalid": "La requête ne s’exécute plus (un champ qu’elle nomme a été supprimé) : exportez de nouveau depuis la liste.",
       "tooLarge": "La requête trouve désormais plus de 100 000 tickets : affinez-la et exportez de nouveau.",
       "unknown": "L’export a échoué : réessayez."
+    }
+  },
+  "bulk": {
+    "bar": "Actions sur les tickets sélectionnés",
+    "selected": "{{ count }} sélectionnés",
+    "selectAll": "Sélectionner les {{ count }} résultats",
+    "selectLoaded": "Sélectionner les tickets chargés",
+    "selectRow": "Sélectionner {{ key }}",
+    "clear": "Vider la sélection",
+    "actions": {
+      "modify": "Modifier",
+      "status": "Changer le statut",
+      "move": "Déplacer"
+    },
+    "running": "{{ count }} tickets sont modifiés en arrière-plan : vous serez notifié à la fin.",
+    "follow": "Suivre",
+    "kinds": {
+      "modify": "modification",
+      "transition": "changement de statut",
+      "move": "déplacement"
+    },
+    "outcomes": {
+      "changed": "Modifié",
+      "unchanged": "Déjà ainsi",
+      "refused": "Laissé tel quel",
+      "with_parent": "Déplacé avec son parent",
+      "waiting": "En attente"
+    },
+    "reasons": {
+      "not_found": "Introuvable ou plus visible",
+      "permission_denied": "Vous ne pouvez pas le modifier",
+      "node_archived": "Son projet est archivé",
+      "validation_failed": "Une valeur est refusée",
+      "transition_none": "Aucune transition de son workflow n’y mène",
+      "transition_restricted": "Vous ne pouvez pas lancer la transition",
+      "issue_subtask_moves": "Une sous-tâche se déplace avec son parent seulement",
+      "move_not_mapped": "Un type ou un statut n’est pas associé",
+      "unknown": "Non modifié"
+    },
+    "report": {
+      "page": "Action groupée",
+      "title": {
+        "modify": "Modification groupée",
+        "transition": "Changement de statut groupé",
+        "move": "Déplacement groupé"
+      },
+      "counts": "{{ changed }} modifiés, {{ unchanged }} déjà ainsi, {{ refused }} laissés tels quels",
+      "waiting": "{{ count }} en attente",
+      "caption": "Ce qu’il est advenu de chaque ticket",
+      "ticket": "Ticket",
+      "outcome": "Résultat",
+      "movedTo": "Déplacé : {{ key }}",
+      "running": "Toujours en cours : cette page le relit.",
+      "gone": "Ce rapport a expiré (les rapports sont gardés 7 jours) ou n’est pas le vôtre."
+    },
+    "status": {
+      "title": "Changer le statut de {{ count }} tickets",
+      "hint": "Chaque ticket lance la transition de son propre workflow qui mène au statut choisi ; ceux qui ne peuvent l’atteindre sont signalés.",
+      "none": "Aucune transition ne mène les tickets sélectionnés ailleurs.",
+      "reach": "{{ count }} sur {{ total }}",
+      "confirm": "Changer le statut"
+    },
+    "modify": {
+      "title": "Modifier {{ count }} tickets",
+      "hint": "Seul ce que vous choisissez de changer est appliqué, sur chaque ticket ; chacun est vérifié selon ses propres règles.",
+      "priority": "Priorité",
+      "keep": "Conserver",
+      "assignee": "Responsable",
+      "assigneeNew": "Nouveau responsable",
+      "startDate": "Date de début",
+      "startDateNew": "Nouvelle date de début",
+      "dueDate": "Échéance",
+      "dueDateNew": "Nouvelle échéance",
+      "modes": {
+        "keep": "Conserver",
+        "set": "Définir",
+        "clear": "Effacer"
+      },
+      "fields": "Champs personnalisés",
+      "changeField": "Changer {{ field }}",
+      "noFields": "Les tickets sélectionnés ne partagent aucun champ personnalisé (ils relèvent de plusieurs configurations, ou n’en ont pas).",
+      "nothing": "Choisissez quelque chose à changer.",
+      "confirm": "Modifier {{ count }} tickets"
+    },
+    "move": {
+      "title": "Déplacer {{ count }} tickets",
+      "tickets": "{{ count }} tickets se déplacent (leurs sous-tâches les suivent).",
+      "subtasksAlone": "{{ count }} sous-tâches sélectionnées sans leur parent restent où elles sont.",
+      "confirm": "Déplacer {{ count }} tickets"
     }
   }
 }

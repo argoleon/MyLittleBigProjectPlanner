@@ -99,6 +99,35 @@
     } @else if (rows().length === 0) {
       <ui-empty-state icon="search_off" [title]="'search.empty' | transloco" [message]="'search.emptyHint' | transloco" />
     } @else {
+      @if (bulkRunning(); as running) {
+        <p class="message info bulk-running" role="status">
+          {{ 'bulk.running' | transloco: { count: running.total } }}
+          <a [routerLink]="['/bulk-actions', running.id]">{{ 'bulk.follow' | transloco }}</a>
+        </p>
+      }
+      @if (selectedCount() > 0) {
+        <div class="bulk-bar" role="toolbar" [attr.aria-label]="'bulk.bar' | transloco">
+          <span class="bulk-count" role="status">{{ 'bulk.selected' | transloco: { count: selectedCount() } }}</span>
+          @if (allLoaded() && !allResults() && (total() ?? 0) > rows().length) {
+            <button matButton type="button" class="select-all" (click)="selectAllResults()">
+              {{ 'bulk.selectAll' | transloco: { count: total() } }}
+            </button>
+          }
+          <span class="spacer"></span>
+          <button matButton="tonal" type="button" class="bulk-modify" (click)="bulk('modify')">
+            <mat-icon aria-hidden="true">edit</mat-icon>{{ 'bulk.actions.modify' | transloco }}
+          </button>
+          <button matButton="tonal" type="button" class="bulk-status" (click)="bulk('status')">
+            <mat-icon aria-hidden="true">swap_horiz</mat-icon>{{ 'bulk.actions.status' | transloco }}
+          </button>
+          <button matButton="tonal" type="button" class="bulk-move" (click)="bulk('move')">
+            <mat-icon aria-hidden="true">drive_file_move</mat-icon>{{ 'bulk.actions.move' | transloco }}
+          </button>
+          <button matIconButton type="button" class="bulk-clear" [attr.aria-label]="'bulk.clear' | transloco" (click)="clearSelection()">
+            <mat-icon aria-hidden="true">close</mat-icon>
+          </button>
+        </div>
+      }
       <div class="table-card">
         <cdk-virtual-scroll-viewport class="viewport" tabindex="0" [itemSize]="rowHeight" [attr.aria-label]="'search.results' | transloco">
           <table
@@ -113,6 +142,26 @@
             (matSortChange)="sortBy($event)"
           >
             <caption class="cdk-visually-hidden">{{ 'search.caption' | transloco }}</caption>
+
+            <ng-container matColumnDef="select">
+              <th mat-header-cell *matHeaderCellDef scope="col" class="select">
+                <mat-checkbox
+                  class="select-loaded"
+                  [checked]="allLoaded()"
+                  [indeterminate]="selected().size > 0 && !allLoaded()"
+                  [aria-label]="'bulk.selectLoaded' | transloco"
+                  (change)="toggleLoaded($event.checked)"
+                />
+              </th>
+              <td mat-cell *matCellDef="let row" class="select">
+                <mat-checkbox
+                  class="select-row"
+                  [checked]="allResults() || selected().has(row.id)"
+                  [aria-label]="'bulk.selectRow' | transloco: { key: row.key }"
+                  (change)="toggleRow(row.id, $event.checked)"
+                />
+              </td>
+            </ng-container>
 
             <ng-container matColumnDef="key">
               <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ 'search.columns.key' | transloco }}</th>
@@ -180,8 +229,8 @@
               <td mat-cell *matCellDef="let row">{{ row.updatedAt | instant: { dateStyle: 'medium' } }}</td>
             </ng-container>
 
-            <tr mat-header-row *matHeaderRowDef="columns(); sticky: true" aria-rowindex="1"></tr>
-            <tr mat-row *matRowDef="let row; columns: columns(); let i = index" [attr.aria-rowindex]="i + 2"></tr>
+            <tr mat-header-row *matHeaderRowDef="tableColumns(); sticky: true" aria-rowindex="1"></tr>
+            <tr mat-row *matRowDef="let row; columns: tableColumns(); let i = index" [attr.aria-rowindex]="i + 2"></tr>
           </table>
         </cdk-virtual-scroll-viewport>
       </div>

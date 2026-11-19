@@ -20,6 +20,12 @@ export interface BulkOptions {
   fields: Array<IssueFormField>;
 
   /**
+   * The project of the first ticket: whose members to suggest as
+   * assignee (any active member is taken).
+   */
+  projectKey?: (string | null);
+
+  /**
    * The statuses a transition reaches from some selected ticket.
    */
   statuses: Array<BulkStatusOption>;

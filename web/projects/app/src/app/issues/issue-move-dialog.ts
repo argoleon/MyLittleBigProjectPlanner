@@ -30,22 +30,30 @@ import {
 /** How the move dialog closes: the ticket moved, or a reload asked for after a conflict. */
 export type MoveOutcome = { readonly moved: Issue } | { readonly reload: true };
 
-type Mappings = Readonly<Record<string, string>>;
+export type Mappings = Readonly<Record<string, string>>;
 
 /** The mappings to send. */
-function toBody(mappings: Mappings): IssueMoveMapping[] {
+export function toBody(mappings: Mappings): IssueMoveMapping[] {
   return Object.entries(mappings).map(([fromId, toId]) => ({ fromId, toId }));
 }
 
 /** The target types a type need may map to: the ticket's own to a type that is no sub-task, a sub-task's to a sub-task type allowed under it. */
-export function typeTargets(plan: IssueMovePlan, need: IssueMoveTypeNeed, rootTarget: string | null): IssueMoveTypeTarget[] {
+export function typeTargets(
+  plan: Pick<IssueMovePlan, 'targets'>,
+  need: IssueMoveTypeNeed,
+  rootTarget: string | null,
+): IssueMoveTypeTarget[] {
   return plan.targets.filter((t) =>
     need.isSubtask ? t.isSubtask && (rootTarget === null || t.parentIds.includes(rootTarget)) : !t.isSubtask,
   );
 }
 
 /** The target statuses a status need may map to: those of the workflows of its tickets' new types. */
-export function statusTargets(plan: IssueMovePlan, need: IssueMoveStatusNeed, types: Mappings): IssueMoveStatusTarget[] {
+export function statusTargets(
+  plan: Pick<IssueMovePlan, 'targets' | 'statusTargets'>,
+  need: IssueMoveStatusNeed,
+  types: Mappings,
+): IssueMoveStatusTarget[] {
   const ids = new Set(
     need.typeIds.flatMap((typeId) => plan.targets.find((t) => t.id === (types[typeId] ?? typeId))?.statusIds ?? []),
   );

@@ -535,6 +535,9 @@
     },
     "query": {
       "invalid": "The query cannot be run."
+    },
+    "bulk": {
+      "too_many": "More tickets than a bulk action takes (10,000)."
     }
   },
   "dialog": {
@@ -1690,7 +1693,8 @@
       "status_changed": "Status changes",
       "commented": "Comments",
       "created": "New tickets",
-      "export_ready": "Exports"
+      "export_ready": "Exports",
+      "bulk_done": "Bulk actions"
     },
     "empty": "No notification.",
     "more": "Show older notifications",
@@ -1708,7 +1712,8 @@
       "status_changed": "{{ actor }} moved {{ key }} to {{ status }}",
       "commented": "{{ actor }} commented on {{ key }}",
       "created": "{{ actor }} created {{ key }}",
-      "export_ready": "Your export {{ file }} is ready"
+      "export_ready": "Your export {{ file }} is ready",
+      "bulk_done": "Your bulk {{ action }} is done"
     },
     "preferences": {
       "title": "Notification preferences",
@@ -1724,7 +1729,8 @@
         "status_changed": "Status change",
         "commented": "New comment",
         "mentioned": "Mentions",
-        "export_ready": "Export ready"
+        "export_ready": "Export ready",
+        "bulk_done": "Bulk action done"
       },
       "digest": "Daily email digest",
       "digestHint": "Each working day at 8:00, instead of one email per event."
@@ -2026,6 +2032,95 @@
       "queryInvalid": "The query no longer runs (a field it names was deleted): export again from the list.",
       "tooLarge": "The query now finds more than 100,000 tickets: narrow it and export again.",
       "unknown": "The export failed: try again."
+    }
+  },
+  "bulk": {
+    "bar": "Actions on the selected tickets",
+    "selected": "{{ count }} selected",
+    "selectAll": "Select all {{ count }} results",
+    "selectLoaded": "Select the loaded tickets",
+    "selectRow": "Select {{ key }}",
+    "clear": "Clear the selection",
+    "actions": {
+      "modify": "Modify",
+      "status": "Change status",
+      "move": "Move"
+    },
+    "running": "{{ count }} tickets are being changed in the background: you will be notified when it is done.",
+    "follow": "Follow it",
+    "kinds": {
+      "modify": "modification",
+      "transition": "status change",
+      "move": "move"
+    },
+    "outcomes": {
+      "changed": "Changed",
+      "unchanged": "Already so",
+      "refused": "Left unchanged",
+      "with_parent": "Moved with its parent",
+      "waiting": "Waiting"
+    },
+    "reasons": {
+      "not_found": "Not found or no longer visible",
+      "permission_denied": "You may not change it",
+      "node_archived": "Its project is archived",
+      "validation_failed": "A value is refused",
+      "transition_none": "No transition of its workflow leads there",
+      "transition_restricted": "You may not run the transition",
+      "issue_subtask_moves": "A sub-task moves with its parent only",
+      "move_not_mapped": "A type or status is not mapped",
+      "unknown": "Not changed"
+    },
+    "report": {
+      "page": "Bulk action",
+      "title": {
+        "modify": "Bulk modification",
+        "transition": "Bulk status change",
+        "move": "Bulk move"
+      },
+      "counts": "{{ changed }} changed, {{ unchanged }} already so, {{ refused }} left unchanged",
+      "waiting": "{{ count }} waiting",
+      "caption": "What became of each ticket",
+      "ticket": "Ticket",
+      "outcome": "Outcome",
+      "movedTo": "Moved: {{ key }}",
+      "running": "Still running: this page reads it again.",
+      "gone": "This report has expired (reports are kept 7 days) or is not yours."
+    },
+    "status": {
+      "title": "Change the status of {{ count }} tickets",
+      "hint": "Each ticket runs the transition of its own workflow that leads to the status chosen; those it cannot reach are reported.",
+      "none": "No transition leads the selected tickets anywhere.",
+      "reach": "{{ count }} of {{ total }}",
+      "confirm": "Change the status"
+    },
+    "modify": {
+      "title": "Modify {{ count }} tickets",
+      "hint": "Only what you choose to change is set, on every ticket; each one is checked against its own rules.",
+      "priority": "Priority",
+      "keep": "Keep",
+      "assignee": "Assignee",
+      "assigneeNew": "New assignee",
+      "startDate": "Start date",
+      "startDateNew": "New start date",
+      "dueDate": "Due date",
+      "dueDateNew": "New due date",
+      "modes": {
+        "keep": "Keep",
+        "set": "Set",
+        "clear": "Clear"
+      },
+      "fields": "Custom fields",
+      "changeField": "Change {{ field }}",
+      "noFields": "The selected tickets share no custom field (they belong to several configurations, or have none).",
+      "nothing": "Choose something to change.",
+      "confirm": "Modify {{ count }} tickets"
+    },
+    "move": {
+      "title": "Move {{ count }} tickets",
+      "tickets": "{{ count }} tickets move (their sub-tasks follow them).",
+      "subtasksAlone": "{{ count }} sub-tasks selected without their parent stay where they are.",
+      "confirm": "Move {{ count }} tickets"
     }
   }
 }

@@ -18738,6 +18738,13 @@
             },
             "description": "The custom fields every selected ticket has (one configuration)."
           },
+          "projectKey": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The project of the first ticket: whose members to suggest as\nassignee (any active member is taken)."
+          },
           "statuses": {
             "type": "array",
             "items": {

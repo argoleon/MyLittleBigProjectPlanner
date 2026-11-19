@@ -1,0 +1,63 @@
+.note {
+  margin: 0 0 var(--app-space-3);
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.statuses {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-1);
+}
+
+.reach {
+  margin-left: var(--app-space-2);
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-2);
+  padding-top: var(--app-space-2);
+}
+
+.change {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--app-space-2) var(--app-space-3);
+
+  mat-form-field,
+  app-people-picker,
+  app-field-input {
+    flex: 1 1 260px;
+  }
+}
+
+.section {
+  margin: var(--app-space-3) 0 var(--app-space-1);
+  font: var(--mat-sys-title-small);
+}
+
+.message {
+  margin: 0 0 var(--app-space-3);
+  padding: var(--app-space-3) var(--app-space-4);
+  border-radius: var(--mat-sys-corner-small);
+  font: var(--mat-sys-body-medium);
+
+  &.error {
+    background: var(--mat-sys-error-container);
+    color: var(--mat-sys-on-error-container);
+  }
+
+  &.warning {
+    background: var(--mat-sys-tertiary-container);
+    color: var(--mat-sys-on-tertiary-container);
+  }
+}
+
+.field-error {
+  color: var(--mat-sys-error);
+}

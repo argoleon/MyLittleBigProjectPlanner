@@ -23,6 +23,8 @@ import { Router, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import {
   Api,
+  BulkAction,
+  BulkSelection,
   EmptyState,
   ErrorState,
   InstantPipe,
@@ -43,6 +45,13 @@ import { chipCategory, chipKind } from '../issues/issue-fields';
 import { Criteria, NO_CRITERIA, criteriaOf, queryOf } from './criteria';
 import { QueryBuilder } from './query-builder';
 import { QueryEditor } from './query-editor';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+
+import { BulkDialogData } from '../bulk/bulk-flow';
+import { BulkModifyDialog } from '../bulk/bulk-modify-dialog';
+import { BulkMoveDialog } from '../bulk/bulk-move-dialog';
+import { BulkReportDialog } from '../bulk/bulk-report-dialog';
+import { BulkStatusDialog } from '../bulk/bulk-status-dialog';
 import { ExportMenu } from '../exports/export-menu';
 import { QueryErrorMessage, queryErrorMessage } from './query-error';
 import { orderByIndex, sortOf, withSort } from './query-order';
@@ -129,6 +138,7 @@ function storedColumns(): readonly string[] {
     EmptyState,
     ErrorState,
     ExportMenu,
+    MatCheckboxModule,
     InstantPipe,
     LocalDatePipe,
     MatButtonModule,
@@ -237,6 +247,19 @@ export class SearchPage {
   protected readonly loadError = computed(() => (this.queryError() ? null : this.first.error()));
 
   protected readonly columns = signal<readonly string[]>(storedColumns());
+  /** The columns of the table: the selection's, then those chosen. */
+  protected readonly tableColumns = computed(() => ['select', ...this.columns()]);
+  /** The tickets ticked, by id. */
+  protected readonly selected = signal<ReadonlySet<string>>(new Set());
+  /** Every result of the query is selected, loaded or not. */
+  protected readonly allResults = signal(false);
+  protected readonly selectedCount = computed(() =>
+    this.allResults() ? (this.total() ?? this.rows().length) : this.selected().size,
+  );
+  /** Every loaded row is ticked. */
+  protected readonly allLoaded = computed(() => this.rows().length > 0 && this.rows().every((r) => this.selected().has(r.id)));
+  /** What the last bulk action left to say: running in the background. */
+  protected readonly bulkRunning = signal<BulkAction | null>(null);
   /** The column the query sorts by, if one of them. */
   protected readonly sort = computed(() => {
     const sort = sortOf(this.ran());
@@ -250,6 +273,8 @@ export class SearchPage {
       const query = this.ran();
       this.runs();
       untracked(() => {
+        this.selected.set(new Set());
+        this.allResults.set(false);
         this.draft.set(query);
         if (this.mode() === 'builder') void this.showInBuilder(query);
         this.more.set([]);
@@ -351,6 +376,55 @@ export class SearchPage {
   }
 
   /** Shows or hides `column`; the key always stays. */
+  protected toggleRow(id: string, checked: boolean): void {
+    this.allResults.set(false);
+    this.selected.update((set) => {
+      const next = new Set(set);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  /** Ticks or unticks every loaded row. */
+  protected toggleLoaded(checked: boolean): void {
+    this.allResults.set(false);
+    this.selected.set(checked ? new Set(this.rows().map((r) => r.id)) : new Set());
+  }
+
+  protected selectAllResults(): void {
+    this.allResults.set(true);
+  }
+
+  protected clearSelection(): void {
+    this.allResults.set(false);
+    this.selected.set(new Set());
+  }
+
+  /** The selection as the API takes it. */
+  private selection(): BulkSelection {
+    return this.allResults() ? { query: this.ran() } : { issueIds: [...this.selected()] };
+  }
+
+  /** Opens the dialog of a bulk action; once done, the report, or word that it runs in the background. */
+  protected bulk(action: 'modify' | 'status' | 'move'): void {
+    const data: BulkDialogData = { selection: this.selection(), count: this.selectedCount() };
+    const component = action === 'modify' ? BulkModifyDialog : action === 'status' ? BulkStatusDialog : BulkMoveDialog;
+    this.bulkRunning.set(null);
+    this.dialog
+      .open<unknown, BulkDialogData, BulkAction>(component, { data, width: 'min(720px, 100vw)', autoFocus: 'first-tabbable' })
+      .afterClosed()
+      .subscribe((done) => {
+        if (!done) return;
+        this.runs.update((n) => n + 1);
+        if (done.status === 'done') {
+          this.dialog.open(BulkReportDialog, { data: done, width: 'min(720px, 100vw)' });
+        } else {
+          this.bulkRunning.set(done);
+        }
+      });
+  }
+
   protected toggle(column: string): void {
     if (column === 'key') return;
     const shown = new Set(this.columns());

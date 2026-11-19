@@ -148,6 +148,9 @@ pub struct OptionsView {
     fields: Vec<FormFieldView>,
     /// The statuses a transition reaches from some selected ticket.
     statuses: Vec<StatusOptionView>,
+    /// The project of the first ticket: whose members to suggest as
+    /// assignee (any active member is taken).
+    project_key: Option<String>,
 }
 
 /// What moving a selection to a project takes.
@@ -403,6 +406,14 @@ pub async fn options(
     for project in issues.iter().map(|i| i.project_id).collect::<BTreeSet<_>>() {
         contents.insert(project, Content::of(&mut tx, project).await?);
     }
+    let project_key = match issues.first() {
+        Some(first) => infra::search::projects_of(&mut tx, &[first.project_id])
+            .await?
+            .into_iter()
+            .next()
+            .map(|p| p.key),
+        None => None,
+    };
     tx.commit().await?;
 
     // The fields each ticket's type has; their ids are those of its
@@ -481,6 +492,7 @@ pub async fn options(
         .map(|(view, reachable)| StatusOptionView { reachable, ..view })
         .collect();
     let mut response = ApiJson(OptionsView {
+        project_key,
         total: issues.len(),
         background: run_of(issues.len()) == Run::Background,
         fields,

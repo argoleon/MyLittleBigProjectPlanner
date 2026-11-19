@@ -36,6 +36,7 @@ const notification = (id: string, rest: Partial<MemberNotification>): MemberNoti
   status: null,
   excerpt: null,
   export: null,
+  bulk: null,
   read: false,
   createdAt: hoursAgo(0.1),
   ...rest,
@@ -49,6 +50,16 @@ const EXPORT_READY = notification('n4', {
   issueSummary: null,
   actorName: null,
   export: { id: 'e1', fileName: 'search-2026-11-18.csv', rows: 20001 },
+});
+
+/** A bulk action of the member's done in the background: no ticket. */
+const BULK_DONE = notification('n5', {
+  event: 'bulk_done',
+  issueId: null,
+  issueKey: null,
+  issueSummary: null,
+  actorName: null,
+  bulk: { id: 'b1', kind: 'transition', total: 250, changed: 240, unchanged: 4, refused: 6 },
 });
 
 const ITEMS: MemberNotification[] = [
@@ -65,6 +76,7 @@ const PREFERENCES: NotificationPreferences = {
     { event: 'commented', inApp: true, email: false },
     { event: 'mentioned', inApp: true, email: true },
     { event: 'export_ready', inApp: true, email: false },
+    { event: 'bulk_done', inApp: true, email: true },
   ],
   dailyDigest: false,
 };
@@ -184,6 +196,19 @@ describe('the notifications page', () => {
     await settle();
     expect(navigate).toHaveBeenCalledWith(['/exports', 'e1']);
     expect(root.querySelector<HTMLInputElement>('input[aria-label="Export ready by email"]')?.checked).toBe(false);
+  });
+
+  it('shows a bulk action done, and opens its report', async () => {
+    const { root, click, reply, settle, texts } = await open([BULK_DONE]);
+    expect(texts('.item .what')).toEqual(['Your bulk status change is done (unread)']);
+    expect(texts('.item .detail')).toEqual(['240 changed, 4 already so, 6 left unchanged']);
+    expect(root.querySelector('.item mat-icon')?.textContent).toBe('library_add_check');
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    await click(root.querySelector('.item'));
+    await reply((url, method) => url === '/api/v1/me/notifications/read' && method === 'POST', { total: 0, byTenant: [] });
+    await settle();
+    expect(navigate).toHaveBeenCalledWith(['/bulk-actions', 'b1']);
+    expect(root.querySelector<HTMLInputElement>('input[aria-label="Bulk action done by email"]')?.checked).toBe(true);
   });
 
   it("opens another organization's notification in that organization", async () => {

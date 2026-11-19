@@ -1,0 +1,22 @@
+:host {
+  display: block;
+  max-width: 960px;
+}
+
+.title {
+  margin: 0 0 var(--app-space-4);
+  font: var(--mat-sys-headline-medium);
+}
+
+.note {
+  margin: 0 0 var(--app-space-3);
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.message {
+  padding: var(--app-space-3) var(--app-space-4);
+  border-radius: var(--mat-sys-corner-small);
+  background: var(--mat-sys-surface-container-high);
+  font: var(--mat-sys-body-medium);
+}

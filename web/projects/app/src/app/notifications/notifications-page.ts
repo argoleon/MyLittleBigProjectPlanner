@@ -30,7 +30,7 @@ import { NotificationCenter } from './notification-center';
 export const NOTIFICATION_PAGE = 30;
 
 /** The kinds of notification a member filters on. */
-export const KINDS: readonly MemberNotificationEvent[] = ['mentioned', 'assigned', 'status_changed', 'commented', 'created', 'export_ready'];
+export const KINDS: readonly MemberNotificationEvent[] = ['mentioned', 'assigned', 'status_changed', 'commented', 'created', 'export_ready', 'bulk_done'];
 
 const ICONS: Record<MemberNotificationEvent, string> = {
   mentioned: 'alternate_email',
@@ -39,6 +39,7 @@ const ICONS: Record<MemberNotificationEvent, string> = {
   commented: 'chat',
   created: 'add_task',
   export_ready: 'download',
+  bulk_done: 'library_add_check',
 };
 
 /** When a notification came, to group them: today, the last seven days, before. */
@@ -158,7 +159,13 @@ export class NotificationsPage {
         this.items.update((items) => (items ?? []).map((n) => (n.id === notification.id ? { ...n, read: true } : n)));
       }
       if (notification.tenant.id === this.currentTenant()) {
-        await this.router.navigate(notification.export ? ['/exports', notification.export.id] : ['/issues', notification.issueKey]);
+        await this.router.navigate(
+          notification.export
+            ? ['/exports', notification.export.id]
+            : notification.bulk
+              ? ['/bulk-actions', notification.bulk.id]
+              : ['/issues', notification.issueKey],
+        );
       } else {
         await this.auth.switchTenant(notification.tenant.id);
       }
