@@ -458,6 +458,11 @@
       "name_taken": "Ce nœud a déjà un board de ce nom.",
       "no_transition": "Aucune transition du workflow ne mène à cette colonne."
     },
+    "export": {
+      "pending": "L’export n’est pas encore prêt.",
+      "too_large": "La requête trouve plus de tickets qu’un export n’en contient (100 000).",
+      "not_ready": "L’export n’est pas encore prêt."
+    },
     "permission": {
       "denied": "Vous n’avez pas la permission nécessaire."
     },
@@ -472,9 +477,6 @@
     },
     "session": {
       "current": "C’est la session en cours : déconnectez-vous plutôt."
-    },
-    "export": {
-      "pending": "L’export n’est pas encore prêt."
     },
     "node": {
       "key_taken": "Un autre portefeuille, programme ou projet de l’organisation a cette clé.",
@@ -1687,7 +1689,8 @@
       "assigned": "Affectations",
       "status_changed": "Changements de statut",
       "commented": "Commentaires",
-      "created": "Nouveaux tickets"
+      "created": "Nouveaux tickets",
+      "export_ready": "Exports"
     },
     "empty": "Aucune notification.",
     "more": "Voir les notifications plus anciennes",
@@ -1704,7 +1707,8 @@
       "assigned": "{{ actor }} vous a assigné {{ key }}",
       "status_changed": "{{ actor }} a passé {{ key }} à {{ status }}",
       "commented": "{{ actor }} a commenté {{ key }}",
-      "created": "{{ actor }} a créé {{ key }}"
+      "created": "{{ actor }} a créé {{ key }}",
+      "export_ready": "Votre export {{ file }} est prêt"
     },
     "preferences": {
       "title": "Préférences de notification",
@@ -1719,11 +1723,13 @@
         "assigned": "Ticket assigné",
         "status_changed": "Changement de statut",
         "commented": "Nouveau commentaire",
-        "mentioned": "Mentions"
+        "mentioned": "Mentions",
+        "export_ready": "Export prêt"
       },
       "digest": "Résumé quotidien par email",
       "digestHint": "Chaque jour ouvré à 8 h, au lieu d’un email par événement."
-    }
+    },
+    "exportRows": "{{ count }} lignes"
   },
   "search": {
     "title": "Recherche",
@@ -1999,6 +2005,26 @@
         "message": "Le board {{ name }} sera supprimé pour tout le monde. Ses tickets restent tels quels.",
         "confirm": "Supprimer"
       }
+    }
+  },
+  "exports": {
+    "title": "Export",
+    "button": "Exporter",
+    "csv": "Fichier CSV (.csv)",
+    "running": "Export en cours",
+    "queued": "{{ file }} est en préparation : vous serez notifié quand il sera prêt.",
+    "follow": "Le suivre",
+    "tooLarge": "Cette liste compte plus de 100 000 tickets : affinez la requête pour l’exporter.",
+    "queryInvalid": "La requête ne peut pas s’exécuter : corrigez-la avant d’exporter.",
+    "gone": "Cet export a expiré (les fichiers sont gardés 24 heures) ou n’est pas le vôtre.",
+    "ready": "Prêt : {{ count }} lignes.",
+    "expires": "Il peut être téléchargé jusqu’au {{ at }}, par vous seul.",
+    "download": "Télécharger",
+    "preparing": "En préparation : vous serez notifié quand il sera prêt.",
+    "failure": {
+      "queryInvalid": "La requête ne s’exécute plus (un champ qu’elle nomme a été supprimé) : exportez de nouveau depuis la liste.",
+      "tooLarge": "La requête trouve désormais plus de 100 000 tickets : affinez-la et exportez de nouveau.",
+      "unknown": "L’export a échoué : réessayez."
     }
   }
 }

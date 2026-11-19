@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE list_export\n        SET status = 'ready', object_key = $2, row_count = $3, size_bytes = $4, completed_at = now(),\n            version = version + 1\n        WHERE id = $1 AND status = 'queued'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int4",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6bbbe06f2a657c1627bb312c1cfafe493e355d8b89b0f62590d2df166b70e86e"
+}

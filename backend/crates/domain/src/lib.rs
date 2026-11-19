@@ -13,6 +13,7 @@ pub mod comments;
 pub mod configuration;
 pub mod devices;
 pub mod erasure;
+pub mod export;
 pub mod fields;
 pub mod grants;
 pub mod hierarchy;

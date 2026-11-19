@@ -86,6 +86,8 @@ pub enum ErrorCode {
     SavedFilterNameTaken,
     BoardNameTaken,
     BoardNoTransition,
+    ExportTooLarge,
+    ExportNotReady,
     PermissionDenied,
     RoleLabelTaken,
     RoleInUse,
@@ -136,7 +138,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 92] = [
+    pub const ALL: [Self; 94] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -184,6 +186,8 @@ impl ErrorCode {
         Self::SavedFilterNameTaken,
         Self::BoardNameTaken,
         Self::BoardNoTransition,
+        Self::ExportTooLarge,
+        Self::ExportNotReady,
         Self::PermissionDenied,
         Self::RoleLabelTaken,
         Self::RoleInUse,
@@ -280,6 +284,8 @@ impl ErrorCode {
             Self::SavedFilterNameTaken => "saved_filter.name_taken",
             Self::BoardNameTaken => "board.name_taken",
             Self::BoardNoTransition => "board.no_transition",
+            Self::ExportTooLarge => "export.too_large",
+            Self::ExportNotReady => "export.not_ready",
             Self::PermissionDenied => "permission.denied",
             Self::RoleLabelTaken => "role.label_taken",
             Self::RoleInUse => "role.in_use",
@@ -374,6 +380,7 @@ impl ErrorCode {
             | Self::SavedFilterNameTaken
             | Self::BoardNameTaken
             | Self::BoardNoTransition
+            | Self::ExportNotReady
             | Self::RoleLabelTaken
             | Self::RoleInUse
             | Self::AccountNoPassword
@@ -418,7 +425,7 @@ impl ErrorCode {
             }
             Self::StorageUnavailable => StatusCode::SERVICE_UNAVAILABLE,
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
-            Self::IdempotencyKeyReused => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::IdempotencyKeyReused | Self::ExportTooLarge => StatusCode::UNPROCESSABLE_ENTITY,
             Self::PreconditionRequired => StatusCode::PRECONDITION_REQUIRED,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }
@@ -474,6 +481,8 @@ impl ErrorCode {
             Self::SavedFilterNameTaken => "You already have a saved filter with this name",
             Self::BoardNameTaken => "This node already has a board with this name",
             Self::BoardNoTransition => "No transition of the workflow leads to this column",
+            Self::ExportTooLarge => "The query finds more tickets than an export holds",
+            Self::ExportNotReady => "The export is not ready",
             Self::PermissionDenied => "You do not have the permission this needs",
             Self::RoleLabelTaken => "Another role already has this label",
             Self::RoleInUse => "Grants use this role: remove them first",
@@ -840,7 +849,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 92] = [
+        let expected: [(ErrorCode, u16); 94] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -888,6 +897,8 @@ mod tests {
             (ErrorCode::SavedFilterNameTaken, 409),
             (ErrorCode::BoardNameTaken, 409),
             (ErrorCode::BoardNoTransition, 409),
+            (ErrorCode::ExportTooLarge, 422),
+            (ErrorCode::ExportNotReady, 409),
             (ErrorCode::PermissionDenied, 403),
             (ErrorCode::RoleLabelTaken, 409),
             (ErrorCode::RoleInUse, 409),

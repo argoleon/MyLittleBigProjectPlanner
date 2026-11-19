@@ -27,6 +27,11 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
   - Whoever sees the node sees its boards, each seeing only the tickets they may see; the new permission **Manage boards** on the node creates, configures and deletes them. A new board starts with a column per status category and the quick filters "My tickets" and "Bugs". The boards of a node are a link away from its page.
   - `/api/v1/boards` (list, create, read, change, delete), `GET /api/v1/boards/statuses`, `GET /api/v1/boards/{id}/cards` and `POST /api/v1/boards/{id}/moves`.
 
+- **CSV export of list views** (#188)
+  - An **Export** menu on the Search screen and on My tickets: the tickets of the query as the member sees them, with the columns displayed, headers in their language. UTF-8 with a byte order mark, ISO dates and times, dot decimals; a text starting like a formula (`=`, `+`, `-`, `@`) is neutralized.
+  - Up to 1,000 tickets, the file downloads at once. Beyond, the worker writes it and the member is notified when it is ready: a new **Export ready** notification, in the bell and by email as the member chooses (in the application only by default; emailed at once, never in the digest). Up to 100,000 tickets; the file is kept 24 hours, for its requester only.
+  - `POST /api/v1/exports` (`201` ready, `202` queued, `422` `export.too_large`), `GET /api/v1/exports`, `GET /api/v1/exports/{id}` and `GET /api/v1/exports/{id}/file` (a short-lived link to the storage). Notifications may now be about something else than a ticket: `MemberNotification` gains `export`, and its `issueId`, `issueKey` and `issueSummary` are `null` for an export. Member notifications and preferences use the event type `MemberNotificationEvent` (the ticket events and `export_ready`); configuration rules keep `NotificationEvent`.
+
 ### Changed
 
 - **Every node has a key** (#168): portfolios and programs now carry one too (2 to 20 capitals, digits and dashes, such as `PORTF-HR`), unique in the organization together with project keys, so that queries can name them (`descendantsOf("PORTF-HR")`). It is entered in the creation dialog and may be changed in the General tab; a project's key still never changes. API: `key` is required to create any node and always present in node responses; `PUT /nodes/{id}` accepts a new `key` for a portfolio or program.

@@ -88,17 +88,61 @@ pub fn one_per_recipient(events: &[(Event, BTreeSet<u128>)]) -> BTreeMap<u128, E
     chosen
 }
 
-/// Whether an event reaches a member in the application and by email.
+/// What a member is notified of: an event of a ticket, or something of
+/// their own (an export ready, L06-US06), which no rule of a project
+/// decides: it goes to the member alone.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Notice {
+    Ticket(Event),
+    ExportReady,
+}
+
+impl Notice {
+    /// Every notice, in display order: the ticket events, then the others.
+    pub const ALL: [Self; 6] = [
+        Self::Ticket(Event::Created),
+        Self::Ticket(Event::Assigned),
+        Self::Ticket(Event::StatusChanged),
+        Self::Ticket(Event::Commented),
+        Self::Ticket(Event::Mentioned),
+        Self::ExportReady,
+    ];
+
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Ticket(event) => event.as_str(),
+            Self::ExportReady => "export_ready",
+        }
+    }
+
+    pub fn parse(raw: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|notice| notice.as_str() == raw)
+    }
+
+    /// The digest gathers ticket events only: an export expires before the
+    /// next one, so it is emailed at once.
+    pub const fn in_digest(self) -> bool {
+        matches!(self, Self::Ticket(_))
+    }
+}
+
+impl From<Event> for Notice {
+    fn from(event: Event) -> Self {
+        Self::Ticket(event)
+    }
+}
+
+/// Whether a notice reaches a member in the application and by email.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Choice {
     pub in_app: bool,
     pub email: bool,
 }
 
-/// A member's preferences: per event and channel, and the daily digest.
+/// A member's preferences: per notice and channel, and the daily digest.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Preferences {
-    choices: BTreeMap<Event, Choice>,
+    choices: BTreeMap<Notice, Choice>,
     /// One email each working day instead of one per notification.
     pub daily_digest: bool,
 }
@@ -106,14 +150,17 @@ pub struct Preferences {
 impl Default for Preferences {
     /// What a member gets until they choose (mockup 16): everything in the
     /// application; by email, what is addressed to them (mentions,
-    /// assignments, new tickets), not status changes nor comments; no
-    /// digest.
+    /// assignments, new tickets), not status changes nor comments, nor their
+    /// exports (they asked for them, in the application); no digest.
     fn default() -> Self {
-        let choices = Event::ALL
+        let choices = Notice::ALL
             .into_iter()
-            .map(|event| {
-                let email = matches!(event, Event::Mentioned | Event::Assigned | Event::Created);
-                (event, Choice { in_app: true, email })
+            .map(|notice| {
+                let email = matches!(
+                    notice,
+                    Notice::Ticket(Event::Mentioned | Event::Assigned | Event::Created)
+                );
+                (notice, Choice { in_app: true, email })
             })
             .collect();
         Self {
@@ -125,47 +172,51 @@ impl Default for Preferences {
 
 impl Preferences {
     /// The defaults, with `chosen` instead where the member chose.
-    pub fn with(chosen: impl IntoIterator<Item = (Event, Choice)>, daily_digest: bool) -> Self {
+    pub fn with<N: Into<Notice>>(chosen: impl IntoIterator<Item = (N, Choice)>, daily_digest: bool) -> Self {
         let mut preferences = Self::default();
-        preferences.choices.extend(chosen);
+        preferences
+            .choices
+            .extend(chosen.into_iter().map(|(notice, choice)| (notice.into(), choice)));
         preferences.daily_digest = daily_digest;
         preferences
     }
 
-    pub fn choice(&self, event: Event) -> Choice {
-        self.choices.get(&event).copied().unwrap_or(Choice {
+    pub fn choice(&self, notice: impl Into<Notice>) -> Choice {
+        self.choices.get(&notice.into()).copied().unwrap_or(Choice {
             in_app: true,
             email: false,
         })
     }
 
-    /// Every event with its choice, in the order of the events.
-    pub fn choices(&self) -> Vec<(Event, Choice)> {
-        Event::ALL
+    /// Every notice with its choice, in display order.
+    pub fn choices(&self) -> Vec<(Notice, Choice)> {
+        Notice::ALL
             .into_iter()
-            .map(|event| (event, self.choice(event)))
+            .map(|notice| (notice, self.choice(notice)))
             .collect()
     }
 
-    /// Whether `event` reaches the member through `channel`.
-    pub fn wants(&self, event: Event, channel: Channel) -> bool {
-        let choice = self.choice(event);
+    /// Whether `notice` reaches the member through `channel`.
+    pub fn wants(&self, notice: impl Into<Notice>, channel: Channel) -> bool {
+        let choice = self.choice(notice);
         match channel {
             Channel::InApp => choice.in_app,
             Channel::Email => choice.email,
         }
     }
 
-    /// Whether a notification of `event` is emailed on its own, now: by
+    /// Whether a notification of `notice` is emailed on its own, now: by
     /// email, and no digest gathers it.
-    pub fn emails_now(&self, event: Event) -> bool {
-        self.wants(event, Channel::Email) && !self.daily_digest
+    pub fn emails_now(&self, notice: impl Into<Notice>) -> bool {
+        let notice = notice.into();
+        self.wants(notice, Channel::Email) && !(self.daily_digest && notice.in_digest())
     }
 
-    /// Whether a notification of `event` is recorded: shown in the
+    /// Whether a notification of `notice` is recorded: shown in the
     /// application, or kept for the digest.
-    pub fn records(&self, event: Event) -> bool {
-        self.wants(event, Channel::InApp) || self.wants(event, Channel::Email)
+    pub fn records(&self, notice: impl Into<Notice>) -> bool {
+        let notice = notice.into();
+        self.wants(notice, Channel::InApp) || self.wants(notice, Channel::Email)
     }
 }
 
@@ -272,12 +323,12 @@ mod tests {
             mine.emails_now(Event::Mentioned),
             "untouched events keep their default"
         );
-        assert_eq!(mine.choices().len(), Event::ALL.len());
+        assert_eq!(mine.choices().len(), Notice::ALL.len());
     }
 
     #[test]
     fn the_digest_gathers_the_emails() {
-        let digest = Preferences::with([], true);
+        let digest = Preferences::with::<Notice>([], true);
         assert!(!digest.emails_now(Event::Mentioned));
         assert!(digest.records(Event::Mentioned));
         let email_only = Preferences::with(
@@ -301,5 +352,73 @@ mod tests {
         assert!(!digest_due(3, 9, true), "sent today already");
         assert!(!digest_due(6, 9, false), "Saturday");
         assert!(!digest_due(7, 9, false), "Sunday");
+    }
+
+    #[test]
+    fn exports_ready_reach_the_member_in_the_application_by_default() {
+        let preferences = Preferences::default();
+        assert_eq!(
+            preferences.choice(Notice::ExportReady),
+            Choice {
+                in_app: true,
+                email: false
+            }
+        );
+        assert!(preferences.records(Notice::ExportReady));
+        assert!(!preferences.emails_now(Notice::ExportReady));
+    }
+
+    #[test]
+    fn an_export_ready_is_emailed_at_once_even_with_the_digest() {
+        let by_email = Choice {
+            in_app: false,
+            email: true,
+        };
+        let preferences = Preferences::with(
+            [
+                (Notice::ExportReady, by_email),
+                (Notice::Ticket(Event::Commented), by_email),
+            ],
+            true,
+        );
+        assert!(preferences.emails_now(Notice::ExportReady));
+        assert!(
+            !preferences.emails_now(Event::Commented),
+            "the digest gathers ticket events"
+        );
+        assert!(preferences.records(Notice::ExportReady));
+        let none = Preferences::with(
+            [(
+                Notice::ExportReady,
+                Choice {
+                    in_app: false,
+                    email: false,
+                },
+            )],
+            false,
+        );
+        assert!(!none.records(Notice::ExportReady));
+    }
+
+    #[test]
+    fn notices_list_the_ticket_events_then_the_others() {
+        let ids: Vec<&str> = Notice::ALL.iter().map(|n| n.as_str()).collect();
+        assert_eq!(
+            ids,
+            [
+                "created",
+                "assigned",
+                "status_changed",
+                "commented",
+                "mentioned",
+                "export_ready"
+            ]
+        );
+        for notice in Notice::ALL {
+            assert_eq!(Notice::parse(notice.as_str()), Some(notice));
+        }
+        assert_eq!(Notice::from(Event::Created), Notice::Ticket(Event::Created));
+        assert!(!Notice::ExportReady.in_digest());
+        assert_eq!(Preferences::default().choices().len(), Notice::ALL.len());
     }
 }

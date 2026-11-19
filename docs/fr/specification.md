@@ -215,6 +215,10 @@ Un langage de requête unique, inspiré de JQL, sert à la recherche, aux filtre
 
 CSV (indispensable) et Excel depuis toute vue liste, avec les colonnes affichées.
 
+- Le fichier reprend les tickets de la requête tels que le membre les voit, avec les en-têtes dans sa langue. CSV en UTF-8 avec BOM, dates ISO, nombres au point décimal ; un texte commençant par `=`, `+`, `-` ou `@` est neutralisé (injection de formule).
+- Jusqu'à 1 000 lignes, le fichier se télécharge aussitôt ; au-delà, il est produit en arrière-plan et le membre est notifié quand il est prêt. Au plus 100 000 lignes.
+- Le fichier est conservé 24 heures dans le stockage objet, téléchargeable par son seul demandeur.
+
 ## 7. Planification, Gantt et calendriers
 
 Le Gantt est développé en interne : aucune librairie commerciale ou GPL n'est compatible avec la licence MIT, et les alternatives libres sont trop limitées.
@@ -419,7 +423,7 @@ Toutes les modifications produisent un événement, écrit dans une table outbox
 **Notifications**
 
 - Dans l'application et par email.
-- Préférences par utilisateur et par type d'événement.
+- Préférences par utilisateur et par type d'événement. Outre les événements des tickets, un membre est notifié de ce qui le concerne seul, comme un export prêt.
 - Résumé quotidien optionnel.
 - Agrégées tous tenants confondus pour un utilisateur, avec un filtre par tenant.
 - Après le MVP : Teams et Slack, via les webhooks.

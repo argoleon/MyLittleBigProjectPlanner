@@ -36,6 +36,7 @@ use crate::issue_links;
 use crate::issue_transitions;
 use crate::issue_types;
 use crate::issues;
+use crate::list_exports;
 use crate::me;
 use crate::members;
 use crate::mfa;
@@ -194,6 +195,9 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(issues::form))
         .routes(routes!(issues::mine))
         .routes(routes!(search::search))
+        .routes(routes!(list_exports::list, list_exports::create))
+        .routes(routes!(list_exports::read))
+        .routes(routes!(list_exports::download))
         .routes(routes!(boards::list, boards::create))
         .routes(routes!(boards::statuses))
         .routes(routes!(boards::read, boards::update, boards::delete))

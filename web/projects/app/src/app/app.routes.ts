@@ -75,6 +75,12 @@ export const routes: Routes = [
         loadComponent: () => import('./boards/boards-page').then((m) => m.BoardsPage),
       },
       {
+        // An export of the member's, where its notification leads.
+        path: 'exports/:id',
+        title: 'exports.title',
+        loadComponent: () => import('./exports/export-page').then((m) => m.ExportPage),
+      },
+      {
         // A Kanban board, by its id.
         path: 'boards/:id',
         title: 'nav.boards',

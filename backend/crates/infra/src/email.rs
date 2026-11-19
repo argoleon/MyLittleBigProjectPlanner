@@ -53,6 +53,16 @@ pub enum EmailMessage {
         /// The ticket's page.
         link: Option<String>,
     },
+    /// A member's export of a list view is ready (L06-US06).
+    ExportReady {
+        tenant_name: String,
+        file_name: String,
+        rows: i64,
+        /// The export's page, which downloads it.
+        link: Option<String>,
+        /// How long the file is kept.
+        valid_hours: i64,
+    },
     /// The daily digest of a member's notifications, of every organization.
     Digest {
         display_name: String,
@@ -149,8 +159,73 @@ pub fn render(message: &EmailMessage, locale: &str) -> RenderedEmail {
             line,
             link,
         } => notification(locale, tenant_name, line, link.as_deref()),
+        EmailMessage::ExportReady {
+            tenant_name,
+            file_name,
+            rows,
+            link,
+            valid_hours,
+        } => export_ready(
+            locale,
+            tenant_name,
+            file_name,
+            *rows,
+            link.as_deref(),
+            *valid_hours,
+        ),
         EmailMessage::Digest { display_name, lines } => digest(locale, display_name, lines),
     }
+}
+
+fn export_ready(
+    locale: &str,
+    tenant: &str,
+    file_name: &str,
+    rows: i64,
+    link: Option<&str>,
+    valid_hours: i64,
+) -> RenderedEmail {
+    let en = locale == "en";
+    let (subject, body, button, settings) = if en {
+        (
+            format!("Your export {file_name} is ready · {tenant}"),
+            vec![
+                format!("Your export {file_name} is ready: {rows} rows."),
+                format!("It can be downloaded for {valid_hours} hours, by you only."),
+            ],
+            "Download the export",
+            "You receive this email as your notification preferences allow; change them in the application.",
+        )
+    } else {
+        (
+            format!("Votre export {file_name} est prêt · {tenant}"),
+            vec![
+                format!("Votre export {file_name} est prêt : {rows} lignes."),
+                format!("Il peut être téléchargé pendant {valid_hours} heures, par vous seul."),
+            ],
+            "Télécharger l’export",
+            "Vous recevez cet e-mail selon vos préférences de notification ; modifiez-les dans l’application.",
+        )
+    };
+    let mut text = body.join("\n");
+    let mut html = format!(
+        "<!doctype html><html lang=\"{lang}\"><body>",
+        lang = if en { "en" } else { "fr" }
+    );
+    for part in &body {
+        html.push_str(&format!("<p>{}</p>", escape_html(part)));
+    }
+    if let Some(link) = link {
+        text.push_str(&format!("\n\n{link}"));
+        html.push_str(&format!(
+            "<p><a href=\"{}\">{}</a></p>",
+            escape_html(link),
+            escape_html(button)
+        ));
+    }
+    text.push_str(&format!("\n\n{settings}\n"));
+    html.push_str(&format!("<p>{}</p></body></html>", escape_html(settings)));
+    RenderedEmail { subject, text, html }
 }
 
 fn notification(locale: &str, tenant: &str, line: &NotificationLine, link: Option<&str>) -> RenderedEmail {
@@ -606,5 +681,39 @@ mod tests {
             Mailer::new(&Secret::new("smtp://mailpit:1025"), "nobody"),
             Err(MailError::Address(_))
         ));
+    }
+
+    #[test]
+    fn an_export_ready_email_links_to_the_export_in_the_members_language() {
+        let message = EmailMessage::ExportReady {
+            tenant_name: "Acme <Industrie>".to_owned(),
+            file_name: "search-2026-11-18.csv".to_owned(),
+            rows: 20_000,
+            link: Some("https://acme.example.org/exports/e1".to_owned()),
+            valid_hours: 24,
+        };
+        let en = render(&message, "en");
+        assert_eq!(
+            en.subject,
+            "Your export search-2026-11-18.csv is ready · Acme <Industrie>"
+        );
+        assert!(en.text.starts_with("Your export search-2026-11-18.csv is ready: 20000 rows.\nIt can be downloaded for 24 hours, by you only.\n\nhttps://acme.example.org/exports/e1"));
+        assert!(
+            en.html
+                .contains("<a href=\"https://acme.example.org/exports/e1\">Download the export</a>")
+        );
+        let fr = render(&message, "fr");
+        assert_eq!(
+            fr.subject,
+            "Votre export search-2026-11-18.csv est prêt · Acme <Industrie>"
+        );
+        assert!(fr.html.contains("Télécharger l’export"));
+        assert!(fr.text.contains("pendant 24 heures"));
+        let serialized = serde_json::to_value(&message).unwrap();
+        assert_eq!(serialized["type"], "export_ready");
+        assert_eq!(
+            serde_json::from_value::<EmailMessage>(serialized).unwrap(),
+            message
+        );
     }
 }

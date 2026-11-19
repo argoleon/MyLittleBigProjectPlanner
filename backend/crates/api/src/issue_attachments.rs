@@ -118,7 +118,7 @@ pub struct UploadView {
     upload_url: String,
 }
 
-fn storage_of(state: &AppState) -> Result<&Storage, Problem> {
+pub(crate) fn storage_of(state: &AppState) -> Result<&Storage, Problem> {
     state
         .storage
         .as_deref()
@@ -179,7 +179,7 @@ async fn attachment_of(
 /// `localhost:18443`): presigned URLs are signed for it, so that the browser
 /// reaches the storage on its own origin. Only ever given back to the same
 /// browser; the tenant was already resolved from it.
-fn browser_host(state: &AppState, tx: &TenantTx, headers: &HeaderMap) -> String {
+pub(crate) fn browser_host(state: &AppState, tx: &TenantTx, headers: &HeaderMap) -> String {
     headers
         .get(header::HOST)
         .and_then(|host| host.to_str().ok())
@@ -193,7 +193,7 @@ fn browser_host(state: &AppState, tx: &TenantTx, headers: &HeaderMap) -> String 
         .unwrap_or_default()
 }
 
-fn redirect(url: &str) -> Result<Response, Problem> {
+pub(crate) fn redirect(url: &str) -> Result<Response, Problem> {
     let location = HeaderValue::from_str(url).map_err(|e| Problem::internal(&e))?;
     let mut response = StatusCode::SEE_OTHER.into_response();
     response.headers_mut().insert(header::LOCATION, location);

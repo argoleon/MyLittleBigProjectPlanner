@@ -51,6 +51,14 @@ export type { MoveBoardCard$Params as MoveBoardCard$Params } from './fn/boards/m
 export { moveBoardCard as moveBoardCard } from './fn/boards/move-board-card';
 export type { StreamEvents$Params as StreamEvents$Params } from './fn/events/stream-events';
 export { streamEvents as streamEvents } from './fn/events/stream-events';
+export type { ListMyExports$Params as ListMyExports$Params } from './fn/exports/list-my-exports';
+export { listMyExports as listMyExports } from './fn/exports/list-my-exports';
+export type { CreateExport$Params as CreateExport$Params } from './fn/exports/create-export';
+export { createExport as createExport } from './fn/exports/create-export';
+export type { GetExport$Params as GetExport$Params } from './fn/exports/get-export';
+export { getExport as getExport } from './fn/exports/get-export';
+export type { DownloadExport$Params as DownloadExport$Params } from './fn/exports/download-export';
+export { downloadExport as downloadExport } from './fn/exports/download-export';
 export type { BrowseHierarchy$Params as BrowseHierarchy$Params } from './fn/hierarchy/browse-hierarchy';
 export { browseHierarchy as browseHierarchy } from './fn/hierarchy/browse-hierarchy';
 export type { ListNodes$Params as ListNodes$Params } from './fn/hierarchy/list-nodes';

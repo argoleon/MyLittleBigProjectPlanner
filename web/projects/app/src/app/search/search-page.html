@@ -37,6 +37,7 @@
         </button>
       }
     </mat-menu>
+    <app-export-menu [query]="ran()" [columns]="columns()" name="search" />
     <button matButton="filled" type="button" class="save-filter" [disabled]="!ran()" (click)="saveFilter()">
       <mat-icon aria-hidden="true">bookmark_add</mat-icon>
       {{ 'search.filters.save' | transloco }}
