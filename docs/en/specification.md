@@ -215,6 +215,10 @@ A single query language, inspired by JQL, powers search, filters, boards, the Ga
 
 CSV (essential) and Excel from any list view, with the displayed columns.
 
+- The file holds the query's tickets as the member sees them, with headers in their language. CSV in UTF-8 with a BOM, ISO dates, dot decimals; a text starting with `=`, `+`, `-` or `@` is neutralized (formula injection).
+- Up to 1,000 rows, the file downloads at once; beyond, it is produced in the background and the member is notified when it is ready. At most 100,000 rows.
+- The file is kept 24 hours in the object storage, downloadable by its requester only.
+
 ## 7. Planning, Gantt and calendars
 
 The Gantt chart is built in-house: no commercial or GPL library is compatible with the MIT license, and the free alternatives are too limited.
@@ -419,7 +423,7 @@ Every change produces an event, written to an outbox table in the same transacti
 **Notifications**
 
 - In the application and by email.
-- Preferences per user and per event type.
+- Preferences per user and per event type. Besides ticket events, a member is notified of what concerns them alone, such as an export ready.
 - Optional daily digest.
 - Aggregated across all tenants for a user, with a tenant filter.
 - After the MVP: Teams and Slack, through webhooks.
