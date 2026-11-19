@@ -53,12 +53,18 @@
                 <span class="icon" aria-hidden="true"><mat-icon>{{ icons[n.event] }}</mat-icon></span>
                 <span class="body">
                   <span class="what">
-                    {{ 'notifications.events.' + n.event | transloco: { actor: n.actorName ?? ('notifications.someone' | transloco), key: n.issueKey, status: n.status ?? '' } }}
+                    {{ 'notifications.events.' + n.event | transloco: { actor: n.actorName ?? ('notifications.someone' | transloco), key: n.issueKey ?? '', status: n.status ?? '', file: n.export?.fileName ?? '' } }}
                     @if (!n.read) {
                       <span class="cdk-visually-hidden">{{ 'notifications.unreadMark' | transloco }}</span>
                     }
                   </span>
-                  <span class="detail">{{ n.excerpt ? '« ' + n.excerpt + ' »' : n.issueSummary }}</span>
+                  <span class="detail">
+                    @if (n.export; as file) {
+                      {{ 'notifications.exportRows' | transloco: { count: file.rows } }}
+                    } @else {
+                      {{ n.excerpt ? '« ' + n.excerpt + ' »' : n.issueSummary }}
+                    }
+                  </span>
                   <span class="meta">
                     <span class="tenant">{{ n.tenant.name }}</span>
                     <span>{{ n.createdAt | instant: { dateStyle: 'medium', timeStyle: 'short' } }}</span>

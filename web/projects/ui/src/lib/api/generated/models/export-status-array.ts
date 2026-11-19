@@ -7,6 +7,7 @@ import { ExportStatus } from './export-status';
  * Each possible value of `ExportStatus`
  */
 export const EXPORT_STATUS: ExportStatus[] = [
-  'pending',
-  'ready'
+  'queued',
+  'ready',
+  'failed'
 ];

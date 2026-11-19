@@ -458,6 +458,11 @@
       "name_taken": "This node already has a board with this name.",
       "no_transition": "No transition of the workflow leads to this column."
     },
+    "export": {
+      "pending": "The export is not ready yet.",
+      "too_large": "The query finds more tickets than an export holds (100,000).",
+      "not_ready": "The export is not ready yet."
+    },
     "permission": {
       "denied": "You do not have the permission this needs."
     },
@@ -472,9 +477,6 @@
     },
     "session": {
       "current": "This is the current session: sign out instead."
-    },
-    "export": {
-      "pending": "The export is not ready yet."
     },
     "node": {
       "key_taken": "Another portfolio, program or project of the organization has this key.",
@@ -1687,7 +1689,8 @@
       "assigned": "Assignments",
       "status_changed": "Status changes",
       "commented": "Comments",
-      "created": "New tickets"
+      "created": "New tickets",
+      "export_ready": "Exports"
     },
     "empty": "No notification.",
     "more": "Show older notifications",
@@ -1704,7 +1707,8 @@
       "assigned": "{{ actor }} assigned {{ key }} to you",
       "status_changed": "{{ actor }} moved {{ key }} to {{ status }}",
       "commented": "{{ actor }} commented on {{ key }}",
-      "created": "{{ actor }} created {{ key }}"
+      "created": "{{ actor }} created {{ key }}",
+      "export_ready": "Your export {{ file }} is ready"
     },
     "preferences": {
       "title": "Notification preferences",
@@ -1719,11 +1723,13 @@
         "assigned": "Ticket assigned",
         "status_changed": "Status change",
         "commented": "New comment",
-        "mentioned": "Mentions"
+        "mentioned": "Mentions",
+        "export_ready": "Export ready"
       },
       "digest": "Daily email digest",
       "digestHint": "Each working day at 8:00, instead of one email per event."
-    }
+    },
+    "exportRows": "{{ count }} rows"
   },
   "search": {
     "title": "Search",
@@ -1999,6 +2005,26 @@
         "message": "The board {{ name }} will be deleted for everyone. Its tickets stay as they are.",
         "confirm": "Delete"
       }
+    }
+  },
+  "exports": {
+    "title": "Export",
+    "button": "Export",
+    "csv": "CSV file (.csv)",
+    "running": "Export in progress",
+    "queued": "{{ file }} is being prepared: you will be notified when it is ready.",
+    "follow": "Follow it",
+    "tooLarge": "This list holds more than 100,000 tickets: narrow the query to export it.",
+    "queryInvalid": "The query cannot run: correct it before exporting.",
+    "gone": "This export has expired (files are kept 24 hours) or is not yours.",
+    "ready": "Ready: {{ count }} rows.",
+    "expires": "It can be downloaded until {{ at }}, by you only.",
+    "download": "Download",
+    "preparing": "Being prepared: you will be notified when it is ready.",
+    "failure": {
+      "queryInvalid": "The query no longer runs (a field it names was deleted): export again from the list.",
+      "tooLarge": "The query now finds more than 100,000 tickets: narrow it and export again.",
+      "unknown": "The export failed: try again."
     }
   }
 }

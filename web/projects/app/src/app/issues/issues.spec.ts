@@ -21,6 +21,7 @@ import { apiValue, chipCategory, chipKind, controlOf, emptyOf, isEmpty, isIssueK
 import { IssueDialogData, createIssueFlow } from './issue-flow';
 import { IssuePage } from './issue-page';
 import { MyTicketsPage } from './my-tickets-page';
+import { MY_TICKETS_QUERY } from './my-tickets-page';
 
 const SESSION = (tenantRole: string) => ({
   account: { id: 'a1', email: 'lucas@acme.example', displayName: 'Lucas Bernard', locale: null, tenantRole },
@@ -520,6 +521,21 @@ describe('tickets in the application', () => {
     expect(texts('tbody tr td:nth-child(2)', page)).toEqual(['Sign-in loops']);
     expect(page.querySelector('tbody a')?.getAttribute('href')).toBe('/issues/PLAT-2');
     expect(await axeViolations(page)).toEqual([]);
+    // Exported as the same list in the query language, with its columns.
+    await click(page.querySelector('app-export-menu button.export'));
+    await click(document.querySelector('button.csv'));
+    const exported = await reply((url, method) => url === '/api/v1/exports' && method === 'POST', {
+      id: 'e1',
+      fileName: 'my-tickets.csv',
+      status: 'queued',
+      downloadPath: null,
+    });
+    expect(exported.request.body).toEqual({
+      query: MY_TICKETS_QUERY,
+      columns: ['key', 'type', 'summary', 'project', 'status', 'priority', 'updated'],
+      format: 'csv',
+      name: 'my-tickets',
+    });
     await click(page.querySelector('button.more'));
     await reply((url) => url === '/api/v1/me/issues?limit=50&cursor=c1', { items: [summary('PLAT-1', 'Story')], nextCursor: null });
     expect(texts('tbody tr td:nth-child(2)', page)).toEqual(['Sign-in loops', 'Story']);

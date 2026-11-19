@@ -20,6 +20,7 @@ import {
   listMyIssues,
 } from 'ui';
 
+import { ExportMenu } from '../exports/export-menu';
 import { createIssueFlow } from './issue-flow';
 import { chipCategory, chipKind } from './issue-fields';
 
@@ -31,11 +32,15 @@ const PAGE_SIZE = 50;
  * them, newest first, a page at a time; a ticket is created from here in
  * a project chosen in the dialog.
  */
+/** The tickets of "My tickets" in the query language: assigned to or reported by the member, newest first. */
+export const MY_TICKETS_QUERY = 'assignee = currentUser() OR reporter = currentUser() ORDER BY created DESC';
+
 @Component({
   selector: 'app-my-tickets-page',
   imports: [
     EmptyState,
     ErrorState,
+    ExportMenu,
     InstantPipe,
     MatButtonModule,
     MatIconModule,
@@ -56,6 +61,10 @@ export class MyTicketsPage {
   private readonly router = inject(Router);
 
   protected readonly columns = ['ticket', 'summary', 'project', 'status', 'priority', 'updated'];
+  /** The same list in the query language, for its export. */
+  protected readonly exportQuery = MY_TICKETS_QUERY;
+  /** The columns shown, as the export names them (the ticket: its key and type). */
+  protected readonly exportColumns = ['key', 'type', 'summary', 'project', 'status', 'priority', 'updated'];
   protected readonly chipCategory = chipCategory;
   protected readonly chipKind = chipKind;
 

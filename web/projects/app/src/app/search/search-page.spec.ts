@@ -266,6 +266,27 @@ describe('the search screen', () => {
     ]);
   });
 
+  it('exports the results with the columns displayed and the query run', async () => {
+    const { searched, page, click, http, settle } = await open('/search?q=status%20%3D%20todo');
+    await searched({ items: [result(1)], nextCursor: null, total: 1 });
+    await click(page().querySelector('button.export'));
+    await click(document.querySelector('button.csv'));
+    let asked: TestRequest | undefined;
+    for (let i = 0; i < 50 && !asked; i++) {
+      [asked] = http.match((r) => r.url === '/api/v1/exports' && r.method === 'POST');
+      if (!asked) await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    expect(asked!.request.body).toEqual({
+      query: 'status = todo',
+      columns: ['key', 'summary', 'type', 'status', 'assignee', 'priority', 'due'],
+      format: 'csv',
+      name: 'search',
+    });
+    asked!.flush({ id: 'e1', fileName: 'search.csv', format: 'csv', status: 'queued', downloadPath: null }, { status: 202, statusText: 'Accepted' });
+    await settle();
+    expect(page().querySelector('app-export-menu [role="status"]')).not.toBeNull();
+  });
+
   it('says when nothing matches, and when the search failed', async () => {
     const { searched, page, text, click } = await open('/search?q=key%20%3D%20NOPE-1');
     await searched({ items: [], nextCursor: null, total: 0 });

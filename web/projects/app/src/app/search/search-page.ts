@@ -43,6 +43,7 @@ import { chipCategory, chipKind } from '../issues/issue-fields';
 import { Criteria, NO_CRITERIA, criteriaOf, queryOf } from './criteria';
 import { QueryBuilder } from './query-builder';
 import { QueryEditor } from './query-editor';
+import { ExportMenu } from '../exports/export-menu';
 import { QueryErrorMessage, queryErrorMessage } from './query-error';
 import { orderByIndex, sortOf, withSort } from './query-order';
 import { SaveFilterData, SaveFilterDialog } from './save-filter-dialog';
@@ -127,6 +128,7 @@ function storedColumns(): readonly string[] {
   imports: [
     EmptyState,
     ErrorState,
+    ExportMenu,
     InstantPipe,
     LocalDatePipe,
     MatButtonModule,
