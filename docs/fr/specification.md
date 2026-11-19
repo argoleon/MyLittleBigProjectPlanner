@@ -217,6 +217,7 @@ CSV (indispensable) et Excel depuis toute vue liste, avec les colonnes affichée
 
 - Le fichier reprend les tickets de la requête tels que le membre les voit, avec les en-têtes dans sa langue. CSV en UTF-8 avec BOM, dates ISO, nombres au point décimal ; un texte commençant par `=`, `+`, `-` ou `@` est neutralisé (injection de formule).
 - Jusqu'à 1 000 lignes, le fichier se télécharge aussitôt ; au-delà, il est produit en arrière-plan et le membre est notifié quand il est prêt. Au plus 100 000 lignes.
+- Excel : cellules typées (nombres, dates, heures en UTC comme le dit leur en-tête), pour que les tableurs les trient et calculent ; un texte n'est jamais exécuté comme une formule.
 - Le fichier est conservé 24 heures dans le stockage objet, téléchargeable par son seul demandeur.
 
 ## 7. Planification, Gantt et calendriers

@@ -31,6 +31,8 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
   - An **Export** menu on the Search screen and on My tickets: the tickets of the query as the member sees them, with the columns displayed, headers in their language. UTF-8 with a byte order mark, ISO dates and times, dot decimals; a text starting like a formula (`=`, `+`, `-`, `@`) is neutralized.
   - Up to 1,000 tickets, the file downloads at once. Beyond, the worker writes it and the member is notified when it is ready: a new **Export ready** notification, in the bell and by email as the member chooses (in the application only by default; emailed at once, never in the digest). Up to 100,000 tickets; the file is kept 24 hours, for its requester only.
   - `POST /api/v1/exports` (`201` ready, `202` queued, `422` `export.too_large`), `GET /api/v1/exports`, `GET /api/v1/exports/{id}` and `GET /api/v1/exports/{id}/file` (a short-lived link to the storage). Notifications may now be about something else than a ticket: `MemberNotification` gains `export`, and its `issueId`, `issueKey` and `issueSummary` are `null` for an export. Member notifications and preferences use the event type `MemberNotificationEvent` (the ticket events and `export_ready`); configuration rules keep `NotificationEvent`.
+- **Excel export of list views** (#191)
+  - The Export menu offers an Excel file (`.xlsx`) beside CSV, with the same columns, headers and limits, in the background beyond 1,000 tickets. Cells are typed: numbers as numbers, due and start dates as dates, creation and change times as date-times in UTC (said in their header); texts stay texts, never run as formulas. `POST /api/v1/exports` takes `"format": "xlsx"`.
 
 ### Changed
 

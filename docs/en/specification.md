@@ -217,6 +217,7 @@ CSV (essential) and Excel from any list view, with the displayed columns.
 
 - The file holds the query's tickets as the member sees them, with headers in their language. CSV in UTF-8 with a BOM, ISO dates, dot decimals; a text starting with `=`, `+`, `-` or `@` is neutralized (formula injection).
 - Up to 1,000 rows, the file downloads at once; beyond, it is produced in the background and the member is notified when it is ready. At most 100,000 rows.
+- Excel: typed cells (numbers, dates, times in UTC as their header says), so that spreadsheets sort and compute them; a text is never run as a formula.
 - The file is kept 24 hours in the object storage, downloadable by its requester only.
 
 ## 7. Planning, Gantt and calendars
