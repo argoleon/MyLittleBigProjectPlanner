@@ -10,7 +10,7 @@
 
 use axum::extract::State;
 use domain::notifications::Event;
-use domain::notify::{Choice, Preferences};
+use domain::notify::{Choice, Notice, Preferences};
 use infra::uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -24,38 +24,43 @@ use crate::tenant::{AppState, TenantTx};
 
 const TAG: &str = "notifications";
 
-/// A ticket event that notifies.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+/// What notifies a member: an event of a ticket, or their export ready.
+/// (The rules of a configuration name the ticket events only:
+/// `NotificationEvent`.)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
-#[schema(as = NotificationEvent)]
+#[schema(as = MemberNotificationEvent)]
 pub enum EventView {
     Created,
     Assigned,
     StatusChanged,
     Commented,
     Mentioned,
+    ExportReady,
 }
 
-impl From<Event> for EventView {
-    fn from(event: Event) -> Self {
-        match event {
-            Event::Created => Self::Created,
-            Event::Assigned => Self::Assigned,
-            Event::StatusChanged => Self::StatusChanged,
-            Event::Commented => Self::Commented,
-            Event::Mentioned => Self::Mentioned,
+impl From<Notice> for EventView {
+    fn from(notice: Notice) -> Self {
+        match notice {
+            Notice::Ticket(Event::Created) => Self::Created,
+            Notice::Ticket(Event::Assigned) => Self::Assigned,
+            Notice::Ticket(Event::StatusChanged) => Self::StatusChanged,
+            Notice::Ticket(Event::Commented) => Self::Commented,
+            Notice::Ticket(Event::Mentioned) => Self::Mentioned,
+            Notice::ExportReady => Self::ExportReady,
         }
     }
 }
 
-impl From<EventView> for Event {
+impl From<EventView> for Notice {
     fn from(view: EventView) -> Self {
         match view {
-            EventView::Created => Self::Created,
-            EventView::Assigned => Self::Assigned,
-            EventView::StatusChanged => Self::StatusChanged,
-            EventView::Commented => Self::Commented,
-            EventView::Mentioned => Self::Mentioned,
+            EventView::Created => Self::Ticket(Event::Created),
+            EventView::Assigned => Self::Ticket(Event::Assigned),
+            EventView::StatusChanged => Self::Ticket(Event::StatusChanged),
+            EventView::Commented => Self::Ticket(Event::Commented),
+            EventView::Mentioned => Self::Ticket(Event::Mentioned),
+            EventView::ExportReady => Self::ExportReady,
         }
     }
 }
@@ -78,10 +83,16 @@ pub struct NotificationView {
     id: Uuid,
     tenant: TenantView,
     event: EventView,
-    issue_id: Uuid,
-    #[schema(example = "PLAT-151")]
-    issue_key: String,
-    issue_summary: String,
+    /// The ticket; `null` for `export_ready`.
+    #[schema(required = true)]
+    issue_id: Option<Uuid>,
+    #[schema(example = "PLAT-151", required = true)]
+    issue_key: Option<String>,
+    #[schema(required = true)]
+    issue_summary: Option<String>,
+    /// The export ready (`export_ready`).
+    #[schema(required = true)]
+    export: Option<ExportRefView>,
     /// Who made the change; "Deleted user #N" once erased.
     #[schema(required = true)]
     actor_name: Option<String>,
@@ -94,6 +105,17 @@ pub struct NotificationView {
     read: bool,
     #[serde(with = "time::serde::rfc3339")]
     created_at: OffsetDateTime,
+}
+
+/// An export a notification is about.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(as = NotificationExport)]
+pub struct ExportRefView {
+    id: Uuid,
+    #[schema(example = "search-2026-11-18.csv")]
+    file_name: String,
+    rows: i64,
 }
 
 /// A page of notifications.
@@ -210,8 +232,20 @@ fn view(notification: infra::notifications::Notification, locale: &str) -> Notif
         },
         event: notification.event.into(),
         issue_id: notification.issue_id,
-        issue_key: text("key").unwrap_or_default(),
-        issue_summary: text("summary").unwrap_or_default(),
+        issue_key: notification.issue_id.and(text("key")),
+        issue_summary: notification.issue_id.and(text("summary")),
+        export: (notification.event == Notice::ExportReady)
+            .then(|| {
+                Some(ExportRefView {
+                    id: text("exportId")?.parse().ok()?,
+                    file_name: text("fileName").unwrap_or_default(),
+                    rows: details
+                        .get("rows")
+                        .and_then(serde_json::Value::as_i64)
+                        .unwrap_or_default(),
+                })
+            })
+            .flatten(),
         excerpt: text("excerpt"),
         status,
         actor_name: notification.actor_name,
@@ -362,7 +396,7 @@ pub async fn set_preferences(
     let mut seen = std::collections::BTreeSet::new();
     let mut errors = Vec::new();
     for (i, choice) in body.events.iter().enumerate() {
-        if !seen.insert(Event::from(choice.event)) {
+        if !seen.insert(choice.event) {
             errors.push(domain::validation::FieldError::new(
                 format!("events[{i}]"),
                 "duplicate",
@@ -376,7 +410,7 @@ pub async fn set_preferences(
     let current = infra::notifications::my_preferences(&mut tx, account).await?;
     let chosen = current.choices().into_iter().chain(body.events.iter().map(|c| {
         (
-            Event::from(c.event),
+            Notice::from(c.event),
             Choice {
                 in_app: c.in_app,
                 email: c.email,

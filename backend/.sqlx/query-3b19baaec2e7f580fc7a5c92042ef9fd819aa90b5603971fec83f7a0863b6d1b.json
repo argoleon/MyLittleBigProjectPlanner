@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO notification (id, tenant_id, account_id, event, issue_id, actor_id, details, outbox_event_id,\n                                  in_app, email_wanted, emailed_at)\n        VALUES ($1, app_current_tenant(), $2, $3, NULL, NULL, $4, $5, $6, $7, CASE WHEN $8 THEN now() END)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Jsonb",
+        "Uuid",
+        "Bool",
+        "Bool",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3b19baaec2e7f580fc7a5c92042ef9fd819aa90b5603971fec83f7a0863b6d1b"
+}
