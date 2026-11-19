@@ -220,6 +220,16 @@ CSV (essential) and Excel from any list view, with the displayed columns.
 - Excel: typed cells (numbers, dates, times in UTC as their header says), so that spreadsheets sort and compute them; a text is never run as a formula.
 - The file is kept 24 hours in the object storage, downloadable by its requester only.
 
+**Bulk actions**
+
+On a search result, the member ticks tickets (or all the results of the query) and modifies, changes the status of, or moves them together.
+
+- **Modify**: priority, assignee, start and due dates, and the custom fields shared by every selected ticket (same configuration). Only the fields chosen change.
+- **Change status**: only the statuses a transition reaches from the selected tickets are offered, with how many it reaches; each ticket runs the transition of its own workflow, with its conditions, validators and post-functions.
+- **Move**: to another project, with one type and status mapping for the batch; sub-tasks follow their parent, and the report gives the new keys.
+- Each ticket is changed in its own transaction, with its version check, history line and notifications: a refusal (permission, archived project, transition not allowed, required field missing) leaves it unchanged and is reported, the others are changed.
+- Up to 100 tickets, the action runs within the request and its report shows at once; beyond, the worker runs it, at most 10,000 tickets, and the member is notified when it is done. The report is kept 7 days, for its requester only.
+
 ## 7. Planning, Gantt and calendars
 
 The Gantt chart is built in-house: no commercial or GPL library is compatible with the MIT license, and the free alternatives are too limited.

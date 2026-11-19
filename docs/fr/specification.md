@@ -220,6 +220,16 @@ CSV (indispensable) et Excel depuis toute vue liste, avec les colonnes affichée
 - Excel : cellules typées (nombres, dates, heures en UTC comme le dit leur en-tête), pour que les tableurs les trient et calculent ; un texte n'est jamais exécuté comme une formule.
 - Le fichier est conservé 24 heures dans le stockage objet, téléchargeable par son seul demandeur.
 
+**Actions en masse**
+
+Sur un résultat de recherche, le membre coche des tickets (ou tous les résultats de la requête) et les modifie, change leur statut ou les déplace ensemble.
+
+- **Modifier** : priorité, responsable, dates de début et d'échéance, et les champs personnalisés communs à tous les tickets sélectionnés (même configuration). Seuls les champs choisis changent.
+- **Changer le statut** : seuls les statuts qu'une transition atteint depuis les tickets sélectionnés sont proposés, avec le nombre de tickets qu'elle atteint ; chaque ticket suit la transition de son propre workflow, avec ses conditions, validateurs et post-fonctions.
+- **Déplacer** : vers un autre projet, avec une seule correspondance de types et de statuts pour le lot ; les sous-tâches suivent leur parent, et le compte rendu donne les nouvelles clés.
+- Chaque ticket est modifié dans sa propre transaction, avec son contrôle de version, sa ligne d'historique et ses notifications : un refus (permission, projet archivé, transition non permise, champ obligatoire manquant) le laisse inchangé et est signalé, les autres sont modifiés.
+- Jusqu'à 100 tickets, l'action s'exécute dans la requête et son compte rendu s'affiche aussitôt ; au-delà, le worker l'exécute, au plus 10 000 tickets, et le membre est notifié quand elle est terminée. Le compte rendu est conservé 7 jours, pour son seul demandeur.
+
 ## 7. Planification, Gantt et calendriers
 
 Le Gantt est développé en interne : aucune librairie commerciale ou GPL n'est compatible avec la licence MIT, et les alternatives libres sont trop limitées.
