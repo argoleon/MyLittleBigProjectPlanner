@@ -65,6 +65,7 @@ pub mod transition_rules;
 pub mod valkey;
 pub mod watchers;
 pub mod workflows;
+pub mod xlsx;
 
 pub use sqlx;
 pub use uuid;

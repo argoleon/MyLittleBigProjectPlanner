@@ -70,7 +70,7 @@ const DOCS_CSP: &str = "default-src 'self'; img-src 'self' data:; style-src 'sel
         (name = nodes::TAG, description = "Portfolios, programs and projects of the hierarchy"),
         (name = crate::issues::TAG, description = "Tickets: creation, reading, the tickets of the signed-in member"),
         (name = crate::search::TAG, description = "Search of tickets with the query language"),
-        (name = crate::list_exports::TAG, description = "Exports of list views, as CSV files"),
+        (name = crate::list_exports::TAG, description = "Exports of list views, as CSV or Excel files"),
         (name = crate::boards::TAG, description = "Kanban boards: columns mapped to statuses, cards moved through the workflow"),
         (name = configs::TAG, description = "Project configurations: types, fields, workflows, screens and notifications shared by projects"),
         (name = sso::TAG, description = "Authentication policy and OIDC providers of the tenant, for its admins"),

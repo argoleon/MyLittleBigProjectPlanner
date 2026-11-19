@@ -507,3 +507,100 @@ async fn an_expired_export_goes_with_its_file() {
         .unwrap();
     assert_eq!(left, 0);
 }
+
+/// The cells of the first sheet of an `.xlsx` file.
+fn sheet_of(bytes: Vec<u8>) -> Vec<Vec<calamine::Data>> {
+    use calamine::Reader;
+    let mut book: calamine::Xlsx<_> = calamine::open_workbook_from_rs(std::io::Cursor::new(bytes)).unwrap();
+    let range = book.worksheet_range_at(0).unwrap().unwrap();
+    range.rows().map(<[calamine::Data]>::to_vec).collect()
+}
+
+#[tokio::test]
+async fn an_excel_export_has_typed_cells_at_once_or_in_the_background() {
+    use calamine::Data;
+
+    let db = TestDb::new().await;
+    let api = common::start(&db, multi()).await;
+    let t = &db.tenant_a;
+    let plat = project(&api, t, "Identity platform", "PLAT").await;
+    tickets(&db, t, plat, "PLAT", 1, 2, "=Ticket ").await;
+    let mut tx = infra::db::begin_tenant_tx(&db.app_pool, t.id).await.unwrap();
+    infra::sqlx::query("UPDATE issue SET due_date = '2026-11-20' WHERE key_number = 1")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+
+    let (status, export) = send(
+        api.request(Method::POST, t, "/api/v1/exports")
+            .header("accept-language", "en")
+            .json(&json!({
+                "query": "project = PLAT ORDER BY key ASC",
+                "columns": ["key", "summary", "due", "created"],
+                "format": "xlsx",
+                "name": "search"
+            })),
+    )
+    .await;
+    assert_eq!(status, 201, "{export}");
+    assert_eq!(
+        (&export["format"], &export["fileName"]),
+        (&json!("xlsx"), &json!(format!("search-{}.xlsx", today())))
+    );
+    let (content_type, disposition, bytes) = download(&api, t, export["id"].as_str().unwrap()).await;
+    assert_eq!(
+        content_type,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    assert!(disposition.contains(".xlsx"), "{disposition}");
+    let sheet = sheet_of(bytes);
+    assert_eq!(
+        sheet[0],
+        ["Key", "Title", "Due date", "Created (UTC)"].map(|h| Data::String(h.to_owned()))
+    );
+    assert_eq!(sheet[1][0], Data::String("PLAT-1".to_owned()));
+    // A text starting like a formula stays a text, as written.
+    assert_eq!(sheet[1][1], Data::String("=Ticket 1".to_owned()));
+    let (Data::DateTime(due), Data::DateTime(created)) = (&sheet[1][2], &sheet[1][3]) else {
+        panic!("dates expected: {:?}", sheet[1]);
+    };
+    assert!(
+        (due.as_f64() - 46_346.0).abs() < 1e-9,
+        "2026-11-20: {}",
+        due.as_f64()
+    );
+    let at_09_12 = 46_344.0 + (9.0 * 3600.0 + 12.0 * 60.0) / 86_400.0;
+    assert!(
+        (created.as_f64() - at_09_12).abs() < 1e-6,
+        "2026-11-18 09:12 UTC: {}",
+        created.as_f64()
+    );
+    assert_eq!(sheet[2][2], Data::Empty);
+
+    // Beyond 1,000 tickets: in the background, the same cells.
+    let rows = i32::try_from(domain::export::SYNC_MAX_ROWS).unwrap() + 1;
+    tickets(&db, t, plat, "PLAT", 3, rows - 2, "Ticket ").await;
+    let (status, queued) = send(admin(&api, t, Method::POST, "/api/v1/exports").json(&json!({
+        "query": "project = PLAT ORDER BY key ASC",
+        "columns": ["key"],
+        "format": "xlsx"
+    })))
+    .await;
+    assert_eq!(status, 202, "{queued}");
+    run_jobs(&api, &db).await;
+    let id = queued["id"].as_str().unwrap();
+    let (status, ready) = send(admin(&api, t, Method::GET, &format!("/api/v1/exports/{id}"))).await;
+    assert_eq!(
+        (status, &ready["status"], &ready["rows"]),
+        (200, &json!("ready"), &json!(rows))
+    );
+    let (_, _, bytes) = download(&api, t, id).await;
+    let sheet = sheet_of(bytes);
+    assert_eq!(
+        sheet.len(),
+        usize::try_from(rows).unwrap() + 1,
+        "the headers, then a row per ticket"
+    );
+    assert_eq!(sheet[1001][0], Data::String("PLAT-1001".to_owned()));
+}

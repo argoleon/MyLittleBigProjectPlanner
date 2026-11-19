@@ -1,5 +1,5 @@
 //! Exports of list views (specification §6, L06-US06): the tickets a query
-//! finds, with the columns a screen displays, as a CSV file.
+//! finds, with the columns a screen displays, as a CSV or Excel file.
 //!
 //! - Up to 1,000 tickets, the file is written at once: the export answers
 //!   `ready`. Beyond, the worker writes it (`export.list`) and the member is
@@ -36,8 +36,29 @@ const PATH: &str = "/api/v1/exports";
 #[serde(rename_all = "snake_case")]
 #[schema(as = ExportFormat)]
 pub enum FormatView {
+    /// UTF-8 with a byte order mark, comma-separated.
     #[default]
     Csv,
+    /// Excel: typed cells (numbers, dates, times in UTC).
+    Xlsx,
+}
+
+impl From<FormatView> for Format {
+    fn from(view: FormatView) -> Self {
+        match view {
+            FormatView::Csv => Self::Csv,
+            FormatView::Xlsx => Self::Xlsx,
+        }
+    }
+}
+
+impl From<Format> for FormatView {
+    fn from(format: Format) -> Self {
+        match format {
+            Format::Csv => Self::Csv,
+            Format::Xlsx => Self::Xlsx,
+        }
+    }
 }
 
 /// Where an export stands.
@@ -91,7 +112,7 @@ fn view(export: ListExport) -> ExportView {
         download_path: (status == StatusView::Ready).then(|| format!("{PATH}/{}/file", export.id)),
         id: export.id,
         file_name: export.file_name,
-        format: FormatView::Csv,
+        format: Format::parse(&export.format).unwrap_or_default().into(),
         status,
         rows: export.row_count,
         size_bytes: export.size_bytes,
@@ -179,7 +200,7 @@ pub async fn create(
         return Err(too_large(total));
     }
     let language = Language::of(&tx, &accept);
-    let format = Format::Csv;
+    let format: Format = body.format.into();
     let now = OffsetDateTime::now_utc();
     let file_name = domain::export::file_name(&body.name, &now.date().to_string(), format);
     let new = NewExport {
@@ -201,7 +222,7 @@ pub async fn create(
     let payload = serde_json::to_value(&purge).map_err(|e| Problem::internal(&e))?;
     infra::jobs::enqueue_in(&mut tx, repo::PURGE_JOB, &payload, lifetime).await?;
     let status = if total <= SYNC_MAX_ROWS {
-        let produced = repo::produce(&mut tx, account, &query, &columns, language.locale())
+        let produced = repo::produce(&mut tx, account, &query, &columns, language.locale(), format)
             .await
             .map_err(produce_problem)?;
         let tenant = tx.tenant_id();
@@ -210,6 +231,9 @@ pub async fn create(
             Ok(_) => return Err(Problem::new(ErrorCode::Internal)),
             Err(infra::list_exports::RunError::Storage(e)) => return Err(e.into()),
             Err(infra::list_exports::RunError::Database(e)) => return Err(e.into()),
+            Err(infra::list_exports::RunError::File(e)) => {
+                return Err(Problem::internal(&std::io::Error::other(e)));
+            }
         }
         StatusCode::CREATED
     } else {
@@ -239,6 +263,7 @@ fn produce_problem(error: ProduceError) -> Problem {
         ProduceError::Query(e) => query_problem(&e),
         ProduceError::TooMany(total) => too_large(total),
         ProduceError::Database(e) => e.into(),
+        ProduceError::File(e) => Problem::internal(&std::io::Error::other(e)),
     }
 }
 
