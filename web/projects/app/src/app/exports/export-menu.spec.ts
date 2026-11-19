@@ -94,6 +94,21 @@ describe('the Export menu', () => {
     expect(root().querySelector('[role="status"]')).toBeNull();
   });
 
+  it('exports to Excel the same way', async () => {
+    const { root, reply, downloads, settle } = await open();
+    (root().querySelector('button.export') as HTMLElement).click();
+    await settle();
+    expect(Array.from(document.querySelectorAll('[mat-menu-item]')).map((b) => b.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
+      'table_view CSV file (.csv)',
+      'grid_on Excel file (.xlsx)',
+    ]);
+    (document.querySelector('button.xlsx') as HTMLElement).click();
+    await settle();
+    const asked = await reply(exported('ready', { fileName: 'search-2026-11-18.xlsx', format: 'xlsx' }), 201);
+    expect((asked.request.body as { format: string }).format).toBe('xlsx');
+    expect(downloads).toEqual(['/api/v1/exports/e1/file']);
+  });
+
   it('announces a large export, with a link to follow it', async () => {
     const { root, text, exportCsv, reply, downloads } = await open();
     await exportCsv();

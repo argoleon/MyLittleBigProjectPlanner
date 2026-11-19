@@ -5,5 +5,5 @@
 /**
  * What an export is in.
  */
-export type ExportFormat = 'csv';
+export type ExportFormat = 'csv' | 'xlsx';
 

@@ -1,9 +1,9 @@
 /**
- * Exports on the production stack, nothing mocked (L06-US06): the tenant
- * admin exports a search to CSV and the browser downloads it from the
- * storage through the reverse proxy: UTF-8 with a byte order mark, the
- * columns displayed with their headers, a text starting like a formula
- * neutralized.
+ * Exports on the production stack, nothing mocked (L06-US06, L06-US07):
+ * the tenant admin exports a search to CSV and the browser downloads it
+ * from the storage through the reverse proxy: UTF-8 with a byte order mark,
+ * the columns displayed with their headers, a text starting like a formula
+ * neutralized; then to Excel, a workbook from the storage too.
  *
  * Runs with `just compose-e2e` only: deploy/tests/e2e.sh creates the admin
  * and passes E2E_ADMIN_EMAIL and E2E_ADMIN_SECRET.
@@ -70,4 +70,14 @@ test('a search is exported to CSV and downloaded from the storage', async ({ pag
   expect(bytes.toString('utf8')).toBe(
     `\u{feff}Key,Title,Status\r\n${key}-1,Créer l’annuaire,To do\r\n${key}-2,"'=1+1, then ""more""",To do\r\n`,
   );
+
+  // The same list in Excel: a workbook (a zip file) from the storage too.
+  await page.getByRole('button', { name: 'Export' }).click();
+  const workbook = page.waitForEvent('download');
+  await page.getByRole('menuitem', { name: 'Excel file (.xlsx)' }).click();
+  const excel = await workbook;
+  expect(excel.suggestedFilename()).toMatch(/^search-\d{4}-\d{2}-\d{2}\.xlsx$/);
+  const zip = await readFile((await excel.path())!);
+  expect(zip.subarray(0, 2).toString('latin1')).toBe('PK');
+  expect(zip.length).toBeGreaterThan(4_000);
 });

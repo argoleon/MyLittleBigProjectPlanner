@@ -99,6 +99,27 @@ test('a small search is exported to CSV at once, with its columns', async ({ pag
   ]);
 });
 
+test('a small search is exported to Excel at once', async ({ page }) => {
+  const asked = await mockExports(page, 'ready');
+  await page.route('**/api/v1/exports/e1/file', (route) =>
+    route.fulfill({
+      status: 200,
+      headers: {
+        'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'content-disposition': 'attachment; filename="search-2026-11-18.xlsx"',
+      },
+      body: Buffer.from('PK'),
+    }),
+  );
+  await page.goto('/search?q=project%20%3D%20PLAT');
+  await expect(page.getByRole('link', { name: 'PLAT-1', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Export' }).click();
+  const downloaded = page.waitForEvent('download');
+  await page.getByRole('menuitem', { name: 'Excel file (.xlsx)' }).click();
+  expect((await downloaded).suggestedFilename()).toBe('search-2026-11-18.xlsx');
+  expect(asked).toEqual([expect.objectContaining({ format: 'xlsx', name: 'search' })]);
+});
+
 test('a large export is announced, then followed on its page until it downloads', async ({ page }) => {
   await mockExports(page, 'queued');
   await page.goto('/search?q=project%20%3D%20PLAT');

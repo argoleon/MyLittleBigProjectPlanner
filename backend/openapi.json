@@ -18510,7 +18510,8 @@
         "type": "string",
         "description": "What an export is in.",
         "enum": [
-          "csv"
+          "csv",
+          "xlsx"
         ]
       },
       "ExportList": {
@@ -25869,7 +25870,7 @@
     },
     {
       "name": "exports",
-      "description": "Exports of list views, as CSV files"
+      "description": "Exports of list views, as CSV or Excel files"
     },
     {
       "name": "boards",

@@ -5,13 +5,13 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { Api, ListExport, createExport, errorTranslationKey, isApiProblem } from 'ui';
+import { Api, ExportFormat, ListExport, createExport, errorTranslationKey, isApiProblem } from 'ui';
 
 import { FileDownload } from './file-download';
 
 /**
- * The Export menu of a list view (L06-US06): its tickets, as the query
- * finds them, with the columns displayed. A small export downloads at once;
+ * The Export menu of a list view (L06-US06, L06-US07): its tickets, as the
+ * query finds them, with the columns displayed, as CSV or Excel. A small export downloads at once;
  * a large one is written in the background, the member notified when it is
  * ready (and told so here).
  */
@@ -28,9 +28,13 @@ import { FileDownload } from './file-download';
       {{ 'exports.button' | transloco }}
     </button>
     <mat-menu #formats="matMenu">
-      <button mat-menu-item type="button" class="csv" (click)="export()">
+      <button mat-menu-item type="button" class="csv" (click)="export('csv')">
         <mat-icon aria-hidden="true">table_view</mat-icon>
         {{ 'exports.csv' | transloco }}
+      </button>
+      <button mat-menu-item type="button" class="xlsx" (click)="export('xlsx')">
+        <mat-icon aria-hidden="true">grid_on</mat-icon>
+        {{ 'exports.xlsx' | transloco }}
       </button>
     </mat-menu>
     @if (queued(); as queued) {
@@ -61,13 +65,13 @@ export class ExportMenu {
   protected readonly queued = signal<ListExport | null>(null);
   protected readonly errorKey = signal<string | null>(null);
 
-  protected async export(): Promise<void> {
+  protected async export(format: ExportFormat): Promise<void> {
     this.running.set(true);
     this.queued.set(null);
     this.errorKey.set(null);
     try {
       const created = await this.api.invoke(createExport, {
-        body: { query: this.query(), columns: [...this.columns()], format: 'csv', name: this.name() },
+        body: { query: this.query(), columns: [...this.columns()], format, name: this.name() },
       });
       if (created.status === 'ready' && created.downloadPath) this.download.start(created.downloadPath);
       else this.queued.set(created);

@@ -184,6 +184,8 @@ pub enum ProduceError {
     /// More tickets than [`domain::export::MAX_ROWS`].
     TooMany(usize),
     Database(sqlx::Error),
+    /// The file could not be written.
+    File(String),
 }
 
 impl From<sqlx::Error> for ProduceError {
@@ -205,7 +207,7 @@ impl From<crate::search::SearchError> for ProduceError {
 /// A file written.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Produced {
-    pub content: String,
+    pub content: Vec<u8>,
     pub rows: usize,
 }
 
@@ -248,17 +250,18 @@ struct Labels {
     statuses: std::collections::HashMap<Uuid, String>,
 }
 
-/// Writes the CSV of the tickets `query` finds for `account` (as they see
-/// them, in their time zone), with `columns`, headers and labels in
-/// `language`. Refuses beyond [`domain::export::MAX_ROWS`] tickets.
+/// Writes the file (`format`) of the tickets `query` finds for `account`
+/// (as they see them, in their time zone), with `columns`, headers and
+/// labels in `language`. Refuses beyond [`domain::export::MAX_ROWS`] tickets.
 pub async fn produce(
     conn: &mut PgConnection,
     account: Uuid,
     query: &domain::query::Query,
     columns: &[domain::export::Column],
     language: &str,
+    format: domain::export::Format,
 ) -> Result<Produced, ProduceError> {
-    use domain::export::{Cell, Column, MAX_ROWS};
+    use domain::export::{Cell, Column, Format, MAX_ROWS};
 
     let visible = sight_of(conn, account).await?;
     let time_zone = crate::search::time_zone_of(conn, account).await?;
@@ -268,8 +271,8 @@ pub async fn produce(
         visible_projects: visible.as_deref(),
         audience: crate::full_text::Audience::Members,
     };
-    let headers: Vec<String> = columns.iter().map(|c| c.header(language).to_owned()).collect();
-    let mut content = domain::export::csv_header(&headers);
+    let headers: Vec<String> = columns.iter().map(|c| c.header_in(language, format)).collect();
+    let mut lines: Vec<Vec<Cell>> = Vec::new();
     let mut projects: std::collections::HashMap<Uuid, (String, Option<Uuid>)> =
         std::collections::HashMap::new();
     let mut labels: std::collections::HashMap<Uuid, Labels> = std::collections::HashMap::new();
@@ -325,7 +328,7 @@ pub async fn produce(
                     Column::Updated => Cell::DateTime(utc(issue.updated_at)),
                 })
                 .collect();
-            domain::export::csv_line(&cells, &mut content);
+            lines.push(cells);
             rows += 1;
         }
         match page.next_cursor {
@@ -333,6 +336,12 @@ pub async fn produce(
             _ => break,
         }
     }
+    let content = match format {
+        Format::Csv => domain::export::csv(&headers, &lines).into_bytes(),
+        Format::Xlsx => {
+            crate::xlsx::write(&headers, &lines).map_err(|e| ProduceError::File(e.to_string()))?
+        }
+    };
     Ok(Produced { content, rows })
 }
 
@@ -406,6 +415,7 @@ pub enum Ran {
 pub enum RunError {
     Database(sqlx::Error),
     Storage(crate::storage::StorageError),
+    File(String),
 }
 
 impl std::fmt::Display for RunError {
@@ -413,6 +423,7 @@ impl std::fmt::Display for RunError {
         match self {
             Self::Database(e) => write!(f, "database: {e}"),
             Self::Storage(e) => write!(f, "storage: {e}"),
+            Self::File(e) => write!(f, "file: {e}"),
         }
     }
 }
@@ -481,11 +492,22 @@ pub async fn run(
         Ok(prepared) => prepared,
         Err(code) => return failed(conn, export.id, code).await,
     };
-    let produced = match produce(conn, export.account_id, &query, &columns, &export.language).await {
+    let format = domain::export::Format::parse(&export.format).unwrap_or_default();
+    let produced = match produce(
+        conn,
+        export.account_id,
+        &query,
+        &columns,
+        &export.language,
+        format,
+    )
+    .await
+    {
         Ok(produced) => produced,
         Err(ProduceError::Query(_)) => return failed(conn, export.id, "query.invalid").await,
         Err(ProduceError::TooMany(_)) => return failed(conn, export.id, "export.too_large").await,
         Err(ProduceError::Database(e)) => return Err(RunError::Database(e)),
+        Err(ProduceError::File(e)) => return Err(RunError::File(e)),
     };
     let ran = store(conn, storage, tenant, &export, &produced).await?;
     if let Ran::Ready { rows, .. } = ran {

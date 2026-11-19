@@ -11,6 +11,9 @@
 //!   prefixed with `'`: a spreadsheet would run it as a formula (formula
 //!   injection, OWASP). Numbers and dates are never text, so `-3` stays a
 //!   number.
+//! - Excel (L06-US07): typed cells, so that spreadsheets sort and compute
+//!   them: numbers as numbers, dates and times as dates (times in UTC, said
+//!   in their header), texts as texts (never run as formulas).
 //! - Up to [`SYNC_MAX_ROWS`] rows are downloaded at once; beyond, the
 //!   worker writes the file, kept [`FILE_LIFETIME_HOURS`] hours; never more
 //!   than [`MAX_ROWS`] rows.
@@ -29,14 +32,16 @@ pub const MAX_COLUMNS: usize = 40;
 pub enum Format {
     #[default]
     Csv,
+    Xlsx,
 }
 
 impl Format {
-    pub const ALL: [Self; 1] = [Self::Csv];
+    pub const ALL: [Self; 2] = [Self::Csv, Self::Xlsx];
 
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Csv => "csv",
+            Self::Xlsx => "xlsx",
         }
     }
 
@@ -48,6 +53,7 @@ impl Format {
     pub const fn content_type(self) -> &'static str {
         match self {
             Self::Csv => "text/csv; charset=utf-8",
+            Self::Xlsx => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         }
     }
 
@@ -55,6 +61,7 @@ impl Format {
     pub const fn extension(self) -> &'static str {
         match self {
             Self::Csv => "csv",
+            Self::Xlsx => "xlsx",
         }
     }
 }
@@ -140,6 +147,19 @@ impl Column {
             (Self::Created, false) => "Created",
             (Self::Updated, true) => "Modifié le",
             (Self::Updated, false) => "Updated",
+        }
+    }
+}
+
+impl Column {
+    /// Its header in a file of `format`: an Excel time has no time zone, so
+    /// the header of a time column tells it is in UTC.
+    pub fn header_in(self, language: &str, format: Format) -> String {
+        let header = self.header(language);
+        if format == Format::Xlsx && matches!(self, Self::Created | Self::Updated) {
+            format!("{header} (UTC)")
+        } else {
+            header.to_owned()
         }
     }
 }
@@ -405,8 +425,16 @@ mod tests {
         for format in Format::ALL {
             assert_eq!(Format::parse(format.as_str()), Some(format));
         }
-        assert_eq!(Format::parse("xlsx"), None);
+        assert_eq!(Format::parse("pdf"), None);
         assert_eq!(Format::Csv.content_type(), "text/csv; charset=utf-8");
+        assert_eq!(
+            Format::Xlsx.content_type(),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        );
+        assert_eq!(
+            file_name("Search", "2026-11-18", Format::Xlsx),
+            "search-2026-11-18.xlsx"
+        );
     }
 
     #[test]
@@ -447,5 +475,17 @@ mod tests {
         assert_eq!(priority_label("highest", "fr"), Some("Très haute"));
         assert_eq!(priority_label("low", "en"), Some("Low"));
         assert_eq!(priority_label("urgent", "en"), None);
+    }
+
+    #[test]
+    fn excel_time_headers_say_utc() {
+        assert_eq!(Column::Created.header_in("en", Format::Xlsx), "Created (UTC)");
+        assert_eq!(Column::Updated.header_in("fr", Format::Xlsx), "Modifié le (UTC)");
+        assert_eq!(Column::Created.header_in("en", Format::Csv), "Created");
+        assert_eq!(
+            Column::Due.header_in("en", Format::Xlsx),
+            "Due date",
+            "a planning date has no zone"
+        );
     }
 }

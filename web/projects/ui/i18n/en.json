@@ -2011,6 +2011,7 @@
     "title": "Export",
     "button": "Export",
     "csv": "CSV file (.csv)",
+    "xlsx": "Excel file (.xlsx)",
     "running": "Export in progress",
     "queued": "{{ file }} is being prepared: you will be notified when it is ready.",
     "follow": "Follow it",

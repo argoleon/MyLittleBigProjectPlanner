@@ -7,5 +7,6 @@ import { ExportFormat } from './export-format';
  * Each possible value of `ExportFormat`
  */
 export const EXPORT_FORMAT: ExportFormat[] = [
-  'csv'
+  'csv',
+  'xlsx'
 ];
