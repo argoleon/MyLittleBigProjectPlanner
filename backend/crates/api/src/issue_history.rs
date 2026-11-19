@@ -16,15 +16,15 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use axum::extract::State;
 use axum::response::{IntoResponse, Response};
-use domain::audit::{Action, Change, Field as AuditField, Origin, Snapshot, diff};
+use domain::audit::{Action, Field as AuditField, Origin};
 use domain::fields::Kind;
 use domain::links::Relation;
 use infra::audit::{Entry, Recorded};
 use infra::fields::Field;
-use infra::issues::{self as repo, Issue};
+use infra::issues::{self as repo};
 use infra::uuid::Uuid;
 use serde::Serialize;
-use serde_json::{Value as Json, json};
+use serde_json::Value as Json;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 
@@ -40,116 +40,7 @@ use crate::tenant::{AppState, TenantTx};
 
 // --- Writing -----------------------------------------------------------------
 
-/// A type or a status as stored: its id and its labels at the time.
-fn labelled(id: Uuid, labels: Option<&BTreeMap<String, String>>) -> Json {
-    json!({"id": id, "label": labels.cloned().unwrap_or_default()})
-}
-
-/// The values of `issue`'s fields, its configuration being `content`.
-pub(crate) fn snapshot(issue: &Issue, content: &Content) -> Snapshot<Json> {
-    let issue_type = content.types.iter().find(|t| t.item_id == issue.type_id);
-    let status = content
-        .workflows
-        .statuses
-        .iter()
-        .find(|s| s.item_id == issue.status_id);
-    let mut values = Snapshot::from([
-        (
-            AuditField::Type,
-            labelled(issue.type_id, issue_type.map(|t| &t.label_translations)),
-        ),
-        (
-            AuditField::Status,
-            labelled(issue.status_id, status.map(|s| &s.label_translations)),
-        ),
-        (AuditField::Summary, json!(issue.summary)),
-        (
-            AuditField::Description,
-            issue.description.clone().unwrap_or_default(),
-        ),
-        (AuditField::Priority, json!(issue.priority)),
-        (AuditField::Reporter, json!(issue.reporter_id)),
-        (AuditField::Assignee, json!(issue.assignee_id)),
-        (AuditField::StartDate, json!(issue.start_date)),
-        (AuditField::DueDate, json!(issue.due_date)),
-        (AuditField::Parent, json!(issue.parent_id)),
-    ]);
-    for (id, value) in issue.fields.as_object().into_iter().flatten() {
-        if let Ok(id) = Uuid::parse_str(id) {
-            values.insert(AuditField::Custom(id.as_u128()), value.clone());
-        }
-    }
-    values
-}
-
-/// The name a field is stored under: `status`, `fields.{id}`…
-pub(crate) fn field_name(field: AuditField) -> String {
-    match field {
-        AuditField::Custom(id) => format!("fields.{}", Uuid::from_u128(id)),
-        system => system.system_name().unwrap_or_default().to_owned(),
-    }
-}
-
-/// The entries of the fields changed between `before` and `after`.
-pub(crate) fn changes(before: &Snapshot<Json>, after: &Snapshot<Json>) -> Vec<Entry> {
-    diff(before, after)
-        .into_iter()
-        .map(|Change { field, old, new }| Entry::field(field_name(field), old, new))
-        .collect()
-}
-
-/// The entry of a ticket moved from `from` to `to` (keys).
-pub(crate) fn moved(from: &str, to: &str) -> Entry {
-    Entry {
-        old: Some(json!({"key": from})),
-        new: Some(json!({"key": to})),
-        ..Entry::action(Action::Moved)
-    }
-}
-
-/// The entry of a link added or removed, as it reads from the ticket whose
-/// history it goes to.
-pub(crate) fn link(added: bool, relation: Relation, other: Uuid) -> Entry {
-    let value = json!({"relation": relation.as_str(), "issueId": other});
-    if added {
-        Entry {
-            new: Some(value),
-            ..Entry::action(Action::LinkAdded)
-        }
-    } else {
-        Entry {
-            old: Some(value),
-            ..Entry::action(Action::LinkRemoved)
-        }
-    }
-}
-
-/// The entry of a comment written, edited or deleted: its id, and its
-/// content before and after.
-pub(crate) fn comment(action: Action, id: Uuid, old: Option<&Json>, new: Option<&Json>) -> Entry {
-    let value = |content: Option<&Json>| content.map(|c| json!({"commentId": id, "content": c}));
-    Entry {
-        old: value(old).or_else(|| (action != Action::CommentCreated).then(|| json!({"commentId": id}))),
-        new: value(new),
-        ..Entry::action(action)
-    }
-}
-
-/// The entry of a file attached or removed: its id and name.
-pub(crate) fn attachment(added: bool, id: Uuid, name: &str) -> Entry {
-    let value = json!({"attachmentId": id, "name": name});
-    if added {
-        Entry {
-            new: Some(value),
-            ..Entry::action(Action::AttachmentAdded)
-        }
-    } else {
-        Entry {
-            old: Some(value),
-            ..Entry::action(Action::AttachmentRemoved)
-        }
-    }
-}
+pub(crate) use infra::tickets::history::{attachment, comment, link};
 
 /// Records `entries` in the history of the ticket `issue`, as the member
 /// of `tx` from where they write.
@@ -615,6 +506,10 @@ pub async fn activity(
 
 #[cfg(test)]
 mod tests {
+    use domain::audit::Snapshot;
+    use infra::tickets::history::{changes, field_name};
+    use serde_json::json;
+
     use super::*;
 
     #[test]

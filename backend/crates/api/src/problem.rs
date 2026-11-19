@@ -677,6 +677,15 @@ impl From<infra::sqlx::Error> for Problem {
     }
 }
 
+impl From<infra::tickets::ContentError> for Problem {
+    fn from(err: infra::tickets::ContentError) -> Self {
+        match err {
+            infra::tickets::ContentError::NotFound => Self::new(ErrorCode::NotFound),
+            infra::tickets::ContentError::Database(e) => Self::internal(&e),
+        }
+    }
+}
+
 impl From<infra::storage::StorageError> for Problem {
     fn from(err: infra::storage::StorageError) -> Self {
         tracing::error!(error = %err, "storage error");

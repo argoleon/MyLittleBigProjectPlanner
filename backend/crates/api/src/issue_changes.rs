@@ -15,15 +15,11 @@ use std::collections::{BTreeMap, BTreeSet};
 use axum::extract::State;
 use axum::http::{HeaderMap, HeaderValue, header};
 use axum::response::{IntoResponse, Response};
-use domain::fields::{Step, Value};
-use domain::issues::{
-    Current, IssueChanges, Landing, Moving, Priority, TargetType, kept_values, plan_move, validate_changes,
-};
-use domain::migration::{StatusOption, TypeOption, suggest_status, suggest_type};
+use domain::fields::Step;
+use domain::issues::Priority;
 use domain::permissions::Permission;
 use domain::screens::Kind as ScreenKind;
 use domain::validation::FieldError;
-use domain::workflows::Category;
 use infra::issues::{self as repo, Issue};
 use infra::nodes::Node;
 use infra::uuid::Uuid;
@@ -33,17 +29,17 @@ use utoipa::ToSchema;
 
 use crate::etag::{etag, require_if_match};
 use crate::extract::{AcceptLanguage, ApiJson, ApiPath};
-use crate::issue_history;
 use crate::issues::{
-    Content, FormFieldView, IssueRefView, IssueView, PriorityView, ProjectView, TAG, field_defs, ids_in,
-    issue_ref, issue_view, project_of_key, project_view, read_fields, require_create, screen_fields,
-    type_ids_of, unknown_references, visible_issue,
+    Content, FormFieldView, IssueRefView, IssueView, PriorityView, ProjectView, TAG, ids_in, issue_ref,
+    issue_view, project_of_key, project_view, require_create, screen_fields, visible_issue,
 };
 use crate::nodes::{ensure_changeable, is_tenant_admin};
 use crate::permissions;
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
 use crate::roles::Language;
 use crate::tenant::{AppState, TenantTx};
+use infra::tickets::moves::{PrepareError, Prepared};
+use infra::tickets::stored_values;
 
 /// Reads a field that may be absent (`None`), `null` (`Some(None)`) or a
 /// value (`Some(Some(…))`).
@@ -245,30 +241,6 @@ pub(crate) async fn locked(tx: &mut TenantTx, id: Uuid, versions: Option<&[i64]>
     repo::find(tx, id).await?.ok_or_else(not_found)
 }
 
-/// The custom field values stored on a ticket, by field.
-fn stored_values(fields: &serde_json::Value) -> BTreeMap<u128, Value> {
-    fields
-        .as_object()
-        .into_iter()
-        .flatten()
-        .filter_map(|(id, json)| {
-            Some((
-                Uuid::parse_str(id).ok()?.as_u128(),
-                infra::fields::value_of(json)?,
-            ))
-        })
-        .collect()
-}
-
-/// A rich text document as stored: read through the allow-list and
-/// checked; `None` when empty.
-fn read_description(json: &serde_json::Value) -> Result<Option<serde_json::Value>, FieldError> {
-    let doc = infra::rich_text::parse(json).map_err(|_| FieldError::new("description", "invalid"))?;
-    doc.validate()
-        .map_err(|refusal| FieldError::new("description", refusal.code()))?;
-    Ok((!doc.is_empty()).then(|| infra::rich_text::to_json(&doc)))
-}
-
 /// The response of a ticket: its view, `ETag`, language.
 pub(crate) fn ticket_response(view: IssueView, language: &Language) -> Response {
     let version = view.version();
@@ -276,18 +248,6 @@ pub(crate) fn ticket_response(view: IssueView, language: &Language) -> Response 
     response.headers_mut().insert(header::ETAG, etag(version));
     language.headers(&mut response);
     response
-}
-
-/// One changed value, for the outbox.
-fn change(field: &str, old: serde_json::Value, new: serde_json::Value) -> Option<serde_json::Value> {
-    if old == new {
-        return None;
-    }
-    let mut change = serde_json::Map::new();
-    change.insert("field".to_owned(), field.into());
-    change.insert("old".to_owned(), old);
-    change.insert("new".to_owned(), new);
-    Some(serde_json::Value::Object(change))
 }
 
 /// `PATCH /api/v1/issues/{idOrKey}`: requires `If-Match`.
@@ -334,147 +294,22 @@ pub async fn update(
     ensure_changeable(&project)?;
     let issue = locked(&mut tx, issue.id, if_match.versions()).await?;
     let content = Content::of(&mut tx, project.id).await?;
-
-    let mut errors = Vec::new();
-    let changed = read_fields(&body.fields).unwrap_or_else(|e| {
-        errors.extend(e);
-        BTreeMap::new()
-    });
-    let description = match &body.description {
-        None => issue.description.clone(),
-        Some(None) => None,
-        Some(Some(json)) => read_description(json).unwrap_or_else(|e| {
-            errors.push(e);
-            None
-        }),
-    };
-    let assignee = body.assignee_id.unwrap_or(issue.assignee_id);
-    if let Some(Some(member)) = body.assignee_id
-        && infra::rule_references::members(&mut tx, &[member])
-            .await?
-            .is_empty()
-    {
-        errors.push(FieldError::new("assigneeId", "unknown_member"));
-    }
-    let start_date = body.start_date.unwrap_or(issue.start_date);
-    let due_date = body.due_date.unwrap_or(issue.due_date);
-    let dates_in_order = match (start_date, due_date) {
-        (Some(start), Some(due)) => start <= due,
-        _ => true,
-    };
-    let current_values = stored_values(&issue.fields);
-    let type_ids = type_ids_of(&content.fields);
-    let defs = field_defs(&content.fields, &type_ids);
-    let changes = IssueChanges {
+    let edit = infra::tickets::edit::Edit {
         summary: body.summary.as_deref(),
-        dates_in_order,
-        fields: &changed,
+        description: body.description.clone(),
+        priority: body.priority.map(Priority::from),
+        assignee: body.assignee_id,
+        start_date: body.start_date,
+        due_date: body.due_date,
+        fields: body.fields.clone(),
     };
-    let current = Current {
-        type_id: issue.type_id.as_u128(),
-        status_id: issue.status_id.as_u128(),
-        fields: &current_values,
-    };
-    if let Err(e) = validate_changes(&changes, &current, &defs) {
-        errors.extend(e);
-    }
-    let unknown = unknown_references(&mut tx, &content.fields, &changed, &errors).await?;
-    errors.extend(unknown);
-    if !errors.is_empty() {
-        return Err(Problem::validation(errors));
-    }
-
-    // The values once changed, each a field given replacing or clearing it.
-    let mut stored = issue.fields.as_object().cloned().unwrap_or_default();
-    for (id, json) in &body.fields {
-        if changed.get(&id.as_u128()).is_some_and(Value::is_empty) {
-            stored.remove(&id.to_string());
-        } else {
-            stored.insert(id.to_string(), json.clone());
-        }
-    }
-    let summary = body.summary.as_deref().map_or(issue.summary.as_str(), str::trim);
-    let priority = body
-        .priority
-        .map_or(issue.priority.clone(), |p| Priority::from(p).as_str().to_owned());
-    let mut diff: Vec<serde_json::Value> = [
-        change("summary", issue.summary.clone().into(), summary.into()),
-        change(
-            "description",
-            issue.description.clone().unwrap_or_default(),
-            description.clone().unwrap_or_default(),
-        ),
-        change("priority", issue.priority.clone().into(), priority.clone().into()),
-        change(
-            "assigneeId",
-            serde_json::json!(issue.assignee_id),
-            serde_json::json!(assignee),
-        ),
-        change(
-            "startDate",
-            serde_json::json!(issue.start_date),
-            serde_json::json!(start_date),
-        ),
-        change(
-            "dueDate",
-            serde_json::json!(issue.due_date),
-            serde_json::json!(due_date),
-        ),
-    ]
-    .into_iter()
-    .flatten()
-    .collect();
-    for id in body.fields.keys() {
-        let field = id.to_string();
-        let old = issue.fields.get(&field).cloned().unwrap_or_default();
-        let new = stored.get(&field).cloned().unwrap_or_default();
-        diff.extend(change(&format!("fields.{id}"), old, new));
-    }
-
+    let author = tx.author();
+    let account = tx.account_id();
+    let edited = infra::tickets::edit::apply(&mut tx, author, account, project.id, issue, &content, &edit)
+        .await?
+        .map_err(Problem::validation)?;
     let language = Language::of(&tx, &accept);
-    if diff.is_empty() {
-        let view = issue_view(&state, &mut tx, &language, issue, &project, false).await?;
-        tx.commit().await?;
-        return Ok(ticket_response(view, &language));
-    }
-    let stored = serde_json::Value::Object(stored);
-    let updated = repo::update(
-        &mut tx,
-        issue.id,
-        &repo::Edited {
-            summary,
-            description: description.as_ref(),
-            priority: &priority,
-            assignee_id: assignee,
-            start_date,
-            due_date,
-            fields: &stored,
-        },
-    )
-    .await?;
-    let entries = issue_history::changes(
-        &issue_history::snapshot(&issue, &content),
-        &issue_history::snapshot(&updated, &content),
-    );
-    issue_history::record(&mut tx, updated.id, &entries).await?;
-    // A new assignee follows the ticket.
-    if let Some(assignee) = updated.assignee_id.filter(|a| Some(*a) != issue.assignee_id) {
-        infra::watchers::watch(&mut tx, updated.id, assignee).await?;
-    }
-    let actor = tx.account_id();
-    infra::outbox::record(
-        &mut tx,
-        &infra::outbox::Event {
-            kind: "issue.updated",
-            aggregate_type: "issue",
-            aggregate_id: updated.id,
-            payload: serde_json::json!({"key": updated.key, "projectId": project.id, "changes": diff}),
-            actor_id: Some(actor),
-        },
-    )
-    .await?;
-    tracing::info!(target: "audit", actor = %actor, issue = %updated.id, key = %updated.key, changes = diff.len(), "ticket edited");
-    let view = issue_view(&state, &mut tx, &language, updated, &project, false).await?;
+    let view = issue_view(&state, &mut tx, &language, edited.issue, &project, false).await?;
     tx.commit().await?;
     Ok(ticket_response(view, &language))
 }
@@ -529,197 +364,6 @@ pub async fn edit_form(
     Ok(response)
 }
 
-/// A move, checked: the tickets that move and where to.
-struct Prepared {
-    target: Node,
-    source_content: Content,
-    target_content: Content,
-    same_configuration: bool,
-    /// The ticket asked for, then its sub-tasks.
-    moving: Vec<Issue>,
-}
-
-impl Prepared {
-    fn target_types(&self) -> Vec<TargetType> {
-        self.target_content
-            .types
-            .iter()
-            .map(|t| TargetType {
-                node: t.node(),
-                statuses: t
-                    .workflow_id
-                    .map(|w| {
-                        self.target_content
-                            .workflows
-                            .statuses_of(w)
-                            .map(|s| s.item_id.as_u128())
-                            .collect()
-                    })
-                    .unwrap_or_default(),
-            })
-            .collect()
-    }
-
-    /// The type each type the target lacks is suggested to become.
-    fn suggested_types(&self) -> BTreeMap<u128, u128> {
-        let options: Vec<TypeOption<'_>> = self
-            .target_content
-            .types
-            .iter()
-            .map(|t| TypeOption {
-                id: t.item_id.as_u128(),
-                key: &t.key,
-                is_subtask: t.is_subtask,
-            })
-            .collect();
-        self.source_types_needed()
-            .into_iter()
-            .filter_map(|t| Some((t.item_id.as_u128(), suggest_type(&t.key, t.is_subtask, &options)?)))
-            .collect()
-    }
-
-    /// The types of moving tickets the target configuration lacks.
-    fn source_types_needed(&self) -> Vec<&infra::issue_types::IssueType> {
-        let mut seen = BTreeSet::new();
-        self.moving
-            .iter()
-            .filter(|i| seen.insert(i.type_id))
-            .filter(|i| !self.target_content.types.iter().any(|t| t.item_id == i.type_id))
-            .filter_map(|i| self.source_content.types.iter().find(|t| t.item_id == i.type_id))
-            .collect()
-    }
-
-    /// The new type of each moving ticket with `types`, if it has one.
-    fn landing_type(
-        &self,
-        issue: &Issue,
-        types: &BTreeMap<u128, u128>,
-    ) -> Option<&infra::issue_types::IssueType> {
-        let id = types
-            .get(&issue.type_id.as_u128())
-            .copied()
-            .unwrap_or(issue.type_id.as_u128());
-        self.target_content
-            .types
-            .iter()
-            .find(|t| t.item_id.as_u128() == id)
-    }
-
-    /// The statuses of moving tickets not in the workflow of their new type
-    /// (with `types`), with the source types of the tickets in them.
-    fn statuses_needed(&self, types: &BTreeMap<u128, u128>) -> Vec<(&infra::workflows::Status, Vec<Uuid>)> {
-        let mut needed: Vec<(&infra::workflows::Status, Vec<Uuid>)> = Vec::new();
-        for issue in &self.moving {
-            let in_workflow = self
-                .landing_type(issue, types)
-                .and_then(|t| t.workflow_id)
-                .is_some_and(|w| {
-                    self.target_content
-                        .workflows
-                        .statuses_of(w)
-                        .any(|s| s.item_id == issue.status_id)
-                });
-            if in_workflow {
-                continue;
-            }
-            let Some(status) = self
-                .source_content
-                .workflows
-                .statuses
-                .iter()
-                .find(|s| s.item_id == issue.status_id)
-            else {
-                continue;
-            };
-            match needed.iter_mut().find(|(s, _)| s.item_id == status.item_id) {
-                Some((_, type_ids)) if !type_ids.contains(&issue.type_id) => type_ids.push(issue.type_id),
-                Some(_) => {}
-                None => needed.push((status, vec![issue.type_id])),
-            }
-        }
-        needed
-    }
-
-    /// The status suggested for `status`, among those of the workflows of
-    /// the new types of its tickets.
-    fn suggested_status(
-        &self,
-        status: &infra::workflows::Status,
-        types: &BTreeMap<u128, u128>,
-    ) -> Option<u128> {
-        let workflows: BTreeSet<Uuid> = self
-            .moving
-            .iter()
-            .filter(|i| i.status_id == status.item_id)
-            .filter_map(|i| self.landing_type(i, types)?.workflow_id)
-            .collect();
-        let options: Vec<StatusOption<'_>> = self
-            .target_content
-            .workflows
-            .statuses
-            .iter()
-            .filter(|s| workflows.contains(&s.workflow_id))
-            .map(|s| StatusOption {
-                id: s.item_id.as_u128(),
-                key: &s.key,
-                category: Category::parse(&s.category).unwrap_or(Category::Todo),
-            })
-            .collect();
-        suggest_status(
-            &status.key,
-            Category::parse(&status.category).unwrap_or(Category::Todo),
-            &options,
-        )
-    }
-
-    /// Where the moving tickets land with `types` and `statuses`, or what
-    /// the move refuses.
-    fn landings(
-        &self,
-        types: &BTreeMap<u128, u128>,
-        statuses: &BTreeMap<u128, u128>,
-    ) -> Result<Vec<Landing>, Vec<FieldError>> {
-        let moving: Vec<Moving> = self
-            .moving
-            .iter()
-            .map(|i| Moving {
-                id: i.id.as_u128(),
-                type_id: i.type_id.as_u128(),
-                status_id: i.status_id.as_u128(),
-            })
-            .collect();
-        plan_move(&moving, &self.target_types(), types, statuses)
-    }
-
-    /// The values each moving ticket keeps at its landing, and the fields
-    /// dropped (any ticket), in the order of the source configuration.
-    fn kept(&self, landings: &[Landing]) -> (Vec<serde_json::Value>, Vec<Uuid>) {
-        let type_ids = type_ids_of(&self.target_content.fields);
-        let defs = field_defs(&self.target_content.fields, &type_ids);
-        let mut dropped = BTreeSet::new();
-        let kept = self
-            .moving
-            .iter()
-            .zip(landings)
-            .map(|(issue, landing)| {
-                let values = stored_values(&issue.fields);
-                let (_, gone) = kept_values(&values, landing.type_id, &defs);
-                dropped.extend(gone.iter().copied());
-                let mut object = issue.fields.as_object().cloned().unwrap_or_default();
-                object.retain(|id, _| Uuid::parse_str(id).is_ok_and(|id| !gone.contains(&id.as_u128())));
-                serde_json::Value::Object(object)
-            })
-            .collect();
-        let order = self
-            .source_content
-            .fields
-            .iter()
-            .map(|f| f.item_id)
-            .filter(|id| dropped.contains(&id.as_u128()));
-        (kept, order.collect())
-    }
-}
-
 /// Checks a move of `issue` (in `source`) to the project `project_key`:
 /// `edit` on the source, `create_ticket` on the target, both active, not a
 /// sub-task alone.
@@ -750,27 +394,11 @@ async fn prepare(
     }
     require_create(state, tx, target.id).await?;
     ensure_changeable(&target)?;
-    let source_content = Content::of(tx, source.id).await?;
-    if source_content
-        .types
-        .iter()
-        .any(|t| t.item_id == issue.type_id && t.is_subtask)
-    {
-        return Err(Problem::new(ErrorCode::IssueSubtaskMoves));
+    match infra::tickets::moves::prepare(tx, issue, source.id, target).await {
+        Ok(prepared) => Ok(prepared),
+        Err(PrepareError::Subtask) => Err(Problem::new(ErrorCode::IssueSubtaskMoves)),
+        Err(PrepareError::Content(e)) => Err(e.into()),
     }
-    let target_content = Content::of(tx, target.id).await?;
-    let same_configuration =
-        infra::configs::of_project(tx, source.id).await? == infra::configs::of_project(tx, target.id).await?;
-    let children = repo::children(tx, issue.id).await?;
-    let mut moving = vec![issue];
-    moving.extend(children);
-    Ok(Prepared {
-        target,
-        source_content,
-        target_content,
-        same_configuration,
-        moving,
-    })
 }
 
 fn mappings(body: &[MappingBody]) -> BTreeMap<u128, u128> {
@@ -970,57 +598,12 @@ pub async fn move_issue(
     let landings = prepared
         .landings(&mappings(&body.type_mappings), &mappings(&body.status_mappings))
         .map_err(Problem::validation)?;
-    let (kept, dropped) = prepared.kept(&landings);
+    let author = tx.author();
+    let account = tx.account_id();
+    let moved_all =
+        infra::tickets::moves::execute(&mut tx, author, account, source.id, &prepared, &landings).await?;
     let target = &prepared.target;
-    let target_key = target.key.as_str();
-    let actor = tx.account_id();
-    let mut moved_root = None;
-    for (index, ((issue, landing), fields)) in prepared.moving.iter().zip(&landings).zip(&kept).enumerate() {
-        // The ticket asked for leaves the one it sat under; its sub-tasks stay under it.
-        let parent_id = if index == 0 { None } else { issue.parent_id };
-        let moved = repo::move_to(
-            &mut tx,
-            &repo::Move {
-                id: issue.id,
-                project_id: target.id,
-                project_key: target_key,
-                type_id: Uuid::from_u128(landing.type_id),
-                status_id: Uuid::from_u128(landing.status_id),
-                parent_id,
-                fields,
-            },
-        )
-        .await?;
-        let mut entries = vec![issue_history::moved(&issue.key, &moved.key)];
-        entries.extend(issue_history::changes(
-            &issue_history::snapshot(issue, &prepared.source_content),
-            &issue_history::snapshot(&moved, &prepared.target_content),
-        ));
-        issue_history::record(&mut tx, moved.id, &entries).await?;
-        infra::outbox::record(
-            &mut tx,
-            &infra::outbox::Event {
-                kind: "issue.moved",
-                aggregate_type: "issue",
-                aggregate_id: moved.id,
-                payload: serde_json::json!({
-                    "key": moved.key,
-                    "formerKey": issue.key,
-                    "projectId": target.id,
-                    "formerProjectId": source.id,
-                    "typeId": moved.type_id,
-                    "statusId": moved.status_id,
-                    "droppedFieldIds": dropped,
-                }),
-                actor_id: Some(actor),
-            },
-        )
-        .await?;
-        tracing::info!(target: "audit", actor = %actor, issue = %moved.id, from = %issue.key, to = %moved.key, "ticket moved");
-        if index == 0 {
-            moved_root = Some(moved);
-        }
-    }
+    let moved_root = moved_all.into_iter().next().map(|m| m.issue);
     let moved = moved_root.ok_or_else(|| Problem::new(ErrorCode::NotFound))?;
     let language = Language::of(&tx, &accept);
     let location = format!("/api/v1/issues/{}", moved.key);
@@ -1049,14 +632,5 @@ mod tests {
         assert_eq!(body.due_date, None);
         assert_eq!(body.description, None);
         assert!(serde_json::from_value::<ChangesBody>(serde_json::json!({"type": "x"})).is_err());
-    }
-
-    #[test]
-    fn only_changed_values_are_reported() {
-        assert_eq!(change("summary", "a".into(), "a".into()), None);
-        assert_eq!(
-            change("priority", "medium".into(), "high".into()),
-            Some(serde_json::json!({"field": "priority", "old": "medium", "new": "high"}))
-        );
     }
 }

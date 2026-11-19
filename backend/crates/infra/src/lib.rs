@@ -61,6 +61,7 @@ pub mod shutdown;
 pub mod storage;
 pub mod telemetry;
 pub mod tenant_switch;
+pub mod tickets;
 pub mod transition_rules;
 pub mod valkey;
 pub mod watchers;
