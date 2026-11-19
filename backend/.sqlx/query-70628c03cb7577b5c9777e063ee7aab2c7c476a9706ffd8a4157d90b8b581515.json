@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE bulk_action SET remaining = remaining - 1,\n               completed_at = CASE WHEN remaining = 1 THEN now() END, version = version + 1\n        WHERE id = $1\n        RETURNING remaining\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "remaining",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "bulk_action",
+            "name": "remaining"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "70628c03cb7577b5c9777e063ee7aab2c7c476a9706ffd8a4157d90b8b581515"
+}

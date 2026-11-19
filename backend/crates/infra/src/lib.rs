@@ -9,6 +9,7 @@ pub mod audit;
 pub mod auth_policy;
 pub mod boards;
 pub mod bootstrap;
+pub mod bulk_actions;
 pub mod comments;
 pub mod config;
 pub mod config_migrations;

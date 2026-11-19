@@ -1683,6 +1683,328 @@
         }
       }
     },
+    "/api/v1/bulk-actions": {
+      "post": {
+        "tags": [
+          "bulk-actions"
+        ],
+        "summary": "Change several tickets at once",
+        "description": "Any member, on the tickets they see. Each ticket is checked and changed on its own, in its own transaction, as its own edit, transition or move would be: `edit` on its project (and `create_ticket` on the target of a move), its project active, its version locked. A refused ticket is reported, never changed, and never undoes the others. Up to 100 tickets: changed within the request, the report answered (`200`). Beyond (up to 10,000): changed in the background (`202`), the member notified when done.",
+        "operationId": "createBulkAction",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of the report",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewBulkAction"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Done: the report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkAction"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Running in the background",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkAction"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`: `selection` (`required`: nothing selected or visible), `action` (`required`: nothing to modify), `action.statusKey`, `projectKey` (`not_found`); or `query.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`bulk.too_many`: more than 10,000 tickets",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bulk-actions/move-plan": {
+      "post": {
+        "tags": [
+          "bulk-actions"
+        ],
+        "summary": "What moving a selection to a project takes",
+        "description": "The types and statuses of the selected tickets (and their sub-tasks) the target configuration lacks, mapped once for the batch with a suggestion each, and, with the mappings given (else the suggestions), the fields whose values are dropped and what the move would refuse. Sub-tasks selected without their parent stay.",
+        "operationId": "planBulkMove",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of the labels",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkMovePlanFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkMovePlan"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`: `selection` (`required`), `projectKey` (`not_found`); or `query.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`bulk.too_many`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bulk-actions/options": {
+      "post": {
+        "tags": [
+          "bulk-actions"
+        ],
+        "summary": "What a bulk action can do on a selection",
+        "description": "The tickets selected that the member sees, whether they change in the request (up to 100) or in the background, the custom fields they all have (tickets of one configuration), and the statuses a transition reaches from their statuses.",
+        "operationId": "getBulkOptions",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of the labels",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkSelection"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The options",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkOptions"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed` (`selection` `required`), or `query.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`bulk.too_many`: more than 10,000 tickets",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bulk-actions/{id}": {
+      "get": {
+        "tags": [
+          "bulk-actions"
+        ],
+        "summary": "A bulk action and its report",
+        "description": "Its requester only, for 7 days: what became of each ticket, so far.",
+        "operationId": "getBulkAction",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the bulk action",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The bulk action",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkAction"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such bulk action of the member, or expired",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/events": {
       "get": {
         "tags": [
@@ -18018,6 +18340,487 @@
           "exceeded"
         ]
       },
+      "BulkAction": {
+        "type": "object",
+        "description": "A bulk action and its report.",
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "background",
+          "total",
+          "counts",
+          "items",
+          "createdAt",
+          "expiresAt"
+        ],
+        "properties": {
+          "background": {
+            "type": "boolean"
+          },
+          "completedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/BulkCounts"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the report is deleted."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulkItem"
+            }
+          },
+          "kind": {
+            "type": "string",
+            "description": "`modify`, `transition` or `move`.",
+            "example": "transition"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BulkStatus"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "BulkActionFields": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "Sets what is given on every ticket; `null` clears.",
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "assigneeId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uuid"
+              },
+              "dueDate": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date"
+              },
+              "fields": {
+                "type": "object",
+                "description": "Custom field values by field id (fields the selected tickets\nshare, see `options`); `null` clears one.",
+                "additionalProperties": {},
+                "propertyNames": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "modify"
+                ]
+              },
+              "priority": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/IssuePriority"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "startDate": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Runs on every ticket the first transition of its workflow leading\nto the status `statusKey`.",
+            "required": [
+              "statusKey",
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "transition"
+                ]
+              },
+              "statusKey": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Moves every ticket to a project (its sub-tasks follow), types and\nstatuses mapped once for the batch (see `move-plan`).",
+            "required": [
+              "projectKey",
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "move"
+                ]
+              },
+              "projectKey": {
+                "type": "string"
+              },
+              "statusMappings": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/IssueMoveMapping"
+                }
+              },
+              "typeMappings": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/IssueMoveMapping"
+                }
+              }
+            }
+          }
+        ],
+        "description": "What a bulk action does."
+      },
+      "BulkCounts": {
+        "type": "object",
+        "description": "The counts of a bulk action's outcomes.",
+        "required": [
+          "changed",
+          "unchanged",
+          "refused",
+          "withParent",
+          "waiting"
+        ],
+        "properties": {
+          "changed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "refused": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unchanged": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "waiting": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "withParent": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "BulkItem": {
+        "type": "object",
+        "description": "A ticket of a bulk action.",
+        "required": [
+          "issueId",
+          "key",
+          "errors"
+        ],
+        "properties": {
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulkItemError"
+            }
+          },
+          "issueId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string",
+            "description": "Its key when selected.",
+            "example": "PLAT-142"
+          },
+          "newKey": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Its key once moved."
+          },
+          "outcome": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BulkOutcome",
+                "description": "`null` while waiting."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why it was refused: `not_found`, `permission.denied`,\n`node.archived`, `validation_failed`, `transition.none`,\n`transition.restricted`, `issue.subtask_moves`, `move.not_mapped`."
+          }
+        }
+      },
+      "BulkItemError": {
+        "type": "object",
+        "description": "A field error of a ticket refused for its values.",
+        "required": [
+          "field",
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "field": {
+            "type": "string"
+          }
+        }
+      },
+      "BulkMovePlan": {
+        "type": "object",
+        "description": "What moving a selection to a project takes.",
+        "required": [
+          "project",
+          "sameConfiguration",
+          "tickets",
+          "subtasksAlone",
+          "targets",
+          "statusTargets",
+          "types",
+          "statuses",
+          "droppedFields",
+          "problems"
+        ],
+        "properties": {
+          "droppedFields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueMoveDroppedField"
+            },
+            "description": "With the mappings given (else the suggestions): the fields whose\nvalues are dropped."
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueMoveProblem"
+            },
+            "description": "With the mappings given (else the suggestions): what the move would\nrefuse."
+          },
+          "project": {
+            "$ref": "#/components/schemas/IssueProject"
+          },
+          "sameConfiguration": {
+            "type": "boolean",
+            "description": "Every ticket's configuration is the target's: nothing to map."
+          },
+          "statusTargets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueMoveStatusTarget"
+            },
+            "description": "The statuses of the target configuration."
+          },
+          "statuses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueMoveStatusNeed"
+            },
+            "description": "The statuses to map, with a suggestion, across the selection."
+          },
+          "subtasksAlone": {
+            "type": "integer",
+            "description": "Sub-tasks selected without their parent: they stay.",
+            "minimum": 0
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueMoveTypeTarget"
+            },
+            "description": "The types of the target configuration."
+          },
+          "tickets": {
+            "type": "integer",
+            "description": "The tickets selected that move (their sub-tasks follow them).",
+            "minimum": 0
+          },
+          "types": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueMoveTypeNeed"
+            },
+            "description": "The types to map, with a suggestion, across the selection."
+          }
+        }
+      },
+      "BulkMovePlanFields": {
+        "type": "object",
+        "description": "A selection to plan a move for.",
+        "required": [
+          "selection",
+          "projectKey"
+        ],
+        "properties": {
+          "projectKey": {
+            "type": "string"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/BulkSelection"
+          },
+          "statusMappings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueMoveMapping"
+            }
+          },
+          "typeMappings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueMoveMapping"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "BulkOptions": {
+        "type": "object",
+        "description": "What a bulk action can do on a selection.",
+        "required": [
+          "total",
+          "background",
+          "fields",
+          "statuses"
+        ],
+        "properties": {
+          "background": {
+            "type": "boolean",
+            "description": "Changed within the request (up to 100), else in the background."
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueFormField"
+            },
+            "description": "The custom fields every selected ticket has (one configuration)."
+          },
+          "statuses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulkStatusOption"
+            },
+            "description": "The statuses a transition reaches from some selected ticket."
+          },
+          "total": {
+            "type": "integer",
+            "description": "The tickets selected that the member sees.",
+            "minimum": 0
+          }
+        }
+      },
+      "BulkOutcome": {
+        "type": "string",
+        "description": "What became of a ticket.",
+        "enum": [
+          "changed",
+          "unchanged",
+          "refused",
+          "with_parent"
+        ]
+      },
+      "BulkSelection": {
+        "type": "object",
+        "description": "The tickets a bulk action takes: those ticked, or all the results of a\nquery.",
+        "properties": {
+          "issueIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The tickets ticked (up to 10,000)."
+          },
+          "query": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Or every ticket a query of the language finds."
+          }
+        },
+        "additionalProperties": false
+      },
+      "BulkStatus": {
+        "type": "string",
+        "description": "Where a bulk action stands.",
+        "enum": [
+          "running",
+          "done"
+        ]
+      },
+      "BulkStatusOption": {
+        "type": "object",
+        "description": "A status some transition reaches from a selected ticket's status.",
+        "required": [
+          "key",
+          "category",
+          "reachable"
+        ],
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/WorkflowCategory"
+          },
+          "key": {
+            "type": "string",
+            "example": "done"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reachable": {
+            "type": "integer",
+            "description": "How many selected tickets a transition leads there from.",
+            "minimum": 0
+          }
+        }
+      },
       "CommentBody": {
         "type": "object",
         "description": "A comment to write, or what an edit makes of it.",
@@ -18408,7 +19211,7 @@
       },
       "ErrorCode": {
         "type": "string",
-        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n| `invitation.invalid` | 400 | This invitation link is invalid, expired or already used |\n| `invitation.pending` | 409 | This email already has an open invitation; send it again instead |\n| `invitation.already_member` | 409 | This email already belongs to a member of the tenant |\n| `invitation.closed` | 409 | This invitation was already accepted or revoked |\n| `member.last_admin` | 409 | The tenant needs at least one active tenant admin |\n| `group.name_taken` | 409 | Another group already has this name |\n| `saved_filter.name_taken` | 409 | You already have a saved filter with this name |\n| `board.name_taken` | 409 | This node already has a board with this name |\n| `board.no_transition` | 409 | No transition of the workflow leads to this column |\n| `export.too_large` | 422 | The query finds more tickets than an export holds |\n| `export.not_ready` | 409 | The export is not ready |\n| `permission.denied` | 403 | You do not have the permission this needs |\n| `role.label_taken` | 409 | Another role already has this label |\n| `role.in_use` | 409 | Grants use this role: remove them first |\n| `account.no_password` | 409 | This account signs in through its organization: it has no password |\n| `session.current` | 409 | This is the session of the request: sign out instead |\n| `account.reauthentication_required` | 403 | Sign in again through your organization, then erase your account within 10 minutes |\n| `account.platform_admin` | 409 | A platform super admin cannot be erased: another one removes the role first |\n| `export.pending` | 409 | The export is not ready yet |\n| `node.key_taken` | 409 | Another project of the organization has this key |\n| `node.cycle` | 409 | This link would make the node its own ancestor |\n| `node.parent_not_allowed` | 409 | This type of node cannot be attached under that parent |\n| `node.grant_exists` | 409 | They already have this role on this node |\n| `node.confidential_lockout` | 409 | You would lose your own access: get a role granted on the project itself first |\n| `node.archived` | 409 | This project is archived: it is read-only until it is restored |\n| `node.active_children` | 409 | This project still has active sub-projects: archive or detach them first |\n| `node.parent_archived` | 409 | This project is under an archived project: restore that one first |\n| `config.name_taken` | 409 | Another project configuration already has this name |\n| `config.no_draft` | 409 | This configuration has no draft: nothing to publish or discard |\n| `config.default` | 409 | The default configuration stays: new projects get it |\n| `config.in_use` | 409 | Projects use this configuration: move them to another one first |\n| `issue_type.key_taken` | 409 | Another type of this configuration already has this identifier |\n| `issue_type.cycle` | 409 | A type cannot be its own ancestor |\n| `issue_type.subtask_parent` | 409 | A sub-task type cannot be the parent of another type |\n| `issue_type.last_type` | 409 | A configuration keeps at least one type that is not a sub-task |\n| `issue_type.orphan_subtask` | 409 | A sub-task type would have no parent type left: change it first |\n| `workflow.key_taken` | 409 | Another workflow of this configuration, or status of this workflow, already has this identifier |\n| `workflow.in_use` | 409 | Issue types follow this workflow: move them to another one first |\n| `workflow.last` | 409 | A configuration keeps at least one workflow |\n| `workflow.invalid` | 409 | Workflows of the draft cannot be published as they are: see errors |\n| `config_field.key_taken` | 409 | Another field of this configuration already has this identifier |\n| `config_field.system` | 409 | A system field keeps its label and options and cannot be removed; only its types and rules change |\n| `screen.exists` | 409 | This type, or the configuration, already has a screen of this kind |\n| `screen.general` | 409 | The general creation and view screens of a configuration stay |\n| `screen.in_use` | 409 | Transitions show this screen: give them another one first |\n| `mapping_incomplete` | 400 | Every removed status and type must be mapped to one the draft keeps: see errors |\n| `config.migration_running` | 409 | A migration of this configuration is already under way |\n| `config.migration_required` | 409 | Tickets use statuses or types the draft removes: map them through a migration first |\n| `issue.subtask_moves_with_parent` | 409 | A sub-task moves with its parent: move the parent instead |\n| `issue_link.exists` | 409 | The two tickets already have this link |\n| `attachment.too_large` | 413 | The file is larger than the maximum allowed |\n| `attachment.quota_exceeded` | 413 | The organization's storage quota would be exceeded |\n| `attachment.not_uploaded` | 409 | The file was not uploaded, or not whole |\n| `attachment.not_scanned` | 409 | The file is not available: not scanned yet, or refused by the antivirus |\n| `storage.unavailable` | 503 | The file storage is not available |\n| `query.invalid` | 400 | The query cannot be run |\n",
+        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n| `invitation.invalid` | 400 | This invitation link is invalid, expired or already used |\n| `invitation.pending` | 409 | This email already has an open invitation; send it again instead |\n| `invitation.already_member` | 409 | This email already belongs to a member of the tenant |\n| `invitation.closed` | 409 | This invitation was already accepted or revoked |\n| `member.last_admin` | 409 | The tenant needs at least one active tenant admin |\n| `group.name_taken` | 409 | Another group already has this name |\n| `saved_filter.name_taken` | 409 | You already have a saved filter with this name |\n| `board.name_taken` | 409 | This node already has a board with this name |\n| `board.no_transition` | 409 | No transition of the workflow leads to this column |\n| `export.too_large` | 422 | The query finds more tickets than an export holds |\n| `export.not_ready` | 409 | The export is not ready |\n| `bulk.too_many` | 422 | More tickets than a bulk action takes |\n| `permission.denied` | 403 | You do not have the permission this needs |\n| `role.label_taken` | 409 | Another role already has this label |\n| `role.in_use` | 409 | Grants use this role: remove them first |\n| `account.no_password` | 409 | This account signs in through its organization: it has no password |\n| `session.current` | 409 | This is the session of the request: sign out instead |\n| `account.reauthentication_required` | 403 | Sign in again through your organization, then erase your account within 10 minutes |\n| `account.platform_admin` | 409 | A platform super admin cannot be erased: another one removes the role first |\n| `export.pending` | 409 | The export is not ready yet |\n| `node.key_taken` | 409 | Another project of the organization has this key |\n| `node.cycle` | 409 | This link would make the node its own ancestor |\n| `node.parent_not_allowed` | 409 | This type of node cannot be attached under that parent |\n| `node.grant_exists` | 409 | They already have this role on this node |\n| `node.confidential_lockout` | 409 | You would lose your own access: get a role granted on the project itself first |\n| `node.archived` | 409 | This project is archived: it is read-only until it is restored |\n| `node.active_children` | 409 | This project still has active sub-projects: archive or detach them first |\n| `node.parent_archived` | 409 | This project is under an archived project: restore that one first |\n| `config.name_taken` | 409 | Another project configuration already has this name |\n| `config.no_draft` | 409 | This configuration has no draft: nothing to publish or discard |\n| `config.default` | 409 | The default configuration stays: new projects get it |\n| `config.in_use` | 409 | Projects use this configuration: move them to another one first |\n| `issue_type.key_taken` | 409 | Another type of this configuration already has this identifier |\n| `issue_type.cycle` | 409 | A type cannot be its own ancestor |\n| `issue_type.subtask_parent` | 409 | A sub-task type cannot be the parent of another type |\n| `issue_type.last_type` | 409 | A configuration keeps at least one type that is not a sub-task |\n| `issue_type.orphan_subtask` | 409 | A sub-task type would have no parent type left: change it first |\n| `workflow.key_taken` | 409 | Another workflow of this configuration, or status of this workflow, already has this identifier |\n| `workflow.in_use` | 409 | Issue types follow this workflow: move them to another one first |\n| `workflow.last` | 409 | A configuration keeps at least one workflow |\n| `workflow.invalid` | 409 | Workflows of the draft cannot be published as they are: see errors |\n| `config_field.key_taken` | 409 | Another field of this configuration already has this identifier |\n| `config_field.system` | 409 | A system field keeps its label and options and cannot be removed; only its types and rules change |\n| `screen.exists` | 409 | This type, or the configuration, already has a screen of this kind |\n| `screen.general` | 409 | The general creation and view screens of a configuration stay |\n| `screen.in_use` | 409 | Transitions show this screen: give them another one first |\n| `mapping_incomplete` | 400 | Every removed status and type must be mapped to one the draft keeps: see errors |\n| `config.migration_running` | 409 | A migration of this configuration is already under way |\n| `config.migration_required` | 409 | Tickets use statuses or types the draft removes: map them through a migration first |\n| `issue.subtask_moves_with_parent` | 409 | A sub-task moves with its parent: move the parent instead |\n| `issue_link.exists` | 409 | The two tickets already have this link |\n| `attachment.too_large` | 413 | The file is larger than the maximum allowed |\n| `attachment.quota_exceeded` | 413 | The organization's storage quota would be exceeded |\n| `attachment.not_uploaded` | 409 | The file was not uploaded, or not whole |\n| `attachment.not_scanned` | 409 | The file is not available: not scanned yet, or refused by the antivirus |\n| `storage.unavailable` | 503 | The file storage is not available |\n| `query.invalid` | 400 | The query cannot be run |\n",
         "enum": [
           "bad_request",
           "validation_failed",
@@ -18459,6 +19262,7 @@
           "board.no_transition",
           "export.too_large",
           "export.not_ready",
+          "bulk.too_many",
           "permission.denied",
           "role.label_taken",
           "role.in_use",
@@ -21034,6 +21838,7 @@
           "issueKey",
           "issueSummary",
           "export",
+          "bulk",
           "actorName",
           "status",
           "excerpt",
@@ -21047,6 +21852,17 @@
               "null"
             ],
             "description": "Who made the change; \"Deleted user #N\" once erased."
+          },
+          "bulk": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/NotificationBulk",
+                "description": "The bulk action done (`bulk_done`)."
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "createdAt": {
             "type": "string",
@@ -21115,14 +21931,15 @@
       },
       "MemberNotificationEvent": {
         "type": "string",
-        "description": "What notifies a member: an event of a ticket, or their export ready.\n(The rules of a configuration name the ticket events only:\n`NotificationEvent`.)",
+        "description": "What notifies a member: an event of a ticket, or something of their own\n(an export ready, a bulk action done).\n(The rules of a configuration name the ticket events only:\n`NotificationEvent`.)",
         "enum": [
           "created",
           "assigned",
           "status_changed",
           "commented",
           "mentioned",
-          "export_ready"
+          "export_ready",
+          "bulk_done"
         ]
       },
       "MemberPage": {
@@ -21581,6 +22398,34 @@
           "filter": "project = PLAT",
           "name": "Platform board",
           "nodeId": "01933b2e-7c4a-7b9e-8f3d-2a6c5e1f0b9a"
+        }
+      },
+      "NewBulkAction": {
+        "type": "object",
+        "description": "A bulk action to run.",
+        "required": [
+          "selection",
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/BulkActionFields"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/BulkSelection"
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "action": {
+            "kind": "transition",
+            "statusKey": "done"
+          },
+          "selection": {
+            "issueIds": [
+              "01933b2e-7c4a-7b9e-8f3d-2a6c5e1f0b9a"
+            ]
+          }
         }
       },
       "NewConfigField": {
@@ -22807,6 +23652,44 @@
           "program",
           "project"
         ]
+      },
+      "NotificationBulk": {
+        "type": "object",
+        "description": "A bulk action a notification is about.",
+        "required": [
+          "id",
+          "kind",
+          "total",
+          "changed",
+          "unchanged",
+          "refused"
+        ],
+        "properties": {
+          "changed": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "description": "`modify`, `transition` or `move`."
+          },
+          "refused": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "unchanged": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
       },
       "NotificationChoice": {
         "type": "object",
@@ -25867,6 +26750,10 @@
     {
       "name": "search",
       "description": "Search of tickets with the query language"
+    },
+    {
+      "name": "bulk-actions",
+      "description": "Several tickets of a search result changed at once"
     },
     {
       "name": "exports",

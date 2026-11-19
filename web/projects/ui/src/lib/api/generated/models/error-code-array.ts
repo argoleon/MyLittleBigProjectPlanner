@@ -56,6 +56,7 @@ export const ERROR_CODE: ErrorCode[] = [
   'board.no_transition',
   'export.too_large',
   'export.not_ready',
+  'bulk.too_many',
   'permission.denied',
   'role.label_taken',
   'role.in_use',

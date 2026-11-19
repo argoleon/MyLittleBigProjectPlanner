@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE bulk_action_item SET outcome = $2, reason = $3, errors = $4, new_key = $5, done_at = now()\n        WHERE id = $1 AND outcome IS NULL\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f753833edebaad65cbe91a19145ddc1a0bcf40791299f62fe6891b0d7c7193c7"
+}

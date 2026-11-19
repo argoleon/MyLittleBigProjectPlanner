@@ -49,6 +49,14 @@ export type { GetBoardCards$Params as GetBoardCards$Params } from './fn/boards/g
 export { getBoardCards as getBoardCards } from './fn/boards/get-board-cards';
 export type { MoveBoardCard$Params as MoveBoardCard$Params } from './fn/boards/move-board-card';
 export { moveBoardCard as moveBoardCard } from './fn/boards/move-board-card';
+export type { CreateBulkAction$Params as CreateBulkAction$Params } from './fn/bulk-actions/create-bulk-action';
+export { createBulkAction as createBulkAction } from './fn/bulk-actions/create-bulk-action';
+export type { PlanBulkMove$Params as PlanBulkMove$Params } from './fn/bulk-actions/plan-bulk-move';
+export { planBulkMove as planBulkMove } from './fn/bulk-actions/plan-bulk-move';
+export type { GetBulkOptions$Params as GetBulkOptions$Params } from './fn/bulk-actions/get-bulk-options';
+export { getBulkOptions as getBulkOptions } from './fn/bulk-actions/get-bulk-options';
+export type { GetBulkAction$Params as GetBulkAction$Params } from './fn/bulk-actions/get-bulk-action';
+export { getBulkAction as getBulkAction } from './fn/bulk-actions/get-bulk-action';
 export type { StreamEvents$Params as StreamEvents$Params } from './fn/events/stream-events';
 export { streamEvents as streamEvents } from './fn/events/stream-events';
 export type { ListMyExports$Params as ListMyExports$Params } from './fn/exports/list-my-exports';

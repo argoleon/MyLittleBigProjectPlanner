@@ -88,6 +88,7 @@ pub enum ErrorCode {
     BoardNoTransition,
     ExportTooLarge,
     ExportNotReady,
+    BulkTooMany,
     PermissionDenied,
     RoleLabelTaken,
     RoleInUse,
@@ -138,7 +139,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 94] = [
+    pub const ALL: [Self; 95] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -188,6 +189,7 @@ impl ErrorCode {
         Self::BoardNoTransition,
         Self::ExportTooLarge,
         Self::ExportNotReady,
+        Self::BulkTooMany,
         Self::PermissionDenied,
         Self::RoleLabelTaken,
         Self::RoleInUse,
@@ -286,6 +288,7 @@ impl ErrorCode {
             Self::BoardNoTransition => "board.no_transition",
             Self::ExportTooLarge => "export.too_large",
             Self::ExportNotReady => "export.not_ready",
+            Self::BulkTooMany => "bulk.too_many",
             Self::PermissionDenied => "permission.denied",
             Self::RoleLabelTaken => "role.label_taken",
             Self::RoleInUse => "role.in_use",
@@ -425,7 +428,9 @@ impl ErrorCode {
             }
             Self::StorageUnavailable => StatusCode::SERVICE_UNAVAILABLE,
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
-            Self::IdempotencyKeyReused | Self::ExportTooLarge => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::IdempotencyKeyReused | Self::ExportTooLarge | Self::BulkTooMany => {
+                StatusCode::UNPROCESSABLE_ENTITY
+            }
             Self::PreconditionRequired => StatusCode::PRECONDITION_REQUIRED,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }
@@ -483,6 +488,7 @@ impl ErrorCode {
             Self::BoardNoTransition => "No transition of the workflow leads to this column",
             Self::ExportTooLarge => "The query finds more tickets than an export holds",
             Self::ExportNotReady => "The export is not ready",
+            Self::BulkTooMany => "More tickets than a bulk action takes",
             Self::PermissionDenied => "You do not have the permission this needs",
             Self::RoleLabelTaken => "Another role already has this label",
             Self::RoleInUse => "Grants use this role: remove them first",
@@ -858,7 +864,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 94] = [
+        let expected: [(ErrorCode, u16); 95] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -908,6 +914,7 @@ mod tests {
             (ErrorCode::BoardNoTransition, 409),
             (ErrorCode::ExportTooLarge, 422),
             (ErrorCode::ExportNotReady, 409),
+            (ErrorCode::BulkTooMany, 422),
             (ErrorCode::PermissionDenied, 403),
             (ErrorCode::RoleLabelTaken, 409),
             (ErrorCode::RoleInUse, 409),

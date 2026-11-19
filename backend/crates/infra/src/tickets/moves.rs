@@ -22,8 +22,8 @@ use crate::nodes::Node;
 #[derive(Debug)]
 pub struct Prepared {
     pub target: Node,
-    pub source_content: Content,
-    pub target_content: Content,
+    pub source_content: std::sync::Arc<Content>,
+    pub target_content: std::sync::Arc<Content>,
     pub same_configuration: bool,
     /// The ticket asked for, then its sub-tasks.
     pub moving: Vec<Issue>,
@@ -258,8 +258,8 @@ pub async fn prepare(
     moving.extend(children);
     Ok(Prepared {
         target,
-        source_content,
-        target_content,
+        source_content: std::sync::Arc::new(source_content),
+        target_content: std::sync::Arc::new(target_content),
         same_configuration,
         moving,
     })

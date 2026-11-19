@@ -97,8 +97,8 @@ pub struct EditFormView {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[schema(as = IssueMoveMapping)]
 pub struct MappingBody {
-    from_id: Uuid,
-    to_id: Uuid,
+    pub(crate) from_id: Uuid,
+    pub(crate) to_id: Uuid,
 }
 
 /// Where a ticket moves.
@@ -121,13 +121,13 @@ pub struct MoveBody {
 #[serde(rename_all = "camelCase")]
 #[schema(as = IssueMoveTypeTarget)]
 pub struct TypeTargetView {
-    id: Uuid,
-    label: Option<String>,
-    is_subtask: bool,
+    pub(crate) id: Uuid,
+    pub(crate) label: Option<String>,
+    pub(crate) is_subtask: bool,
     /// The types it may sit under.
-    parent_ids: Vec<Uuid>,
+    pub(crate) parent_ids: Vec<Uuid>,
     /// The statuses of its workflow.
-    status_ids: Vec<Uuid>,
+    pub(crate) status_ids: Vec<Uuid>,
 }
 
 /// A type of moving tickets the target configuration lacks.
@@ -135,12 +135,12 @@ pub struct TypeTargetView {
 #[serde(rename_all = "camelCase")]
 #[schema(as = IssueMoveTypeNeed)]
 pub struct TypeNeedView {
-    id: Uuid,
-    key: String,
-    label: Option<String>,
-    is_subtask: bool,
+    pub(crate) id: Uuid,
+    pub(crate) key: String,
+    pub(crate) label: Option<String>,
+    pub(crate) is_subtask: bool,
     #[schema(required = true)]
-    suggested_id: Option<Uuid>,
+    pub(crate) suggested_id: Option<Uuid>,
 }
 
 /// A status of the target configuration.
@@ -148,9 +148,9 @@ pub struct TypeNeedView {
 #[serde(rename_all = "camelCase")]
 #[schema(as = IssueMoveStatusTarget)]
 pub struct StatusTargetView {
-    id: Uuid,
-    label: Option<String>,
-    category: crate::workflows::CategoryView,
+    pub(crate) id: Uuid,
+    pub(crate) label: Option<String>,
+    pub(crate) category: crate::workflows::CategoryView,
 }
 
 /// A status of moving tickets that is not in the workflow of their new
@@ -159,15 +159,15 @@ pub struct StatusTargetView {
 #[serde(rename_all = "camelCase")]
 #[schema(as = IssueMoveStatusNeed)]
 pub struct StatusNeedView {
-    id: Uuid,
-    key: String,
-    label: Option<String>,
-    category: crate::workflows::CategoryView,
+    pub(crate) id: Uuid,
+    pub(crate) key: String,
+    pub(crate) label: Option<String>,
+    pub(crate) category: crate::workflows::CategoryView,
     /// The types (of the ticket's configuration) of the tickets in it: the
     /// status lands in the workflow of their new type.
-    type_ids: Vec<Uuid>,
+    pub(crate) type_ids: Vec<Uuid>,
     #[schema(required = true)]
-    suggested_id: Option<Uuid>,
+    pub(crate) suggested_id: Option<Uuid>,
 }
 
 /// A custom field whose values are dropped by the move.
@@ -175,8 +175,8 @@ pub struct StatusNeedView {
 #[serde(rename_all = "camelCase")]
 #[schema(as = IssueMoveDroppedField)]
 pub struct DroppedFieldView {
-    field_id: Uuid,
-    label: Option<String>,
+    pub(crate) field_id: Uuid,
+    pub(crate) label: Option<String>,
 }
 
 /// A mapping problem, as the move would report it.
@@ -185,9 +185,9 @@ pub struct DroppedFieldView {
 #[schema(as = IssueMoveProblem)]
 pub struct ProblemView {
     /// `typeMappings.{id}` or `statusMappings.{id}`.
-    field: String,
+    pub(crate) field: String,
     /// `required`, `not_found`, `not_allowed`, `not_in_workflow`.
-    code: &'static str,
+    pub(crate) code: &'static str,
 }
 
 /// What moving a ticket to a project takes.
@@ -401,7 +401,7 @@ async fn prepare(
     }
 }
 
-fn mappings(body: &[MappingBody]) -> BTreeMap<u128, u128> {
+pub(crate) fn mappings(body: &[MappingBody]) -> BTreeMap<u128, u128> {
     body.iter()
         .map(|m| (m.from_id.as_u128(), m.to_id.as_u128()))
         .collect()

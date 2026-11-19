@@ -12,5 +12,6 @@ export const MEMBER_NOTIFICATION_EVENT: MemberNotificationEvent[] = [
   'status_changed',
   'commented',
   'mentioned',
-  'export_ready'
+  'export_ready',
+  'bulk_done'
 ];

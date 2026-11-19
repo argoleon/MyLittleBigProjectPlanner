@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT issue_id, outcome FROM bulk_action_item WHERE id = $1 AND bulk_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "issue_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "bulk_action_item",
+            "name": "issue_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "outcome",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "bulk_action_item",
+            "name": "outcome"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "f8c11948bc91d1539ebb159a84cab5d798098bcc7345f128f9a162df3ab8a660"
+}
