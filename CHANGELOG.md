@@ -4,6 +4,10 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-19
+
+Work package **L06 Search and Kanban**: a query language with a visual builder and suggestions, full-text search with typo correction, saved and shared filters, Kanban boards, CSV and Excel exports of list views, and bulk actions on a search result.
+
 ### Added
 
 - **Search with the query language** (#168)
@@ -52,6 +56,7 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
 
 - **Manage boards**: the migration gives the new permission to every role that manages sprints (the default "Project manager" and "Node admin" roles among them). Review the roles that should manage boards in Administration, Roles. Permissions cached before the upgrade expire within 5 minutes.
 - **Full text**: the migration indexes the text of every existing ticket and comment, and builds each organization's word list for typo correction; on large organizations, it takes a few minutes.
+- **Exports and bulk actions**: large exports and bulk actions over 100 tickets run in the worker, which must be running. Export files go to the existing object storage bucket (under `<organization id>/exports/`) and are deleted after 24 hours; bulk action reports are deleted after 7 days. Members get the two new notifications, **Export ready** and **Bulk action done**, in the application only until they choose email in their preferences.
 - **Node keys**: the migration gives every existing portfolio and program a key made of its type and name (`PORTF-RESSOURCES-HUM`, `PROG-MODERNISATION-D`, numbered when taken). Administrators should review them in each node's General tab before saving filters that use them.
 
 ## [0.5.1] - 2026-11-18
@@ -269,6 +274,7 @@ Work package **L01 Technical foundation**: the base every later work package bui
   - License policy enforced on Rust crates and npm packages, RustSec and npm advisories, secret scan of the git history.
   - CI: every step a `just` recipe (`just ci` locally), GitHub Actions only calls them; release workflow publishing the images to GitHub Container Registry.
 
+[0.6.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.6.0
 [0.5.1]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.5.1
 [0.5.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.5.0
 [0.4.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.4.0
