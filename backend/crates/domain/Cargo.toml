@@ -10,3 +10,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+
+[dev-dependencies]
+# Property-based tests of the query language (parse(print(ast)) == ast).
+proptest = { version = "1.9.0", default-features = false, features = ["std"] }

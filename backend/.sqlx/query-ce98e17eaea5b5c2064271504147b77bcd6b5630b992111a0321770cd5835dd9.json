@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO bulk_action_item (id, tenant_id, bulk_id, position, issue_id, issue_key)\n        SELECT s.id, app_current_tenant(), $1, (s.n - 1)::int, s.issue_id, s.issue_key\n        FROM unnest($2::uuid[], $3::uuid[], $4::text[]) WITH ORDINALITY AS s(id, issue_id, issue_key, n)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray",
+        "UuidArray",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ce98e17eaea5b5c2064271504147b77bcd6b5630b992111a0321770cd5835dd9"
+}

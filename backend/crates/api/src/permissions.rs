@@ -34,6 +34,7 @@ pub enum PermissionView {
     AssignResources,
     ForceOverload,
     ManageSprints,
+    ManageBoards,
     ManageMembers,
     AdministerNode,
 }
@@ -49,6 +50,7 @@ impl From<PermissionView> for Permission {
             PermissionView::AssignResources => Self::AssignResources,
             PermissionView::ForceOverload => Self::ForceOverload,
             PermissionView::ManageSprints => Self::ManageSprints,
+            PermissionView::ManageBoards => Self::ManageBoards,
             PermissionView::ManageMembers => Self::ManageMembers,
             PermissionView::AdministerNode => Self::AdministerNode,
         }
@@ -66,6 +68,7 @@ impl From<Permission> for PermissionView {
             Permission::AssignResources => Self::AssignResources,
             Permission::ForceOverload => Self::ForceOverload,
             Permission::ManageSprints => Self::ManageSprints,
+            Permission::ManageBoards => Self::ManageBoards,
             Permission::ManageMembers => Self::ManageMembers,
             Permission::AdministerNode => Self::AdministerNode,
         }

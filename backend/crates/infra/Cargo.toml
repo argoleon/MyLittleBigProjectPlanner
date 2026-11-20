@@ -48,6 +48,7 @@ rustls = { version = "0.23", default-features = false, features = ["ring", "std"
 url = "2"
 rusty-s3 = "0.11.0"
 image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
+rust_xlsxwriter = { version = "0.103.0", default-features = false }
 
 [dev-dependencies]
 reqwest = { version = "0.13.5", default-features = false }
@@ -55,3 +56,4 @@ opentelemetry = { version = "0.33.1", default-features = false, features = ["met
 tempfile = "3.27.0"
 testkit.workspace = true
 tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros"] }
+calamine = { version = "0.38.0", default-features = false }

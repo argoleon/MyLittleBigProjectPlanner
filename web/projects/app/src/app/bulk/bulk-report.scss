@@ -1,0 +1,29 @@
+:host {
+  display: block;
+}
+
+.counts {
+  margin: 0 0 var(--app-space-3);
+  font: var(--mat-sys-body-large);
+}
+
+.items {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--mat-sys-body-medium);
+
+  th,
+  td {
+    padding: var(--app-space-2) var(--app-space-3);
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+    text-align: start;
+  }
+
+  th {
+    font: var(--mat-sys-title-small);
+  }
+}
+
+.refused {
+  color: var(--mat-sys-error);
+}

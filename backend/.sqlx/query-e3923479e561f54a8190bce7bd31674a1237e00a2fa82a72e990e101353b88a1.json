@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE saved_filter\n        SET name = $4, icon = $5, query = $6, shared_with_all = $7, version = version + 1\n        WHERE id = $1 AND owner_id = $2 AND ($3::bigint[] IS NULL OR version = ANY($3))\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "saved_filter",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Int8Array",
+        "Text",
+        "Text",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e3923479e561f54a8190bce7bd31674a1237e00a2fa82a72e990e101353b88a1"
+}

@@ -122,8 +122,18 @@ async fn an_archived_project_is_read_only_and_out_of_the_active_lists_until_rest
     let db = TestDb::new().await;
     let api = common::start(&db, multi()).await;
     let t = &db.tenant_a;
-    let program = node(&api, t, json!({"type": "program", "name": "IT Modernization"})).await;
-    let compliance = node(&api, t, json!({"type": "program", "name": "Compliance"})).await;
+    let program = node(
+        &api,
+        t,
+        json!({"type": "program", "name": "IT Modernization", "key": "IT-MODERNIZATION"}),
+    )
+    .await;
+    let compliance = node(
+        &api,
+        t,
+        json!({"type": "program", "name": "Compliance", "key": "COMPLIANCE"}),
+    )
+    .await;
     let plat = node(
         &api,
         t,

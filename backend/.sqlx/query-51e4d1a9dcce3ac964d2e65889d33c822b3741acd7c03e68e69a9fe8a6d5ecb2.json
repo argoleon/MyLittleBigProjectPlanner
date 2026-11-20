@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH RECURSIVE up AS (\n            SELECT i.id AS card_id, p.id, p.key, p.key_number, p.summary, p.type_id, p.project_id,\n                   p.parent_id, 1 AS depth\n            FROM issue i JOIN issue p ON p.id = i.parent_id\n            WHERE i.id = ANY($1)\n            UNION ALL\n            SELECT up.card_id, p.id, p.key, p.key_number, p.summary, p.type_id, p.project_id,\n                   p.parent_id, up.depth + 1\n            FROM up JOIN issue p ON p.id = up.parent_id\n            WHERE up.depth < 8\n        )\n        SELECT DISTINCT ON (up.card_id) up.card_id AS \"card_id!\", up.id AS \"id!\", up.key AS \"key!\",\n               up.key_number AS \"key_number!\", up.summary AS \"summary!\"\n        FROM up\n        JOIN issue_type t ON t.item_id = up.type_id AND t.color = 'epic'\n        JOIN project_config_version v ON v.id = t.version_id AND v.state = 'published'\n        WHERE $2::uuid[] IS NULL OR up.project_id = ANY($2)\n        ORDER BY up.card_id, up.depth\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "card_id!",
+        "type_info": "Uuid",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "id!",
+        "type_info": "Uuid",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "key!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "key_number!",
+        "type_info": "Int4",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "summary!",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "51e4d1a9dcce3ac964d2e65889d33c822b3741acd7c03e68e69a9fe8a6d5ecb2"
+}

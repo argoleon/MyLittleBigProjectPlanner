@@ -435,7 +435,9 @@
       "same_project": "The ticket is already in this project.",
       "not_in_workflow": "Not a status of this type’s workflow.",
       "self": "A ticket cannot be linked to itself.",
-      "cycle": "This ticket sits under the one you are changing."
+      "cycle": "This ticket sits under the one you are changing.",
+      "immutable": "This value cannot be changed.",
+      "order_by_not_allowed": "A quick filter cannot sort: remove ORDER BY."
     },
     "invitation": {
       "invalid": "This invitation link is invalid, has expired or was already used. Ask for a new one.",
@@ -448,6 +450,18 @@
     },
     "group": {
       "name_taken": "Another group already has this name."
+    },
+    "saved_filter": {
+      "name_taken": "You already have a filter with this name."
+    },
+    "board": {
+      "name_taken": "This node already has a board with this name.",
+      "no_transition": "No transition of the workflow leads to this column."
+    },
+    "export": {
+      "pending": "The export is not ready yet.",
+      "too_large": "The query finds more tickets than an export holds (100,000).",
+      "not_ready": "The export is not ready yet."
     },
     "permission": {
       "denied": "You do not have the permission this needs."
@@ -464,11 +478,8 @@
     "session": {
       "current": "This is the current session: sign out instead."
     },
-    "export": {
-      "pending": "The export is not ready yet."
-    },
     "node": {
-      "key_taken": "Another project of the organization has this key.",
+      "key_taken": "Another portfolio, program or project of the organization has this key.",
       "cycle": "This link would make the node its own ancestor.",
       "parent_not_allowed": "This type of node cannot be attached under that parent.",
       "grant_exists": "They already have this role on this node.",
@@ -521,6 +532,12 @@
     },
     "storage": {
       "unavailable": "File storage is not available right now. Try again later."
+    },
+    "query": {
+      "invalid": "The query cannot be run."
+    },
+    "bulk": {
+      "too_many": "More tickets than a bulk action takes (10,000)."
     }
   },
   "dialog": {
@@ -550,6 +567,7 @@
     "assign_resources": "Assign resources",
     "force_overload": "Force an overload",
     "manage_sprints": "Manage sprints",
+    "manage_boards": "Manage boards",
     "manage_members": "Manage members",
     "administer_node": "Administer the node"
   },
@@ -670,7 +688,8 @@
       "health": "Health",
       "save": "Save",
       "saved": "Changes saved.",
-      "unsaved": "Unsaved changes"
+      "unsaved": "Unsaved changes",
+      "nodeKeyHint": "Names the node in queries (descendantsOf). Changing it breaks the filters that use it."
     },
     "dialog": {
       "title": "New node",
@@ -678,7 +697,8 @@
       "type": "Type",
       "keyHint": "2 to 10 capital letters and digits, a letter first (PLAT).",
       "create": "Create",
-      "created": "{{ name }} created."
+      "created": "{{ name }} created.",
+      "nodeKeyHint": "2 to 20 capital letters, digits and dashes, a letter first (PORTF-HR)."
     },
     "owners": {
       "label": "Owners",
@@ -799,6 +819,7 @@
         "project": "Project Gantt"
       },
       "workload": "Team workload",
+      "boards": "Boards",
       "owners": "Owners: {{ names }}",
       "planned": "Planned load",
       "project": "{{ count }} distinct project",
@@ -1671,7 +1692,9 @@
       "assigned": "Assignments",
       "status_changed": "Status changes",
       "commented": "Comments",
-      "created": "New tickets"
+      "created": "New tickets",
+      "export_ready": "Exports",
+      "bulk_done": "Bulk actions"
     },
     "empty": "No notification.",
     "more": "Show older notifications",
@@ -1688,7 +1711,9 @@
       "assigned": "{{ actor }} assigned {{ key }} to you",
       "status_changed": "{{ actor }} moved {{ key }} to {{ status }}",
       "commented": "{{ actor }} commented on {{ key }}",
-      "created": "{{ actor }} created {{ key }}"
+      "created": "{{ actor }} created {{ key }}",
+      "export_ready": "Your export {{ file }} is ready",
+      "bulk_done": "Your bulk {{ action }} is done"
     },
     "preferences": {
       "title": "Notification preferences",
@@ -1703,10 +1728,399 @@
         "assigned": "Ticket assigned",
         "status_changed": "Status change",
         "commented": "New comment",
-        "mentioned": "Mentions"
+        "mentioned": "Mentions",
+        "export_ready": "Export ready",
+        "bulk_done": "Bulk action done"
       },
       "digest": "Daily email digest",
       "digestHint": "Each working day at 8:00, instead of one email per event."
+    },
+    "exportRows": "{{ count }} rows"
+  },
+  "search": {
+    "title": "Search",
+    "total": "Results: {{ count }}",
+    "query": {
+      "label": "Query",
+      "hint": "Enter to run, Shift+Enter for a new line. Queries use identifiers, the same in every language: status = in_progress."
+    },
+    "run": "Search",
+    "columns": {
+      "button": "Columns",
+      "menu": "Columns shown",
+      "key": "Key",
+      "summary": "Summary",
+      "type": "Type",
+      "status": "Status",
+      "assignee": "Assignee",
+      "reporter": "Reporter",
+      "priority": "Priority",
+      "due": "Due",
+      "start": "Start",
+      "project": "Project",
+      "created": "Created",
+      "updated": "Updated"
+    },
+    "caption": "Tickets found",
+    "results": "Search results",
+    "empty": "No ticket matches this query",
+    "emptyHint": "Remove a condition or widen a value, then search again.",
+    "loadingMore": "Loading the next tickets",
+    "expected": {
+      "field": "a field",
+      "value": "a value",
+      "text": "a text",
+      "end": "the end of the query",
+      "or": " or ",
+      "quoted": "“{{ word }}”"
+    },
+    "error": {
+      "syntax": "Character {{ position }}: expected {{ expected }}, found {{ found }}.",
+      "unterminated_string": "Character {{ position }}: this quote is never closed.",
+      "invalid_character": "Character {{ position }}: this character is not part of the language.",
+      "invalid_number": "Character {{ position }}: this is neither a number nor a duration (such as -7d).",
+      "unknown_field": "There is no field “{{ field }}”.",
+      "unknown_function": "Character {{ position }}: there is no such function.",
+      "wrong_arguments": "Character {{ position }}: this function does not take these arguments.",
+      "operator_not_allowed": "The field “{{ field }}” does not take this operator; it takes: {{ allowed }}.",
+      "value_not_allowed": "The field “{{ field }}” does not take this value.",
+      "invalid_date": "Character {{ position }}: this is not a date (YYYY-MM-DD or YYYY-MM-DD HH:MM).",
+      "unknown_priority": "Character {{ position }}: there is no such priority (highest, high, medium, low, lowest).",
+      "not_sortable": "Tickets cannot be sorted by “{{ field }}”.",
+      "unsupported": "The field “{{ field }}” comes with sprints and versions.",
+      "too_long": "The query is too long.",
+      "too_deep": "The query nests too many parentheses or NOTs.",
+      "too_many_clauses": "The query has too many conditions.",
+      "too_many_values": "The list has too many values.",
+      "too_many_order_keys": "The query sorts by too many fields."
+    },
+    "mode": {
+      "label": "How to write the query",
+      "builder": "Builder",
+      "query": "Query"
+    },
+    "builder": {
+      "label": "Search criteria",
+      "cannot": "This query cannot be shown in the builder: it stays in the editor.",
+      "remove": "Remove {{ value }}",
+      "addProject": "Add a project…",
+      "addPerson": "Add a person…",
+      "me": "Me",
+      "any": "Any",
+      "custom": "Custom range…",
+      "due": {
+        "overdue": "Overdue",
+        "this_week": "This week",
+        "this_month": "This month",
+        "none": "No due date"
+      },
+      "created": {
+        "last_7_days": "Last 7 days",
+        "last_30_days": "Last 30 days"
+      },
+      "dueFrom": "Due from",
+      "dueTo": "Due to",
+      "createdFrom": "Created from",
+      "createdTo": "Created to",
+      "text": "Text contains"
+    },
+    "suggestion": {
+      "field": "field",
+      "operator": "operator",
+      "keyword": "keyword",
+      "function": "function",
+      "value": "value"
+    },
+    "fields": {
+      "key": "Key",
+      "project": "Project",
+      "type": "Type",
+      "status": "Status",
+      "priority": "Priority",
+      "assignee": "Assignee",
+      "reporter": "Reporter",
+      "summary": "Summary",
+      "description": "Description",
+      "text": "Text (summary and description)",
+      "created": "Created",
+      "updated": "Updated",
+      "due": "Due",
+      "start": "Start",
+      "parent": "Parent"
+    },
+    "filters": {
+      "title": "Saved filters",
+      "mine": "My filters",
+      "shared": "Shared with me",
+      "mineEmpty": "Save a search to find it here.",
+      "sharedEmpty": "No filter is shared with you.",
+      "loadError": "The filters could not be loaded.",
+      "sharedMark": "(shared)",
+      "by": "(by {{ name }})",
+      "actions": "Actions of the filter {{ name }}",
+      "editAction": "Edit",
+      "deleteAction": "Delete",
+      "delete": {
+        "title": "Delete the filter “{{ name }}”?",
+        "message": "It will be gone from your filters.",
+        "messageShared": "It will be gone for everyone it is shared with.",
+        "confirm": "Delete"
+      },
+      "save": "Save the filter",
+      "saved": "Filter saved.",
+      "deleted": "Filter deleted.",
+      "gone": "This filter no longer exists, or is no longer shared with you.",
+      "line": "Filter “{{ name }}”",
+      "lineShared": "shared",
+      "linePrivate": "personal",
+      "lineChanged": "query changed",
+      "sharing": {
+        "private": "Only me",
+        "groups": "Groups",
+        "all": "The whole organization"
+      },
+      "dialog": {
+        "createTitle": "Save the filter",
+        "editTitle": "Change the filter",
+        "query": "Query saved",
+        "name": "Name",
+        "icon": "Icon",
+        "sharing": "Shared with",
+        "groups": "Groups",
+        "searchGroup": "Search a group…",
+        "noGroup": "No group matches",
+        "removeGroup": "Remove {{ name }}",
+        "groupsRequired": "Choose at least one group.",
+        "groupsGone": "One of the groups chosen no longer exists: remove it.",
+        "queryInvalid": "The query is not valid: fix it before saving it.",
+        "save": "Save",
+        "saveAsNew": "Save as a new filter"
+      },
+      "icons": {
+        "filter_alt": "Filter",
+        "person": "Person",
+        "bug_report": "Bug",
+        "schedule": "Clock",
+        "shield": "Shield",
+        "flag": "Flag",
+        "star": "Star",
+        "support_agent": "Support",
+        "bolt": "Bolt",
+        "label": "Label"
+      }
+    }
+  },
+  "avatar": {
+    "nobody": "Unassigned"
+  },
+  "boards": {
+    "loading": "Loading the board…",
+    "breadcrumb": "Location",
+    "new": "New board",
+    "of": "Boards of {{ name }}",
+    "all": "All boards",
+    "none": {
+      "title": "No board yet",
+      "message": "Create a board to follow the work of a project through its workflow."
+    },
+    "kind": {
+      "kanban": "Kanban"
+    },
+    "total": "{{ count }} tickets",
+    "unmapped": "{{ count }} without a column",
+    "archived": "Archived: read-only",
+    "configure": "Configure the board",
+    "newTicket": "New ticket",
+    "filter": "Board filter",
+    "filterEmpty": "Every ticket you may see",
+    "openSearch": "Open in search",
+    "quickFilters": "Quick filters",
+    "swimlanes": {
+      "label": "Swimlanes",
+      "none": "No swimlanes",
+      "assignee": "By assignee",
+      "epic": "By epic"
+    },
+    "estimation": {
+      "points": "Story points",
+      "hours": "Hours (remaining work)"
+    },
+    "truncated": "This board shows the first 1,000 tickets of its filter: narrow the filter to see the others.",
+    "wip": {
+      "exceeded": "Limit exceeded · {{ count }} / {{ limit }}",
+      "reached": "Limit reached · {{ count }} / {{ limit }}",
+      "under": "{{ count }} / {{ limit }}"
+    },
+    "lane": {
+      "none": "Tickets",
+      "assignee": "Unassigned",
+      "epic": "No epic"
+    },
+    "cell": "Column {{ column }}",
+    "more": "Show {{ count }} more tickets",
+    "empty": "No ticket matches this board.",
+    "move": {
+      "noTransition": "{{ key }} went back: no transition of its workflow leads from {{ status }} to {{ column }}.",
+      "restricted": "{{ key }} went back: you may not run the transition to {{ column }}.",
+      "conflict": "{{ key }} changed in the meantime: the board shows it as it is now. Move it again if needed."
+    },
+    "card": {
+      "blockedBy": "Blocked by {{ keys }}",
+      "priority": "Priority: {{ priority }}",
+      "estimate": {
+        "points": "{{ value }} points",
+        "hours": "{{ value }} hours remaining"
+      },
+      "move": "Move {{ key }}",
+      "moveTo": "Move to {{ column }}"
+    },
+    "choose": {
+      "title": "Move {{ key }}",
+      "message": "Several transitions lead to this column. Which one?"
+    },
+    "settings": {
+      "title": "Configure the board",
+      "newTitle": "New board",
+      "node": "Portfolio, program or project",
+      "nodeHint": "Who sees it sees the board; managing boards needs the permission there.",
+      "name": "Name",
+      "filter": "Filter",
+      "filterHint": "A query of the search language, e.g. project = PLAT AND status != cancelled",
+      "estimation": "Estimation",
+      "swimlanes": "Swimlanes when it opens",
+      "columns": "Columns",
+      "columnName": "Column {{ n }}",
+      "statuses": "Statuses",
+      "taken": "in another column",
+      "wipLimit": "WIP limit",
+      "columnUp": "Move the column {{ name }} up",
+      "columnDown": "Move the column {{ name }} down",
+      "columnRemove": "Remove the column {{ name }}",
+      "addColumn": "Add a column",
+      "quickLabel": "Label",
+      "quickQuery": "Query",
+      "quickRemove": "Remove the quick filter {{ label }}",
+      "addQuick": "Add a quick filter",
+      "defaults": "The board starts with a column per status category (To do, In progress, Done) and the quick filters \"My tickets\" and \"Bugs\": change them once it is created.",
+      "save": "Save",
+      "create": "Create the board",
+      "conflict": "Someone changed this board in the meantime: close and open it again.",
+      "delete": {
+        "button": "Delete the board",
+        "title": "Delete the board?",
+        "message": "The board {{ name }} will be deleted for everyone. Its tickets stay as they are.",
+        "confirm": "Delete"
+      }
+    }
+  },
+  "exports": {
+    "title": "Export",
+    "button": "Export",
+    "csv": "CSV file (.csv)",
+    "xlsx": "Excel file (.xlsx)",
+    "running": "Export in progress",
+    "queued": "{{ file }} is being prepared: you will be notified when it is ready.",
+    "follow": "Follow it",
+    "tooLarge": "This list holds more than 100,000 tickets: narrow the query to export it.",
+    "queryInvalid": "The query cannot run: correct it before exporting.",
+    "gone": "This export has expired (files are kept 24 hours) or is not yours.",
+    "ready": "Ready: {{ count }} rows.",
+    "expires": "It can be downloaded until {{ at }}, by you only.",
+    "download": "Download",
+    "preparing": "Being prepared: you will be notified when it is ready.",
+    "failure": {
+      "queryInvalid": "The query no longer runs (a field it names was deleted): export again from the list.",
+      "tooLarge": "The query now finds more than 100,000 tickets: narrow it and export again.",
+      "unknown": "The export failed: try again."
+    }
+  },
+  "bulk": {
+    "bar": "Actions on the selected tickets",
+    "selected": "{{ count }} selected",
+    "selectAll": "Select all {{ count }} results",
+    "selectLoaded": "Select the loaded tickets",
+    "selectRow": "Select {{ key }}",
+    "clear": "Clear the selection",
+    "actions": {
+      "modify": "Modify",
+      "status": "Change status",
+      "move": "Move"
+    },
+    "running": "{{ count }} tickets are being changed in the background: you will be notified when it is done.",
+    "follow": "Follow it",
+    "kinds": {
+      "modify": "modification",
+      "transition": "status change",
+      "move": "move"
+    },
+    "outcomes": {
+      "changed": "Changed",
+      "unchanged": "Already so",
+      "refused": "Left unchanged",
+      "with_parent": "Moved with its parent",
+      "waiting": "Waiting"
+    },
+    "reasons": {
+      "not_found": "Not found or no longer visible",
+      "permission_denied": "You may not change it",
+      "node_archived": "Its project is archived",
+      "validation_failed": "A value is refused",
+      "transition_none": "No transition of its workflow leads there",
+      "transition_restricted": "You may not run the transition",
+      "issue_subtask_moves": "A sub-task moves with its parent only",
+      "move_not_mapped": "A type or status is not mapped",
+      "unknown": "Not changed"
+    },
+    "report": {
+      "page": "Bulk action",
+      "title": {
+        "modify": "Bulk modification",
+        "transition": "Bulk status change",
+        "move": "Bulk move"
+      },
+      "counts": "{{ changed }} changed, {{ unchanged }} already so, {{ refused }} left unchanged",
+      "waiting": "{{ count }} waiting",
+      "caption": "What became of each ticket",
+      "ticket": "Ticket",
+      "outcome": "Outcome",
+      "movedTo": "Moved: {{ key }}",
+      "running": "Still running: this page reads it again.",
+      "gone": "This report has expired (reports are kept 7 days) or is not yours."
+    },
+    "status": {
+      "title": "Change the status of {{ count }} tickets",
+      "hint": "Each ticket runs the transition of its own workflow that leads to the status chosen; those it cannot reach are reported.",
+      "none": "No transition leads the selected tickets anywhere.",
+      "reach": "{{ count }} of {{ total }}",
+      "confirm": "Change the status"
+    },
+    "modify": {
+      "title": "Modify {{ count }} tickets",
+      "hint": "Only what you choose to change is set, on every ticket; each one is checked against its own rules.",
+      "priority": "Priority",
+      "keep": "Keep",
+      "assignee": "Assignee",
+      "assigneeNew": "New assignee",
+      "startDate": "Start date",
+      "startDateNew": "New start date",
+      "dueDate": "Due date",
+      "dueDateNew": "New due date",
+      "modes": {
+        "keep": "Keep",
+        "set": "Set",
+        "clear": "Clear"
+      },
+      "fields": "Custom fields",
+      "changeField": "Change {{ field }}",
+      "noFields": "The selected tickets share no custom field (they belong to several configurations, or have none).",
+      "nothing": "Choose something to change.",
+      "confirm": "Modify {{ count }} tickets"
+    },
+    "move": {
+      "title": "Move {{ count }} tickets",
+      "tickets": "{{ count }} tickets move (their sub-tasks follow them).",
+      "subtasksAlone": "{{ count }} sub-tasks selected without their parent stay where they are.",
+      "confirm": "Move {{ count }} tickets"
     }
   }
 }

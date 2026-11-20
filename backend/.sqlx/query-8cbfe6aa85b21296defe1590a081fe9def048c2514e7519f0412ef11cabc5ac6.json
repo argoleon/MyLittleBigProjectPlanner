@@ -1,0 +1,36 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT t.term AS \"term!\", w.word AS \"word!\"\n            FROM unnest($1::text[], $2::int[]) AS t(term, k)\n            JOIN search_word w\n              ON char_length(w.word) BETWEEN char_length(t.term) - t.k AND char_length(t.term) + t.k\n             AND levenshtein_less_equal(w.word, t.term, 2 * t.k) <= 2 * t.k\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "term!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "word!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "search_word",
+            "name": "word"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Int4Array"
+      ]
+    },
+    "nullable": [
+      null,
+      false
+    ]
+  },
+  "hash": "8cbfe6aa85b21296defe1590a081fe9def048c2514e7519f0412ef11cabc5ac6"
+}

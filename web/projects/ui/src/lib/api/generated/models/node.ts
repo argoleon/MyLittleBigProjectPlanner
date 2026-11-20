@@ -30,9 +30,10 @@ export interface Node {
   id: string;
 
   /**
-   * Projects only, unique in the tenant.
+   * Unique in the tenant: a project's (`PLAT`) never changes, a
+   * portfolio's or program's (`PORTF-HR`) may.
    */
-  key?: (string | null);
+  key: string;
   name: string;
   objectives: string;
   owners: Array<NodeOwner>;

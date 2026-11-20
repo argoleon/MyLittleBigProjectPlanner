@@ -50,7 +50,7 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       // Screens not built yet show "coming soon".
-      ...NAVIGATION.filter((item) => !['/admin', '/portfolios', '/tickets'].includes(item.route)).map((item) => ({
+      ...NAVIGATION.filter((item) => !['/admin', '/boards', '/portfolios', '/search', '/tickets'].includes(item.route)).map((item) => ({
         path: item.route.slice(1),
         pathMatch: 'full' as const,
         title: item.labelKey,
@@ -61,6 +61,36 @@ export const routes: Routes = [
         path: 'notifications',
         title: 'notifications.title',
         loadComponent: () => import('./notifications/notifications-page').then((m) => m.NotificationsPage),
+      },
+      {
+        // `?q=`: the query to run.
+        path: 'search',
+        title: 'nav.search',
+        loadComponent: () => import('./search/search-page').then((m) => m.SearchPage),
+      },
+      {
+        path: 'boards',
+        pathMatch: 'full',
+        title: 'nav.boards',
+        loadComponent: () => import('./boards/boards-page').then((m) => m.BoardsPage),
+      },
+      {
+        // The report of a bulk action, where its notification leads.
+        path: 'bulk-actions/:id',
+        title: 'bulk.report.page',
+        loadComponent: () => import('./bulk/bulk-action-page').then((m) => m.BulkActionPage),
+      },
+      {
+        // An export of the member's, where its notification leads.
+        path: 'exports/:id',
+        title: 'exports.title',
+        loadComponent: () => import('./exports/export-page').then((m) => m.ExportPage),
+      },
+      {
+        // A Kanban board, by its id.
+        path: 'boards/:id',
+        title: 'nav.boards',
+        loadComponent: () => import('./boards/board-page').then((m) => m.BoardPage),
       },
       {
         path: 'tickets',

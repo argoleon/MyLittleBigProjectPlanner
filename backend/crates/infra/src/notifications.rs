@@ -18,7 +18,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use domain::account::TenantRole;
 use domain::notifications::{Event, TicketPeople, resolve};
-use domain::notify::{Change, Choice, Preferences, events_of, one_per_recipient};
+use domain::notify::{Change, Choice, Notice, Preferences, events_of, one_per_recipient};
 use domain::permissions::Permission;
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgConnection;
@@ -145,12 +145,12 @@ pub fn preferences_of(stored: &serde_json::Value, daily_digest: bool) -> Prefere
         .as_object()
         .into_iter()
         .flatten()
-        .filter_map(|(event, choice)| {
-            let event = Event::parse(event)?;
+        .filter_map(|(notice, choice)| {
+            let notice = Notice::parse(notice)?;
             let flag = |name: &str| choice.get(name).and_then(serde_json::Value::as_bool);
-            let default = Preferences::default().choice(event);
+            let default = Preferences::default().choice(notice);
             Some((
-                event,
+                notice,
                 Choice {
                     in_app: flag("inApp").unwrap_or(default.in_app),
                     email: flag("email").unwrap_or(default.email),
@@ -165,9 +165,9 @@ pub fn stored_preferences(preferences: &Preferences) -> serde_json::Value {
     preferences
         .choices()
         .into_iter()
-        .map(|(event, choice)| {
+        .map(|(notice, choice)| {
             (
-                event.as_str().to_owned(),
+                notice.as_str().to_owned(),
                 serde_json::json!({"inApp": choice.in_app, "email": choice.email}),
             )
         })
@@ -298,8 +298,9 @@ fn issues_of(kind: &str, aggregate: Uuid, payload: &serde_json::Value) -> Vec<Uu
     issues
 }
 
-/// Builds the address of a ticket's page: from the tenant's slug and the
-/// ticket's key, if the public address is known.
+/// Builds the address of a page of the application: from the tenant's slug
+/// and the page's path (`issues/PLAT-1`, `exports/<id>`), if the public
+/// address is known.
 pub type LinkOf<'a> = &'a (dyn Fn(&str, &str) -> Option<String> + Sync);
 
 /// Dispatches the outbox event `event_id` of the current tenant: writes
@@ -324,7 +325,13 @@ pub async fn dispatch(
     let Some(pending) = pending else {
         return Ok(Dispatched::default());
     };
-    let mut dispatched = notify(conn, event_id, &pending, link_of).await?;
+    let mut dispatched = if pending.kind == EXPORT_READY {
+        notify_export(conn, event_id, &pending, link_of).await?
+    } else if pending.kind == crate::bulk_actions::DONE {
+        notify_bulk(conn, event_id, &pending, link_of).await?
+    } else {
+        notify(conn, event_id, &pending, link_of).await?
+    };
     // Real time: the tickets changed, and who has new notifications.
     let mut signals = Vec::new();
     if pending.kind.starts_with("issue.")
@@ -490,7 +497,7 @@ async fn notify(
         .and_then(serde_json::Value::as_str)
         .map(excerpt)
         .filter(|text| !text.is_empty());
-    let link = link_of(&tenant.slug, &issue.key);
+    let link = link_of(&tenant.slug, &format!("issues/{}", issue.key));
 
     let mut dispatched = Dispatched::default();
     for recipient in recipients {
@@ -557,6 +564,180 @@ async fn notify(
     Ok(dispatched)
 }
 
+/// The outbox event of an export ready: `{accountId, fileName, rows}`.
+pub const EXPORT_READY: &str = "export.ready";
+
+/// Notifies the member whose export `pending` is ready, as their
+/// preferences say; an active member of the tenant only.
+async fn notify_export(
+    conn: &mut PgConnection,
+    event_id: Uuid,
+    pending: &Pending,
+    link_of: LinkOf<'_>,
+) -> Result<Dispatched, sqlx::Error> {
+    let text = |name: &str| pending.payload.get(name).and_then(serde_json::Value::as_str);
+    let Some(account) = text("accountId").and_then(|id| Uuid::parse_str(id).ok()) else {
+        return Ok(Dispatched::default());
+    };
+    let file_name = text("fileName").unwrap_or_default().to_owned();
+    let rows = pending
+        .payload
+        .get("rows")
+        .and_then(serde_json::Value::as_i64)
+        .unwrap_or_default();
+    let Some(recipient) = recipients(conn, &[account]).await?.pop() else {
+        return Ok(Dispatched::default());
+    };
+    let notice = Notice::ExportReady;
+    let preferences = &recipient.preferences;
+    if !preferences.records(notice) {
+        return Ok(Dispatched::default());
+    }
+    let in_app = preferences.wants(notice, domain::notify::Channel::InApp);
+    let emails_now = preferences.emails_now(notice);
+    let details = serde_json::json!({
+        "exportId": pending.aggregate_id,
+        "fileName": file_name,
+        "rows": rows,
+    });
+    sqlx::query!(
+        r#"
+        INSERT INTO notification (id, tenant_id, account_id, event, issue_id, actor_id, details, outbox_event_id,
+                                  in_app, email_wanted, emailed_at)
+        VALUES ($1, app_current_tenant(), $2, $3, NULL, NULL, $4, $5, $6, $7, CASE WHEN $8 THEN now() END)
+        "#,
+        crate::id::new_id(),
+        account,
+        notice.as_str(),
+        details,
+        event_id,
+        in_app,
+        preferences.wants(notice, domain::notify::Channel::Email),
+        emails_now
+    )
+    .execute(&mut *conn)
+    .await?;
+    let mut dispatched = Dispatched {
+        notified: 1,
+        ..Dispatched::default()
+    };
+    if in_app {
+        dispatched.in_app.push(account);
+    }
+    if emails_now {
+        let tenant = sqlx::query!("SELECT slug, name FROM tenant WHERE id = app_current_tenant()")
+            .fetch_one(&mut *conn)
+            .await?;
+        let job = EmailJob {
+            to: recipient.email.clone(),
+            locale: recipient.locale.clone(),
+            message: EmailMessage::ExportReady {
+                tenant_name: tenant.name,
+                file_name,
+                rows,
+                link: link_of(&tenant.slug, &format!("exports/{}", pending.aggregate_id)),
+                valid_hours: domain::export::FILE_LIFETIME_HOURS,
+            },
+        };
+        let payload = serde_json::to_value(&job).map_err(|e| sqlx::Error::Encode(Box::new(e)))?;
+        crate::jobs::enqueue(conn, EMAIL_JOB, &payload).await?;
+        dispatched.emailed = 1;
+    }
+    Ok(dispatched)
+}
+
+/// Notifies the member whose background bulk action `pending` is done, as
+/// their preferences say; an active member of the tenant only.
+async fn notify_bulk(
+    conn: &mut PgConnection,
+    event_id: Uuid,
+    pending: &Pending,
+    link_of: LinkOf<'_>,
+) -> Result<Dispatched, sqlx::Error> {
+    let payload = &pending.payload;
+    let Some(account) = payload
+        .get("accountId")
+        .and_then(serde_json::Value::as_str)
+        .and_then(|id| Uuid::parse_str(id).ok())
+    else {
+        return Ok(Dispatched::default());
+    };
+    let count = |name: &str| {
+        payload
+            .get(name)
+            .and_then(serde_json::Value::as_i64)
+            .unwrap_or_default()
+    };
+    let kind = payload
+        .get("kind")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_default()
+        .to_owned();
+    let Some(recipient) = recipients(conn, &[account]).await?.pop() else {
+        return Ok(Dispatched::default());
+    };
+    let notice = Notice::BulkDone;
+    let preferences = &recipient.preferences;
+    if !preferences.records(notice) {
+        return Ok(Dispatched::default());
+    }
+    let in_app = preferences.wants(notice, domain::notify::Channel::InApp);
+    let emails_now = preferences.emails_now(notice);
+    let details = serde_json::json!({
+        "bulkId": pending.aggregate_id,
+        "kind": kind,
+        "total": count("total"),
+        "changed": count("changed"),
+        "unchanged": count("unchanged"),
+        "refused": count("refused"),
+    });
+    sqlx::query!(
+        r#"
+        INSERT INTO notification (id, tenant_id, account_id, event, issue_id, actor_id, details, outbox_event_id,
+                                  in_app, email_wanted, emailed_at)
+        VALUES ($1, app_current_tenant(), $2, $3, NULL, NULL, $4, $5, $6, $7, CASE WHEN $8 THEN now() END)
+        "#,
+        crate::id::new_id(),
+        account,
+        notice.as_str(),
+        details,
+        event_id,
+        in_app,
+        preferences.wants(notice, domain::notify::Channel::Email),
+        emails_now
+    )
+    .execute(&mut *conn)
+    .await?;
+    let mut dispatched = Dispatched {
+        notified: 1,
+        ..Dispatched::default()
+    };
+    if in_app {
+        dispatched.in_app.push(account);
+    }
+    if emails_now {
+        let tenant = sqlx::query!("SELECT slug, name FROM tenant WHERE id = app_current_tenant()")
+            .fetch_one(&mut *conn)
+            .await?;
+        let job = EmailJob {
+            to: recipient.email.clone(),
+            locale: recipient.locale.clone(),
+            message: EmailMessage::BulkDone {
+                tenant_name: tenant.name,
+                kind,
+                total: count("total"),
+                changed: count("changed"),
+                refused: count("refused"),
+                link: link_of(&tenant.slug, &format!("bulk-actions/{}", pending.aggregate_id)),
+            },
+        };
+        let payload = serde_json::to_value(&job).map_err(|e| sqlx::Error::Encode(Box::new(e)))?;
+        crate::jobs::enqueue(conn, EMAIL_JOB, &payload).await?;
+        dispatched.emailed = 1;
+    }
+    Ok(dispatched)
+}
+
 impl Pending {
     fn aggregate_type_is_not_issue(&self) -> bool {
         !(self.kind.starts_with("issue.") || self.kind.starts_with("comment."))
@@ -572,8 +753,9 @@ pub struct Notification {
     pub tenant_id: Uuid,
     pub tenant_slug: String,
     pub tenant_name: String,
-    pub event: Event,
-    pub issue_id: Uuid,
+    pub event: Notice,
+    /// None for a notice without a ticket (an export ready).
+    pub issue_id: Option<Uuid>,
     pub actor_id: Option<Uuid>,
     pub actor_name: Option<String>,
     pub details: serde_json::Value,
@@ -594,7 +776,7 @@ pub async fn mine(
     let rows = sqlx::query!(
         r#"
         SELECT id AS "id!", tenant_id AS "tenant_id!", tenant_slug AS "tenant_slug!", tenant_name AS "tenant_name!",
-               event AS "event!", issue_id AS "issue_id!", actor_id, actor_name, details AS "details!", read_at,
+               event AS "event!", issue_id, actor_id, actor_name, details AS "details!", read_at,
                created_at AS "created_at!"
         FROM app_my_notifications($1, $2, $3, $4, $5)
         "#,
@@ -610,7 +792,7 @@ pub async fn mine(
         .into_iter()
         .filter_map(|r| {
             Some(Notification {
-                event: Event::parse(&r.event)?,
+                event: Notice::parse(&r.event)?,
                 id: r.id,
                 tenant_id: r.tenant_id,
                 tenant_slug: r.tenant_slug,

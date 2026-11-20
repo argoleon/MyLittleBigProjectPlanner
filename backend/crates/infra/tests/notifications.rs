@@ -31,8 +31,9 @@ async fn ticket(db: &TestDb, tenant: &SeedTenant) -> (Issue, Uuid) {
         &NewNode {
             id: new_id(),
             node_type: NodeType::Project,
-            key: Some("PLAT"),
+            key: "PLAT",
             fields: NodeFields {
+                key: None,
                 name: "PLAT",
                 description: "",
                 objectives: "",
@@ -314,9 +315,13 @@ async fn the_digest_counts_in_the_members_time_zone_or_their_organizations() {
     let lucas = db.add_member(&db.tenant_a, TenantRole::Member).await.account_id;
     let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
     set_account(&mut tx, lucas).await.unwrap();
-    notifications::set_my_preferences(&mut tx, lucas, &Preferences::with([], true))
-        .await
-        .unwrap();
+    notifications::set_my_preferences(
+        &mut tx,
+        lucas,
+        &Preferences::with::<domain::notify::Notice>([], true),
+    )
+    .await
+    .unwrap();
     tx.commit().await.unwrap();
     let mut conn = db.app_pool.acquire().await.unwrap();
     assert!(

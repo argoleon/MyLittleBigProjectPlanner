@@ -38,7 +38,7 @@ const PROGRAM: Node = {
   id: '0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7c02',
   type: 'program',
   name: 'IT Modernization',
-  key: null,
+  key: 'PROG-MODSI',
   description: '',
   objectives: '',
   startDate: '2026-01-05',
@@ -180,7 +180,7 @@ const PROGRAM_ROW: HierarchyNode = {
   id: PROGRAM.id,
   type: 'program',
   name: 'IT Modernization',
-  key: null,
+  key: 'PROG-MODSI',
   health: 'at_risk',
   owners: [{ accountId: 'a1', displayName: 'Lucas Bernard' }],
   weightPercent: null,
@@ -368,8 +368,10 @@ describe('PortfoliosPage and HierarchyTree', () => {
     await reply(isTop, []);
     await click(root().querySelector('button.create'));
     expect(text(dialog().querySelector('h2'))).toBe('New node');
-    expect(dialog().querySelector('[formcontrolname="key"]')).toBeNull();
+    // Every node has a key; a portfolio's takes dashes.
+    expect(text(dialog().querySelector('mat-hint'))).toBe('2 to 20 capital letters, digits and dashes, a letter first (PORTF-HR).');
     await choose(dialog(), 'type', 'Project');
+    expect(text(dialog().querySelector('mat-hint'))).toBe('2 to 10 capital letters and digits, a letter first (PLAT).');
     await type(dialog(), 'name', ' Identity platform ');
     await type(dialog(), 'key', ' plat');
     expect((dialog().querySelector('[formcontrolname="key"]') as HTMLInputElement).value).toBe('PLAT');
@@ -433,7 +435,7 @@ describe('NodePage', () => {
   it('shows the indicators of the node over its distinct projects, then what is under it', async () => {
     const { page, indicator, text } = await openView(AGGREGATE, [PROJECT_ROW, VEILED_ROW]);
     expect(text(page().querySelector('h1'))).toBe('IT Modernization');
-    expect(text(page().querySelector('.subtitle'))).toBe('Program · Owners: Lucas Bernard · Jan 5, 2026 – Dec 18, 2026');
+    expect(text(page().querySelector('.subtitle'))).toBe('Program · PROG-MODSI · Owners: Lucas Bernard · Jan 5, 2026 – Dec 18, 2026');
     const crumbs = Array.from(page().querySelectorAll('nav.eyebrow a')).map((a) => [text(a), a.getAttribute('href')]);
     expect(crumbs).toEqual([
       ['Portfolios', '/portfolios'],
@@ -454,6 +456,7 @@ describe('NodePage', () => {
     const links = Array.from(page().querySelectorAll('.actions a')).map((a) => [text(a), a.getAttribute('href')]);
     expect(links).toEqual([
       ['view_timeline Program Gantt', `/gantt?node=${PROGRAM.id}`],
+      ['view_kanban Boards', `/boards?node=${PROGRAM.id}`],
       ['groups Team workload', `/workload?node=${PROGRAM.id}`],
       ['settings Settings', `/nodes/${PROGRAM.id}/general`],
     ]);
@@ -474,7 +477,7 @@ describe('NodePage', () => {
     TestBed.inject(LocaleService).use('fr');
     await settle();
     expect(indicator('planned')).toEqual(['Charge planifiée', '0 h', '1 projet distinct']);
-    expect(text(page().querySelector('.subtitle'))).toBe('Programme · Responsables : Lucas Bernard · 5 janv. 2026 – 18 déc. 2026');
+    expect(text(page().querySelector('.subtitle'))).toBe('Programme · PROG-MODSI · Responsables : Lucas Bernard · 5 janv. 2026 – 18 déc. 2026');
   });
 
   it('invites those who administer the node to add its first child, which then shows in the tree', async () => {
@@ -601,6 +604,7 @@ describe('NodeSettingsPage and NodeGeneralTab', () => {
     expect(saved.request.headers.get('If-Match')).toBe('"3"');
     expect(saved.request.body).toEqual({
       name: 'IT Modernization',
+      key: 'PROG-MODSI',
       description: '',
       objectives: 'Cloud first by 2027',
       startDate: '2026-01-05',
@@ -622,6 +626,38 @@ describe('NodeSettingsPage and NodeGeneralTab', () => {
     expect(text(tab.querySelector('[role="alert"]'))).toBe(
       'Someone changed this item in the meantime. Reload it before trying again.',
     );
+  });
+
+  it("changes a program's key in capitals, and shows a key already taken on the field", async () => {
+    const { reply, root, text, click, type } = await openSettings();
+    const tab = root().querySelector('app-node-general-tab')!;
+    const key = tab.querySelector('[formcontrolname="key"]') as HTMLInputElement;
+    expect(key.value).toBe('PROG-MODSI');
+    expect(key.readOnly).toBe(false);
+    expect(text(tab.querySelector('mat-hint'))).toContain('descendantsOf');
+
+    await type(tab, 'key', 'prog si');
+    expect(key.value).toBe('PROG SI');
+    await click(tab.querySelector('button.save'));
+    expect(text(tab.querySelector('mat-error'))).toBe('The format is invalid.');
+
+    await type(tab, 'key', ' plat ');
+    await click(tab.querySelector('button.save'));
+    const taken = await reply(
+      (url, method) => url === `/api/v1/nodes/${PROGRAM.id}` && method === 'PUT',
+      problem(409, 'node.key_taken', [{ field: 'key', code: 'taken' }]),
+      409,
+    );
+    expect((taken.request.body as { key: string }).key).toBe('PLAT');
+    expect(text(tab.querySelector('mat-error'))).toBe('This value is already used.');
+    expect(await axeViolations(tab)).toEqual([]);
+  });
+
+  it("keeps a project's key read-only", async () => {
+    const { root } = await openSettings(PROJECT);
+    const tab = root().querySelector('app-node-general-tab')!;
+    expect(tab.querySelector('[formcontrolname="key"]')).toBeNull();
+    expect((tab.querySelector('input[readonly]') as HTMLInputElement).value).toBe('PLAT');
   });
 
   it('adds an owner found among the members', async () => {
@@ -692,7 +728,7 @@ describe('NodeLinksTab', () => {
     id: PROGRAM.id,
     type: 'program',
     name: 'IT Modernization',
-    key: null,
+    key: 'PROG-MODSI',
     weightPercent: 100,
     parents: [{ id: 'p0', type: 'portfolio', name: 'Digital' }],
   };
@@ -798,7 +834,7 @@ describe('NodeLinksTab', () => {
     expect(document.activeElement).toBe(tab().querySelector('#parent-search input'));
 
     const found = await search(context, 'cyber', [
-      { id: 'p3', type: 'program', name: 'Cybersecurity', key: null, parents: [], refusal: null },
+      { id: 'p3', type: 'program', name: 'Cybersecurity', key: 'PROG-CYBER', parents: [], refusal: null },
       { id: 'c1', type: 'project', name: 'Cyber permissions', key: 'CYBP', parents: [], refusal: 'cycle' },
     ]);
     expect(found.request.params.get('search')).toBe('cyber');

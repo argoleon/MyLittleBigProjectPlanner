@@ -15,8 +15,7 @@ use axum::extract::State;
 use axum::http::{HeaderMap, header};
 use axum::response::{IntoResponse, Response};
 use domain::fields::{Kind, ListValue, Mode, Rules, Step, Value};
-use domain::issue_types::TypeNode;
-use domain::issues::{FieldDef, NewIssue, Parent, Priority, parse_key, validate_new};
+use domain::issues::{NewIssue, Parent, Priority, parse_key, validate_new};
 use domain::permissions::Permission;
 use domain::screens::{FieldRules, Kind as ScreenKind, pick, resolve};
 use domain::validation::FieldError;
@@ -25,7 +24,6 @@ use infra::issue_types::IssueType;
 use infra::issues::{self as repo, Issue};
 use infra::nodes::Node;
 use infra::uuid::Uuid;
-use infra::workflows::Workflows;
 use serde::{Deserialize, Serialize};
 use time::{Date, OffsetDateTime};
 use utoipa::{IntoParams, ToSchema};
@@ -40,6 +38,8 @@ use crate::permissions;
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
 use crate::roles::Language;
 use crate::tenant::{AppState, TenantTx};
+
+pub(crate) use infra::tickets::{Content, field_defs, ids_in, read_fields, type_ids_of, unknown_references};
 
 pub const TAG: &str = "issues";
 
@@ -400,68 +400,12 @@ pub struct FormView {
     fields: Vec<FormFieldView>,
 }
 
-/// The published configuration of a project, as tickets read it.
-pub(crate) struct Content {
-    pub(crate) types: Vec<IssueType>,
-    pub(crate) workflows: Workflows,
-    pub(crate) fields: Vec<Field>,
-    pub(crate) screens: Vec<infra::screens::Screen>,
-}
-
-impl Content {
-    pub(crate) async fn of(tx: &mut TenantTx, project: Uuid) -> Result<Self, Problem> {
-        let config = infra::configs::of_project(tx, project)
-            .await?
-            .ok_or(Problem::new(ErrorCode::NotFound))?;
-        let version = infra::configs::find(tx, config)
-            .await?
-            .ok_or(Problem::new(ErrorCode::NotFound))?
-            .published
-            .id;
-        Ok(Self {
-            types: infra::issue_types::list(tx, version).await?,
-            workflows: infra::workflows::load(tx, version).await?,
-            fields: infra::fields::list(tx, version).await?,
-            screens: infra::screens::list(tx, version).await?,
-        })
-    }
-
-    pub(crate) fn type_nodes(&self) -> Vec<TypeNode> {
-        self.types.iter().map(IssueType::node).collect()
-    }
-}
-
-/// The fields with their rules, borrowing `fields` and `types`.
-pub(crate) fn field_defs<'a>(fields: &'a [Field], type_ids: &'a [Vec<u128>]) -> Vec<FieldDef<'a>> {
-    fields
-        .iter()
-        .zip(type_ids)
-        .map(|(f, types)| FieldDef {
-            id: f.item_id.as_u128(),
-            kind: f.kind,
-            options: &f.options,
-            rules: Rules {
-                all_types: f.all_types,
-                issue_types: types,
-                rules: &f.rules,
-            },
-        })
-        .collect()
-}
-
-pub(crate) fn type_ids_of(fields: &[Field]) -> Vec<Vec<u128>> {
-    fields
-        .iter()
-        .map(|f| f.issue_type_ids.iter().map(Uuid::as_u128).collect())
-        .collect()
-}
-
 pub(crate) fn project_view(node: &Node) -> ProjectView {
-    ProjectView {
-        id: node.id,
-        key: node.key.clone().unwrap_or_default(),
-        name: node.name.clone(),
-    }
+    project_ref(node.id, node.key.clone(), node.name.clone())
+}
+
+pub(crate) const fn project_ref(id: Uuid, key: String, name: String) -> ProjectView {
+    ProjectView { id, key, name }
 }
 
 impl Language {
@@ -539,67 +483,6 @@ impl Language {
             _ => None,
         }
     }
-}
-
-/// The identifiers a value holds: list values, users, groups, tickets.
-pub(crate) fn ids_in(value: &Value) -> Vec<Uuid> {
-    let one = |value: &Value| match value {
-        Value::Text(text) => domain::fields::parse_uuid(text).map(Uuid::from_u128),
-        _ => None,
-    };
-    match value {
-        Value::List(items) => items.iter().filter_map(one).collect(),
-        other => one(other).into_iter().collect(),
-    }
-}
-
-/// Field errors for the users, groups and tickets that `values` name and
-/// that do not exist (`validate_value` checks their form only). Fields
-/// already in error are left alone.
-pub(crate) async fn unknown_references(
-    tx: &mut TenantTx,
-    fields: &[Field],
-    values: &BTreeMap<u128, Value>,
-    errors: &[FieldError],
-) -> Result<Vec<FieldError>, Problem> {
-    let mut unknown = Vec::new();
-    for field in fields {
-        let path = format!("fields.{}", field.item_id);
-        let Some(value) = values.get(&field.item_id.as_u128()) else {
-            continue;
-        };
-        if errors.iter().any(|e| e.field == path) {
-            continue;
-        }
-        let ids = ids_in(value);
-        if ids.is_empty() {
-            continue;
-        }
-        let (found, code) = match field.kind {
-            Kind::User => (
-                infra::rule_references::members(tx, &ids).await?.len(),
-                "unknown_member",
-            ),
-            Kind::Group => (
-                infra::rule_references::groups(tx, &ids).await?.len(),
-                "unknown_group",
-            ),
-            Kind::IssueLink => {
-                let mut found = 0;
-                for id in &ids {
-                    if repo::find(tx, *id).await?.is_some() {
-                        found += 1;
-                    }
-                }
-                (found, "unknown_issue")
-            }
-            _ => continue,
-        };
-        if found < ids.iter().collect::<BTreeSet<_>>().len() {
-            unknown.push(FieldError::new(path, code));
-        }
-    }
-    Ok(unknown)
 }
 
 /// The custom field values of `issue`, in the order of the configuration.
@@ -711,6 +594,29 @@ impl IssueView {
 }
 
 /// `issue` in a few words.
+impl StatusView {
+    /// Its stable key: empty if the configuration no longer has it.
+    pub(crate) fn key(&self) -> &str {
+        &self.key
+    }
+}
+
+impl PersonView {
+    pub(crate) const fn id(&self) -> Uuid {
+        self.id
+    }
+
+    pub(crate) fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+impl IssueRefView {
+    pub(crate) const fn new(id: Uuid, key: String, summary: String) -> Self {
+        Self { id, key, summary }
+    }
+}
+
 pub(crate) fn issue_ref(issue: &Issue) -> IssueRefView {
     IssueRefView {
         id: issue.id,
@@ -813,26 +719,6 @@ pub(crate) async fn visible_issue(
 
 /// The custom field values of `body`, read as the fields take them; the
 /// field errors otherwise.
-pub(crate) fn read_fields(
-    fields: &BTreeMap<Uuid, serde_json::Value>,
-) -> Result<BTreeMap<u128, Value>, Vec<FieldError>> {
-    let mut values = BTreeMap::new();
-    let mut errors = Vec::new();
-    for (id, json) in fields {
-        match infra::fields::value_of(json) {
-            Some(value) => {
-                values.insert(id.as_u128(), value);
-            }
-            None => errors.push(FieldError::new(format!("fields.{id}"), "wrong_type")),
-        }
-    }
-    if errors.is_empty() {
-        Ok(values)
-    } else {
-        Err(errors)
-    }
-}
-
 /// `POST /api/v1/projects/{key}/issues`: idempotent with `Idempotency-Key`.
 #[utoipa::path(
     post,
@@ -971,7 +857,7 @@ pub async fn create(
         &repo::NewIssue {
             id: infra::id::new_id(),
             project_id: project.id,
-            project_key: project.key.as_deref().unwrap_or_default(),
+            project_key: &project.key,
             type_id: body.type_id,
             status_id: status,
             parent_id: body.parent_id,

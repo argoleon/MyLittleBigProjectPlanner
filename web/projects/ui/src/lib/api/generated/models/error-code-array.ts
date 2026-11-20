@@ -51,6 +51,12 @@ export const ERROR_CODE: ErrorCode[] = [
   'invitation.closed',
   'member.last_admin',
   'group.name_taken',
+  'saved_filter.name_taken',
+  'board.name_taken',
+  'board.no_transition',
+  'export.too_large',
+  'export.not_ready',
+  'bulk.too_many',
   'permission.denied',
   'role.label_taken',
   'role.in_use',
@@ -94,5 +100,6 @@ export const ERROR_CODE: ErrorCode[] = [
   'attachment.quota_exceeded',
   'attachment.not_uploaded',
   'attachment.not_scanned',
-  'storage.unavailable'
+  'storage.unavailable',
+  'query.invalid'
 ];

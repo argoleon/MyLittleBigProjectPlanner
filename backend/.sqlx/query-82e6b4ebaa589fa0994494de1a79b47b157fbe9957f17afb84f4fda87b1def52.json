@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id AS \"id!\", tenant_id AS \"tenant_id!\", tenant_slug AS \"tenant_slug!\", tenant_name AS \"tenant_name!\",\n               event AS \"event!\", issue_id AS \"issue_id!\", actor_id, actor_name, details AS \"details!\", read_at,\n               created_at AS \"created_at!\"\n        FROM app_my_notifications($1, $2, $3, $4, $5)\n        ",
+  "query": "\n        SELECT id AS \"id!\", tenant_id AS \"tenant_id!\", tenant_slug AS \"tenant_slug!\", tenant_name AS \"tenant_name!\",\n               event AS \"event!\", issue_id, actor_id, actor_name, details AS \"details!\", read_at,\n               created_at AS \"created_at!\"\n        FROM app_my_notifications($1, $2, $3, $4, $5)\n        ",
   "describe": {
     "columns": [
       {
@@ -35,7 +35,7 @@
       },
       {
         "ordinal": 5,
-        "name": "issue_id!",
+        "name": "issue_id",
         "type_info": "Uuid",
         "origin": "Expression"
       },
@@ -93,5 +93,5 @@
       null
     ]
   },
-  "hash": "04108f36670647235d9860ac675288c0672d4a1c2782de980822a2c88283c7a6"
+  "hash": "82e6b4ebaa589fa0994494de1a79b47b157fbe9957f17afb84f4fda87b1def52"
 }

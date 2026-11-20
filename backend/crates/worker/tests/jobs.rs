@@ -404,7 +404,7 @@ async fn an_uploaded_file_is_scanned_by_the_queue_and_its_upload_removed_when_in
         &mut tx,
         domain::hierarchy::NodeType::Project,
         "PLAT",
-        Some("PLAT"),
+        "PLAT",
         None,
         admin,
     )
@@ -485,7 +485,7 @@ async fn node(
     conn: &mut PgConnection,
     node_type: domain::hierarchy::NodeType,
     name: &str,
-    code: Option<&str>,
+    code: &str,
     parent: Option<Uuid>,
     creator: Uuid,
 ) -> Uuid {
@@ -497,6 +497,7 @@ async fn node(
             node_type,
             key: code,
             fields: infra::nodes::NodeFields {
+                key: None,
                 name,
                 description: "",
                 objectives: "",
@@ -545,12 +546,12 @@ async fn the_aggregates_of_every_ancestor_follow_a_change_within_seconds() {
     let mut tx = infra::db::begin_tenant_tx(&db.app_pool, db.tenant_a.id)
         .await
         .unwrap();
-    let portfolio = node(&mut tx, NodeType::Portfolio, "Digital", None, None, creator).await;
+    let portfolio = node(&mut tx, NodeType::Portfolio, "Digital", "DIGITAL", None, creator).await;
     let program = node(
         &mut tx,
         NodeType::Program,
         "Compliance",
-        None,
+        "COMPLIANCE",
         Some(portfolio),
         creator,
     )
@@ -559,7 +560,7 @@ async fn the_aggregates_of_every_ancestor_follow_a_change_within_seconds() {
         &mut tx,
         NodeType::Project,
         "Archive",
-        Some("ARCH"),
+        "ARCH",
         Some(program),
         creator,
     )
@@ -575,7 +576,7 @@ async fn the_aggregates_of_every_ancestor_follow_a_change_within_seconds() {
     let mut tx = infra::db::begin_tenant_tx(&db.app_pool, db.tenant_b.id)
         .await
         .unwrap();
-    let elsewhere = node(&mut tx, NodeType::Project, "Elsewhere", Some("ELSE"), None, other).await;
+    let elsewhere = node(&mut tx, NodeType::Project, "Elsewhere", "ELSE", None, other).await;
     infra::aggregates::set_figures(&mut tx, elsewhere, &figures(90, 3))
         .await
         .unwrap();
@@ -720,7 +721,7 @@ async fn a_configuration_migration_runs_batch_by_batch_and_resumes_after_a_dead_
         .draft
         .unwrap()
         .id;
-    let project = node(&mut tx, NodeType::Project, "Platform", Some("PLAT"), None, admin).await;
+    let project = node(&mut tx, NodeType::Project, "Platform", "PLAT", None, admin).await;
     assert!(infra::configs::assign(&mut tx, project, config).await.unwrap());
     let (in_test, accepted) = (infra::id::new_id(), infra::id::new_id());
     sqlx::query(

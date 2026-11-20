@@ -53,6 +53,27 @@ pub enum EmailMessage {
         /// The ticket's page.
         link: Option<String>,
     },
+    /// A member's export of a list view is ready (L06-US06).
+    ExportReady {
+        tenant_name: String,
+        file_name: String,
+        rows: i64,
+        /// The export's page, which downloads it.
+        link: Option<String>,
+        /// How long the file is kept.
+        valid_hours: i64,
+    },
+    /// A member's bulk action, run in the background, is done (L06-US08).
+    BulkDone {
+        tenant_name: String,
+        /// `modify`, `transition` or `move`.
+        kind: String,
+        total: i64,
+        changed: i64,
+        refused: i64,
+        /// The report's page.
+        link: Option<String>,
+    },
     /// The daily digest of a member's notifications, of every organization.
     Digest {
         display_name: String,
@@ -149,8 +170,153 @@ pub fn render(message: &EmailMessage, locale: &str) -> RenderedEmail {
             line,
             link,
         } => notification(locale, tenant_name, line, link.as_deref()),
+        EmailMessage::ExportReady {
+            tenant_name,
+            file_name,
+            rows,
+            link,
+            valid_hours,
+        } => export_ready(
+            locale,
+            tenant_name,
+            file_name,
+            *rows,
+            link.as_deref(),
+            *valid_hours,
+        ),
+        EmailMessage::BulkDone {
+            tenant_name,
+            kind,
+            total,
+            changed,
+            refused,
+            link,
+        } => bulk_done(
+            locale,
+            tenant_name,
+            kind,
+            *total,
+            *changed,
+            *refused,
+            link.as_deref(),
+        ),
         EmailMessage::Digest { display_name, lines } => digest(locale, display_name, lines),
     }
+}
+
+fn bulk_done(
+    locale: &str,
+    tenant: &str,
+    kind: &str,
+    total: i64,
+    changed: i64,
+    refused: i64,
+    link: Option<&str>,
+) -> RenderedEmail {
+    let en = locale == "en";
+    let action = match kind {
+        "transition" if en => "status change",
+        "transition" => "changement de statut",
+        "move" if en => "move",
+        "move" => "déplacement",
+        // A modification, in both languages.
+        _ => "modification",
+    };
+    let (subject, body, button, settings) = if en {
+        (
+            format!("Your bulk {action} is done · {tenant}"),
+            vec![
+                format!(
+                    "Your bulk {action} of {total} tickets is done: {changed} changed, {refused} left unchanged for a reason."
+                ),
+                "The report tells what became of each ticket, for 7 days.".to_owned(),
+            ],
+            "See the report",
+            "You receive this email as your notification preferences allow; change them in the application.",
+        )
+    } else {
+        (
+            format!("Votre {action} groupé est terminé · {tenant}"),
+            vec![
+                format!(
+                    "Votre {action} groupé de {total} tickets est terminé : {changed} modifiés, {refused} laissés tels quels pour une raison."
+                ),
+                "Le rapport dit ce qu’il est advenu de chaque ticket, pendant 7 jours.".to_owned(),
+            ],
+            "Voir le rapport",
+            "Vous recevez cet e-mail selon vos préférences de notification ; modifiez-les dans l’application.",
+        )
+    };
+    let mut text = body.join("\n");
+    let mut html = format!(
+        "<!doctype html><html lang=\"{lang}\"><body>",
+        lang = if en { "en" } else { "fr" }
+    );
+    for part in &body {
+        html.push_str(&format!("<p>{}</p>", escape_html(part)));
+    }
+    if let Some(link) = link {
+        text.push_str(&format!("\n\n{link}"));
+        html.push_str(&format!(
+            "<p><a href=\"{}\">{}</a></p>",
+            escape_html(link),
+            escape_html(button)
+        ));
+    }
+    text.push_str(&format!("\n\n{settings}\n"));
+    html.push_str(&format!("<p>{}</p></body></html>", escape_html(settings)));
+    RenderedEmail { subject, text, html }
+}
+
+fn export_ready(
+    locale: &str,
+    tenant: &str,
+    file_name: &str,
+    rows: i64,
+    link: Option<&str>,
+    valid_hours: i64,
+) -> RenderedEmail {
+    let en = locale == "en";
+    let (subject, body, button, settings) = if en {
+        (
+            format!("Your export {file_name} is ready · {tenant}"),
+            vec![
+                format!("Your export {file_name} is ready: {rows} rows."),
+                format!("It can be downloaded for {valid_hours} hours, by you only."),
+            ],
+            "Download the export",
+            "You receive this email as your notification preferences allow; change them in the application.",
+        )
+    } else {
+        (
+            format!("Votre export {file_name} est prêt · {tenant}"),
+            vec![
+                format!("Votre export {file_name} est prêt : {rows} lignes."),
+                format!("Il peut être téléchargé pendant {valid_hours} heures, par vous seul."),
+            ],
+            "Télécharger l’export",
+            "Vous recevez cet e-mail selon vos préférences de notification ; modifiez-les dans l’application.",
+        )
+    };
+    let mut text = body.join("\n");
+    let mut html = format!(
+        "<!doctype html><html lang=\"{lang}\"><body>",
+        lang = if en { "en" } else { "fr" }
+    );
+    for part in &body {
+        html.push_str(&format!("<p>{}</p>", escape_html(part)));
+    }
+    if let Some(link) = link {
+        text.push_str(&format!("\n\n{link}"));
+        html.push_str(&format!(
+            "<p><a href=\"{}\">{}</a></p>",
+            escape_html(link),
+            escape_html(button)
+        ));
+    }
+    text.push_str(&format!("\n\n{settings}\n"));
+    html.push_str(&format!("<p>{}</p></body></html>", escape_html(settings)));
+    RenderedEmail { subject, text, html }
 }
 
 fn notification(locale: &str, tenant: &str, line: &NotificationLine, link: Option<&str>) -> RenderedEmail {
@@ -606,5 +772,68 @@ mod tests {
             Mailer::new(&Secret::new("smtp://mailpit:1025"), "nobody"),
             Err(MailError::Address(_))
         ));
+    }
+
+    #[test]
+    fn an_export_ready_email_links_to_the_export_in_the_members_language() {
+        let message = EmailMessage::ExportReady {
+            tenant_name: "Acme <Industrie>".to_owned(),
+            file_name: "search-2026-11-18.csv".to_owned(),
+            rows: 20_000,
+            link: Some("https://acme.example.org/exports/e1".to_owned()),
+            valid_hours: 24,
+        };
+        let en = render(&message, "en");
+        assert_eq!(
+            en.subject,
+            "Your export search-2026-11-18.csv is ready · Acme <Industrie>"
+        );
+        assert!(en.text.starts_with("Your export search-2026-11-18.csv is ready: 20000 rows.\nIt can be downloaded for 24 hours, by you only.\n\nhttps://acme.example.org/exports/e1"));
+        assert!(
+            en.html
+                .contains("<a href=\"https://acme.example.org/exports/e1\">Download the export</a>")
+        );
+        let fr = render(&message, "fr");
+        assert_eq!(
+            fr.subject,
+            "Votre export search-2026-11-18.csv est prêt · Acme <Industrie>"
+        );
+        assert!(fr.html.contains("Télécharger l’export"));
+        assert!(fr.text.contains("pendant 24 heures"));
+        let serialized = serde_json::to_value(&message).unwrap();
+        assert_eq!(serialized["type"], "export_ready");
+        assert_eq!(
+            serde_json::from_value::<EmailMessage>(serialized).unwrap(),
+            message
+        );
+    }
+
+    #[test]
+    fn a_bulk_done_email_links_to_its_report_in_the_members_language() {
+        let message = EmailMessage::BulkDone {
+            tenant_name: "Acme".to_owned(),
+            kind: "transition".to_owned(),
+            total: 120,
+            changed: 117,
+            refused: 3,
+            link: Some("https://acme.example.org/bulk-actions/b1".to_owned()),
+        };
+        let en = render(&message, "en");
+        assert_eq!(en.subject, "Your bulk status change is done · Acme");
+        assert!(en.text.starts_with(
+            "Your bulk status change of 120 tickets is done: 117 changed, 3 left unchanged for a reason."
+        ));
+        assert!(
+            en.html
+                .contains("<a href=\"https://acme.example.org/bulk-actions/b1\">See the report</a>")
+        );
+        let fr = render(&message, "fr");
+        assert_eq!(fr.subject, "Votre changement de statut groupé est terminé · Acme");
+        let serialized = serde_json::to_value(&message).unwrap();
+        assert_eq!(serialized["type"], "bulk_done");
+        assert_eq!(
+            serde_json::from_value::<EmailMessage>(serialized).unwrap(),
+            message
+        );
     }
 }

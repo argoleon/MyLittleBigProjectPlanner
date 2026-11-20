@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM saved_filter f\n        WHERE f.owner_id = $1 AND NOT f.shared_with_all\n          AND NOT EXISTS (SELECT 1 FROM saved_filter_group sg WHERE sg.filter_id = f.id)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4c7dc639ed92b263a31c7142f1c866dd547121e4d4cc0680d62998ef7b9865a8"
+}

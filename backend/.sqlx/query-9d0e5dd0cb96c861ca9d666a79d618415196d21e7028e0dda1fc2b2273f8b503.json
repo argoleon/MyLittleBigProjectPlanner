@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM board WHERE id = $1 AND ($2::bigint[] IS NULL OR version = ANY($2))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9d0e5dd0cb96c861ca9d666a79d618415196d21e7028e0dda1fc2b2273f8b503"
+}

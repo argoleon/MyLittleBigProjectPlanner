@@ -42,3 +42,4 @@ url = "2"
 fred = { version = "10.1.0", default-features = false, features = ["i-streams"] }
 image = { version = "0.25.10", default-features = false, features = ["png"] }
 opentelemetry_sdk = { version = "0.33.1", default-features = false, features = ["trace", "metrics", "testing"] }
+calamine = { version = "0.38.0", default-features = false }

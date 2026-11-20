@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT f.options\n        FROM field_def f\n        JOIN project_config_version v ON v.id = f.version_id AND v.state = 'published'\n        WHERE f.key = $1 AND f.kind IN ('single_select', 'multi_select', 'cascading_select')\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "options",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "field_def",
+            "name": "options"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "de124b3a9f8f538edbf6271f95af04f081b213dd26c9b577fccb798ed052eb17"
+}

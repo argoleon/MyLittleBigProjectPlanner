@@ -13,7 +13,7 @@ import {
   ErrorState,
   InstantPipe,
   MemberNotification,
-  NotificationEvent,
+  MemberNotificationEvent,
   NotificationPreferences,
   errorTranslationKey,
   getMyNotificationPreferences,
@@ -30,14 +30,16 @@ import { NotificationCenter } from './notification-center';
 export const NOTIFICATION_PAGE = 30;
 
 /** The kinds of notification a member filters on. */
-export const KINDS: readonly NotificationEvent[] = ['mentioned', 'assigned', 'status_changed', 'commented', 'created'];
+export const KINDS: readonly MemberNotificationEvent[] = ['mentioned', 'assigned', 'status_changed', 'commented', 'created', 'export_ready', 'bulk_done'];
 
-const ICONS: Record<NotificationEvent, string> = {
+const ICONS: Record<MemberNotificationEvent, string> = {
   mentioned: 'alternate_email',
   assigned: 'assignment_ind',
   status_changed: 'swap_horiz',
   commented: 'chat',
   created: 'add_task',
+  export_ready: 'download',
+  bulk_done: 'library_add_check',
 };
 
 /** When a notification came, to group them: today, the last seven days, before. */
@@ -89,7 +91,7 @@ export class NotificationsPage {
 
   /** The organization shown (none: all) and the kind (none: all). */
   protected readonly tenant = signal<string | null>(null);
-  protected readonly kind = signal<NotificationEvent | null>(null);
+  protected readonly kind = signal<MemberNotificationEvent | null>(null);
 
   protected readonly items = signal<MemberNotification[] | null>(null);
   protected readonly cursor = signal<string | null>(null);
@@ -147,7 +149,7 @@ export class NotificationsPage {
     return isApiProblem(error) ? error.translationKey : errorTranslationKey('unknown');
   }
 
-  /** Opens the ticket of `notification`, marking it read; in its organization if another. */
+  /** Opens the ticket (or the export) of `notification`, marking it read; in its organization if another. */
   protected async open(notification: MemberNotification): Promise<void> {
     this.errorKey.set(null);
     try {
@@ -157,7 +159,13 @@ export class NotificationsPage {
         this.items.update((items) => (items ?? []).map((n) => (n.id === notification.id ? { ...n, read: true } : n)));
       }
       if (notification.tenant.id === this.currentTenant()) {
-        await this.router.navigate(['/issues', notification.issueKey]);
+        await this.router.navigate(
+          notification.export
+            ? ['/exports', notification.export.id]
+            : notification.bulk
+              ? ['/bulk-actions', notification.bulk.id]
+              : ['/issues', notification.issueKey],
+        );
       } else {
         await this.auth.switchTenant(notification.tenant.id);
       }
@@ -195,7 +203,7 @@ export class NotificationsPage {
     }
   }
 
-  protected toggle(event: NotificationEvent, channel: 'inApp' | 'email', on: boolean): void {
+  protected toggle(event: MemberNotificationEvent, channel: 'inApp' | 'email', on: boolean): void {
     void this.choose((preferences) => ({
       ...preferences,
       events: preferences.events.map((choice) => (choice.event === event ? { ...choice, [channel]: on } : choice)),

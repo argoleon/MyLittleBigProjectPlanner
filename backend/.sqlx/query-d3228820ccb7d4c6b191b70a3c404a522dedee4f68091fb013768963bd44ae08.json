@@ -1,0 +1,42 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT DISTINCT ON (t.key) t.key, t.label AS \"label: Json<Labels>\"\n        FROM issue_type t\n        JOIN project_config_version v ON v.id = t.version_id AND v.state = 'published'\n        WHERE t.key LIKE $1\n           OR EXISTS (SELECT 1 FROM jsonb_each_text(t.label) l WHERE lower(l.value) LIKE $2)\n        ORDER BY t.key, t.updated_at DESC\n        LIMIT $3\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "issue_type",
+            "name": "key"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "label: Json<Labels>",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "issue_type",
+            "name": "label"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "d3228820ccb7d4c6b191b70a3c404a522dedee4f68091fb013768963bd44ae08"
+}

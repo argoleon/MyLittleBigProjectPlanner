@@ -195,12 +195,16 @@ A single query language, inspired by JQL, powers search, filters, boards, the Ga
 - It relies on stable identifiers (`in_progress`), never on translated labels.
 - The interface offers a visual builder that generates the query, and an editor with autocompletion.
 - Filters can be saved, personal or shared.
-- Full-text search: PostgreSQL (`tsvector` and `pg_trgm`), behind an abstraction that will allow a dedicated engine later.
+- Full-text search: PostgreSQL (`tsvector`, French and English stemming, accents ignored) over the title, the description and the comments (public ones only for the portal), behind an abstraction that will allow a dedicated engine later. Typos are corrected against the words already written in the tenant, by edit distance (swapping two letters counts as one edit): none under 4 letters, one edit up to 7, two beyond.
 - After the MVP: history operators (`status WAS`, `CHANGED`) and link functions (`linkedTo()`).
 
 **Boards (MVP)**
 
 - **Kanban**: columns mapped to one or more statuses, fed by a filter, work-in-progress limits, swimlanes by assignee or epic.
+  - A board belongs to a node of the hierarchy: whoever sees the node sees the board (each only sees the tickets they may see), and the "manage boards" permission on the node lets them create, configure and delete it.
+  - Quick filters of the board's own (a label and a clause of the query language) join its filter when toggled on.
+  - Moving a card to a column runs the workflow transition that leads there, with its conditions, validators and post-functions; when none can, the card goes back and the reason shows. The keyboard offers the same action as drag and drop.
+  - Cards follow the filter's order (`ORDER BY`); manual ranking comes with the Scrum backlog.
 - **Scrum**: backlog, sprint planning and closing (unfinished tickets move to the next sprint or the backlog), active sprint board.
 - **Estimation**: points or hours, configurable per board. Workload always stays in hours, through assignments.
 - **Reports**: burndown (in points or hours, based on remaining work), velocity over the last N sprints.
@@ -210,6 +214,21 @@ A single query language, inspired by JQL, powers search, filters, boards, the Ga
 **Exports**
 
 CSV (essential) and Excel from any list view, with the displayed columns.
+
+- The file holds the query's tickets as the member sees them, with headers in their language. CSV in UTF-8 with a BOM, ISO dates, dot decimals; a text starting with `=`, `+`, `-` or `@` is neutralized (formula injection).
+- Up to 1,000 rows, the file downloads at once; beyond, it is produced in the background and the member is notified when it is ready. At most 100,000 rows.
+- Excel: typed cells (numbers, dates, times in UTC as their header says), so that spreadsheets sort and compute them; a text is never run as a formula.
+- The file is kept 24 hours in the object storage, downloadable by its requester only.
+
+**Bulk actions**
+
+On a search result, the member ticks tickets (or all the results of the query) and modifies, changes the status of, or moves them together.
+
+- **Modify**: priority, assignee, start and due dates, and the custom fields shared by every selected ticket (same configuration). Only the fields chosen change.
+- **Change status**: only the statuses a transition reaches from the selected tickets are offered, with how many it reaches; each ticket runs the transition of its own workflow, with its conditions, validators and post-functions.
+- **Move**: to another project, with one type and status mapping for the batch; sub-tasks follow their parent, and the report gives the new keys.
+- Each ticket is changed in its own transaction, with its version check, history line and notifications: a refusal (permission, archived project, transition not allowed, required field missing) leaves it unchanged and is reported, the others are changed.
+- Up to 100 tickets, the action runs within the request and its report shows at once; beyond, the worker runs it, at most 10,000 tickets, and the member is notified when it is done. The report is kept 7 days, for its requester only.
 
 ## 7. Planning, Gantt and calendars
 
@@ -415,7 +434,7 @@ Every change produces an event, written to an outbox table in the same transacti
 **Notifications**
 
 - In the application and by email.
-- Preferences per user and per event type.
+- Preferences per user and per event type. Besides ticket events, a member is notified of what concerns them alone, such as an export ready.
 - Optional daily digest.
 - Aggregated across all tenants for a user, with a tenant filter.
 - After the MVP: Teams and Slack, through webhooks.
@@ -459,7 +478,7 @@ Permissions rely on roles granted on hierarchy nodes and inherited downwards. Po
 **Permission model**
 
 - **Global roles**: platform super admin. Per tenant: tenant admin, configuration admin, internal user, external user.
-- **Node roles**: defined by each tenant as sets of permissions. Example permissions: view, create a ticket, edit, comment, log time, assign resources, force an overload, manage sprints, manage members, administer the node.
+- **Node roles**: defined by each tenant as sets of permissions. Example permissions: view, create a ticket, edit, comment, log time, assign resources, force an overload, manage sprints, manage boards, manage members, administer the node.
 - **Grants**: to users or groups, on a node. Inherited downwards, union in multi-parent, can be blocked (section 4).
 - **In the MVP**: restricted visibility on the portal (requesters only see their own tickets), internal or public comments, confidential projects.
 - **After the MVP**: per-ticket security levels and field-level security.

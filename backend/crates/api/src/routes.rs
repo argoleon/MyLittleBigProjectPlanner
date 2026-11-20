@@ -19,6 +19,8 @@ use utoipa_axum::routes;
 
 use crate::account;
 use crate::auth;
+use crate::boards;
+use crate::bulk_actions;
 use crate::config_fields;
 use crate::configs;
 use crate::events;
@@ -35,6 +37,7 @@ use crate::issue_links;
 use crate::issue_transitions;
 use crate::issue_types;
 use crate::issues;
+use crate::list_exports;
 use crate::me;
 use crate::members;
 use crate::mfa;
@@ -45,9 +48,12 @@ use crate::notifications;
 use crate::openapi;
 use crate::platform;
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
+use crate::query_assist;
 use crate::reference_items;
 use crate::roles;
+use crate::saved_filters;
 use crate::screens;
+use crate::search;
 use crate::sso;
 use crate::tenant::{AppState, PublicTenantTx};
 use crate::transition_rules;
@@ -189,6 +195,28 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(issue_changes::move_issue))
         .routes(routes!(issues::form))
         .routes(routes!(issues::mine))
+        .routes(routes!(search::search))
+        .routes(routes!(bulk_actions::create))
+        .routes(routes!(bulk_actions::options))
+        .routes(routes!(bulk_actions::move_plan))
+        .routes(routes!(bulk_actions::read))
+        .routes(routes!(list_exports::list, list_exports::create))
+        .routes(routes!(list_exports::read))
+        .routes(routes!(list_exports::download))
+        .routes(routes!(boards::list, boards::create))
+        .routes(routes!(boards::statuses))
+        .routes(routes!(boards::read, boards::update, boards::delete))
+        .routes(routes!(boards::cards))
+        .routes(routes!(boards::move_card))
+        .routes(routes!(saved_filters::list, saved_filters::create))
+        .routes(routes!(saved_filters::share_groups))
+        .routes(routes!(
+            saved_filters::read,
+            saved_filters::update,
+            saved_filters::delete
+        ))
+        .routes(routes!(query_assist::suggestions))
+        .routes(routes!(query_assist::parse))
         .routes(routes!(issues::people))
         .routes(routes!(migrations::plan_of))
         .routes(routes!(migrations::start))

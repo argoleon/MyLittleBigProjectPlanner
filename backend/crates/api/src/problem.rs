@@ -83,6 +83,12 @@ pub enum ErrorCode {
     InvitationClosed,
     MemberLastAdmin,
     GroupNameTaken,
+    SavedFilterNameTaken,
+    BoardNameTaken,
+    BoardNoTransition,
+    ExportTooLarge,
+    ExportNotReady,
+    BulkTooMany,
     PermissionDenied,
     RoleLabelTaken,
     RoleInUse,
@@ -127,11 +133,13 @@ pub enum ErrorCode {
     AttachmentNotUploaded,
     AttachmentNotScanned,
     StorageUnavailable,
+    // Query language (L06).
+    QueryInvalid,
 }
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 88] = [
+    pub const ALL: [Self; 95] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -176,6 +184,12 @@ impl ErrorCode {
         Self::InvitationClosed,
         Self::MemberLastAdmin,
         Self::GroupNameTaken,
+        Self::SavedFilterNameTaken,
+        Self::BoardNameTaken,
+        Self::BoardNoTransition,
+        Self::ExportTooLarge,
+        Self::ExportNotReady,
+        Self::BulkTooMany,
         Self::PermissionDenied,
         Self::RoleLabelTaken,
         Self::RoleInUse,
@@ -220,6 +234,7 @@ impl ErrorCode {
         Self::AttachmentNotUploaded,
         Self::AttachmentNotScanned,
         Self::StorageUnavailable,
+        Self::QueryInvalid,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -268,6 +283,12 @@ impl ErrorCode {
             Self::InvitationClosed => "invitation.closed",
             Self::MemberLastAdmin => "member.last_admin",
             Self::GroupNameTaken => "group.name_taken",
+            Self::SavedFilterNameTaken => "saved_filter.name_taken",
+            Self::BoardNameTaken => "board.name_taken",
+            Self::BoardNoTransition => "board.no_transition",
+            Self::ExportTooLarge => "export.too_large",
+            Self::ExportNotReady => "export.not_ready",
+            Self::BulkTooMany => "bulk.too_many",
             Self::PermissionDenied => "permission.denied",
             Self::RoleLabelTaken => "role.label_taken",
             Self::RoleInUse => "role.in_use",
@@ -312,6 +333,7 @@ impl ErrorCode {
             Self::AttachmentNotUploaded => "attachment.not_uploaded",
             Self::AttachmentNotScanned => "attachment.not_scanned",
             Self::StorageUnavailable => "storage.unavailable",
+            Self::QueryInvalid => "query.invalid",
         }
     }
 
@@ -322,6 +344,7 @@ impl ErrorCode {
             | Self::MappingIncomplete
             | Self::InvalidJson
             | Self::InvalidQuery
+            | Self::QueryInvalid
             | Self::IdempotencyKeyInvalid
             | Self::AuthResetTokenInvalid
             | Self::TenantConfirmationMismatch
@@ -357,6 +380,10 @@ impl ErrorCode {
             | Self::InvitationClosed
             | Self::MemberLastAdmin
             | Self::GroupNameTaken
+            | Self::SavedFilterNameTaken
+            | Self::BoardNameTaken
+            | Self::BoardNoTransition
+            | Self::ExportNotReady
             | Self::RoleLabelTaken
             | Self::RoleInUse
             | Self::AccountNoPassword
@@ -401,7 +428,9 @@ impl ErrorCode {
             }
             Self::StorageUnavailable => StatusCode::SERVICE_UNAVAILABLE,
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
-            Self::IdempotencyKeyReused => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::IdempotencyKeyReused | Self::ExportTooLarge | Self::BulkTooMany => {
+                StatusCode::UNPROCESSABLE_ENTITY
+            }
             Self::PreconditionRequired => StatusCode::PRECONDITION_REQUIRED,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }
@@ -454,6 +483,12 @@ impl ErrorCode {
             Self::InvitationClosed => "This invitation was already accepted or revoked",
             Self::MemberLastAdmin => "The tenant needs at least one active tenant admin",
             Self::GroupNameTaken => "Another group already has this name",
+            Self::SavedFilterNameTaken => "You already have a saved filter with this name",
+            Self::BoardNameTaken => "This node already has a board with this name",
+            Self::BoardNoTransition => "No transition of the workflow leads to this column",
+            Self::ExportTooLarge => "The query finds more tickets than an export holds",
+            Self::ExportNotReady => "The export is not ready",
+            Self::BulkTooMany => "More tickets than a bulk action takes",
             Self::PermissionDenied => "You do not have the permission this needs",
             Self::RoleLabelTaken => "Another role already has this label",
             Self::RoleInUse => "Grants use this role: remove them first",
@@ -516,6 +551,7 @@ impl ErrorCode {
                 "The file is not available: not scanned yet, or refused by the antivirus"
             }
             Self::StorageUnavailable => "The file storage is not available",
+            Self::QueryInvalid => "The query cannot be run",
         }
     }
 
@@ -545,6 +581,46 @@ pub struct Problem {
     pub errors: Vec<FieldError>,
     /// Sent as `Retry-After` (whole seconds), for `too_many_requests`.
     pub retry_after: Option<std::time::Duration>,
+    /// Where and why a query of the language was refused, for `query.invalid`.
+    pub query: Option<Box<QueryProblem>>,
+}
+
+/// Where and why a query of the language was refused (`query.invalid`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(
+    as = QueryProblem,
+    example = json!({"reason": "syntax", "position": 9, "length": 0, "expected": ["a value"], "found": null})
+)]
+pub struct QueryProblem {
+    /// Stable: `syntax`, `unterminated_string`, `invalid_character`,
+    /// `invalid_number`, `unknown_field`, `unknown_function`,
+    /// `wrong_arguments`, `operator_not_allowed`, `value_not_allowed`,
+    /// `invalid_date`, `unknown_priority`, `not_sortable`, `unsupported`,
+    /// `too_long`, `too_deep`, `too_many_clauses`, `too_many_values`,
+    /// `too_many_order_keys`.
+    #[schema(example = "syntax")]
+    pub reason: &'static str,
+    /// Where it went wrong: a character offset from 0.
+    pub position: usize,
+    /// How many characters, from `position` (0 at the end of the query).
+    pub length: usize,
+    /// What could come at `position`, for `syntax`: `a field`, `a value`,
+    /// `a text`, `the end of the query`, or a keyword or symbol as written
+    /// (`AND`, `)`, `ORDER BY`).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[schema(required = false)]
+    pub expected: Vec<&'static str>,
+    /// What came instead, as written; `null` at the end of the query.
+    #[schema(required = true)]
+    pub found: Option<String>,
+    /// The field concerned, for the errors about a field.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub field: Option<String>,
+    /// The operators the field takes, for `operator_not_allowed`.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[schema(required = false)]
+    pub allowed: Vec<String>,
 }
 
 impl Problem {
@@ -554,6 +630,15 @@ impl Problem {
             detail: None,
             errors: Vec::new(),
             retry_after: None,
+            query: None,
+        }
+    }
+
+    /// `query.invalid`, telling where and why.
+    pub fn query(query: QueryProblem, detail: impl Into<String>) -> Self {
+        Self {
+            query: Some(Box::new(query)),
+            ..Self::new(ErrorCode::QueryInvalid).with_detail(detail)
         }
     }
 
@@ -595,6 +680,15 @@ impl From<ErrorCode> for Problem {
 impl From<infra::sqlx::Error> for Problem {
     fn from(err: infra::sqlx::Error) -> Self {
         Self::internal(&err)
+    }
+}
+
+impl From<infra::tickets::ContentError> for Problem {
+    fn from(err: infra::tickets::ContentError) -> Self {
+        match err {
+            infra::tickets::ContentError::NotFound => Self::new(ErrorCode::NotFound),
+            infra::tickets::ContentError::Database(e) => Self::internal(&e),
+        }
     }
 }
 
@@ -684,6 +778,9 @@ pub struct ProblemBody<'a> {
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
     #[schema(required = false)]
     pub errors: Vec<FieldErrorBody<'a>>,
+    /// For `query.invalid`: where and why.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub query: Option<&'a QueryProblem>,
 }
 
 /// One invalid field of a request.
@@ -717,6 +814,7 @@ impl IntoResponse for Problem {
                     code: e.code,
                 })
                 .collect(),
+            query: self.query.as_deref(),
         };
         let mut response = (code.status(), axum::Json(body)).into_response();
         response
@@ -766,7 +864,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 88] = [
+        let expected: [(ErrorCode, u16); 95] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -811,6 +909,12 @@ mod tests {
             (ErrorCode::InvitationClosed, 409),
             (ErrorCode::MemberLastAdmin, 409),
             (ErrorCode::GroupNameTaken, 409),
+            (ErrorCode::SavedFilterNameTaken, 409),
+            (ErrorCode::BoardNameTaken, 409),
+            (ErrorCode::BoardNoTransition, 409),
+            (ErrorCode::ExportTooLarge, 422),
+            (ErrorCode::ExportNotReady, 409),
+            (ErrorCode::BulkTooMany, 422),
             (ErrorCode::PermissionDenied, 403),
             (ErrorCode::RoleLabelTaken, 409),
             (ErrorCode::RoleInUse, 409),
@@ -855,6 +959,7 @@ mod tests {
             (ErrorCode::AttachmentNotUploaded, 409),
             (ErrorCode::AttachmentNotScanned, 409),
             (ErrorCode::StorageUnavailable, 503),
+            (ErrorCode::QueryInvalid, 400),
         ];
         for (code, status) in expected {
             assert_eq!(code.status().as_u16(), status, "{}", code.as_str());

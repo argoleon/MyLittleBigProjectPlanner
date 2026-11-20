@@ -153,7 +153,7 @@ async fn listed(api: &TestApi, tenant: &SeedTenant, session: &Session) -> Vec<St
     names
 }
 
-const PROJECT_MANAGER: [&str; 8] = [
+const PROJECT_MANAGER: [&str; 9] = [
     "view",
     "create_ticket",
     "edit",
@@ -162,6 +162,7 @@ const PROJECT_MANAGER: [&str; 8] = [
     "assign_resources",
     "force_overload",
     "manage_sprints",
+    "manage_boards",
 ];
 
 #[tokio::test]
@@ -172,13 +173,13 @@ async fn a_group_role_on_a_portfolio_reaches_the_projects_below_until_it_is_revo
     let digital = node(
         &api,
         t,
-        json!({"type": "portfolio", "name": "Digital transformation"}),
+        json!({"type": "portfolio", "name": "Digital transformation", "key": "DIGITAL-TRANSFORMATI"}),
     )
     .await;
     let program = node(
         &api,
         t,
-        json!({"type": "program", "name": "IT Modernization", "parentId": digital}),
+        json!({"type": "program", "name": "IT Modernization", "key": "IT-MODERNIZATION", "parentId": digital}),
     )
     .await;
     let plat = node(
@@ -304,17 +305,22 @@ async fn two_parents_give_the_union_and_the_access_tells_where_each_role_comes_f
     let db = TestDb::new().await;
     let api = common::start(&db, multi()).await;
     let t = &db.tenant_a;
-    let digital = node(&api, t, json!({"type": "portfolio", "name": "Digital"})).await;
+    let digital = node(
+        &api,
+        t,
+        json!({"type": "portfolio", "name": "Digital", "key": "DIGITAL"}),
+    )
+    .await;
     let modernization = node(
         &api,
         t,
-        json!({"type": "program", "name": "Modernization", "parentId": digital}),
+        json!({"type": "program", "name": "Modernization", "key": "MODERNIZATION", "parentId": digital}),
     )
     .await;
     let compliance = node(
         &api,
         t,
-        json!({"type": "program", "name": "Compliance", "parentId": digital}),
+        json!({"type": "program", "name": "Compliance", "key": "COMPLIANCE", "parentId": digital}),
     )
     .await;
     let plat = node(
@@ -569,7 +575,12 @@ async fn grants_never_cross_tenants() {
         json!({"type": "project", "name": "Identity platform", "key": "PLAT"}),
     )
     .await;
-    let elsewhere = node(&api, b, json!({"type": "portfolio", "name": "Elsewhere"})).await;
+    let elsewhere = node(
+        &api,
+        b,
+        json!({"type": "portfolio", "name": "Elsewhere", "key": "ELSEWHERE"}),
+    )
+    .await;
     let (lucas, lucas_session) = member(&db, &api, a).await;
     let (stranger, stranger_session) = member(&db, &api, b).await;
     let (reader_a, reader_b) = (role(&db, a, "Reader").await, role(&db, b, "Reader").await);
@@ -687,11 +698,16 @@ async fn a_confidential_project_is_closed_to_those_above_it_and_veiled_in_their_
     let db = TestDb::new().await;
     let api = common::start(&db, multi()).await;
     let t = &db.tenant_a;
-    let digital = node(&api, t, json!({"type": "portfolio", "name": "Digital"})).await;
+    let digital = node(
+        &api,
+        t,
+        json!({"type": "portfolio", "name": "Digital", "key": "DIGITAL"}),
+    )
+    .await;
     let program = node(
         &api,
         t,
-        json!({"type": "program", "name": "Modernization", "parentId": digital}),
+        json!({"type": "program", "name": "Modernization", "key": "MODERNIZATION", "parentId": digital}),
     )
     .await;
     let plat = node(
@@ -795,14 +811,14 @@ async fn a_confidential_project_is_closed_to_those_above_it_and_veiled_in_their_
             .await
             .unwrap()
             .len(),
-        10
+        domain::permissions::Permission::ALL.len()
     );
     assert_eq!(
         permissions_of(&api, t, &camille_session, &cyber)
             .await
             .unwrap()
             .len(),
-        10
+        domain::permissions::Permission::ALL.len()
     );
 
     // To Lucas, the project shows veiled wherever its parent shows: its type

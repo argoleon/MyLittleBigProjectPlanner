@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT bulk_id FROM bulk_action_item WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "bulk_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "bulk_action_item",
+            "name": "bulk_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0f27e8fcab016d06e1a10b68a9f1641751c7d8cb4d485d32ebd0f0f9b633f9a2"
+}

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE node\n        SET name = $3, description = $4, objectives = $5, start_date = $6, end_date = $7,\n            health = $8, version = version + 1\n        WHERE id = $1 AND ($2::bigint[] IS NULL OR version = ANY($2))\n        RETURNING id\n        ",
+  "query": "\n            UPDATE node\n            SET name = $3, description = $4, objectives = $5, start_date = $6, end_date = $7,\n                health = $8, key = COALESCE($9, key), version = version + 1\n            WHERE id = $1 AND ($2::bigint[] IS NULL OR version = ANY($2))\n            RETURNING id\n            ",
   "describe": {
     "columns": [
       {
@@ -24,6 +24,7 @@
         "Text",
         "Date",
         "Date",
+        "Text",
         "Text"
       ]
     },
@@ -31,5 +32,5 @@
       false
     ]
   },
-  "hash": "bf5bc1e30669a34a540b62a0fe348787a342ed7491398f7432e50e026cff91bf"
+  "hash": "0141b7c5305f021db6462dc155bc1c5ee77365f059b83df7af49777d8ed94c55"
 }

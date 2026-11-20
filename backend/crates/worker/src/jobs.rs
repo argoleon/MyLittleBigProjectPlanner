@@ -18,11 +18,13 @@ use infra::aggregates::AGGREGATE_JOB;
 use infra::attachments::{
     AttachmentJob, DELETE_OBJECTS_JOB, DeleteObjects, EXPIRE_JOB, SCAN_JOB, ScanError, Scanned,
 };
+use infra::bulk_actions::{self, ItemJob as BulkItemJob, PurgeJob as BulkPurgeJob};
 use infra::config_migrations::{MIGRATION_JOB, MigrationJob, Outcome};
 use infra::email::{EMAIL_JOB, EmailJob, MailError, Mailer, render};
 use infra::erasure::{ERASURE_JOB, ErasedMember};
 use infra::exports::{EXPORT_JOB, ExportJob, ExportStore};
 use infra::jobs::ClaimedJob;
+use infra::list_exports::{self, ExportJob as ListExportJob, PurgeJob as ListPurgeJob, Ran};
 use infra::notifications::{DISPATCH_JOB, DispatchJob, PUBLISH_JOB, PublishJob};
 use infra::platform::PURGE_TENANT_JOB;
 use infra::sqlx::postgres::{PgConnection, PgPool};
@@ -66,12 +68,12 @@ pub struct Jobs {
 }
 
 impl Jobs {
-    /// The page of the ticket `key` of the tenant `slug`, if the public
-    /// address is known.
-    pub fn ticket_link(&self, slug: &str, key: &str) -> Option<String> {
+    /// The page `path` (`issues/PLAT-1`, `exports/<id>`) of the tenant
+    /// `slug`, if the public address is known.
+    pub fn page_link(&self, slug: &str, path: &str) -> Option<String> {
         self.public_url
             .as_ref()
-            .map(|url| format!("{}/issues/{key}", url.replace("{tenant}", slug)))
+            .map(|url| format!("{}/{path}", url.replace("{tenant}", slug)))
     }
 
     fn storage(&self) -> Result<&infra::storage::Storage, JobError> {
@@ -158,7 +160,7 @@ impl JobHandler for Jobs {
                 }
                 DISPATCH_JOB => {
                     let event: DispatchJob = payload(job)?;
-                    let link = |slug: &str, key: &str| self.ticket_link(slug, key);
+                    let link = |slug: &str, path: &str| self.page_link(slug, path);
                     let dispatched = infra::notifications::dispatch(conn, event.event_id, &link)
                         .await
                         .map_err(retry)?;
@@ -209,6 +211,44 @@ impl JobHandler for Jobs {
                         .await
                         .map_err(|e| JobError::Retry(e.to_string()))?;
                     tracing::info!(target: "audit", account = %export.account_id, stored, "personal data exported");
+                    Ok(())
+                }
+                list_exports::EXPORT_JOB => {
+                    let export: ListExportJob = payload(job)?;
+                    let ran = list_exports::run(conn, self.storage()?, job.tenant_id, export.export_id)
+                        .await
+                        .map_err(retry)?;
+                    match ran {
+                        Ran::Ready { rows, bytes } => {
+                            tracing::info!(export = %export.export_id, rows, bytes, "list exported");
+                        }
+                        Ran::Failed(code) => {
+                            tracing::warn!(export = %export.export_id, code, "list export refused");
+                        }
+                        Ran::Nothing => {}
+                    }
+                    Ok(())
+                }
+                bulk_actions::ITEM_JOB => {
+                    let item: BulkItemJob = payload(job)?;
+                    let outcome = bulk_actions::run_job(conn, &item).await.map_err(retry)?;
+                    if let Some(outcome) = outcome {
+                        tracing::info!(bulk = %item.bulk_id, item = %item.item_id, outcome = outcome.as_str(), "bulk item done");
+                    }
+                    Ok(())
+                }
+                bulk_actions::PURGE_JOB => {
+                    let purge: BulkPurgeJob = payload(job)?;
+                    let deleted = bulk_actions::delete(conn, purge.bulk_id).await.map_err(retry)?;
+                    tracing::info!(bulk = %purge.bulk_id, deleted, "bulk action expired");
+                    Ok(())
+                }
+                list_exports::PURGE_JOB => {
+                    let purge: ListPurgeJob = payload(job)?;
+                    let deleted = list_exports::purge(conn, self.storage()?, &purge)
+                        .await
+                        .map_err(retry)?;
+                    tracing::info!(export = %purge.export_id, deleted, "list export expired");
                     Ok(())
                 }
                 ERASURE_JOB => {

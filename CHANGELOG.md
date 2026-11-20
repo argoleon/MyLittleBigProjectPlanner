@@ -4,6 +4,61 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-19
+
+Work package **L06 Search and Kanban**: a query language with a visual builder and suggestions, full-text search with typo correction, saved and shared filters, Kanban boards, CSV and Excel exports of list views, and bulk actions on a search result.
+
+### Added
+
+- **Search with the query language** (#168)
+  - A JQL-like language (specification §6): comparisons, `IN`, `IS EMPTY`, `~` on text, `AND` / `OR` / `NOT` and parentheses, durations (`created > -7d`), `currentUser()`, `now()`, `startOf…()` and `endOf…()` (day, week, month, year), `descendantsOf("PORTF-HR")`, and `ORDER BY`. Fields and values are stable keys; dates are read in the member's time zone.
+  - `POST /api/v1/search` with `{query, fields, expand, cursor, limit}`: the tickets of the projects the member sees, the total on the first page, a cursor for the next ones. A query that cannot run answers `query.invalid` with the reason, the character position and what was expected.
+  - The Search screen (mockup 15): the query runs on Enter and stays in the address (`/search?q=…`); results in a virtualized table with the total, the next page loaded while scrolling, columns chosen from a menu (kept in the browser), and sorting a column sorts the query. A refused query is explained at its position, the part concerned selected in the field.
+  - `sprint` and `fixVersion` are understood but answer `unsupported` until sprints and versions come (L09); `text ~` matches the summary and the description until full text comes (#177).
+- **Writing queries without knowing the syntax** (#173)
+  - A visual builder: projects, types, statuses, assignees ("Me" included), priorities, due date and creation date (presets such as "Overdue" or "Last 7 days", or a custom range), text; it writes the query, and reads back a query made of such criteria. Any other query stays in the editor, with a word why. The screen opens in the last mode used (the builder the first time).
+  - The query editor suggests what may come at the cursor: fields (custom ones included), the operators of a field, keywords, functions, and values with their labels (statuses, types, priorities, members, the projects and nodes the member sees). Arrows, Enter and Escape, or Ctrl+Space to ask.
+  - `POST /api/v1/search/suggestions` (`{query, cursor}`) and `POST /api/v1/search/parse` (the query as a tree).
+- **Full-text search** (#177)
+  - `text ~ "outage"` searches the title, the description and the comments, with French and English stemming, accents ignored. Without `ORDER BY`, the most relevant tickets come first, those holding the words in their own text before those holding them in a comment only.
+  - Typos are corrected against the words already written in the organization, by edit distance (swapping two letters counts as one edit): none under 4 letters, one edit up to 7, two beyond. Corrected matches rank below exact ones.
+- **Saved filters** (#180)
+  - A query is saved under a name and an icon, private or shared with groups or the whole organization; the panel of the Search screen lists the member's own and those shared with them. Its owner alone changes it; an organization admin may delete a shared one. A member who leaves takes their private filters with them; shared ones stay.
+  - `/api/v1/saved-filters` (list, create, read, change, delete) and `GET /api/v1/saved-filters/share-groups`.
+- **Kanban boards** (#183)
+  - A board belongs to a portfolio, program or project, and shows the tickets of its filter in columns mapped to statuses (by key, across configurations). A column may cap its work in progress: reached, then highlighted once exceeded. Cards are grouped in swimlanes by assignee or by epic, narrowed by the board's quick filters, and show their type, blockers, epic, estimate (points or hours, per board), priority and assignee.
+  - Dragging a card to another column runs the transition of its workflow that leads there, with its conditions, validators and post-functions; a transition with fields opens its form first, several leading there are offered to choose from. Where none leads, or its condition is not met, the card goes back and the reason shows. Each card's menu moves it with the keyboard alone. Moves by others show as they happen.
+  - Whoever sees the node sees its boards, each seeing only the tickets they may see; the new permission **Manage boards** on the node creates, configures and deletes them. A new board starts with a column per status category and the quick filters "My tickets" and "Bugs". The boards of a node are a link away from its page.
+  - `/api/v1/boards` (list, create, read, change, delete), `GET /api/v1/boards/statuses`, `GET /api/v1/boards/{id}/cards` and `POST /api/v1/boards/{id}/moves`.
+
+- **CSV export of list views** (#188)
+  - An **Export** menu on the Search screen and on My tickets: the tickets of the query as the member sees them, with the columns displayed, headers in their language. UTF-8 with a byte order mark, ISO dates and times, dot decimals; a text starting like a formula (`=`, `+`, `-`, `@`) is neutralized.
+  - Up to 1,000 tickets, the file downloads at once. Beyond, the worker writes it and the member is notified when it is ready: a new **Export ready** notification, in the bell and by email as the member chooses (in the application only by default; emailed at once, never in the digest). Up to 100,000 tickets; the file is kept 24 hours, for its requester only.
+  - `POST /api/v1/exports` (`201` ready, `202` queued, `422` `export.too_large`), `GET /api/v1/exports`, `GET /api/v1/exports/{id}` and `GET /api/v1/exports/{id}/file` (a short-lived link to the storage). Notifications may now be about something else than a ticket: `MemberNotification` gains `export`, and its `issueId`, `issueKey` and `issueSummary` are `null` for an export. Member notifications and preferences use the event type `MemberNotificationEvent` (the ticket events and `export_ready`); configuration rules keep `NotificationEvent`.
+- **Excel export of list views** (#191)
+  - The Export menu offers an Excel file (`.xlsx`) beside CSV, with the same columns, headers and limits, in the background beyond 1,000 tickets. Cells are typed: numbers as numbers, due and start dates as dates, creation and change times as date-times in UTC (said in their header); texts stay texts, never run as formulas. `POST /api/v1/exports` takes `"format": "xlsx"`.
+- **Bulk actions on a search result** (#528)
+  - The Search screen gains a selection column: tick tickets, or every loaded one, then all the results of the query. A bar shows the count and the actions **Modify**, **Change status** and **Move**.
+  - Modify sets the priority, assignee, start and due dates, and the custom fields shared by every selected ticket. Change status offers only the statuses a transition reaches, each ticket running its own workflow's transition. Move uses one type and status mapping for the batch; sub-tasks follow their parent.
+  - Each ticket is changed in its own transaction, with its version check, history line and notifications. Tickets the member may not change, or that a transition or validator refuses, are left unchanged; the report lists what became of each, with the reason or the new key.
+  - Up to 100 tickets, the action runs within the request and its report shows at once. Beyond, the worker runs it (at most 10,000 tickets) and the member is notified when it is done: a new **Bulk action done** notification, in the bell and by email as the member chooses (in the application only by default; emailed at once, never in the digest), leading to the report's page. Reports are kept 7 days, for their requester only.
+  - `POST /api/v1/bulk-actions/options`, `POST /api/v1/bulk-actions/move-plan`, `POST /api/v1/bulk-actions` (`200` done, `202` running, `422` `bulk.too_many`) and `GET /api/v1/bulk-actions/{id}`. `MemberNotification` gains `bulk`; `MemberNotificationEvent` gains `bulk_done`.
+
+### Changed
+
+- **Every node has a key** (#168): portfolios and programs now carry one too (2 to 20 capitals, digits and dashes, such as `PORTF-HR`), unique in the organization together with project keys, so that queries can name them (`descendantsOf("PORTF-HR")`). It is entered in the creation dialog and may be changed in the General tab; a project's key still never changes. API: `key` is required to create any node and always present in node responses; `PUT /nodes/{id}` accepts a new `key` for a portfolio or program.
+
+### Fixed
+
+- The owners field of a node's General tab no longer breaks the accessibility rules once an owner is chosen (the search input sat inside the chip grid).
+
+### Upgrading from 0.5.1
+
+- **Manage boards**: the migration gives the new permission to every role that manages sprints (the default "Project manager" and "Node admin" roles among them). Review the roles that should manage boards in Administration, Roles. Permissions cached before the upgrade expire within 5 minutes.
+- **Full text**: the migration indexes the text of every existing ticket and comment, and builds each organization's word list for typo correction; on large organizations, it takes a few minutes.
+- **Exports and bulk actions**: large exports and bulk actions over 100 tickets run in the worker, which must be running. Export files go to the existing object storage bucket (under `<organization id>/exports/`) and are deleted after 24 hours; bulk action reports are deleted after 7 days. Members get the two new notifications, **Export ready** and **Bulk action done**, in the application only until they choose email in their preferences.
+- **Node keys**: the migration gives every existing portfolio and program a key made of its type and name (`PORTF-RESSOURCES-HUM`, `PROG-MODERNISATION-D`, numbered when taken). Administrators should review them in each node's General tab before saving filters that use them.
+
 ## [0.5.1] - 2026-11-18
 
 Security fix of 0.5.0: the email client had known vulnerabilities, and the dependency checks no longer passed.
@@ -219,6 +274,7 @@ Work package **L01 Technical foundation**: the base every later work package bui
   - License policy enforced on Rust crates and npm packages, RustSec and npm advisories, secret scan of the git history.
   - CI: every step a `just` recipe (`just ci` locally), GitHub Actions only calls them; release workflow publishing the images to GitHub Container Registry.
 
+[0.6.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.6.0
 [0.5.1]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.5.1
 [0.5.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.5.0
 [0.4.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.4.0

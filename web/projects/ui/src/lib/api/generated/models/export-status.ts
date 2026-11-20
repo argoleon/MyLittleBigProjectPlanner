@@ -5,5 +5,5 @@
 /**
  * Where an export stands.
  */
-export type ExportStatus = 'pending' | 'ready';
+export type ExportStatus = 'queued' | 'ready' | 'failed';
 

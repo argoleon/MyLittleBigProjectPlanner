@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT set_config('jit', 'off', true) AS \"jit!\", set_config('plan_cache_mode', 'force_custom_plan', true) AS \"plans!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "jit!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "plans!",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "4aa4e82a3c9f873ac2b6600bfa90f599fa2316c315156d7fa3b7d14049537c1c"
+}

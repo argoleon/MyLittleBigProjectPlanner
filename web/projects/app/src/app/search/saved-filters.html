@@ -1,0 +1,69 @@
+<nav class="filters" [attr.aria-label]="'search.filters.title' | transloco">
+  @if (errorKey(); as key) {
+    <p class="message error" role="alert">{{ key | transloco }}</p>
+  }
+  @if (list.isLoading() && !list.hasValue()) {
+    <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
+  } @else if (list.error()) {
+    <p class="message error" role="alert">
+      {{ 'search.filters.loadError' | transloco }}
+      <button matButton type="button" class="retry" (click)="reload()">{{ 'state.retry' | transloco }}</button>
+    </p>
+  } @else {
+    @for (section of [{ id: 'mine', filters: mine() }, { id: 'shared', filters: shared() }]; track section.id) {
+      <h2 class="section" [id]="'filters-' + section.id">{{ 'search.filters.' + section.id | transloco }}</h2>
+      @if (section.filters.length === 0) {
+        <p class="empty">{{ 'search.filters.' + section.id + 'Empty' | transloco }}</p>
+      } @else {
+        <ul class="items" [attr.aria-labelledby]="'filters-' + section.id">
+          @for (filter of section.filters; track filter.id) {
+            <li class="item" [class.active]="filter.id === active()">
+              <a
+                class="link"
+                [routerLink]="['/search']"
+                [queryParams]="{ filter: filter.id, q: null }"
+                [attr.aria-current]="filter.id === active() ? 'page' : null"
+              >
+                <mat-icon class="icon" aria-hidden="true">{{ filter.icon }}</mat-icon>
+                <span class="name">{{ filter.name }}</span>
+                @if (filter.mine && (filter.sharing.all || filter.sharing.groups.length > 0)) {
+                  <mat-icon class="shared-mark" aria-hidden="true">group</mat-icon>
+                  <!-- The space keeps it a word of its own for screen readers. -->
+                  <span class="cdk-visually-hidden">{{ ' ' + ('search.filters.sharedMark' | transloco) }}</span>
+                }
+                @if (!filter.mine && filter.owner) {
+                  <span class="cdk-visually-hidden">{{ ' ' + ('search.filters.by' | transloco: { name: filter.owner.displayName }) }}</span>
+                }
+              </a>
+              @if (filter.canEdit || filter.canDelete) {
+                <button
+                  matIconButton
+                  type="button"
+                  class="actions"
+                  [matMenuTriggerFor]="menu"
+                  [attr.aria-label]="'search.filters.actions' | transloco: { name: filter.name }"
+                >
+                  <mat-icon aria-hidden="true">more_vert</mat-icon>
+                </button>
+                <mat-menu #menu="matMenu">
+                  @if (filter.canEdit) {
+                    <button mat-menu-item type="button" class="edit" (click)="edit.emit(filter)">
+                      <mat-icon aria-hidden="true">edit</mat-icon>
+                      {{ 'search.filters.editAction' | transloco }}
+                    </button>
+                  }
+                  @if (filter.canDelete) {
+                    <button mat-menu-item type="button" class="delete" (click)="remove(filter)">
+                      <mat-icon aria-hidden="true">delete</mat-icon>
+                      {{ 'search.filters.deleteAction' | transloco }}
+                    </button>
+                  }
+                </mat-menu>
+              }
+            </li>
+          }
+        </ul>
+      }
+    }
+  }
+</nav>

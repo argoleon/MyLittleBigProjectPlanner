@@ -1,0 +1,54 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT DISTINCT ON (f.key) f.key, f.label AS \"label: Json<Labels>\", f.kind\n        FROM field_def f\n        JOIN project_config_version v ON v.id = f.version_id AND v.state = 'published'\n        WHERE f.key LIKE $1\n           OR EXISTS (SELECT 1 FROM jsonb_each_text(f.label) l WHERE lower(l.value) LIKE $2)\n        ORDER BY f.key, f.updated_at DESC\n        LIMIT $3\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "field_def",
+            "name": "key"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "label: Json<Labels>",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "field_def",
+            "name": "label"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "field_def",
+            "name": "kind"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "ee743906701f2c70ac4ebaacc9f471574fcf0c9dce02702e8c1e26a052c0ef20"
+}

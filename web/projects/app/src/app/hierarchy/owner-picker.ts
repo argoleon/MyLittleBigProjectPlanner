@@ -32,17 +32,19 @@ const SUGGESTIONS = 8;
             }
           </mat-chip-row>
         }
-        <!-- Read-only: nothing to search, and a grid holds only its rows. -->
-        @if (!disabled()) {
-          <input
-            #search
-            [placeholder]="'hierarchy.owners.add' | transloco"
-            [matChipInputFor]="grid"
-            [matAutocomplete]="auto"
-            (input)="query.set(search.value)"
-          />
-        }
       </mat-chip-grid>
+      <!-- Beside the grid, not in it: a grid holds only its rows (axe
+           aria-required-children once a chip is there). Read-only: nothing to search. -->
+      @if (!disabled()) {
+        <input
+          #search
+          class="search"
+          [placeholder]="'hierarchy.owners.add' | transloco"
+          [matChipInputFor]="grid"
+          [matAutocomplete]="auto"
+          (input)="query.set(search.value)"
+        />
+      }
       <mat-autocomplete #auto="matAutocomplete" (optionSelected)="add($event)">
         @for (member of suggestions(); track member.accountId) {
           <mat-option [value]="member">{{ member.displayName }} · {{ member.email }}</mat-option>

@@ -1,0 +1,198 @@
+:host {
+  display: block;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--app-space-3);
+}
+
+.title {
+  margin: 0;
+  font: var(--mat-sys-headline-medium);
+}
+
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--app-space-2);
+}
+
+// The saved filters beside the search (mockup 15); above it on a narrow screen.
+.body {
+  display: grid;
+  grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
+  gap: var(--app-space-4);
+  margin-top: var(--app-space-4);
+
+  @media (width < 840px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.panel {
+  align-self: start;
+}
+
+.main {
+  min-width: 0;
+}
+
+.subtitle {
+  margin: var(--app-space-1) 0 0;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.query {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--app-space-2) var(--app-space-3);
+  margin: var(--app-space-4) 0 var(--app-space-2);
+}
+
+.field {
+  flex: 1 1 320px;
+}
+
+.run {
+  margin-top: var(--app-space-2);
+}
+
+.code {
+  font-family: var(--app-font-mono);
+}
+
+.message {
+  margin: 0 0 var(--app-space-3);
+  padding: var(--app-space-3) var(--app-space-4);
+  border-radius: var(--mat-sys-corner-small);
+  font: var(--mat-sys-body-medium);
+
+  &.error {
+    background: var(--mat-sys-error-container);
+    color: var(--mat-sys-on-error-container);
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.message .excerpt {
+  margin-top: var(--app-space-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+
+  mark {
+    border-radius: var(--mat-sys-corner-extra-small);
+    background: var(--mat-sys-error);
+    color: var(--mat-sys-on-error);
+  }
+}
+
+.table-card {
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface);
+  overflow: hidden;
+}
+
+// Tall enough for a page of rows, never taller than the screen.
+.viewport {
+  height: clamp(320px, calc(100vh - 320px), 960px);
+  overflow-x: auto;
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: -2px;
+  }
+}
+
+.table {
+  min-width: 960px;
+  background: transparent;
+
+  // The virtual scroll counts on these heights.
+  .mat-mdc-header-row {
+    height: 56px;
+  }
+
+  .mat-mdc-row {
+    height: 52px;
+  }
+
+  .mat-mdc-header-row th {
+    background: var(--mat-sys-surface-container-low);
+  }
+}
+
+.key a {
+  color: var(--mat-sys-primary);
+  font: var(--mat-sys-label-large);
+  white-space: nowrap;
+}
+
+.summary {
+  overflow-wrap: anywhere;
+}
+
+.loading-more {
+  margin-top: var(--app-space-2);
+}
+
+.mode {
+  margin-top: var(--app-space-4);
+}
+
+.notice {
+  margin: var(--app-space-2) 0 0;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+app-query-builder {
+  margin: var(--app-space-4) 0 var(--app-space-2);
+}
+
+// The selection's actions (mockup 15), above the results.
+.bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--app-space-2);
+  margin-bottom: var(--app-space-2);
+  padding: var(--app-space-2) var(--app-space-3);
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+}
+
+.bulk-count {
+  font: var(--mat-sys-title-small);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.select {
+  width: 48px;
+}
+
+.message.info {
+  margin: 0 0 var(--app-space-2);
+  padding: var(--app-space-2) var(--app-space-3);
+  border-radius: var(--mat-sys-corner-small);
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  font: var(--mat-sys-body-medium);
+
+  a {
+    color: inherit;
+  }
+}

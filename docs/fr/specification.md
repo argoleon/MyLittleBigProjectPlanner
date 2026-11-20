@@ -195,12 +195,16 @@ Un langage de requête unique, inspiré de JQL, sert à la recherche, aux filtre
 - Elle s'appuie sur des identifiants stables (`in_progress`), jamais sur des libellés traduits.
 - L'interface propose un constructeur visuel qui génère la requête, et un éditeur avec autocomplétion.
 - Les filtres sont sauvegardables, personnels ou partagés.
-- Recherche plein texte : PostgreSQL (`tsvector` et `pg_trgm`), derrière une abstraction qui permettra un moteur dédié plus tard.
+- Recherche plein texte : PostgreSQL (`tsvector`, racinisation française et anglaise, sans accents) sur le titre, la description et les commentaires (publics seulement pour le portail), derrière une abstraction qui permettra un moteur dédié plus tard. Les fautes de frappe sont corrigées d'après les mots déjà écrits dans le tenant, par distance d'édition (une inversion de deux lettres compte pour une modification) : rien sous 4 lettres, une modification jusqu'à 7, deux au-delà.
 - Après le MVP : opérateurs d'historique (`status WAS`, `CHANGED`) et fonctions de liens (`linkedTo()`).
 
 **Boards (MVP)**
 
 - **Kanban** : colonnes associées à un ou plusieurs statuts, alimentées par un filtre, limites de travail en cours, couloirs par responsable ou par epic.
+  - Un board appartient à un nœud de la hiérarchie : qui voit le nœud voit le board (chacun n'y voit que les tickets qu'il peut voir), la permission « gérer les boards » sur le nœud permet de le créer, le configurer et le supprimer.
+  - Des filtres rapides propres au board (un libellé et une clause du langage de requête) s'ajoutent à son filtre quand on les active.
+  - Déplacer une carte vers une colonne lance la transition du workflow qui y mène, avec ses conditions, validateurs et post-fonctions ; sans transition possible, la carte revient à sa place et la raison s'affiche. Le clavier offre la même action qu'un glisser-déposer.
+  - Les cartes suivent l'ordre du filtre (`ORDER BY`) ; le rang manuel arrive avec le backlog Scrum.
 - **Scrum** : backlog, planification et clôture de sprint (les tickets non terminés sont reportés au sprint suivant ou au backlog), board du sprint actif.
 - **Estimation** : points ou heures, configurable par board. Le workload reste toujours en heures, via les affectations.
 - **Rapports** : burndown (en points ou en heures, à partir du reste à faire), vélocité sur les N derniers sprints.
@@ -210,6 +214,21 @@ Un langage de requête unique, inspiré de JQL, sert à la recherche, aux filtre
 **Exports**
 
 CSV (indispensable) et Excel depuis toute vue liste, avec les colonnes affichées.
+
+- Le fichier reprend les tickets de la requête tels que le membre les voit, avec les en-têtes dans sa langue. CSV en UTF-8 avec BOM, dates ISO, nombres au point décimal ; un texte commençant par `=`, `+`, `-` ou `@` est neutralisé (injection de formule).
+- Jusqu'à 1 000 lignes, le fichier se télécharge aussitôt ; au-delà, il est produit en arrière-plan et le membre est notifié quand il est prêt. Au plus 100 000 lignes.
+- Excel : cellules typées (nombres, dates, heures en UTC comme le dit leur en-tête), pour que les tableurs les trient et calculent ; un texte n'est jamais exécuté comme une formule.
+- Le fichier est conservé 24 heures dans le stockage objet, téléchargeable par son seul demandeur.
+
+**Actions en masse**
+
+Sur un résultat de recherche, le membre coche des tickets (ou tous les résultats de la requête) et les modifie, change leur statut ou les déplace ensemble.
+
+- **Modifier** : priorité, responsable, dates de début et d'échéance, et les champs personnalisés communs à tous les tickets sélectionnés (même configuration). Seuls les champs choisis changent.
+- **Changer le statut** : seuls les statuts qu'une transition atteint depuis les tickets sélectionnés sont proposés, avec le nombre de tickets qu'elle atteint ; chaque ticket suit la transition de son propre workflow, avec ses conditions, validateurs et post-fonctions.
+- **Déplacer** : vers un autre projet, avec une seule correspondance de types et de statuts pour le lot ; les sous-tâches suivent leur parent, et le compte rendu donne les nouvelles clés.
+- Chaque ticket est modifié dans sa propre transaction, avec son contrôle de version, sa ligne d'historique et ses notifications : un refus (permission, projet archivé, transition non permise, champ obligatoire manquant) le laisse inchangé et est signalé, les autres sont modifiés.
+- Jusqu'à 100 tickets, l'action s'exécute dans la requête et son compte rendu s'affiche aussitôt ; au-delà, le worker l'exécute, au plus 10 000 tickets, et le membre est notifié quand elle est terminée. Le compte rendu est conservé 7 jours, pour son seul demandeur.
 
 ## 7. Planification, Gantt et calendriers
 
@@ -415,7 +434,7 @@ Toutes les modifications produisent un événement, écrit dans une table outbox
 **Notifications**
 
 - Dans l'application et par email.
-- Préférences par utilisateur et par type d'événement.
+- Préférences par utilisateur et par type d'événement. Outre les événements des tickets, un membre est notifié de ce qui le concerne seul, comme un export prêt.
 - Résumé quotidien optionnel.
 - Agrégées tous tenants confondus pour un utilisateur, avec un filtre par tenant.
 - Après le MVP : Teams et Slack, via les webhooks.
@@ -459,7 +478,7 @@ Les droits reposent sur des rôles attribués sur les nœuds de la hiérarchie e
 **Modèle de droits**
 
 - **Rôles globaux** : super-admin de plateforme. Par tenant : admin du tenant, admin de configuration, utilisateur interne, utilisateur externe.
-- **Rôles sur les nœuds** : définis par chaque tenant, comme ensembles de permissions. Exemples de permissions : voir, créer un ticket, modifier, commenter, saisir du temps, affecter des ressources, forcer une surcharge, gérer les sprints, gérer les membres, administrer le nœud.
+- **Rôles sur les nœuds** : définis par chaque tenant, comme ensembles de permissions. Exemples de permissions : voir, créer un ticket, modifier, commenter, saisir du temps, affecter des ressources, forcer une surcharge, gérer les sprints, gérer les boards, gérer les membres, administrer le nœud.
 - **Attribution** : à des utilisateurs ou à des groupes, sur un nœud. Héritage vers le bas, union en multi-parent, blocage possible (section 4).
 - **Dans le MVP** : visibilité restreinte côté portail (un demandeur ne voit que ses tickets), commentaires internes ou publics, projets confidentiels.
 - **Après le MVP** : niveaux de sécurité par ticket et sécurité au niveau du champ.

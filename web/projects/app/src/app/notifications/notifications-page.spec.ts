@@ -35,9 +35,31 @@ const notification = (id: string, rest: Partial<MemberNotification>): MemberNoti
   actorName: 'Inès Moreau',
   status: null,
   excerpt: null,
+  export: null,
+  bulk: null,
   read: false,
   createdAt: hoursAgo(0.1),
   ...rest,
+});
+
+/** An export of the member's ready: no ticket. */
+const EXPORT_READY = notification('n4', {
+  event: 'export_ready',
+  issueId: null,
+  issueKey: null,
+  issueSummary: null,
+  actorName: null,
+  export: { id: 'e1', fileName: 'search-2026-11-18.csv', rows: 20001 },
+});
+
+/** A bulk action of the member's done in the background: no ticket. */
+const BULK_DONE = notification('n5', {
+  event: 'bulk_done',
+  issueId: null,
+  issueKey: null,
+  issueSummary: null,
+  actorName: null,
+  bulk: { id: 'b1', kind: 'transition', total: 250, changed: 240, unchanged: 4, refused: 6 },
 });
 
 const ITEMS: MemberNotification[] = [
@@ -53,6 +75,8 @@ const PREFERENCES: NotificationPreferences = {
     { event: 'status_changed', inApp: true, email: false },
     { event: 'commented', inApp: true, email: false },
     { event: 'mentioned', inApp: true, email: true },
+    { event: 'export_ready', inApp: true, email: false },
+    { event: 'bulk_done', inApp: true, email: true },
   ],
   dailyDigest: false,
 };
@@ -68,7 +92,7 @@ describe('periodOf', () => {
 });
 
 describe('the notifications page', () => {
-  async function open() {
+  async function open(items: MemberNotification[] = ITEMS) {
     localStorage.clear();
     TestBed.configureTestingModule({
       providers: [provideRouter([]), provideApi(), provideHttpClientTesting(), provideI18nTesting(), provideMaterialDefaults()],
@@ -98,7 +122,7 @@ describe('the notifications page', () => {
     const isList = (url: string, method: string) => url.startsWith('/api/v1/me/notifications?') && method === 'GET';
     await reply((url) => url === '/api/v1/me/memberships', MEMBERSHIPS);
     await reply((url) => url === '/api/v1/me/notification-preferences', PREFERENCES);
-    await reply(isList, { items: ITEMS, nextCursor: null });
+    await reply(isList, { items, nextCursor: null });
     TestBed.inject(NotificationCenter).update(2);
     await settle();
     const root = fixture.nativeElement as HTMLElement;
@@ -159,6 +183,32 @@ describe('the notifications page', () => {
     expect(navigate).toHaveBeenCalledWith(['/issues', 'PLAT-151']);
     expect(TestBed.inject(NotificationCenter).unread()).toBe(1);
     expect(root.querySelectorAll('.item.unread')).toHaveLength(1);
+  });
+
+  it('shows an export ready, and opens it', async () => {
+    const { root, click, reply, settle, texts } = await open([EXPORT_READY]);
+    expect(texts('.item .what')).toEqual(['Your export search-2026-11-18.csv is ready (unread)']);
+    expect(texts('.item .detail')).toEqual(['20001 rows']);
+    expect(root.querySelector('.item mat-icon')?.textContent).toBe('download');
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    await click(root.querySelector('.item'));
+    await reply((url, method) => url === '/api/v1/me/notifications/read' && method === 'POST', { total: 0, byTenant: [] });
+    await settle();
+    expect(navigate).toHaveBeenCalledWith(['/exports', 'e1']);
+    expect(root.querySelector<HTMLInputElement>('input[aria-label="Export ready by email"]')?.checked).toBe(false);
+  });
+
+  it('shows a bulk action done, and opens its report', async () => {
+    const { root, click, reply, settle, texts } = await open([BULK_DONE]);
+    expect(texts('.item .what')).toEqual(['Your bulk status change is done (unread)']);
+    expect(texts('.item .detail')).toEqual(['240 changed, 4 already so, 6 left unchanged']);
+    expect(root.querySelector('.item mat-icon')?.textContent).toBe('library_add_check');
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    await click(root.querySelector('.item'));
+    await reply((url, method) => url === '/api/v1/me/notifications/read' && method === 'POST', { total: 0, byTenant: [] });
+    await settle();
+    expect(navigate).toHaveBeenCalledWith(['/bulk-actions', 'b1']);
+    expect(root.querySelector<HTMLInputElement>('input[aria-label="Bulk action done by email"]')?.checked).toBe(true);
   });
 
   it("opens another organization's notification in that organization", async () => {

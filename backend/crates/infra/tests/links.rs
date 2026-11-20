@@ -27,8 +27,9 @@ async fn project(db: &TestDb, tenant: &SeedTenant, code: &str) -> (Uuid, Uuid) {
         &NewNode {
             id: new_id(),
             node_type: NodeType::Project,
-            key: Some(code),
+            key: code,
             fields: NodeFields {
+                key: None,
                 name: code,
                 description: "",
                 objectives: "",

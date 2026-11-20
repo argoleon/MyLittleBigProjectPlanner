@@ -112,6 +112,11 @@ impl Language {
         Self { locale, fallback }
     }
 
+    /// Its language code (`fr`, `en`).
+    pub(crate) const fn locale(&self) -> &'static str {
+        self.locale
+    }
+
     /// The label of `translations` in this language, else the tenant's
     /// default, else any.
     pub(crate) fn label(&self, translations: &BTreeMap<String, String>) -> Option<String> {

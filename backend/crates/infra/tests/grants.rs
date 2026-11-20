@@ -22,7 +22,7 @@ async fn node(
     conn: &mut PgConnection,
     node_type: NodeType,
     name: &str,
-    key: Option<&str>,
+    key: &str,
     parent: Option<Uuid>,
     creator: Uuid,
 ) -> Uuid {
@@ -31,6 +31,7 @@ async fn node(
         node_type,
         key,
         fields: NodeFields {
+            key: None,
             name,
             description: "",
             objectives: "",
@@ -132,12 +133,12 @@ struct Hierarchy {
 }
 
 async fn hierarchy(conn: &mut PgConnection, creator: Uuid) -> Hierarchy {
-    let digital = node(conn, NodeType::Portfolio, "Digital", None, None, creator).await;
+    let digital = node(conn, NodeType::Portfolio, "Digital", "DIGITAL", None, creator).await;
     let modernization = node(
         conn,
         NodeType::Program,
         "Modernization",
-        None,
+        "MODERNIZATION",
         Some(digital),
         creator,
     )
@@ -146,7 +147,7 @@ async fn hierarchy(conn: &mut PgConnection, creator: Uuid) -> Hierarchy {
         conn,
         NodeType::Program,
         "Compliance",
-        None,
+        "COMPLIANCE",
         Some(digital),
         creator,
     )
@@ -155,7 +156,7 @@ async fn hierarchy(conn: &mut PgConnection, creator: Uuid) -> Hierarchy {
         conn,
         NodeType::Project,
         "Identity platform",
-        Some("PLAT"),
+        "PLAT",
         Some(modernization),
         creator,
     )
@@ -165,7 +166,7 @@ async fn hierarchy(conn: &mut PgConnection, creator: Uuid) -> Hierarchy {
         conn,
         NodeType::Project,
         "Permissions",
-        Some("PERM"),
+        "PERM",
         Some(plat),
         creator,
     )
@@ -654,7 +655,15 @@ async fn grants_never_leak_between_tenants() {
     a.commit().await.unwrap();
 
     let mut b = begin_tenant_tx(&db.app_pool, db.tenant_b.id).await.unwrap();
-    let elsewhere = node(&mut b, NodeType::Portfolio, "Elsewhere", None, None, admin_b).await;
+    let elsewhere = node(
+        &mut b,
+        NodeType::Portfolio,
+        "Elsewhere",
+        "ELSEWHERE",
+        None,
+        admin_b,
+    )
+    .await;
     let reader_b = role(&mut b, "Reader").await;
     // Tenant B sees nothing of A's grants, even for A's member and nodes.
     assert!(grants::access(&mut b, h.plat).await.unwrap().is_empty());

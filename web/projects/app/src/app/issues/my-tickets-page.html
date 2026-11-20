@@ -1,5 +1,6 @@
 <div class="header">
   <h1 class="title">{{ 'nav.myTickets' | transloco }}</h1>
+  <app-export-menu class="export-menu" [query]="exportQuery" [columns]="exportColumns" name="my-tickets" [disabled]="!first.hasValue() || rows().length === 0" />
   <button matButton="filled" type="button" class="create" (click)="create()">
     <mat-icon aria-hidden="true">add</mat-icon>
     {{ 'issue.list.create' | transloco }}
