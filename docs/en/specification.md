@@ -268,7 +268,7 @@ A resource can combine several tasks on the same day as long as the sum of its a
   - **Equipment, room, object**: after the MVP, with the same capacity and assignment mechanisms.
 - An internal member is linked to one resource of the tenant at most, which shows their name. When they leave the tenant, their resource stays, unlinked and deactivated, under the name it showed (their pseudonym once erased). Resources are never deleted, only deactivated.
 - The tenant admin and resource managers manage them; every internal member reads them.
-- Teams group resources for views and filters. Assignments always target a resource, never a team.
+- Teams group resources for views and filters. Assignments always target a resource, never a team. A resource may belong to several teams; a team's name is translatable and unique in the tenant. A team has no lead: the tenant admin and resource managers manage teams.
 
 **Capacity**
 

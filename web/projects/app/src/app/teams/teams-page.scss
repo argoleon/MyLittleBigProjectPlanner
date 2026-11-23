@@ -1,0 +1,45 @@
+@use '../admin/admin-shared';
+
+:host {
+  display: block;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--app-space-4);
+}
+
+.table-card {
+  overflow-x: auto;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface);
+}
+
+.table {
+  min-width: 480px;
+  background: transparent;
+}
+
+.team-link {
+  display: block;
+  font: var(--mat-sys-title-small);
+  color: var(--mat-sys-primary);
+}
+
+.secondary {
+  display: block;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.count {
+  width: 120px;
+}
+
+.actions {
+  width: 112px;
+  white-space: nowrap;
+  text-align: end;
+}

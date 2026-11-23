@@ -53,6 +53,7 @@ export const ERROR_CODE: ErrorCode[] = [
   'group.name_taken',
   'saved_filter.name_taken',
   'resource.account_taken',
+  'team.name_taken',
   'board.name_taken',
   'board.no_transition',
   'export.too_large',

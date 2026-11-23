@@ -16,6 +16,11 @@ export interface CreateResource$Params {
  * Unique key of this creation, 1 to 255 visible ASCII characters
  */
   'Idempotency-Key'?: (string | null);
+
+/**
+ * Language of the team names
+ */
+  'Accept-Language'?: (string | null);
       body: ResourceFields
 }
 
@@ -23,6 +28,7 @@ export function createResource(http: HttpClient, rootUrl: string, params: Create
   const rb = new RequestBuilder(rootUrl, createResource.PATH, 'post');
   if (params) {
     rb.header('Idempotency-Key', params['Idempotency-Key'], {});
+    rb.header('Accept-Language', params['Accept-Language'], {});
     rb.body(params.body, 'application/json');
   }
 

@@ -93,21 +93,35 @@ export const routes: Routes = [
         loadComponent: () => import('./boards/board-page').then((m) => m.BoardPage),
       },
       {
-        // Workload opens on its resources until the heatmap (L08).
+        // Workload: its tabs (the heatmap comes with L08).
         path: 'workload',
-        pathMatch: 'full',
-        redirectTo: 'workload/resources',
-      },
-      {
-        path: 'workload/resources',
-        title: 'resources.title',
-        loadComponent: () => import('./resources/resources-page').then((m) => m.ResourcesPage),
+        title: 'nav.workload',
+        loadComponent: () => import('./workload/workload-page').then((m) => m.WorkloadPage),
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'resources' },
+          {
+            path: 'resources',
+            title: 'resources.title',
+            loadComponent: () => import('./resources/resources-page').then((m) => m.ResourcesPage),
+          },
+          {
+            path: 'teams',
+            title: 'teams.title',
+            loadComponent: () => import('./teams/teams-page').then((m) => m.TeamsPage),
+          },
+        ],
       },
       {
         // A resource, by its id.
         path: 'workload/resources/:id',
         title: 'resources.title',
         loadComponent: () => import('./resources/resource-page').then((m) => m.ResourcePage),
+      },
+      {
+        // A team and its members, by its id.
+        path: 'workload/teams/:id',
+        title: 'teams.title',
+        loadComponent: () => import('./teams/team-page').then((m) => m.TeamPage),
       },
       {
         path: 'tickets',

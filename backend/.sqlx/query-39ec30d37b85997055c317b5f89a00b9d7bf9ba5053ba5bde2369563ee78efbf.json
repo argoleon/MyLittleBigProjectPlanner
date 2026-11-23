@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT lower(name) AS \"sort_key!\", id, kind, name AS \"display_name!\", job_title, account_id,\n               former_member AS \"former_member!\", active, version, created_at\n        FROM (\n            SELECT r.*, coalesce(app_member_name(r.account_id), r.display_name) AS name,\n                   r.former_account_id IS NOT NULL AS former_member\n            FROM resource r\n        ) r\n        WHERE ($1::text IS NULL OR kind = $1)\n          AND ($2::boolean IS NULL OR active = $2)\n          AND ($3::text IS NULL OR lower(name) LIKE $3 OR lower(job_title) LIKE $3)\n          AND ($4::text IS NULL OR (lower(name), id) > ($4, $5::uuid))\n        ORDER BY lower(name), id\n        LIMIT $6\n        ",
+  "query": "\n        SELECT lower(name) AS \"sort_key!\", id, kind, name AS \"display_name!\", job_title, account_id,\n               former_member AS \"former_member!\", active, version, created_at\n        FROM (\n            SELECT r.*, coalesce(app_member_name(r.account_id), r.display_name) AS name,\n                   r.former_account_id IS NOT NULL AS former_member\n            FROM resource r\n        ) r\n        WHERE ($1::text IS NULL OR kind = $1)\n          AND ($2::boolean IS NULL OR active = $2)\n          AND ($3::text IS NULL OR lower(name) LIKE $3 OR lower(job_title) LIKE $3)\n          AND ($4::text IS NULL OR (lower(name), id) > ($4, $5::uuid))\n          AND ($7::uuid IS NULL OR EXISTS (SELECT 1 FROM team_member tm WHERE tm.team_id = $7 AND tm.resource_id = r.id))\n        ORDER BY lower(name), id\n        LIMIT $6\n        ",
   "describe": {
     "columns": [
       {
@@ -106,7 +106,8 @@
         "Text",
         "Text",
         "Uuid",
-        "Int8"
+        "Int8",
+        "Uuid"
       ]
     },
     "nullable": [
@@ -122,5 +123,5 @@
       false
     ]
   },
-  "hash": "432d8e19dca273f68c4857ddee81271b019c88d48128b131094ff7cc883a8117"
+  "hash": "39ec30d37b85997055c317b5f89a00b9d7bf9ba5053ba5bde2369563ee78efbf"
 }

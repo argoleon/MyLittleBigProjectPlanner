@@ -1,16 +1,3 @@
-<nav class="breadcrumb" [attr.aria-label]="'resources.breadcrumb' | transloco">
-  <span>{{ 'nav.workload' | transloco }}</span>
-</nav>
-<div class="header">
-  <h1 class="title">{{ 'resources.title' | transloco }}</h1>
-  @if (store.canManage()) {
-    <button matButton="filled" type="button" class="new" (click)="create()">
-      <mat-icon aria-hidden="true">add</mat-icon>
-      {{ 'resources.new' | transloco }}
-    </button>
-  }
-</div>
-
 <div class="toolbar">
   <mat-form-field appearance="outline" class="search" subscriptSizing="dynamic">
     <mat-label>{{ 'resources.search' | transloco }}</mat-label>
@@ -37,6 +24,23 @@
     <mat-chip-option value="active">{{ 'resources.state.active' | transloco }}</mat-chip-option>
     <mat-chip-option value="inactive">{{ 'resources.state.inactive' | transloco }}</mat-chip-option>
   </mat-chip-listbox>
+  @if (teams().length > 0) {
+    <mat-form-field appearance="outline" class="team" subscriptSizing="dynamic">
+      <mat-label>{{ 'resources.team' | transloco }}</mat-label>
+      <mat-select [value]="store.team()" (valueChange)="store.team.set($event)">
+        <mat-option [value]="null">{{ 'resources.allTeams' | transloco }}</mat-option>
+        @for (team of teams(); track team.id) {
+          <mat-option [value]="team.id">{{ team.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  }
+  @if (store.canManage()) {
+    <button matButton="filled" type="button" class="new" (click)="create()">
+      <mat-icon aria-hidden="true">add</mat-icon>
+      {{ 'resources.new' | transloco }}
+    </button>
+  }
 </div>
 
 @if (notice(); as notice) {

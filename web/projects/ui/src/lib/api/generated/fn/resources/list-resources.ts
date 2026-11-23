@@ -29,6 +29,11 @@ export interface ListResources$Params {
   search?: string;
 
 /**
+ * Only the members of this team.
+ */
+  team?: string;
+
+/**
  * Page size, from 1 to 200 (default 50).
  */
   limit?: number;
@@ -37,6 +42,11 @@ export interface ListResources$Params {
  * `nextCursor` of the previous page.
  */
   cursor?: string;
+
+/**
+ * Language of the team names
+ */
+  'Accept-Language'?: (string | null);
 }
 
 export function listResources(http: HttpClient, rootUrl: string, params?: ListResources$Params, context?: HttpContext): Observable<StrictHttpResponse<ResourcePage>> {
@@ -45,8 +55,10 @@ export function listResources(http: HttpClient, rootUrl: string, params?: ListRe
     rb.query('kind', params.kind, {});
     rb.query('active', params.active, {});
     rb.query('search', params.search, {});
+    rb.query('team', params.team, {});
     rb.query('limit', params.limit, {});
     rb.query('cursor', params.cursor, {});
+    rb.header('Accept-Language', params['Accept-Language'], {});
   }
 
   return http.request(

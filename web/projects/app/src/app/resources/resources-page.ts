@@ -1,4 +1,4 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, resource, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -8,11 +8,13 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { debounceTime } from 'rxjs';
 import {
+  Api,
   Avatar,
   EmptyState,
   ErrorState,
@@ -21,6 +23,7 @@ import {
   ResourceStateChip,
   errorTranslationKey,
   isApiProblem,
+  listTeams,
   resourceHolding,
 } from 'ui';
 
@@ -36,7 +39,7 @@ interface Notice {
 
 /**
  * Resources of the tenant (specification §8, L07-US01), under Workload:
- * search, filters by kind and status, the table of persons and generic
+ * search, filters by kind, status and team, the table of persons and generic
  * roles, each opening its page. Every internal member reads it; tenant
  * admins and resource managers create and change resources.
  */
@@ -52,6 +55,7 @@ interface Notice {
     MatIconModule,
     MatInputModule,
     MatProgressBarModule,
+    MatSelectModule,
     MatTableModule,
     ReactiveFormsModule,
     ResourceKindChip,
@@ -66,6 +70,11 @@ interface Notice {
 export class ResourcesPage {
   protected readonly store = inject(ResourcesStore);
   private readonly dialog = inject(MatDialog);
+  private readonly api = inject(Api);
+
+  /** The teams to filter by; none when they cannot be read. */
+  private readonly teamList = resource({ loader: () => this.api.invoke(listTeams) });
+  protected readonly teams = computed(() => (this.teamList.hasValue() ? this.teamList.value().items : []));
 
   protected readonly columns = ['name', 'holding', 'status', 'actions'];
   protected readonly searchControl = new FormControl('', { nonNullable: true });

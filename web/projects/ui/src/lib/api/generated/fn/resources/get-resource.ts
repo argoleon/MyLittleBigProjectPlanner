@@ -20,6 +20,11 @@ export interface GetResource$Params {
  * ETag already held: 304 if still current
  */
   'If-None-Match'?: (string | null);
+
+/**
+ * Language of the team names
+ */
+  'Accept-Language'?: (string | null);
 }
 
 export function getResource(http: HttpClient, rootUrl: string, params: GetResource$Params, context?: HttpContext): Observable<StrictHttpResponse<Resource>> {
@@ -27,6 +32,7 @@ export function getResource(http: HttpClient, rootUrl: string, params: GetResour
   if (params) {
     rb.path('id', params.id, {});
     rb.header('If-None-Match', params['If-None-Match'], {});
+    rb.header('Accept-Language', params['Accept-Language'], {});
   }
 
   return http.request(

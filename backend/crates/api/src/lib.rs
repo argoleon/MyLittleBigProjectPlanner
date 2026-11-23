@@ -53,6 +53,7 @@ pub mod saved_filters;
 pub mod screens;
 pub mod search;
 pub mod sso;
+pub mod teams;
 pub mod tenant;
 pub mod transition_rules;
 pub mod workflows;

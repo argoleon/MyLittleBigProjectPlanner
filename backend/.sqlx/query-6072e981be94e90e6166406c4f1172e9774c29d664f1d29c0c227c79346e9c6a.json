@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO team (id, tenant_id, name, description) VALUES ($1, app_current_tenant(), $2, $3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Jsonb",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6072e981be94e90e6166406c4f1172e9774c29d664f1d29c0c227c79346e9c6a"
+}

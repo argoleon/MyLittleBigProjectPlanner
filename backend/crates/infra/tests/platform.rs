@@ -315,11 +315,23 @@ async fn fill_beta(db: &TestDb) -> (TestMember, TestMember) {
         .unwrap();
     // Resources, one linked to a member (its foreign key reaches the
     // membership).
+    // A team holding them (its members reach both tables).
+    let team = infra::teams::insert(
+        &mut tx,
+        new_id(),
+        &domain::teams::TeamInput {
+            name_translations: std::collections::BTreeMap::from([("fr".to_owned(), "Plateforme".to_owned())]),
+            description: None,
+        },
+    )
+    .await
+    .unwrap()
+    .unwrap();
     for (kind, account) in [
         (domain::resources::Kind::Person, Some(only_beta.account_id)),
         (domain::resources::Kind::Generic, None),
     ] {
-        infra::resources::insert(
+        let resource = infra::resources::insert(
             &mut tx,
             new_id(),
             &infra::resources::ResourceInput {
@@ -333,6 +345,9 @@ async fn fill_beta(db: &TestDb) -> (TestMember, TestMember) {
         .await
         .unwrap()
         .unwrap();
+        infra::teams::add_member(&mut tx, team.id, resource.id)
+            .await
+            .unwrap();
     }
     infra::invitations::insert(
         &mut tx,

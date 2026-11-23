@@ -544,6 +544,9 @@
     },
     "resource": {
       "account_taken": "This member is already linked to another resource."
+    },
+    "team": {
+      "name_taken": "Another team already has this name."
     }
   },
   "dialog": {
@@ -2207,7 +2210,61 @@
       "generic": "Generic role, without account",
       "status": "Status",
       "edit": "Edit",
-      "next": "Weekly capacity, calendar and absences will appear here."
+      "next": "Weekly capacity, calendar and absences will appear here.",
+      "teams": "Teams",
+      "noTeam": "No team"
+    },
+    "team": "Team",
+    "allTeams": "All teams"
+  },
+  "workload": {
+    "tabs": "Workload sections"
+  },
+  "teams": {
+    "title": "Teams",
+    "loading": "Loading the teams…",
+    "new": "New team",
+    "caption": "Teams of the organization",
+    "columns": {
+      "name": "Team",
+      "members": "Resources",
+      "actions": "Actions"
+    },
+    "empty": "No team yet",
+    "emptyHint": "Group resources into teams to filter the views and the availability.",
+    "editOf": "Edit {{ name }}",
+    "deleteOf": "Delete {{ name }}",
+    "deleteTitle": "Delete {{ name }}?",
+    "deleteMessage": "The team goes; its resources stay, with their assignments.",
+    "deleteConfirm": "Delete",
+    "created": "{{ name }} was created.",
+    "saved": "{{ name }} was saved.",
+    "deleted": "{{ name }} was deleted.",
+    "dialog": {
+      "createTitle": "New team",
+      "editTitle": "Edit {{ name }}",
+      "name": "Name",
+      "description": "Description",
+      "create": "Create",
+      "save": "Save"
+    },
+    "page": {
+      "edit": "Edit",
+      "add": "Add a resource",
+      "members": "Resources ({{ count }})",
+      "caption": "Resources of {{ name }}",
+      "empty": "No resource in this team",
+      "emptyHint": "Add the resources that work together.",
+      "removeOf": "Remove {{ name }} from the team",
+      "added": "{{ name }} was added to the team.",
+      "removed": "{{ name }} was removed from the team."
+    },
+    "addDialog": {
+      "title": "Add a resource to {{ name }}",
+      "resource": "Resource",
+      "hint": "Search an active resource by name or job title.",
+      "inTeam": "already in the team",
+      "add": "Add"
     }
   }
 }
