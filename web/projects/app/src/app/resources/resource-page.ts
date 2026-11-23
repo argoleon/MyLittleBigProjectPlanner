@@ -18,6 +18,7 @@ import {
   resourceHolding,
 } from 'ui';
 
+import { CapacityCard } from '../capacity/capacity-card';
 import { ResourceDialog, ResourceDialogData } from './resource-dialog';
 
 /** Whether a member with `role` creates and changes resources. */
@@ -27,12 +28,12 @@ export function managesResources(role: TenantRole | undefined): boolean {
 
 /**
  * The page of a resource (mockup 20, L07-US01): its name, kind, job title,
- * account and status. Its weekly capacity, calendar and absences come with
- * the next stories of L07.
+ * account, status and weekly capacity (L07-US03). Its calendar and absences
+ * come with the next stories of L07.
  */
 @Component({
   selector: 'app-resource-page',
-  imports: [Avatar, ErrorState, LoadingState, MatButtonModule, MatIconModule, ResourceKindChip, ResourceStateChip, RouterLink, TranslocoPipe],
+  imports: [Avatar, CapacityCard, ErrorState, LoadingState, MatButtonModule, MatIconModule, ResourceKindChip, ResourceStateChip, RouterLink, TranslocoPipe],
   template: `
     <nav class="breadcrumb" [attr.aria-label]="'resources.breadcrumb' | transloco">
       <span>{{ 'nav.workload' | transloco }}</span>
@@ -83,6 +84,7 @@ export function managesResources(role: TenantRole | undefined): boolean {
         </dl>
         <p class="next">{{ 'resources.page.next' | transloco }}</p>
       </section>
+      <app-capacity-card class="capacity" [resourceId]="shown.id" />
     } @else {
       <ui-loading-state [label]="'resources.loading' | transloco" />
     }

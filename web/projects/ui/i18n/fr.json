@@ -162,6 +162,7 @@
     "tabs": {
       "label": "Rubriques de l’administration",
       "authentication": "Authentification",
+      "workload": "Charge",
       "members": "Membres",
       "groups": "Groupes",
       "roles": "Rôles",
@@ -333,6 +334,26 @@
       "discardTitle": "Abandonner les modifications ?",
       "discardMessage": "Les modifications de ce rôle ne sont pas enregistrées.",
       "discardConfirm": "Abandonner"
+    },
+    "workload": {
+      "loading": "Chargement des réglages de charge…",
+      "intro": "Ces réglages valent pour toute l’organisation. La capacité par défaut s’applique à chaque ressource sans période de capacité, et aux jours précédant sa première période.",
+      "capacity": "Capacité par défaut",
+      "capacityLegend": "Heures par jour d’une ressource sans période de capacité",
+      "overload": "Surcharge",
+      "tolerance": "Tolérance",
+      "toleranceHint": "Charge acceptée au-delà de la capacité avant qu’un jour soit en surcharge, de 0 à 100 %.",
+      "mode": "Quand une affectation surcharge une ressource",
+      "modes": {
+        "blocking": "La refuser",
+        "warning": "L’accepter avec une alerte"
+      },
+      "modeHints": {
+        "blocking": "L’affectation est refusée et le message liste les jours en conflit. Les rôles ayant « Forcer une surcharge » peuvent passer outre.",
+        "warning": "L’affectation est acceptée et les jours en surcharge sont signalés."
+      },
+      "save": "Enregistrer",
+      "saved": "Les réglages de charge ont été enregistrés."
     }
   },
   "errors": {
@@ -547,6 +568,9 @@
     },
     "team": {
       "name_taken": "Une autre équipe porte déjà ce nom."
+    },
+    "capacity_pattern": {
+      "date_taken": "La ressource a déjà une période de capacité qui commence ce jour-là."
     }
   },
   "dialog": {
@@ -2210,7 +2234,7 @@
       "generic": "Rôle générique, sans compte",
       "status": "Statut",
       "edit": "Modifier",
-      "next": "La capacité hebdomadaire, le calendrier et les absences apparaîtront ici.",
+      "next": "Le calendrier et les absences apparaîtront ici.",
       "teams": "Équipes",
       "noTeam": "Aucune équipe"
     },
@@ -2265,6 +2289,45 @@
       "hint": "Cherchez une ressource active par nom ou fonction.",
       "inTeam": "déjà dans l’équipe",
       "add": "Ajouter"
+    }
+  },
+  "capacity": {
+    "title": "Capacité hebdomadaire",
+    "subtitle": "Historisée par date d’effet. La capacité est aussi la charge maximale par jour.",
+    "loading": "Chargement de la capacité…",
+    "new": "Nouvelle période",
+    "caption": "Périodes de capacité de la ressource",
+    "columns": {
+      "from": "À partir du",
+      "total": "Total",
+      "actions": "Actions"
+    },
+    "default": "Défaut de l’organisation",
+    "defaultHint": "S’applique tant qu’aucune période n’est ajoutée.",
+    "defaultBefore": "Avant le {{ date }} : défaut de l’organisation ({{ total }} par semaine).",
+    "planned": "planifiée",
+    "none": "Aucune heure",
+    "editOf": "Modifier la période du {{ date }}",
+    "deleteOf": "Supprimer la période du {{ date }}",
+    "deleteTitle": "Supprimer cette période ?",
+    "deleteMessage": "Ses jours reprennent la capacité de la période précédente, ou le défaut de l’organisation.",
+    "deleteConfirm": "Supprimer",
+    "created": "La période a été ajoutée.",
+    "saved": "La période a été enregistrée.",
+    "deleted": "La période a été supprimée.",
+    "hoursHint": "Heures comme 7, 3,5 ou 3:30",
+    "hoursInvalid": "Heures d’une journée, comme 7, 3,5 ou 3:30.",
+    "weekTotal": "Semaine : {{ total }}",
+    "dialog": {
+      "createTitle": "Nouvelle période de capacité",
+      "editTitle": "Modifier la période de capacité",
+      "from": "À partir du",
+      "fromHint": "Elle s’applique de ce jour jusqu’à la période suivante.",
+      "week": "Heures par jour",
+      "label": "Libellé",
+      "labelHint": "Facultatif, par exemple « Temps partiel 80 % ».",
+      "create": "Ajouter",
+      "save": "Enregistrer"
     }
   }
 }

@@ -1,4 +1,15 @@
-import { formatFileSize, formatInstant, formatLocalDate, formatNumber, fromLocalDate, parseLocalDate, toLocalDate } from './format';
+import {
+  formatDuration,
+  formatFileSize,
+  formatInstant,
+  formatLocalDate,
+  formatNumber,
+  fromLocalDate,
+  parseHours,
+  parseLocalDate,
+  toLocalDate,
+  weekdayNames,
+} from './format';
 
 // Time zones on both sides of UTC, with and without daylight saving time.
 const ZONES = ['Europe/Paris', 'America/Los_Angeles', 'Pacific/Kiritimati', 'Pacific/Pago_Pago', 'UTC'];
@@ -95,5 +106,44 @@ describe('formatFileSize', () => {
     expect(formatFileSize(3_145_728, 'fr')).toMatch(/^3,1\s?Mo$/);
     expect(formatFileSize(52_428_800, 'en')).toBe('52.4 MB');
     expect(formatFileSize(1500, 'en')).toBe('1.5 kB');
+  });
+});
+
+describe('formatDuration', () => {
+  it('says hours and minutes the way planners read them', () => {
+    expect(formatDuration(420, 'fr')).toBe('7 h');
+    expect(formatDuration(210, 'fr')).toBe('3 h 30');
+    expect(formatDuration(210, 'en')).toBe('3 h 30 min');
+    expect(formatDuration(5, 'fr')).toBe('0 h 05');
+    expect(formatDuration(1680, 'en')).toBe('28 h');
+    expect(formatDuration(0, 'fr')).toBe('0 h');
+  });
+});
+
+describe('parseHours', () => {
+  it('reads decimal hours with a comma or a dot, and hours with minutes', () => {
+    expect(parseHours('7')).toBe(420);
+    expect(parseHours('3,5')).toBe(210);
+    expect(parseHours('3.5')).toBe(210);
+    expect(parseHours('3:30')).toBe(210);
+    expect(parseHours(' 3 h 30 ')).toBe(210);
+    expect(parseHours('3h30')).toBe(210);
+    expect(parseHours('7 h')).toBe(420);
+    expect(parseHours('0,25')).toBe(15);
+    expect(parseHours('')).toBe(0);
+    expect(parseHours('24')).toBe(1440);
+  });
+
+  it('refuses what is not a duration of a day at most', () => {
+    for (const text of ['abc', '25', '3:75', '-2', '3,5,5', '24:01', '1.5.']) {
+      expect(parseHours(text), text).toBeNull();
+    }
+  });
+});
+
+describe('weekdayNames', () => {
+  it('names the days Monday first, in the language', () => {
+    expect(weekdayNames('fr')).toEqual(['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']);
+    expect(weekdayNames('en', 'short')).toEqual(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
   });
 });
