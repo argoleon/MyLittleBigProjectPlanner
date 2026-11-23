@@ -84,6 +84,7 @@ pub enum ErrorCode {
     MemberLastAdmin,
     GroupNameTaken,
     SavedFilterNameTaken,
+    ResourceAccountTaken,
     BoardNameTaken,
     BoardNoTransition,
     ExportTooLarge,
@@ -139,7 +140,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 95] = [
+    pub const ALL: [Self; 96] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -185,6 +186,7 @@ impl ErrorCode {
         Self::MemberLastAdmin,
         Self::GroupNameTaken,
         Self::SavedFilterNameTaken,
+        Self::ResourceAccountTaken,
         Self::BoardNameTaken,
         Self::BoardNoTransition,
         Self::ExportTooLarge,
@@ -284,6 +286,7 @@ impl ErrorCode {
             Self::MemberLastAdmin => "member.last_admin",
             Self::GroupNameTaken => "group.name_taken",
             Self::SavedFilterNameTaken => "saved_filter.name_taken",
+            Self::ResourceAccountTaken => "resource.account_taken",
             Self::BoardNameTaken => "board.name_taken",
             Self::BoardNoTransition => "board.no_transition",
             Self::ExportTooLarge => "export.too_large",
@@ -381,6 +384,7 @@ impl ErrorCode {
             | Self::MemberLastAdmin
             | Self::GroupNameTaken
             | Self::SavedFilterNameTaken
+            | Self::ResourceAccountTaken
             | Self::BoardNameTaken
             | Self::BoardNoTransition
             | Self::ExportNotReady
@@ -484,6 +488,7 @@ impl ErrorCode {
             Self::MemberLastAdmin => "The tenant needs at least one active tenant admin",
             Self::GroupNameTaken => "Another group already has this name",
             Self::SavedFilterNameTaken => "You already have a saved filter with this name",
+            Self::ResourceAccountTaken => "This member is already linked to another resource",
             Self::BoardNameTaken => "This node already has a board with this name",
             Self::BoardNoTransition => "No transition of the workflow leads to this column",
             Self::ExportTooLarge => "The query finds more tickets than an export holds",

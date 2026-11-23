@@ -9,5 +9,6 @@ import { TenantRole } from './tenant-role';
 export const TENANT_ROLE: TenantRole[] = [
   'member',
   'configuration_admin',
+  'resource_manager',
   'tenant_admin'
 ];

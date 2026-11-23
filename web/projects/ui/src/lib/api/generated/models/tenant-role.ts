@@ -5,5 +5,5 @@
 /**
  * Role of a member in its tenant.
  */
-export type TenantRole = 'member' | 'configuration_admin' | 'tenant_admin';
+export type TenantRole = 'member' | 'configuration_admin' | 'resource_manager' | 'tenant_admin';
 

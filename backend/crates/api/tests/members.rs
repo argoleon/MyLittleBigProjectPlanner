@@ -539,7 +539,11 @@ async fn an_invitation_belongs_to_its_tenant() {
 async fn only_tenant_admins_manage_members() {
     let db = TestDb::new().await;
     let api = start(&db, multi()).await;
-    for role in [TenantRole::ConfigurationAdmin, TenantRole::Member] {
+    for role in [
+        TenantRole::ConfigurationAdmin,
+        TenantRole::ResourceManager,
+        TenantRole::Member,
+    ] {
         let member = db.add_member(&db.tenant_a, role).await;
         let (browser, _) = sign_in(&api, &db.tenant_a, &member.email, TEST_PASSWORD).await;
         let target = format!("{MEMBERS}/{}", member.account_id);
@@ -649,6 +653,44 @@ async fn members_are_listed_searched_filtered_and_paged() {
     ))
     .await;
     assert_eq!(status, 404);
+}
+
+#[tokio::test]
+async fn a_member_is_invited_or_made_resource_manager() {
+    let db = TestDb::new().await;
+    let api = start(&db, multi()).await;
+    let (status, invitation) = send(api.request(Method::POST, &db.tenant_a, INVITATIONS).json(&json!({
+        "email": invitee("planner"), "accountType": "internal", "tenantRole": "resource_manager"
+    })))
+    .await;
+    assert_eq!(status, 201, "{invitation}");
+    assert_eq!(invitation["tenantRole"], "resource_manager");
+
+    let member = db.add_member(&db.tenant_a, TenantRole::Member).await;
+    let (status, updated) = send(
+        api.request(
+            Method::PUT,
+            &db.tenant_a,
+            &format!("{MEMBERS}/{}", member.account_id),
+        )
+        .header("if-match", "*")
+        .json(&json!({"accountType": "internal", "tenantRole": "resource_manager", "localAccount": false})),
+    )
+    .await;
+    assert_eq!(status, 200, "{updated}");
+    assert_eq!(updated["tenantRole"], "resource_manager");
+    // Never an external account.
+    let (status, problem) = send(
+        api.request(
+            Method::PUT,
+            &db.tenant_a,
+            &format!("{MEMBERS}/{}", member.account_id),
+        )
+        .header("if-match", "*")
+        .json(&json!({"accountType": "external", "tenantRole": "resource_manager", "localAccount": false})),
+    )
+    .await;
+    assert_problem(status, &problem, 400, "validation_failed");
 }
 
 #[tokio::test]

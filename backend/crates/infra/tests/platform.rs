@@ -313,6 +313,27 @@ async fn fill_beta(db: &TestDb) -> (TestMember, TestMember) {
     infra::groups::add_member(&mut tx, group.id, only_beta.account_id)
         .await
         .unwrap();
+    // Resources, one linked to a member (its foreign key reaches the
+    // membership).
+    for (kind, account) in [
+        (domain::resources::Kind::Person, Some(only_beta.account_id)),
+        (domain::resources::Kind::Generic, None),
+    ] {
+        infra::resources::insert(
+            &mut tx,
+            new_id(),
+            &infra::resources::ResourceInput {
+                kind,
+                display_name: Some("Resource"),
+                job_title: None,
+                account_id: account,
+                active: true,
+            },
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    }
     infra::invitations::insert(
         &mut tx,
         &infra::invitations::NewInvitation {

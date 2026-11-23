@@ -139,6 +139,8 @@ pub enum TenantRole {
     Member,
     /// Workflows, types and fields, without member management.
     ConfigurationAdmin,
+    /// Resources, teams, capacities, calendars and absences (§8).
+    ResourceManager,
     /// Members, roles, configurations, portals, authentication policy.
     TenantAdmin,
 }
@@ -148,6 +150,7 @@ impl TenantRole {
         match self {
             Self::Member => "member",
             Self::ConfigurationAdmin => "configuration_admin",
+            Self::ResourceManager => "resource_manager",
             Self::TenantAdmin => "tenant_admin",
         }
     }
@@ -156,6 +159,7 @@ impl TenantRole {
         match value {
             "member" => Some(Self::Member),
             "configuration_admin" => Some(Self::ConfigurationAdmin),
+            "resource_manager" => Some(Self::ResourceManager),
             "tenant_admin" => Some(Self::TenantAdmin),
             _ => None,
         }
@@ -277,6 +281,7 @@ mod tests {
         for r in [
             TenantRole::Member,
             TenantRole::ConfigurationAdmin,
+            TenantRole::ResourceManager,
             TenantRole::TenantAdmin,
         ] {
             assert_eq!(TenantRole::parse(r.as_str()), Some(r));

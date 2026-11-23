@@ -46,6 +46,7 @@ pub mod platform;
 pub mod problem;
 pub mod query_assist;
 pub mod reference_items;
+pub mod resources;
 pub mod roles;
 mod routes;
 pub mod saved_filters;
