@@ -348,6 +348,20 @@ async fn fill_beta(db: &TestDb) -> (TestMember, TestMember) {
         infra::teams::add_member(&mut tx, team.id, resource.id)
             .await
             .unwrap();
+        infra::capacity::insert(
+            &mut tx,
+            new_id(),
+            resource.id,
+            &infra::capacity::PatternInput {
+                effective_from: time::macros::date!(2026 - 01 - 01),
+                week: domain::capacity::WeekMinutes([420, 420, 420, 420, 420, 0, 0]),
+                label: None,
+            },
+            None,
+        )
+        .await
+        .unwrap()
+        .unwrap();
     }
     infra::invitations::insert(
         &mut tx,

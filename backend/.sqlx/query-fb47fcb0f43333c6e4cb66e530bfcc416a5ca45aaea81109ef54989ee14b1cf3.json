@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO capacity_pattern (id, tenant_id, resource_id, effective_from, minutes, label)\n        VALUES ($1, app_current_tenant(), $2, $3, $4, $5)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Date",
+        "Int4Array",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fb47fcb0f43333c6e4cb66e530bfcc416a5ca45aaea81109ef54989ee14b1cf3"
+}

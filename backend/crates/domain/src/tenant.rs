@@ -1,5 +1,5 @@
 //! Rules of tenant settings (specification §3, §8), managed by the platform
-//! super admin.
+//! super admin; the workload settings by the tenant admin too.
 
 use crate::i18n;
 use crate::tenancy::is_valid_slug;
@@ -158,6 +158,36 @@ pub fn is_plausible_time_zone(name: &str) -> bool {
         })
 }
 
+/// The workload settings of a tenant (§8), which its tenant admin changes:
+/// default capacity, overload tolerance and mode.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorkloadSettingsInput {
+    pub default_capacity_minutes: Vec<i64>,
+    pub overload_tolerance_percent: i64,
+    pub overload_mode: String,
+}
+
+/// Checks `s`, with the field names of the tenant settings.
+pub fn validate_workload_settings(s: &WorkloadSettingsInput) -> Result<(), Vec<FieldError>> {
+    let mut v = Violations::new();
+    if s.default_capacity_minutes.len() == 7 {
+        for (day, minutes) in s.default_capacity_minutes.iter().enumerate() {
+            if !(0..=DAY_MINUTES).contains(minutes) {
+                v.add(format!("defaultCapacityMinutes.{day}"), "out_of_range");
+            }
+        }
+    } else {
+        v.add("defaultCapacityMinutes", "length");
+    }
+    if !(0..=MAX_OVERLOAD_TOLERANCE_PERCENT).contains(&s.overload_tolerance_percent) {
+        v.add("overloadTolerancePercent", "out_of_range");
+    }
+    if OverloadMode::parse(&s.overload_mode).is_none() {
+        v.add("overloadMode", "format");
+    }
+    v.into_result()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -294,5 +324,41 @@ mod tests {
             assert_eq!(OverloadMode::parse(mode.as_str()), Some(mode));
         }
         assert_eq!(OverloadMode::parse("Blocking"), None);
+    }
+
+    #[test]
+    fn workload_settings_are_checked_like_the_tenant_settings() {
+        let ok = WorkloadSettingsInput {
+            default_capacity_minutes: vec![420, 420, 420, 420, 210, 0, 0],
+            overload_tolerance_percent: 10,
+            overload_mode: "warning".to_owned(),
+        };
+        assert!(validate_workload_settings(&ok).is_ok());
+        let bad = WorkloadSettingsInput {
+            default_capacity_minutes: vec![420, 1441, 0, 0, 0, 0, 0],
+            overload_tolerance_percent: 101,
+            overload_mode: "lenient".to_owned(),
+        };
+        let codes: Vec<(String, &str)> = validate_workload_settings(&bad)
+            .unwrap_err()
+            .into_iter()
+            .map(|e| (e.field, e.code))
+            .collect();
+        assert_eq!(
+            codes,
+            [
+                ("defaultCapacityMinutes.1".to_owned(), "out_of_range"),
+                ("overloadTolerancePercent".to_owned(), "out_of_range"),
+                ("overloadMode".to_owned(), "format"),
+            ]
+        );
+        let short = WorkloadSettingsInput {
+            default_capacity_minutes: vec![420; 5],
+            ..ok
+        };
+        assert_eq!(
+            validate_workload_settings(&short).unwrap_err()[0].field,
+            "defaultCapacityMinutes"
+        );
     }
 }

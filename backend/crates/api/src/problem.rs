@@ -86,6 +86,7 @@ pub enum ErrorCode {
     SavedFilterNameTaken,
     ResourceAccountTaken,
     TeamNameTaken,
+    CapacityPatternDateTaken,
     BoardNameTaken,
     BoardNoTransition,
     ExportTooLarge,
@@ -141,7 +142,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 97] = [
+    pub const ALL: [Self; 98] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -189,6 +190,7 @@ impl ErrorCode {
         Self::SavedFilterNameTaken,
         Self::ResourceAccountTaken,
         Self::TeamNameTaken,
+        Self::CapacityPatternDateTaken,
         Self::BoardNameTaken,
         Self::BoardNoTransition,
         Self::ExportTooLarge,
@@ -290,6 +292,7 @@ impl ErrorCode {
             Self::SavedFilterNameTaken => "saved_filter.name_taken",
             Self::ResourceAccountTaken => "resource.account_taken",
             Self::TeamNameTaken => "team.name_taken",
+            Self::CapacityPatternDateTaken => "capacity_pattern.date_taken",
             Self::BoardNameTaken => "board.name_taken",
             Self::BoardNoTransition => "board.no_transition",
             Self::ExportTooLarge => "export.too_large",
@@ -389,6 +392,7 @@ impl ErrorCode {
             | Self::SavedFilterNameTaken
             | Self::ResourceAccountTaken
             | Self::TeamNameTaken
+            | Self::CapacityPatternDateTaken
             | Self::BoardNameTaken
             | Self::BoardNoTransition
             | Self::ExportNotReady
@@ -494,6 +498,7 @@ impl ErrorCode {
             Self::SavedFilterNameTaken => "You already have a saved filter with this name",
             Self::ResourceAccountTaken => "This member is already linked to another resource",
             Self::TeamNameTaken => "Another team already has this name",
+            Self::CapacityPatternDateTaken => "The resource already has a capacity period starting that day",
             Self::BoardNameTaken => "This node already has a board with this name",
             Self::BoardNoTransition => "No transition of the workflow leads to this column",
             Self::ExportTooLarge => "The query finds more tickets than an export holds",
