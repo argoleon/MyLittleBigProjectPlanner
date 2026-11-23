@@ -50,8 +50,8 @@ test.describe('tenant switcher', () => {
       return route.fulfill({ status: 303, headers: { location: '/' } });
     });
 
-    await page.goto('/workload');
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Workload');
+    await page.goto('/portals');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Portals');
     // Marks this page: a full load forgets it.
     await page.evaluate(() => ((window as unknown as { leftBehind: boolean }).leftBehind = true));
     await page.getByRole('combobox', { name: 'Organization' }).click();

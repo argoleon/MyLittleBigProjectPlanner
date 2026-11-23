@@ -39,8 +39,8 @@ test('the TOTP helper of the tests matches RFC 6238', () => {
 
 test('after the password, a code from the app opens the application', async ({ page }) => {
   await afterPassword(page, 'mfa_challenge');
-  await page.goto('/workload');
-  await expect(page).toHaveURL(/\/sign-in\/verify\?returnUrl=%2Fworkload$/);
+  await page.goto('/portals');
+  await expect(page).toHaveURL(/\/sign-in\/verify\?returnUrl=%2Fportals$/);
   await expect(page.getByText('Step 2 of 2')).toBeVisible();
 
   await page.getByLabel('6-digit code').fill('000000');
@@ -50,8 +50,8 @@ test('after the password, a code from the app opens the application', async ({ p
   await page.getByRole('button', { name: 'Use a backup code' }).click();
   await page.getByLabel('Backup code').fill('abcde-fghjk');
   await page.getByRole('button', { name: 'Verify' }).click();
-  await expect(page).toHaveURL(/\/workload$/);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Workload');
+  await expect(page).toHaveURL(/\/portals$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Portals');
 });
 
 test('a member the organization requires to enroll does so before anything else', async ({ page }) => {

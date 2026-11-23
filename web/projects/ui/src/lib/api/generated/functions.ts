@@ -313,6 +313,16 @@ export type { UpdateReferenceItem$Params as UpdateReferenceItem$Params } from '.
 export { updateReferenceItem as updateReferenceItem } from './fn/reference-items/update-reference-item';
 export type { DeleteReferenceItem$Params as DeleteReferenceItem$Params } from './fn/reference-items/delete-reference-item';
 export { deleteReferenceItem as deleteReferenceItem } from './fn/reference-items/delete-reference-item';
+export type { ListResources$Params as ListResources$Params } from './fn/resources/list-resources';
+export { listResources as listResources } from './fn/resources/list-resources';
+export type { CreateResource$Params as CreateResource$Params } from './fn/resources/create-resource';
+export { createResource as createResource } from './fn/resources/create-resource';
+export type { ListLinkableAccounts$Params as ListLinkableAccounts$Params } from './fn/resources/list-linkable-accounts';
+export { listLinkableAccounts as listLinkableAccounts } from './fn/resources/list-linkable-accounts';
+export type { GetResource$Params as GetResource$Params } from './fn/resources/get-resource';
+export { getResource as getResource } from './fn/resources/get-resource';
+export type { UpdateResource$Params as UpdateResource$Params } from './fn/resources/update-resource';
+export { updateResource as updateResource } from './fn/resources/update-resource';
 export type { ListSavedFilters$Params as ListSavedFilters$Params } from './fn/search/list-saved-filters';
 export { listSavedFilters as listSavedFilters } from './fn/search/list-saved-filters';
 export type { CreateSavedFilter$Params as CreateSavedFilter$Params } from './fn/search/create-saved-filter';

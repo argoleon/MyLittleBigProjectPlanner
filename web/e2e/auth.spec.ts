@@ -16,8 +16,8 @@ test.describe('signed out', () => {
       return route.fulfill({ json: SESSION });
     });
 
-    await page.goto('/workload');
-    await expect(page).toHaveURL(/\/sign-in\?returnUrl=%2Fworkload$/);
+    await page.goto('/portals');
+    await expect(page).toHaveURL(/\/sign-in\?returnUrl=%2Fportals$/);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sign in');
     await expect(page.getByText(`Organization: ${TENANT.name}`)).toBeVisible();
     await expect(page).toHaveTitle('Sign in · My Little Big Project Planner');
@@ -30,8 +30,8 @@ test.describe('signed out', () => {
 
     await page.getByLabel('Password').fill('correct horse battery');
     await page.getByLabel('Password').press('Enter');
-    await expect(page).toHaveURL(/\/workload$/);
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Workload');
+    await expect(page).toHaveURL(/\/portals$/);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Portals');
     expect(attempts).toBe(2);
   });
 

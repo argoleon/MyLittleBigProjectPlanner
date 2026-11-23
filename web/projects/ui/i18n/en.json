@@ -11,6 +11,7 @@
     "role": {
       "member": "Member",
       "configuration_admin": "Configuration admin",
+      "resource_manager": "Resource manager",
       "tenant_admin": "Organization admin"
     },
     "language": "Language: {{ language }}",
@@ -437,7 +438,9 @@
       "self": "A ticket cannot be linked to itself.",
       "cycle": "This ticket sits under the one you are changing.",
       "immutable": "This value cannot be changed.",
-      "order_by_not_allowed": "A quick filter cannot sort: remove ORDER BY."
+      "order_by_not_allowed": "A quick filter cannot sort: remove ORDER BY.",
+      "person_only": "Only a person is linked to an account.",
+      "not_internal_member": "Not an internal member of the organization."
     },
     "invitation": {
       "invalid": "This invitation link is invalid, has expired or was already used. Ask for a new one.",
@@ -538,6 +541,9 @@
     },
     "bulk": {
       "too_many": "More tickets than a bulk action takes (10,000)."
+    },
+    "resource": {
+      "account_taken": "This member is already linked to another resource."
     }
   },
   "dialog": {
@@ -2121,6 +2127,87 @@
       "tickets": "{{ count }} tickets move (their sub-tasks follow them).",
       "subtasksAlone": "{{ count }} sub-tasks selected without their parent stay where they are.",
       "confirm": "Move {{ count }} tickets"
+    }
+  },
+  "resource": {
+    "holding": {
+      "label": "Resource type:",
+      "linked": "Person · linked account",
+      "person": "Person",
+      "former": "Former member",
+      "generic": "Generic resource"
+    },
+    "state": {
+      "label": "Status:",
+      "active": "Active",
+      "inactive": "Inactive"
+    }
+  },
+  "resources": {
+    "title": "Resources",
+    "breadcrumb": "Location",
+    "loading": "Loading the resources…",
+    "search": "Search",
+    "searchPlaceholder": "Name or job title",
+    "kinds": "Resource types",
+    "states": "Statuses",
+    "kind": {
+      "person": "People",
+      "generic": "Generic"
+    },
+    "state": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "new": "New resource",
+    "caption": "Resources of the organization",
+    "columns": {
+      "name": "Resource",
+      "holding": "Type",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "empty": "No resource yet",
+    "emptyHint": "Add the people and the generic roles that work is planned on.",
+    "noMatch": "No resource matches",
+    "noMatchHint": "Change the search or the filters.",
+    "more": "Show more",
+    "editOf": "Edit {{ name }}",
+    "created": "{{ name }} was created.",
+    "saved": "{{ name }} was saved.",
+    "dialog": {
+      "createTitle": "New resource",
+      "editTitle": "Edit {{ name }}",
+      "kind": "Type",
+      "person": "Person",
+      "generic": "Generic resource",
+      "personHint": "Someone, with an account or not: a subcontractor who never signs in has none.",
+      "genericHint": "An unnamed role, such as “Rust developer”, replaced by a person later.",
+      "account": "Linked account",
+      "noAccount": "No account",
+      "accountHint": "The resource shows the member’s name.",
+      "accountSearchHint": "Search a member by name or email; leave empty for a person without account.",
+      "clearAccount": "Remove the linked account",
+      "name": "Name",
+      "role": "Role",
+      "jobTitle": "Job title",
+      "active": "Active",
+      "activeHint": "An inactive resource is no longer offered for new assignments.",
+      "create": "Create",
+      "save": "Save"
+    },
+    "page": {
+      "details": "Details",
+      "kind": "Type",
+      "jobTitle": "Job title",
+      "account": "Account",
+      "linked": "Linked to the member’s account",
+      "person": "No account: never signs in",
+      "former": "Former member: unlinked when they left the organization",
+      "generic": "Generic role, without account",
+      "status": "Status",
+      "edit": "Edit",
+      "next": "Weekly capacity, calendar and absences will appear here."
     }
   }
 }

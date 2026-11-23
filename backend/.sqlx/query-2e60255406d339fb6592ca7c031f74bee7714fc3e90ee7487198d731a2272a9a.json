@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT account_type FROM membership WHERE account_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "account_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "membership",
+            "name": "account_type"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "2e60255406d339fb6592ca7c031f74bee7714fc3e90ee7487198d731a2272a9a"
+}

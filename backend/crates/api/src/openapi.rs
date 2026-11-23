@@ -73,6 +73,7 @@ const DOCS_CSP: &str = "default-src 'self'; img-src 'self' data:; style-src 'sel
         (name = crate::bulk_actions::TAG, description = "Several tickets of a search result changed at once"),
         (name = crate::list_exports::TAG, description = "Exports of list views, as CSV or Excel files"),
         (name = crate::boards::TAG, description = "Kanban boards: columns mapped to statuses, cards moved through the workflow"),
+        (name = crate::resources::TAG, description = "Resources: persons, linked to a member or not, and generic roles that work is planned on"),
         (name = configs::TAG, description = "Project configurations: types, fields, workflows, screens and notifications shared by projects"),
         (name = sso::TAG, description = "Authentication policy and OIDC providers of the tenant, for its admins"),
         (name = platform::TAG, description = "Platform administration, for the platform super admin"),

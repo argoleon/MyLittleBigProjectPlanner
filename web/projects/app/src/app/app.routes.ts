@@ -50,7 +50,7 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       // Screens not built yet show "coming soon".
-      ...NAVIGATION.filter((item) => !['/admin', '/boards', '/portfolios', '/search', '/tickets'].includes(item.route)).map((item) => ({
+      ...NAVIGATION.filter((item) => !['/admin', '/boards', '/portfolios', '/search', '/tickets', '/workload'].includes(item.route)).map((item) => ({
         path: item.route.slice(1),
         pathMatch: 'full' as const,
         title: item.labelKey,
@@ -91,6 +91,23 @@ export const routes: Routes = [
         path: 'boards/:id',
         title: 'nav.boards',
         loadComponent: () => import('./boards/board-page').then((m) => m.BoardPage),
+      },
+      {
+        // Workload opens on its resources until the heatmap (L08).
+        path: 'workload',
+        pathMatch: 'full',
+        redirectTo: 'workload/resources',
+      },
+      {
+        path: 'workload/resources',
+        title: 'resources.title',
+        loadComponent: () => import('./resources/resources-page').then((m) => m.ResourcesPage),
+      },
+      {
+        // A resource, by its id.
+        path: 'workload/resources/:id',
+        title: 'resources.title',
+        loadComponent: () => import('./resources/resource-page').then((m) => m.ResourcePage),
       },
       {
         path: 'tickets',

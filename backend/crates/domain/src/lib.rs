@@ -33,6 +33,7 @@ pub mod oidc;
 pub mod permissions;
 pub mod query;
 pub mod reference_item;
+pub mod resources;
 pub mod rich_text;
 pub mod saved_filters;
 pub mod screens;

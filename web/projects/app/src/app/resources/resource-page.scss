@@ -1,0 +1,85 @@
+:host {
+  display: block;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-1);
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+
+  a {
+    color: var(--mat-sys-primary);
+  }
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--app-space-3) var(--app-space-4);
+  margin: var(--app-space-2) 0 var(--app-space-4);
+}
+
+.identity {
+  flex: 1 1 240px;
+}
+
+.title {
+  margin: 0 0 var(--app-space-1);
+  font: var(--mat-sys-headline-medium);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--app-space-2);
+}
+
+.job-title {
+  font: var(--mat-sys-label-large);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.card {
+  max-width: 720px;
+  padding: var(--app-space-4);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface);
+}
+
+.card-title {
+  margin: 0 0 var(--app-space-3);
+  font: var(--mat-sys-title-medium);
+}
+
+.details {
+  display: grid;
+  grid-template-columns: minmax(120px, max-content) 1fr;
+  gap: var(--app-space-2) var(--app-space-4);
+  margin: 0;
+  font: var(--mat-sys-body-medium);
+
+  dt {
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.next {
+  margin: var(--app-space-4) 0 0;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}

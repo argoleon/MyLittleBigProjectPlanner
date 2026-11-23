@@ -14,8 +14,8 @@ test.describe('application shell', () => {
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Home');
     await page.evaluate(() => document.fonts.ready);
-    await page.getByRole('link', { name: 'Workload' }).click();
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Workload');
+    await page.getByRole('link', { name: 'Portals' }).click();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Portals');
     await page.waitForLoadState('networkidle');
 
     const origin = new URL(baseURL!).origin;
@@ -77,20 +77,20 @@ test.describe('application shell', () => {
   });
 
   test('switches language from the top app bar', async ({ page }) => {
-    await page.goto('/workload');
+    await page.goto('/portals');
     const saved = page.waitForRequest((r) => r.url().endsWith('/api/v1/me/preferences') && r.method() === 'PUT');
     await page.getByRole('button', { name: 'Language: English' }).click();
     await page.getByRole('menuitemradio', { name: 'Français' }).click();
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Charge');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Portails');
     // Kept for the account too.
     expect((await saved).postDataJSON()).toEqual({ locale: 'fr', timeZone: null });
     await expect(page.getByRole('navigation', { name: 'Navigation principale' })).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
-    await expect(page).toHaveTitle('Charge · My Little Big Project Planner');
+    await expect(page).toHaveTitle('Portails · My Little Big Project Planner');
 
     // The choice survives a reload.
     await page.reload();
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Charge');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Portails');
   });
 
   test('switches between light and dark mode, colors coming from the theme tokens', async ({ page }) => {
@@ -127,7 +127,7 @@ for (const theme of ['light', 'dark'] as const) {
       test.use({ theme, language });
 
       test('the shell has no axe-core violation', async ({ page }) => {
-        await page.goto('/workload');
+        await page.goto('/portals');
         await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
         await expect(page.getByRole('combobox')).toContainText(TENANT.name);
         expect(await accessibilityViolations(page)).toEqual([]);

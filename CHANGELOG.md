@@ -4,6 +4,15 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
 
 ## [Unreleased]
 
+### Added
+
+- **Resources** (#194)
+  - Persons, linked to a member's account or not (a subcontractor who never signs in), and generic resources (an unnamed role such as "Rust developer"), with an optional job title. A linked person shows the member's name; a member is linked to one resource at most (`resource.account_taken`), and only an internal member of the organization. Resources are deactivated, never deleted.
+  - A member who leaves the organization leaves their resource behind, unlinked and inactive, under the name it showed; erasing the member (in the organization or everywhere) replaces that name by their pseudonym.
+  - A new organization role, **Resource manager**, manages resources as the organization admin does; every internal member reads them.
+  - The **Workload** menu opens on the resources (filters by kind and status, search, pages), with a dialog to create and edit them and a page per resource.
+  - `/api/v1/resources` (list, create, read, change) and `GET /api/v1/resources/linkable-accounts`. `TenantRole` gains `resource_manager`.
+
 ## [0.6.0] - 2026-11-19
 
 Work package **L06 Search and Kanban**: a query language with a visual builder and suggestions, full-text search with typo correction, saved and shared filters, Kanban boards, CSV and Excel exports of list views, and bulk actions on a search result.

@@ -89,6 +89,7 @@ Un tenant est une organisation isolée ; un compte utilisateur est global et peu
 | Plateforme | Super-admin : création et suppression de tenants, effacement d'un compte global, supervision |
 | Tenant | Admin du tenant : membres, rôles, configurations, portails, politique d'authentification |
 | Tenant | Admin de configuration : workflows, types et champs, sans gestion des membres |
+| Tenant | Gestionnaire de ressources : ressources, équipes, capacités, calendriers et absences, sans gestion des membres |
 | Nœud | Admin de nœud : membres et rôles du nœud et de ses descendants, création de projets enfants |
 
 ## 4. Hiérarchie portefeuilles, programmes, projets
@@ -265,6 +266,8 @@ Une ressource peut cumuler plusieurs tâches sur une même journée tant que la 
   - **Personne** : liée à un compte, ou sans compte (sous-traitant qui ne se connecte pas).
   - **Ressource générique** : un rôle non nommé (« Dev Rust »), remplaçable plus tard par une personne. Le remplacement transfère les affectations.
   - **Équipement, salle, objet** : après le MVP, avec les mêmes mécanismes de capacité et d'affectation.
+- Un membre interne est lié à une seule ressource du tenant, qui affiche son nom. S'il quitte le tenant, sa ressource reste, déliée et désactivée, sous le nom qu'elle portait (son pseudonyme s'il est effacé). Les ressources ne sont jamais supprimées, seulement désactivées.
+- L'admin du tenant et les gestionnaires de ressources les gèrent ; tous les membres internes les consultent.
 - Les équipes regroupent des ressources pour les vues et les filtres. On affecte toujours une ressource, jamais une équipe.
 
 **Capacité**
@@ -477,7 +480,7 @@ Les droits reposent sur des rôles attribués sur les nœuds de la hiérarchie e
 
 **Modèle de droits**
 
-- **Rôles globaux** : super-admin de plateforme. Par tenant : admin du tenant, admin de configuration, utilisateur interne, utilisateur externe.
+- **Rôles globaux** : super-admin de plateforme. Par tenant : admin du tenant, admin de configuration, gestionnaire de ressources, utilisateur interne, utilisateur externe.
 - **Rôles sur les nœuds** : définis par chaque tenant, comme ensembles de permissions. Exemples de permissions : voir, créer un ticket, modifier, commenter, saisir du temps, affecter des ressources, forcer une surcharge, gérer les sprints, gérer les boards, gérer les membres, administrer le nœud.
 - **Attribution** : à des utilisateurs ou à des groupes, sur un nœud. Héritage vers le bas, union en multi-parent, blocage possible (section 4).
 - **Dans le MVP** : visibilité restreinte côté portail (un demandeur ne voit que ses tickets), commentaires internes ou publics, projets confidentiels.

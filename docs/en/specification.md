@@ -89,6 +89,7 @@ A tenant is an isolated organization; a user account is global and can belong to
 | Platform | Super admin: creates and deletes tenants, erases a global account, supervision |
 | Tenant | Tenant admin: members, roles, configurations, portals, authentication policy |
 | Tenant | Configuration admin: workflows, types and fields, without member management |
+| Tenant | Resource manager: resources, teams, capacities, calendars and absences, without member management |
 | Node | Node admin: members and roles of the node and its descendants, creation of child projects |
 
 ## 4. Portfolio, program and project hierarchy
@@ -265,6 +266,8 @@ A resource can combine several tasks on the same day as long as the sum of its a
   - **Person**: linked to an account, or without an account (a subcontractor who never logs in).
   - **Generic resource**: an unnamed role ("Rust developer"), replaceable later by a person. Replacement transfers the assignments.
   - **Equipment, room, object**: after the MVP, with the same capacity and assignment mechanisms.
+- An internal member is linked to one resource of the tenant at most, which shows their name. When they leave the tenant, their resource stays, unlinked and deactivated, under the name it showed (their pseudonym once erased). Resources are never deleted, only deactivated.
+- The tenant admin and resource managers manage them; every internal member reads them.
 - Teams group resources for views and filters. Assignments always target a resource, never a team.
 
 **Capacity**
@@ -477,7 +480,7 @@ Permissions rely on roles granted on hierarchy nodes and inherited downwards. Po
 
 **Permission model**
 
-- **Global roles**: platform super admin. Per tenant: tenant admin, configuration admin, internal user, external user.
+- **Global roles**: platform super admin. Per tenant: tenant admin, configuration admin, resource manager, internal user, external user.
 - **Node roles**: defined by each tenant as sets of permissions. Example permissions: view, create a ticket, edit, comment, log time, assign resources, force an overload, manage sprints, manage boards, manage members, administer the node.
 - **Grants**: to users or groups, on a node. Inherited downwards, union in multi-parent, can be blocked (section 4).
 - **In the MVP**: restricted visibility on the portal (requesters only see their own tickets), internal or public comments, confidential projects.
