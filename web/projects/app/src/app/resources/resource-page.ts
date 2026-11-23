@@ -68,6 +68,14 @@ export function managesResources(role: TenantRole | undefined): boolean {
           <dd>{{ 'resource.holding.' + holding(shown) | transloco }}</dd>
           <dt>{{ 'resources.page.account' | transloco }}</dt>
           <dd>{{ 'resources.page.' + holding(shown) | transloco }}</dd>
+          <dt>{{ 'resources.page.teams' | transloco }}</dt>
+          <dd class="teams">
+            @for (team of shown.teams; track team.id; let last = $last) {
+              <a [routerLink]="['/workload/teams', team.id]">{{ team.name }}</a>{{ last ? '' : ', ' }}
+            } @empty {
+              {{ 'resources.page.noTeam' | transloco }}
+            }
+          </dd>
           <dt>{{ 'resources.page.jobTitle' | transloco }}</dt>
           <dd>{{ shown.jobTitle ?? '–' }}</dd>
           <dt>{{ 'resources.page.status' | transloco }}</dt>

@@ -544,6 +544,9 @@
     },
     "resource": {
       "account_taken": "Ce membre est déjà lié à une autre ressource."
+    },
+    "team": {
+      "name_taken": "Une autre équipe porte déjà ce nom."
     }
   },
   "dialog": {
@@ -2207,7 +2210,61 @@
       "generic": "Rôle générique, sans compte",
       "status": "Statut",
       "edit": "Modifier",
-      "next": "La capacité hebdomadaire, le calendrier et les absences apparaîtront ici."
+      "next": "La capacité hebdomadaire, le calendrier et les absences apparaîtront ici.",
+      "teams": "Équipes",
+      "noTeam": "Aucune équipe"
+    },
+    "team": "Équipe",
+    "allTeams": "Toutes les équipes"
+  },
+  "workload": {
+    "tabs": "Rubriques de la charge"
+  },
+  "teams": {
+    "title": "Équipes",
+    "loading": "Chargement des équipes…",
+    "new": "Nouvelle équipe",
+    "caption": "Équipes de l’organisation",
+    "columns": {
+      "name": "Équipe",
+      "members": "Ressources",
+      "actions": "Actions"
+    },
+    "empty": "Aucune équipe",
+    "emptyHint": "Regroupez les ressources en équipes pour filtrer les vues et la disponibilité.",
+    "editOf": "Modifier {{ name }}",
+    "deleteOf": "Supprimer {{ name }}",
+    "deleteTitle": "Supprimer {{ name }} ?",
+    "deleteMessage": "L’équipe disparaît ; ses ressources restent, avec leurs affectations.",
+    "deleteConfirm": "Supprimer",
+    "created": "L’équipe {{ name }} a été créée.",
+    "saved": "L’équipe {{ name }} a été enregistrée.",
+    "deleted": "L’équipe {{ name }} a été supprimée.",
+    "dialog": {
+      "createTitle": "Nouvelle équipe",
+      "editTitle": "Modifier {{ name }}",
+      "name": "Nom",
+      "description": "Description",
+      "create": "Créer",
+      "save": "Enregistrer"
+    },
+    "page": {
+      "edit": "Modifier",
+      "add": "Ajouter une ressource",
+      "members": "Ressources ({{ count }})",
+      "caption": "Ressources de {{ name }}",
+      "empty": "Aucune ressource dans cette équipe",
+      "emptyHint": "Ajoutez les ressources qui travaillent ensemble.",
+      "removeOf": "Retirer {{ name }} de l’équipe",
+      "added": "{{ name }} a été ajoutée à l’équipe.",
+      "removed": "{{ name }} a été retirée de l’équipe."
+    },
+    "addDialog": {
+      "title": "Ajouter une ressource à {{ name }}",
+      "resource": "Ressource",
+      "hint": "Cherchez une ressource active par nom ou fonction.",
+      "inTeam": "déjà dans l’équipe",
+      "add": "Ajouter"
     }
   }
 }

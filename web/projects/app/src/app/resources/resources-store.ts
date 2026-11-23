@@ -11,14 +11,22 @@ export interface ResourceQuery {
   readonly kind: ResourceKind | undefined;
   /** `undefined`: active and inactive ones. */
   readonly active: boolean | undefined;
+  /** Members of this team only. */
+  readonly team: string | undefined;
   /** No kind or no status selected: nothing to list. */
   readonly none: boolean;
 }
 
 /** The query of the list for `search` and the selected chips. */
-export function resourceQuery(search: string, kinds: readonly ResourceKind[], states: readonly ResourceState[]): ResourceQuery {
+export function resourceQuery(
+  search: string,
+  kinds: readonly ResourceKind[],
+  states: readonly ResourceState[],
+  team: string | null = null,
+): ResourceQuery {
   return {
     search: search.trim() || undefined,
+    team: team ?? undefined,
     kind: kinds.length === 1 ? kinds[0] : undefined,
     active: states.length === 1 ? states[0] === 'active' : undefined,
     none: kinds.length === 0 || states.length === 0,
@@ -41,7 +49,14 @@ export class ResourcesStore {
   readonly kinds = signal<readonly ResourceKind[]>(['person', 'generic']);
   /** Active ones only, at first. */
   readonly states = signal<readonly ResourceState[]>(['active']);
-  readonly query = computed(() => resourceQuery(this.search(), this.kinds(), this.states()));
+  /** The team filtered by, if any. */
+  readonly team = signal<string | null>(null);
+  /** Lists a team's members only: nothing until `team` is known (a team page). */
+  readonly teamOnly = signal(false);
+  readonly query = computed(() => {
+    const query = resourceQuery(this.search(), this.kinds(), this.states(), this.team());
+    return this.teamOnly() && !query.team ? { ...query, none: true } : query;
+  });
 
   private readonly first = resource({
     params: () => this.query(),
@@ -54,6 +69,7 @@ export class ResourcesStore {
         search: params.search,
         kind: params.kind,
         active: params.active,
+        team: params.team,
         limit: RESOURCE_PAGE_SIZE,
       });
       this.manager.set(page.canManage);
@@ -86,7 +102,11 @@ export class ResourcesStore {
    * rather than that there is no resource yet.
    */
   readonly filtered = computed(
-    () => this.query().search !== undefined || this.kinds().length < 2 || !this.states().includes('active'),
+    () =>
+      this.query().search !== undefined ||
+      this.query().team !== undefined ||
+      this.kinds().length < 2 ||
+      !this.states().includes('active'),
   );
 
   setKinds(kinds: readonly ResourceKind[] | ResourceKind | null): void {
@@ -112,6 +132,7 @@ export class ResourcesStore {
         search: query.search,
         kind: query.kind,
         active: query.active,
+        team: query.team,
         limit: RESOURCE_PAGE_SIZE,
         cursor,
       });

@@ -34,7 +34,8 @@ test('create a person and a generic resource, then deactivate one', async ({ bro
   // Workload opens on its resources.
   await page.getByRole('link', { name: 'Workload' }).click();
   await expect(page).toHaveURL(/\/workload\/resources$/);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Resources');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Workload');
+  await expect(page.getByRole('tab', { name: 'Resources' })).toHaveAttribute('aria-selected', 'true');
 
   // A person without account.
   await page.getByRole('button', { name: 'New resource' }).click();

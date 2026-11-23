@@ -1,0 +1,107 @@
+<nav class="breadcrumb" [attr.aria-label]="'resources.breadcrumb' | transloco">
+  <span>{{ 'nav.workload' | transloco }}</span>
+  <mat-icon aria-hidden="true">chevron_right</mat-icon>
+  <a routerLink="/workload/teams">{{ 'teams.title' | transloco }}</a>
+</nav>
+
+@if (current.error()) {
+  <ui-error-state [error]="current.error()" (retry)="current.reload()" />
+} @else if (team(); as team) {
+  <div class="header">
+    <div class="identity">
+      <h1 class="title">{{ team.name }}</h1>
+      @if (team.description) {
+        <p class="description">{{ team.description }}</p>
+      }
+    </div>
+    @if (canManage()) {
+      <div class="actions-bar">
+        <button matButton="outlined" type="button" id="team-edit" (click)="edit(team)">
+          <mat-icon aria-hidden="true">edit</mat-icon>
+          {{ 'teams.page.edit' | transloco }}
+        </button>
+        <button matButton="filled" type="button" id="team-add" (click)="add(team)">
+          <mat-icon aria-hidden="true">person_add</mat-icon>
+          {{ 'teams.page.add' | transloco }}
+        </button>
+      </div>
+    }
+  </div>
+
+  @if (notice(); as notice) {
+    <p class="message" [class.info]="notice.ok" [class.error]="!notice.ok" [attr.role]="notice.ok ? 'status' : 'alert'">
+      {{ notice.messageKey | transloco: notice.params }}
+    </p>
+  }
+
+  <section aria-labelledby="team-members">
+    <h2 class="section-title" id="team-members">
+      {{ 'teams.page.members' | transloco: { count: team.memberCount } }}
+    </h2>
+    @if (members.loading() && members.items().length === 0) {
+      <mat-progress-bar mode="indeterminate" [attr.aria-label]="'resources.loading' | transloco" />
+    } @else if (members.error()) {
+      <ui-error-state [error]="members.error()" [headingLevel]="3" (retry)="members.reload()" />
+    } @else if (members.items().length === 0) {
+      <ui-empty-state icon="group_add" [title]="'teams.page.empty' | transloco" [message]="'teams.page.emptyHint' | transloco" />
+    } @else {
+      <div class="table-card">
+        <table mat-table [dataSource]="members.items()" [trackBy]="trackResource" class="table">
+          <caption class="cdk-visually-hidden">{{ 'teams.page.caption' | transloco: { name: team.name } }}</caption>
+
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef scope="col">{{ 'resources.columns.name' | transloco }}</th>
+            <td mat-cell *matCellDef="let row">
+              <a class="resource" [routerLink]="['/workload/resources', row.id]">
+                <ui-avatar [name]="row.displayName" aria-hidden="true" />
+                <span>
+                  <span class="name">{{ row.displayName }}</span>
+                  @if (row.jobTitle) {
+                    <span class="secondary">{{ row.jobTitle }}</span>
+                  }
+                </span>
+              </a>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="holding">
+            <th mat-header-cell *matHeaderCellDef scope="col">{{ 'resources.columns.holding' | transloco }}</th>
+            <td mat-cell *matCellDef="let row"><ui-resource-kind-chip [holding]="holding(row)" /></td>
+          </ng-container>
+
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef scope="col">{{ 'resources.columns.status' | transloco }}</th>
+            <td mat-cell *matCellDef="let row"><ui-resource-state-chip [active]="row.active" /></td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef scope="col">
+              <span class="cdk-visually-hidden">{{ 'resources.columns.actions' | transloco }}</span>
+            </th>
+            <td mat-cell *matCellDef="let row" class="actions">
+              <button
+                matIconButton
+                type="button"
+                [id]="removeId(row)"
+                [attr.aria-label]="'teams.page.removeOf' | transloco: { name: row.displayName }"
+                (click)="remove(team, row)"
+              >
+                <mat-icon aria-hidden="true">group_remove</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="columns()"></tr>
+          <tr mat-row *matRowDef="let row; columns: columns()"></tr>
+        </table>
+      </div>
+      @if (members.nextCursor()) {
+        <button matButton="outlined" type="button" class="more" [disabled]="members.loadingMore()" (click)="members.loadMore()">
+          {{ 'resources.more' | transloco }}
+        </button>
+      }
+    }
+  </section>
+} @else {
+  <ui-loading-state [label]="'teams.loading' | transloco" />
+}

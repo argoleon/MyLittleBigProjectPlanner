@@ -25,6 +25,7 @@ const CAMILLE: Resource = {
   accountId: '0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7a01',
   formerMember: false,
   active: true,
+  teams: [],
   version: 2,
 };
 const BOB: Resource = {
@@ -52,16 +53,19 @@ describe('resourceQuery', () => {
   it('asks for one kind or both, active ones or all, or nothing', () => {
     expect(resourceQuery(' rust ', ['person', 'generic'], ['active'])).toEqual({
       search: 'rust',
+      team: undefined,
       kind: undefined,
       active: true,
       none: false,
     });
     expect(resourceQuery('', ['generic'], ['active', 'inactive'])).toEqual({
       search: undefined,
+      team: undefined,
       kind: 'generic',
       active: undefined,
       none: false,
     });
+    expect(resourceQuery('', ['person', 'generic'], ['active'], 't1').team).toBe('t1');
     expect(resourceQuery('', ['person'], ['inactive']).active).toBe(false);
     expect(resourceQuery('', [], ['active']).none).toBe(true);
     expect(resourceQuery('', ['person'], []).none).toBe(true);
@@ -141,14 +145,23 @@ function setup() {
 }
 
 const isList = (url: string) => url.startsWith('/api/v1/resources?');
+const isTeams = (url: string) => url === '/api/v1/teams';
+const PLATFORM = {
+  id: '0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7c01',
+  name: 'Platform',
+  nameTranslations: { en: 'Platform', fr: 'Plateforme' },
+  memberCount: 2,
+  version: 1,
+};
 const isLinkable = (url: string) => url.startsWith('/api/v1/resources/linkable-accounts');
 
 describe('ResourcesPage', () => {
-  async function open(first = page([BOB, CAMILLE, RUST])) {
+  async function open(first = page([BOB, CAMILLE, RUST]), teams: object[] = [PLATFORM]) {
     const kit = setup();
     const fixture = TestBed.createComponent(ResourcesPage);
     await kit.settle();
     const request = await kit.reply(isList, first);
+    await kit.reply(isTeams, { items: teams, canManage: true });
     const rows = () => Array.from(kit.root().querySelectorAll('tr[mat-row]'));
     return { ...kit, fixture, request, rows };
   }
@@ -215,6 +228,18 @@ describe('ResourcesPage', () => {
     expect(root().querySelector('ui-empty-state')?.textContent).toContain('No resource matches');
   });
 
+  it('filters by team, the filter shown only when the tenant has teams', async () => {
+    const { root, reply, click, rows } = await open(page([BOB, CAMILLE]));
+    await click(root().querySelector('.team mat-select .mat-mdc-select-trigger'));
+    await click(Array.from(root().querySelectorAll('mat-option')).find((o) => o.textContent?.includes('Platform')) ?? null);
+    const filtered = await reply(isList, page([CAMILLE]));
+    expect(filtered.request.params.get('team')).toBe(PLATFORM.id);
+    expect(rows().length).toBe(1);
+    TestBed.resetTestingModule();
+    const empty = await open(page([BOB]), []);
+    expect(empty.root().querySelector('.team')).toBeNull();
+  });
+
   it('says when there is no resource yet, and when the list cannot be read', async () => {
     const { root } = await open(page([]));
     expect(root().querySelector('ui-empty-state')?.textContent).toContain('No resource yet');
@@ -223,6 +248,7 @@ describe('ResourcesPage', () => {
     TestBed.createComponent(ResourcesPage);
     await kit.settle();
     await kit.reply(isList, problem(500, 'internal'), 500);
+    await kit.reply(isTeams, { items: [], canManage: false });
     expect(kit.root().querySelector('ui-error-state')).not.toBeNull();
   });
 
@@ -340,17 +366,21 @@ describe('ResourcePage', () => {
   });
 
   it('shows the resource, editable by a resource manager', async () => {
-    const { root, text, click, reply, fixture, dialog } = await open('resource_manager', { body: CAMILLE });
+    const { root, text, click, reply, fixture, dialog } = await open('resource_manager', {
+      body: { ...CAMILLE, teams: [{ id: PLATFORM.id, name: 'Platform' }] },
+    });
     expect(text(root().querySelector('h1'))).toBe('Camille Martin');
     const chips = () => Array.from(root().querySelectorAll('.chips > *')).map((chip) => text(chip));
     expect(chips()).toEqual(['Resource type: Person · linked account', 'Dev back', 'Status: Active']);
     expect(Array.from(root().querySelectorAll('.details dd')).map((dd) => text(dd))).toEqual([
       'Person · linked account',
       'Linked to the member’s account',
+      'Platform',
       'Dev back',
       'Active',
     ]);
     expect(root().querySelector('.breadcrumb a')?.getAttribute('href')).toBe('/workload/resources');
+    expect(root().querySelector('.details .teams a')?.getAttribute('href')).toBe(`/workload/teams/${PLATFORM.id}`);
     expect(await axeViolations(fixture.nativeElement)).toEqual([]);
 
     await click(root().querySelector('button.edit'));
@@ -372,6 +402,7 @@ describe('ResourcePage', () => {
       'Status: Inactive',
     ]);
     expect(text(root().querySelectorAll('.details dd')[1])).toBe('Former member: unlinked when they left the organization');
+    expect(text(root().querySelector('.details .teams'))).toBe('No team');
   });
 
   it('tells when the resource cannot be found', async () => {
