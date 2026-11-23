@@ -12,6 +12,10 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
   - A new organization role, **Resource manager**, manages resources as the organization admin does; every internal member reads them.
   - The **Workload** menu opens on the resources (filters by kind and status, search, pages), with a dialog to create and edit them and a page per resource.
   - `/api/v1/resources` (list, create, read, change) and `GET /api/v1/resources/linkable-accounts`. `TenantRole` gains `resource_manager`.
+- **Teams** (#198)
+  - Teams group resources for views and filters; a resource may belong to several teams, and leaving one keeps its assignments. A team has a translatable name, unique in the organization, and an optional description. Organization admins and resource managers manage them; every internal member reads them.
+  - The **Workload** screen has two tabs, Resources and Teams. The resource list filters by team, a resource's page lists its teams, and each team has a page where its resources are added (found by name) and removed.
+  - `/api/v1/teams` (list, create, read, change, delete) and `PUT`/`DELETE /api/v1/teams/{id}/members/{resourceId}`; `GET /api/v1/resources?team=`. A resource now tells its `teams`.
 
 ## [0.6.0] - 2026-11-19
 

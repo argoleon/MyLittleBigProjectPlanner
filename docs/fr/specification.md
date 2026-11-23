@@ -268,7 +268,7 @@ Une ressource peut cumuler plusieurs tâches sur une même journée tant que la 
   - **Équipement, salle, objet** : après le MVP, avec les mêmes mécanismes de capacité et d'affectation.
 - Un membre interne est lié à une seule ressource du tenant, qui affiche son nom. S'il quitte le tenant, sa ressource reste, déliée et désactivée, sous le nom qu'elle portait (son pseudonyme s'il est effacé). Les ressources ne sont jamais supprimées, seulement désactivées.
 - L'admin du tenant et les gestionnaires de ressources les gèrent ; tous les membres internes les consultent.
-- Les équipes regroupent des ressources pour les vues et les filtres. On affecte toujours une ressource, jamais une équipe.
+- Les équipes regroupent des ressources pour les vues et les filtres. On affecte toujours une ressource, jamais une équipe. Une ressource peut appartenir à plusieurs équipes ; le nom d'une équipe est traduisible et unique dans le tenant. Une équipe n'a pas de responsable : l'admin du tenant et les gestionnaires de ressources gèrent les équipes.
 
 **Capacité**
 
