@@ -274,7 +274,8 @@ Une ressource peut cumuler plusieurs tâches sur une même journée tant que la 
 
 - Modèle hebdomadaire : heures par jour de semaine (par exemple lundi 7 h, …, vendredi 3,5 h), ce qui couvre le temps partiel.
 - Historisée avec des dates d'effet (passage à 80 % au 1er mars).
-- Valeur par défaut définie par tenant, par exemple 7 h × 5 jours.
+- Valeur par défaut définie par tenant, par exemple 7 h × 5 jours ; l'admin du tenant la modifie, avec la tolérance et le mode de surcharge. Elle s'applique telle quelle (jamais copiée) aux ressources sans période et aux jours qui précèdent leur première période.
+- Une période par ressource et par date d'effet, avec un libellé facultatif (« Temps partiel 80 % ») ; une période qui commence après aujourd'hui est signalée comme planifiée. Les durées sont stockées en minutes.
 - Capacité d'un jour = modèle hebdomadaire, moins les jours fériés du site, moins les absences.
 - La capacité est la charge maximale journalière. Une tolérance de dépassement est configurable par tenant (0 % par défaut).
 
