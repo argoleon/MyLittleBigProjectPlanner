@@ -41,8 +41,8 @@ test('sign in, sign out, reset the password from the email, sign in again', asyn
   await page.getByRole('button', { name: /^Account: / }).click();
   await page.getByRole('menuitem', { name: 'Sign out' }).click();
   await expect(page).toHaveURL(/\/sign-in$/);
-  await page.goto('/workload');
-  await expect(page).toHaveURL(/\/sign-in\?returnUrl=%2Fworkload$/);
+  await page.goto('/portals');
+  await expect(page).toHaveURL(/\/sign-in\?returnUrl=%2Fportals$/);
 
   // Ask for a reset link.
   await page.getByRole('link', { name: 'Forgot your password?' }).click();

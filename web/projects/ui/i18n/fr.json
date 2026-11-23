@@ -11,6 +11,7 @@
     "role": {
       "member": "Membre",
       "configuration_admin": "Admin de configuration",
+      "resource_manager": "Gestionnaire de ressources",
       "tenant_admin": "Admin de l’organisation"
     },
     "language": "Langue : {{ language }}",
@@ -437,7 +438,9 @@
       "self": "Un ticket ne peut pas être lié à lui-même.",
       "cycle": "Ce ticket est rattaché sous celui que vous modifiez.",
       "immutable": "Cette valeur ne peut pas être modifiée.",
-      "order_by_not_allowed": "Un filtre rapide ne trie pas : retirez ORDER BY."
+      "order_by_not_allowed": "Un filtre rapide ne trie pas : retirez ORDER BY.",
+      "person_only": "Seule une personne est liée à un compte.",
+      "not_internal_member": "Pas un membre interne de l’organisation."
     },
     "invitation": {
       "invalid": "Ce lien d’invitation est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
@@ -538,6 +541,9 @@
     },
     "bulk": {
       "too_many": "Plus de tickets qu’une action groupée n’en prend (10 000)."
+    },
+    "resource": {
+      "account_taken": "Ce membre est déjà lié à une autre ressource."
     }
   },
   "dialog": {
@@ -2121,6 +2127,87 @@
       "tickets": "{{ count }} tickets se déplacent (leurs sous-tâches les suivent).",
       "subtasksAlone": "{{ count }} sous-tâches sélectionnées sans leur parent restent où elles sont.",
       "confirm": "Déplacer {{ count }} tickets"
+    }
+  },
+  "resource": {
+    "holding": {
+      "label": "Type de ressource :",
+      "linked": "Personne · compte lié",
+      "person": "Personne",
+      "former": "Ancien membre",
+      "generic": "Ressource générique"
+    },
+    "state": {
+      "label": "Statut :",
+      "active": "Active",
+      "inactive": "Inactive"
+    }
+  },
+  "resources": {
+    "title": "Ressources",
+    "breadcrumb": "Emplacement",
+    "loading": "Chargement des ressources…",
+    "search": "Rechercher",
+    "searchPlaceholder": "Nom ou fonction",
+    "kinds": "Types de ressource",
+    "states": "Statuts",
+    "kind": {
+      "person": "Personnes",
+      "generic": "Génériques"
+    },
+    "state": {
+      "active": "Actives",
+      "inactive": "Inactives"
+    },
+    "new": "Nouvelle ressource",
+    "caption": "Ressources de l’organisation",
+    "columns": {
+      "name": "Ressource",
+      "holding": "Type",
+      "status": "Statut",
+      "actions": "Actions"
+    },
+    "empty": "Aucune ressource",
+    "emptyHint": "Ajoutez les personnes et les rôles génériques sur lesquels planifier le travail.",
+    "noMatch": "Aucune ressource ne correspond",
+    "noMatchHint": "Modifiez la recherche ou les filtres.",
+    "more": "Afficher plus",
+    "editOf": "Modifier {{ name }}",
+    "created": "{{ name }} a été créée.",
+    "saved": "{{ name }} a été enregistrée.",
+    "dialog": {
+      "createTitle": "Nouvelle ressource",
+      "editTitle": "Modifier {{ name }}",
+      "kind": "Type",
+      "person": "Personne",
+      "generic": "Ressource générique",
+      "personHint": "Quelqu’un, avec ou sans compte : un sous-traitant qui ne se connecte jamais n’en a pas.",
+      "genericHint": "Un rôle non nominatif, comme « Développeur Rust », remplacé plus tard par une personne.",
+      "account": "Compte lié",
+      "noAccount": "Aucun compte",
+      "accountHint": "La ressource affiche le nom du membre.",
+      "accountSearchHint": "Cherchez un membre par nom ou e-mail ; laissez vide pour une personne sans compte.",
+      "clearAccount": "Retirer le compte lié",
+      "name": "Nom",
+      "role": "Rôle",
+      "jobTitle": "Fonction",
+      "active": "Active",
+      "activeHint": "Une ressource inactive n’est plus proposée pour de nouvelles affectations.",
+      "create": "Créer",
+      "save": "Enregistrer"
+    },
+    "page": {
+      "details": "Informations",
+      "kind": "Type",
+      "jobTitle": "Fonction",
+      "account": "Compte",
+      "linked": "Liée au compte du membre",
+      "person": "Sans compte : ne se connecte jamais",
+      "former": "Ancien membre : déliée à son départ de l’organisation",
+      "generic": "Rôle générique, sans compte",
+      "status": "Statut",
+      "edit": "Modifier",
+      "next": "La capacité hebdomadaire, le calendrier et les absences apparaîtront ici."
     }
   }
 }

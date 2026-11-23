@@ -42,6 +42,7 @@ export * from './lib/shell/account-menu';
 export * from './lib/components/status-chip';
 export * from './lib/components/type-chip';
 export * from './lib/components/member-chips';
+export * from './lib/components/resource-chips';
 export * from './lib/components/node-chips';
 export * from './lib/components/role-chip';
 export * from './lib/components/confirm-dialog';

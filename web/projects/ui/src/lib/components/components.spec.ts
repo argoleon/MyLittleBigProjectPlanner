@@ -12,6 +12,7 @@ import { ErrorState } from './error-state';
 import { LoadingState } from './loading-state';
 import { AccountTypeChip, MemberStatusChip } from './member-chips';
 import { HealthChip, NodeTypeChip } from './node-chips';
+import { ResourceKindChip, ResourceStateChip, resourceHolding } from './resource-chips';
 import { RoleChip } from './role-chip';
 import { StatusChip } from './status-chip';
 import { TypeChip } from './type-chip';
@@ -106,6 +107,26 @@ describe('AccountTypeChip and MemberStatusChip', () => {
     expect(text(status)).toBe('Status: Invitation sent');
     expect((status.nativeElement as HTMLElement).querySelector('.chip')?.getAttribute('data-state')).toBe('invited');
     expect(await axeViolations(status.nativeElement)).toEqual([]);
+  });
+});
+
+describe('ResourceKindChip and ResourceStateChip', () => {
+  it('tell how a resource is held', () => {
+    expect(resourceHolding({ kind: 'person', accountId: 'a1', formerMember: false })).toBe('linked');
+    expect(resourceHolding({ kind: 'person', accountId: null, formerMember: false })).toBe('person');
+    expect(resourceHolding({ kind: 'person', accountId: null, formerMember: true })).toBe('former');
+    expect(resourceHolding({ kind: 'generic', accountId: null, formerMember: false })).toBe('generic');
+  });
+
+  it('name the kind and the state, prefixed for screen readers', async () => {
+    const kind = await render(ResourceKindChip, { holding: 'linked' });
+    expect(text(kind)).toBe('Resource type: Person · linked account');
+    expect((kind.nativeElement as HTMLElement).querySelector('.chip')?.getAttribute('data-holding')).toBe('linked');
+    expect(await axeViolations(kind.nativeElement)).toEqual([]);
+    TestBed.resetTestingModule();
+    const state = await render(ResourceStateChip, { active: false });
+    expect(text(state)).toBe('Status: Inactive');
+    expect(await axeViolations(state.nativeElement)).toEqual([]);
   });
 });
 

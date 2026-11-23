@@ -65,15 +65,15 @@ test('enable two-step verification, then sign in with a code and with a backup c
   await expect(page).toHaveURL(/\/sign-in\/verify$/);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Two-step verification');
   expect(await accessibilityViolations(page), 'code step').toEqual([]);
-  await page.goto('/workload');
-  await expect(page).toHaveURL(/\/sign-in\/verify\?returnUrl=%2Fworkload$/, { timeout: 10_000 });
+  await page.goto('/portals');
+  await expect(page).toHaveURL(/\/sign-in\/verify\?returnUrl=%2Fportals$/, { timeout: 10_000 });
   // The enrollment used the current step: the app's next code.
   let code = totp(secret, 1);
   if (code === enrollmentCode) code = totp(secret, 2);
   await page.getByLabel('6-digit code').fill(code);
   await page.getByRole('button', { name: 'Verify' }).click();
-  await expect(page).toHaveURL(/\/workload$/);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Workload');
+  await expect(page).toHaveURL(/\/portals$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Portals');
   await signOut(page);
 
   // A backup code, once.
