@@ -113,7 +113,7 @@ async fn a_tenant_admin_creates_persons_with_or_without_account_and_generic_reso
         linked,
         json!({
             "id": linked["id"], "kind": "person", "displayName": "Camille Martin", "jobTitle": "Dev back",
-            "accountId": camille, "formerMember": false, "active": true, "version": 1
+            "accountId": camille, "formerMember": false, "active": true, "teams": [], "version": 1
         })
     );
 

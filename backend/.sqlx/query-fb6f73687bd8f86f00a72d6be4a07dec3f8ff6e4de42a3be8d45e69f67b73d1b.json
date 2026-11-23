@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT EXISTS (SELECT 1 FROM team WHERE id = $1) AS \"team!\",\n               EXISTS (SELECT 1 FROM resource WHERE id = $2) AS \"resource!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "team!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "resource!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "fb6f73687bd8f86f00a72d6be4a07dec3f8ff6e4de42a3be8d45e69f67b73d1b"
+}

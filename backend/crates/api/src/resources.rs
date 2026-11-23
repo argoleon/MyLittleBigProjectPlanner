@@ -18,10 +18,12 @@ use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
 use crate::etag::{etag, if_none_match, require_if_match};
-use crate::extract::{ApiJson, ApiPath, ApiQuery};
+use crate::extract::{AcceptLanguage, ApiJson, ApiPath, ApiQuery};
 use crate::idempotency::{self, Start};
 use crate::pagination::{DEFAULT_LIMIT, MAX_LIMIT};
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
+use crate::roles::Language;
+use crate::teams::{TeamRefView, teams_of};
 use crate::tenant::TenantTx;
 
 /// OpenAPI tag of resources.
@@ -89,12 +91,14 @@ pub struct ResourceView {
     former_member: bool,
     /// Offered for new assignments.
     active: bool,
+    /// The teams it belongs to, by name in the language of the request.
+    teams: Vec<TeamRefView>,
     #[schema(example = 1)]
     version: i64,
 }
 
-impl From<Resource> for ResourceView {
-    fn from(resource: Resource) -> Self {
+impl ResourceView {
+    fn new(resource: Resource, teams: Vec<TeamRefView>) -> Self {
         Self {
             id: resource.id,
             kind: resource.kind.into(),
@@ -103,9 +107,39 @@ impl From<Resource> for ResourceView {
             account_id: resource.account_id,
             former_member: resource.former_member,
             active: resource.active,
+            teams,
             version: resource.version,
         }
     }
+}
+
+/// The views of `resources`, with their teams.
+async fn views(
+    tx: &mut TenantTx,
+    language: &Language,
+    resources: Vec<Resource>,
+) -> Result<Vec<ResourceView>, Problem> {
+    let ids: Vec<Uuid> = resources.iter().map(|r| r.id).collect();
+    let mut teams = teams_of(tx, language, &ids).await?;
+    Ok(resources
+        .into_iter()
+        .map(|r| {
+            let of_resource = teams.remove(&r.id).unwrap_or_default();
+            ResourceView::new(r, of_resource)
+        })
+        .collect())
+}
+
+async fn view_of(
+    tx: &mut TenantTx,
+    language: &Language,
+    resource: Resource,
+) -> Result<ResourceView, Problem> {
+    let teams = teams_of(tx, language, &[resource.id])
+        .await?
+        .remove(&resource.id)
+        .unwrap_or_default();
+    Ok(ResourceView::new(resource, teams))
 }
 
 /// A page of resources.
@@ -120,7 +154,7 @@ pub struct ResourcePage {
     can_manage: bool,
 }
 
-/// `?kind=&active=&search=&limit=&cursor=` of the resource list.
+/// `?kind=&active=&search=&team=&limit=&cursor=` of the resource list.
 #[derive(Debug, Default, Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
 #[serde(rename_all = "camelCase")]
@@ -132,6 +166,8 @@ pub struct ResourceListParams {
     pub active: Option<bool>,
     /// Part of the name or job title, any case.
     pub search: Option<String>,
+    /// Only the members of this team.
+    pub team: Option<Uuid>,
     /// Page size, from 1 to 200 (default 50).
     #[param(minimum = 1, maximum = 200)]
     pub limit: Option<usize>,
@@ -258,17 +294,23 @@ fn with_etag(mut response: Response, version: i64) -> Response {
     operation_id = "listResources",
     summary = "List the resources of the tenant",
     description = "Any internal member. By name; follow `nextCursor` until it is `null`.",
-    params(ResourceListParams),
+    params(
+        ResourceListParams,
+        ("Accept-Language" = Option<String>, Header, description = "Language of the team names"),
+    ),
     responses(
-        (status = 200, description = "A page of resources", body = ResourcePage),
+        (status = 200, description = "A page of resources", body = ResourcePage, headers(
+            ("Content-Language" = String, description = "Language of the team names"),
+        )),
         (status = 400, description = "`invalid_query`: bad `limit`, `cursor` or `kind`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
     )
 )]
 pub async fn list(
     mut tx: TenantTx,
+    accept: AcceptLanguage,
     ApiQuery(params): ApiQuery<ResourceListParams>,
-) -> Result<ApiJson<ResourcePage>, Problem> {
+) -> Result<Response, Problem> {
     let limit = params.limit.unwrap_or(DEFAULT_LIMIT);
     if !(1..=MAX_LIMIT).contains(&limit) {
         return Err(Problem::new(ErrorCode::InvalidQuery).with_detail(format!("limit: 1 to {MAX_LIMIT}")));
@@ -283,15 +325,21 @@ pub async fn list(
         kind: params.kind.map(Kind::from),
         active: params.active,
         search: trimmed(params.search.as_deref()),
+        team: params.team,
     };
     let page = repo::list(&mut tx, &filter, after.as_ref(), limit).await?;
     let can_manage = manages_resources(tx.member().tenant_role);
+    let language = Language::of(&tx, &accept);
+    let items = views(&mut tx, &language, page.items).await?;
     tx.commit().await?;
-    Ok(ApiJson(ResourcePage {
-        items: page.items.into_iter().map(ResourceView::from).collect(),
+    let mut response = ApiJson(ResourcePage {
+        items,
         next_cursor: page.next.as_ref().map(encode_cursor),
         can_manage,
-    }))
+    })
+    .into_response();
+    language.headers(&mut response);
+    Ok(response)
 }
 
 /// `POST /api/v1/resources`: idempotent with `Idempotency-Key`.
@@ -305,6 +353,7 @@ pub async fn list(
                    member's name; one member is linked to one resource at most.",
     params(
         ("Idempotency-Key" = Option<String>, Header, description = "Unique key of this creation, 1 to 255 visible ASCII characters"),
+        ("Accept-Language" = Option<String>, Header, description = "Language of the team names"),
     ),
     request_body = ResourceBody,
     responses(
@@ -325,6 +374,7 @@ pub async fn list(
 pub async fn create(
     mut tx: TenantTx,
     headers: HeaderMap,
+    accept: AcceptLanguage,
     ApiJson(body): ApiJson<ResourceBody>,
 ) -> Result<Response, Problem> {
     require_manager(&tx)?;
@@ -340,7 +390,8 @@ pub async fn create(
     tracing::info!(target: "audit", actor = %actor, resource = %resource.id, kind = resource.kind.as_str(),
                    account = ?resource.account_id, "resource created");
     let (id, version) = (resource.id, resource.version);
-    let view = ResourceView::from(resource);
+    let language = Language::of(&tx, &accept);
+    let view = view_of(&mut tx, &language, resource).await?;
     let response =
         idempotency::created(&mut tx, key.as_deref(), &view, format!("{PATH}/{id}"), version).await?;
     tx.commit().await?;
@@ -358,6 +409,7 @@ pub async fn create(
     params(
         ("id" = Uuid, Path, description = "Id of the resource"),
         ("If-None-Match" = Option<String>, Header, description = "ETag already held: 304 if still current"),
+        ("Accept-Language" = Option<String>, Header, description = "Language of the team names"),
     ),
     responses(
         (status = 200, description = "The resource", body = ResourceView, headers(
@@ -371,20 +423,23 @@ pub async fn create(
 pub async fn read(
     mut tx: TenantTx,
     headers: HeaderMap,
+    accept: AcceptLanguage,
     ApiPath(id): ApiPath<Uuid>,
 ) -> Result<Response, Problem> {
     let resource = repo::find(&mut tx, id)
         .await?
         .ok_or_else(|| Problem::new(ErrorCode::NotFound))?;
-    tx.commit().await?;
     let version = resource.version;
-    if if_none_match(&headers, version) {
-        return Ok(with_etag(StatusCode::NOT_MODIFIED.into_response(), version));
-    }
-    Ok(with_etag(
-        ApiJson(ResourceView::from(resource)).into_response(),
-        version,
-    ))
+    let language = Language::of(&tx, &accept);
+    let view = view_of(&mut tx, &language, resource).await?;
+    tx.commit().await?;
+    let mut response = if if_none_match(&headers, version) {
+        StatusCode::NOT_MODIFIED.into_response()
+    } else {
+        ApiJson(view).into_response()
+    };
+    language.headers(&mut response);
+    Ok(with_etag(response, version))
 }
 
 /// `PUT /api/v1/resources/{id}`: requires `If-Match`.
@@ -400,6 +455,7 @@ pub async fn read(
     params(
         ("id" = Uuid, Path, description = "Id of the resource"),
         ("If-Match" = String, Header, description = "ETag of the version being replaced, or `*`"),
+        ("Accept-Language" = Option<String>, Header, description = "Language of the team names"),
     ),
     request_body = ResourceBody,
     responses(
@@ -418,6 +474,7 @@ pub async fn read(
 pub async fn update(
     mut tx: TenantTx,
     headers: HeaderMap,
+    accept: AcceptLanguage,
     ApiPath(id): ApiPath<Uuid>,
     ApiJson(body): ApiJson<ResourceBody>,
 ) -> Result<Response, Problem> {
@@ -431,11 +488,12 @@ pub async fn update(
     tracing::info!(target: "audit", actor = %actor, resource = %id, active = resource.active,
                    account = ?resource.account_id, "resource changed");
     let version = resource.version;
+    let language = Language::of(&tx, &accept);
+    let view = view_of(&mut tx, &language, resource).await?;
     tx.commit().await?;
-    Ok(with_etag(
-        ApiJson(ResourceView::from(resource)).into_response(),
-        version,
-    ))
+    let mut response = ApiJson(view).into_response();
+    language.headers(&mut response);
+    Ok(with_etag(response, version))
 }
 
 /// `GET /api/v1/resources/linkable-accounts`.

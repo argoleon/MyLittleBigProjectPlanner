@@ -61,6 +61,7 @@ pub mod search;
 pub mod sessions;
 pub mod shutdown;
 pub mod storage;
+pub mod teams;
 pub mod telemetry;
 pub mod tenant_switch;
 pub mod tickets;

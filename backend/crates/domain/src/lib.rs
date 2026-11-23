@@ -37,6 +37,7 @@ pub mod resources;
 pub mod rich_text;
 pub mod saved_filters;
 pub mod screens;
+pub mod teams;
 pub mod tenancy;
 pub mod tenant;
 pub mod text_search;

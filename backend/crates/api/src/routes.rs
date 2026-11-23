@@ -56,6 +56,7 @@ use crate::saved_filters;
 use crate::screens;
 use crate::search;
 use crate::sso;
+use crate::teams;
 use crate::tenant::{AppState, PublicTenantTx};
 use crate::transition_rules;
 use crate::workflows;
@@ -212,6 +213,9 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(resources::list, resources::create))
         .routes(routes!(resources::linkable_accounts))
         .routes(routes!(resources::read, resources::update))
+        .routes(routes!(teams::list, teams::create))
+        .routes(routes!(teams::read, teams::update, teams::delete))
+        .routes(routes!(teams::add_member, teams::remove_member))
         .routes(routes!(saved_filters::list, saved_filters::create))
         .routes(routes!(saved_filters::share_groups))
         .routes(routes!(

@@ -21,6 +21,11 @@ export interface UpdateResource$Params {
  * ETag of the version being replaced, or `*`
  */
   'If-Match': string;
+
+/**
+ * Language of the team names
+ */
+  'Accept-Language'?: (string | null);
       body: ResourceFields
 }
 
@@ -29,6 +34,7 @@ export function updateResource(http: HttpClient, rootUrl: string, params: Update
   if (params) {
     rb.path('id', params.id, {});
     rb.header('If-Match', params['If-Match'], {});
+    rb.header('Accept-Language', params['Accept-Language'], {});
     rb.body(params.body, 'application/json');
   }
 
