@@ -89,7 +89,7 @@ async function grantReader(admin: Page, node: string, email: string) {
   const access = admin.getByRole('region', { name: 'Effective access' });
   await access.getByRole('button', { name: 'Add a role' }).click();
   const dialog = admin.getByRole('dialog', { name: `Grant a role on ${node}` });
-  await dialog.getByLabel('Member or group').fill(email);
+  await dialog.getByRole('combobox', { name: 'Member or group' }).fill(email);
   await admin.getByRole('option', { name: email }).click();
   await dialog.getByRole('combobox', { name: 'Role' }).click();
   await admin.getByRole('option', { name: 'Reader', exact: true }).click();
