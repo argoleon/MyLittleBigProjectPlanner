@@ -1,0 +1,116 @@
+<nav class="breadcrumb" [attr.aria-label]="'resources.breadcrumb' | transloco">
+  <span>{{ 'nav.workload' | transloco }}</span>
+  <mat-icon aria-hidden="true">chevron_right</mat-icon>
+  <a routerLink="/workload/calendars">{{ 'calendars.title' | transloco }}</a>
+</nav>
+
+@if (current.error()) {
+  <ui-error-state [error]="current.error()" (retry)="current.reload()" />
+} @else if (current.hasValue()) {
+  @let calendar = current.value();
+  <div class="header">
+    <div class="identity">
+      <h1 class="title">{{ calendar.name }}</h1>
+      <p class="subtitle">
+        {{ 'calendars.kindOf.' + calendar.kind | transloco }} ·
+        {{ 'calendars.sets.' + (calendar.holidaySet ?? 'inherit') | transloco }}
+      </p>
+    </div>
+    @if (canManage()) {
+      <div class="actions-bar">
+        <button matButton="outlined" type="button" id="calendar-edit" (click)="editCalendar(calendar)">
+          <mat-icon aria-hidden="true">edit</mat-icon>
+          {{ 'calendars.edit' | transloco }}
+        </button>
+        <button matButton="filled" type="button" id="exception-add" (click)="add()">
+          <mat-icon aria-hidden="true">add</mat-icon>
+          {{ 'calendars.exception.add' | transloco }}
+        </button>
+      </div>
+    }
+  </div>
+
+  @if (notice(); as notice) {
+    <p class="message" [class.info]="notice.ok" [class.error]="!notice.ok" [attr.role]="notice.ok ? 'status' : 'alert'">
+      {{ notice.messageKey | transloco }}
+    </p>
+  }
+
+  <section class="card" aria-labelledby="calendar-year">
+    <div class="year-bar">
+      <button matIconButton type="button" class="previous" [attr.aria-label]="'calendars.previousYear' | transloco" (click)="year.set(year() - 1)">
+        <mat-icon aria-hidden="true">chevron_left</mat-icon>
+      </button>
+      <h2 class="year" id="calendar-year" aria-live="polite">{{ year() }}</h2>
+      <button matIconButton type="button" class="next" [attr.aria-label]="'calendars.nextYear' | transloco" (click)="year.set(year() + 1)">
+        <mat-icon aria-hidden="true">chevron_right</mat-icon>
+      </button>
+    </div>
+    @if (days.hasValue() && days.value().inherited) {
+      <p class="subtitle">{{ 'calendars.inherited' | transloco }}</p>
+    }
+    @if (days.error()) {
+      <ui-error-state [error]="days.error()" [headingLevel]="3" (retry)="days.reload()" />
+    } @else if (!days.hasValue()) {
+      <mat-progress-bar mode="indeterminate" [attr.aria-label]="'calendars.loading' | transloco" />
+    } @else {
+      <div class="table-wrap">
+        <table mat-table [dataSource]="rows()" [trackBy]="trackRow" class="table">
+          <caption class="cdk-visually-hidden">{{ 'calendars.yearCaption' | transloco: { year: year() } }}</caption>
+
+          <ng-container matColumnDef="day">
+            <th mat-header-cell *matHeaderCellDef scope="col">{{ 'calendars.columns.day' | transloco }}</th>
+            <td mat-cell *matCellDef="let row" class="day">{{ row.day | localDate: { weekday: 'short', day: 'numeric', month: 'long' } }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="kind">
+            <th mat-header-cell *matHeaderCellDef scope="col">{{ 'calendars.columns.kind' | transloco }}</th>
+            <td mat-cell *matCellDef="let row">
+              <span class="chip" [attr.data-kind]="row.kind">{{ 'calendars.kinds.' + (row.kind === 'set' ? 'set' : row.kind) | transloco }}</span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="label">
+            <th mat-header-cell *matHeaderCellDef scope="col">{{ 'calendars.columns.label' | transloco }}</th>
+            <td mat-cell *matCellDef="let row">
+              {{ row.holiday ? ('calendars.holidays.' + row.holiday | transloco) : (row.exception?.label ?? '') }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef scope="col">
+              <span class="cdk-visually-hidden">{{ 'calendars.columns.actions' | transloco }}</span>
+            </th>
+            <td mat-cell *matCellDef="let row" class="actions">
+              @if (row.exception; as exception) {
+                <button
+                  matIconButton
+                  type="button"
+                  [id]="actionsId(exception, 'edit')"
+                  [attr.aria-label]="'calendars.exception.editOf' | transloco: { day: (exception.day | localDate) }"
+                  (click)="edit(exception)"
+                >
+                  <mat-icon aria-hidden="true">edit</mat-icon>
+                </button>
+                <button
+                  matIconButton
+                  type="button"
+                  [id]="actionsId(exception, 'delete')"
+                  [attr.aria-label]="'calendars.exception.deleteOf' | transloco: { day: (exception.day | localDate) }"
+                  (click)="remove(exception)"
+                >
+                  <mat-icon aria-hidden="true">delete</mat-icon>
+                </button>
+              }
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="columns()"></tr>
+          <tr mat-row *matRowDef="let row; columns: columns()"></tr>
+        </table>
+      </div>
+    }
+  </section>
+} @else {
+  <ui-loading-state [label]="'calendars.loading' | transloco" />
+}

@@ -26,6 +26,7 @@ const CAMILLE: Resource = {
   formerMember: false,
   active: true,
   teams: [],
+  site: null,
   version: 2,
 };
 const BOB: Resource = {
@@ -81,13 +82,15 @@ describe('resourceBody', () => {
       displayName: null,
       jobTitle: 'Dev back',
       active: true,
+      calendarId: null,
     });
-    expect(resourceBody('person', null, ' Bob ', '', false)).toEqual({
+    expect(resourceBody('person', null, ' Bob ', '', false, 'paris')).toEqual({
       kind: 'person',
       accountId: null,
       displayName: 'Bob',
       jobTitle: null,
       active: false,
+      calendarId: 'paris',
     });
     // A generic resource is never linked.
     expect(resourceBody('generic', camille, 'Rust developer', '', true).accountId).toBeNull();
@@ -154,6 +157,11 @@ const PLATFORM = {
   version: 1,
 };
 const isLinkable = (url: string) => url.startsWith('/api/v1/resources/linkable-accounts');
+const isCalendars = (url: string) => url === '/api/v1/calendars';
+const CALENDARS = {
+  items: [{ id: 'paris', kind: 'site', name: 'Paris', nameTranslations: { fr: 'Paris' }, holidaySet: null, resourceCount: 1, version: 1 }],
+  canManage: true,
+};
 
 describe('ResourcesPage', () => {
   async function open(first = page([BOB, CAMILLE, RUST]), teams: object[] = [PLATFORM]) {
@@ -255,6 +263,7 @@ describe('ResourcesPage', () => {
   it('creates a person linked to a member found by name', async () => {
     const { root, reply, click, type, text, http, dialog } = await open(page([BOB]));
     await click(root().querySelector('button.new'));
+    await reply(isCalendars, CALENDARS);
     await reply(isLinkable, [{ accountId: 'a1', displayName: 'Camille Martin', email: 'camille@acme.example' }]);
     expect(await axeViolations(dialog())).toEqual([]);
 
@@ -277,6 +286,7 @@ describe('ResourcesPage', () => {
       displayName: null,
       jobTitle: 'Dev back',
       active: true,
+      calendarId: null,
     });
     await reply(isList, page([BOB, CAMILLE]));
     expect(text(root().querySelector('[role="status"]'))).toBe('Camille Martin was created.');
@@ -286,6 +296,7 @@ describe('ResourcesPage', () => {
   it('creates a generic resource, and shows why one is refused', async () => {
     const { root, reply, click, type, text, dialog } = await open(page([]));
     await click(root().querySelector('button.new'));
+    await reply(isCalendars, CALENDARS);
     await reply(isLinkable, []);
     await click(root().querySelector('mat-button-toggle[value="generic"] button'));
     expect(root().querySelector('input.account-input')).toBeNull();
@@ -307,6 +318,7 @@ describe('ResourcesPage', () => {
   it('edits a resource with its version, and tells when the member is linked already', async () => {
     const { root, reply, click, text, http, dialog } = await open(page([BOB]));
     await click(root().querySelector('td button'));
+    await reply(isCalendars, CALENDARS);
     await reply(isLinkable, [{ accountId: 'a1', displayName: 'Camille Martin', email: 'camille@acme.example' }]);
     expect(text(dialog().querySelector('h2'))).toBe('Edit Bob Subcontractor');
     expect((root().querySelector('input[formcontrolname="displayName"]') as HTMLInputElement).value).toBe('Bob Subcontractor');
@@ -316,12 +328,20 @@ describe('ResourcesPage', () => {
     const saved = await reply((url) => url === `/api/v1/resources/${BOB.id}`, { ...BOB, active: false, version: 2 });
     expect(saved.request.method).toBe('PUT');
     expect(saved.request.headers.get('If-Match')).toBe('"1"');
-    expect(saved.request.body).toEqual({ kind: 'person', accountId: null, displayName: 'Bob Subcontractor', jobTitle: null, active: false });
+    expect(saved.request.body).toEqual({
+      kind: 'person',
+      accountId: null,
+      displayName: 'Bob Subcontractor',
+      jobTitle: null,
+      active: false,
+      calendarId: null,
+    });
     await reply(isList, page([]));
     expect(text(root().querySelector('[role="status"]'))).toBe('Bob Subcontractor was saved.');
 
     // A member linked to another resource meanwhile.
     await click(root().querySelector('button.new'));
+    await reply(isCalendars, CALENDARS);
     await reply(isLinkable, [{ accountId: 'a1', displayName: 'Camille Martin', email: 'camille@acme.example' }]);
     const account = root().querySelector('input.account-input') as HTMLInputElement;
     account.dispatchEvent(new Event('focusin'));
@@ -371,7 +391,7 @@ describe('ResourcePage', () => {
     });
     expect(text(root().querySelector('h1'))).toBe('Camille Martin');
     const chips = () => Array.from(root().querySelectorAll('.chips > *')).map((chip) => text(chip));
-    expect(chips()).toEqual(['Resource type: Person · linked account', 'Dev back', 'Status: Active']);
+    expect(chips()).toEqual(['Resource type: Person · linked account', 'Dev back', 'Status: Active', 'Organization calendar']);
     expect(Array.from(root().querySelectorAll('.details dd')).map((dd) => text(dd))).toEqual([
       'Person · linked account',
       'Linked to the member’s account',
@@ -384,6 +404,7 @@ describe('ResourcePage', () => {
     expect(await axeViolations(fixture.nativeElement)).toEqual([]);
 
     await click(root().querySelector('button.edit'));
+    await reply(isCalendars, CALENDARS);
     await reply(isLinkable, []);
     await click(dialog().querySelector('button[type="submit"]'));
     const saved = await reply((url) => url === `/api/v1/resources/${CAMILLE.id}`, { ...CAMILLE, jobTitle: 'Lead dev', version: 3 });
@@ -400,6 +421,7 @@ describe('ResourcePage', () => {
     expect(Array.from(root().querySelectorAll('.chips > *')).map((chip) => text(chip))).toEqual([
       'Resource type: Former member',
       'Status: Inactive',
+      'Organization calendar',
     ]);
     expect(text(root().querySelectorAll('.details dd')[1])).toBe('Former member: unlinked when they left the organization');
     expect(text(root().querySelector('.details .teams'))).toBe('No team');

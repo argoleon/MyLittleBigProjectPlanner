@@ -109,6 +109,11 @@ export const routes: Routes = [
             title: 'teams.title',
             loadComponent: () => import('./teams/teams-page').then((m) => m.TeamsPage),
           },
+          {
+            path: 'calendars',
+            title: 'calendars.title',
+            loadComponent: () => import('./calendars/calendars-page').then((m) => m.CalendarsPage),
+          },
         ],
       },
       {
@@ -122,6 +127,12 @@ export const routes: Routes = [
         path: 'workload/teams/:id',
         title: 'teams.title',
         loadComponent: () => import('./teams/team-page').then((m) => m.TeamPage),
+      },
+      {
+        // A calendar and its year, by its id.
+        path: 'workload/calendars/:id',
+        title: 'calendars.title',
+        loadComponent: () => import('./calendars/calendar-page').then((m) => m.CalendarPage),
       },
       {
         path: 'tickets',
