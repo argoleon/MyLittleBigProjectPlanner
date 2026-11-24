@@ -1,6 +1,7 @@
 //! Technical adapters: configuration, process signals, PostgreSQL, and later
 //! S3 storage, email and Valkey.
 
+pub mod absences;
 pub mod accounts;
 pub mod aggregates;
 pub mod antivirus;

@@ -58,6 +58,9 @@
                     @case ('working') {
                       <span class="tag hours">{{ day.minutes | duration }}</span>
                     }
+                    @case ('absence') {
+                      <span class="tag">{{ 'absences.kinds.' + day.absence?.kind | transloco }}</span>
+                    }
                   }
                   <span class="cdk-visually-hidden">, {{ dayDetail(day) }}</span>
                 </td>
@@ -73,6 +76,7 @@
       <li><span class="swatch" data-look="holiday" aria-hidden="true"></span>{{ 'calendars.look.holiday' | transloco }}</li>
       <li><span class="swatch" data-look="closed" aria-hidden="true"></span>{{ 'calendars.look.closed' | transloco }}</li>
       <li><span class="swatch" data-look="off" aria-hidden="true"></span>{{ 'calendars.look.off' | transloco }}</li>
+      <li><span class="swatch" data-look="absence" aria-hidden="true"></span>{{ 'calendars.look.absence' | transloco }}</li>
       <li><span class="swatch own" aria-hidden="true"></span>{{ 'calendars.ownException' | transloco }}</li>
     </ul>
   }

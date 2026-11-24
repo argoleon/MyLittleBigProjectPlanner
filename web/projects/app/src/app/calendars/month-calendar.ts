@@ -14,6 +14,7 @@ import {
   LocalDatePipe,
   LocaleService,
   ResourceDay,
+  formatDuration,
   deleteResourceException,
   errorTranslationKey,
   formatLocalDate,
@@ -26,13 +27,14 @@ import {
 
 import { ExceptionDialog, ExceptionDialogData } from './exception-dialog';
 
-/** How a day looks: worked, not worked (weekend, 0 h), closed, or a public holiday. */
-export type DayLook = 'working' | 'off' | 'closed' | 'holiday';
+/** How a day looks: worked, not worked (weekend, 0 h), closed, a public holiday, or (partly) absent. */
+export type DayLook = 'working' | 'off' | 'closed' | 'holiday' | 'absence';
 
 /** The look of `day`. */
 export function dayLook(day: ResourceDay): DayLook {
   if (day.status === 'holiday') return 'holiday';
   if (day.status === 'non_working') return 'closed';
+  if (day.absence) return 'absence';
   return day.minutes === 0 ? 'off' : 'working';
 }
 
@@ -130,6 +132,10 @@ export class MonthCalendar {
   protected dayDetail(day: ResourceDay): string {
     const date = formatLocalDate(day.day, this.locale.formattingLocale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     const parts = [date, this.transloco.translate(`calendars.look.${dayLook(day)}`)];
+    if (day.absence) {
+      parts.push(this.transloco.translate(`absences.kinds.${day.absence.kind}`), this.transloco.translate(`absences.parts.${day.absence.part}`));
+      parts.push(formatDuration(day.minutes, this.locale.formattingLocale()));
+    }
     if (day.source === 'resource') parts.push(this.transloco.translate('calendars.ownException'));
     return parts.join(', ');
   }
@@ -214,7 +220,8 @@ export class MonthCalendar {
       });
   }
 
-  private reload(): void {
+  /** Reads the month again: an absence or an exception changed. */
+  reload(): void {
     this.days.reload();
     this.exceptions.reload();
   }

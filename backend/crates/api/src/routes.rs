@@ -17,6 +17,7 @@ use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
+use crate::absences;
 use crate::account;
 use crate::auth;
 use crate::boards;
@@ -215,6 +216,9 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(resources::list, resources::create))
         .routes(routes!(resources::linkable_accounts))
         .routes(routes!(resources::read, resources::update))
+        .routes(routes!(absences::list, absences::create))
+        .routes(routes!(absences::update, absences::delete))
+        .routes(routes!(resources::mine))
         .routes(routes!(calendars::list, calendars::create))
         .routes(routes!(calendars::read, calendars::update, calendars::delete))
         .routes(routes!(calendars::year))

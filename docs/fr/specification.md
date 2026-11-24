@@ -316,6 +316,8 @@ Une affectation relie une ressource à un ticket. Elle se compose d'un ou plusie
 **Absences**
 
 - Saisie dans l'outil (congés, formation, demi-journées), par la personne ou son manager. Après le MVP : circuit de validation, import depuis un SIRH ou Exchange via l'API.
+- Une absence va d'un premier à un dernier jour inclus ; elle peut commencer ou finir à midi. Une demi-journée retire la moitié de la capacité du jour. Les absences d'une ressource ne se chevauchent pas, demi-journée par demi-journée. Types : congé, formation, autre (pas de type « maladie », donnée de santé).
+- La personne liée à la ressource saisit les siennes, l'admin du tenant et les gestionnaires de ressources celles de tous. Tous les membres internes voient les dates et le type ; le commentaire est réservé à la personne et aux gestionnaires, et disparaît si la personne est effacée.
 - Affectation en pourcentage : la charge tombe à 0 sur le jour d'absence, automatiquement.
 - Affectation en heures par jour ou en effort total : les heures tombant sur l'absence deviennent un conflit, signalé au chef de projet (« 7 h à replanifier sur PROJ-42 »). Rien n'est décalé automatiquement.
 

@@ -462,7 +462,8 @@
       "order_by_not_allowed": "Un filtre rapide ne trie pas : retirez ORDER BY.",
       "person_only": "Seule une personne est liée à un compte.",
       "not_internal_member": "Pas un membre interne de l’organisation.",
-      "not_a_site": "Pas un site de l’organisation."
+      "not_a_site": "Pas un site de l’organisation.",
+      "overlap": "Une autre absence occupe cette demi-journée."
     },
     "invitation": {
       "invalid": "Ce lien d’invitation est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
@@ -579,6 +580,9 @@
     },
     "calendar_exception": {
       "day_taken": "Il y a déjà une exception ce jour-là."
+    },
+    "absence": {
+      "overlap": "Une autre absence de la ressource occupe déjà cette demi-journée."
     }
   },
   "dialog": {
@@ -688,7 +692,8 @@
       "mismatch": "Ce n’est pas l’e-mail de votre compte.",
       "purgeComments": "Supprimer aussi mes commentaires",
       "submit": "Supprimer définitivement"
-    }
+    },
+    "myAbsences": "Mes absences"
   },
   "hierarchy": {
     "intro": "Le haut de la hiérarchie : portefeuilles, programmes et projets, avec leurs indicateurs agrégés.",
@@ -2245,7 +2250,6 @@
       "generic": "Rôle générique, sans compte",
       "status": "Statut",
       "edit": "Modifier",
-      "next": "Les absences apparaîtront ici.",
       "teams": "Équipes",
       "noTeam": "Aucune équipe",
       "siteOf": "Site {{ name }}",
@@ -2443,9 +2447,52 @@
       "working": "travaillé",
       "off": "non ouvré",
       "closed": "fermé",
-      "holiday": "jour férié"
+      "holiday": "jour férié",
+      "absence": "absent"
     },
     "ownException": "Exception de la ressource",
     "ownExceptions": "Exceptions de la ressource ce mois-ci"
+  },
+  "absences": {
+    "title": "Absences",
+    "declare": "Déclarer une absence",
+    "loading": "Chargement des absences…",
+    "none": "Aucune absence entre il y a un mois et l’an prochain.",
+    "kinds": {
+      "leave": "Congé",
+      "training": "Formation",
+      "other": "Autre absence"
+    },
+    "parts": {
+      "whole": "journée",
+      "morning": "matin",
+      "afternoon": "après-midi"
+    },
+    "range": "Du {{ from }} au {{ to }}",
+    "fromNoon": "à partir de midi",
+    "toNoon": "jusqu’à midi",
+    "declaredBy": "déclarée par {{ name }}",
+    "editOf": "Modifier l’absence du {{ day }}",
+    "deleteOf": "Supprimer l’absence du {{ day }}",
+    "deleteTitle": "Supprimer cette absence ?",
+    "deleteMessage": "Ses jours retrouvent leur capacité.",
+    "deleteConfirm": "Supprimer",
+    "created": "L’absence a été déclarée.",
+    "saved": "L’absence a été enregistrée.",
+    "deleted": "L’absence a été supprimée.",
+    "dialog": {
+      "createTitle": "Déclarer une absence",
+      "editTitle": "Modifier l’absence",
+      "kind": "Type",
+      "start": "Premier jour",
+      "startsAtNoon": "Commence à midi (le matin est travaillé)",
+      "end": "Dernier jour",
+      "endsAtNoon": "Finit à midi (l’après-midi est travaillé)",
+      "halfDayHint": "Une demi-journée d’absence retire la moitié de la capacité du jour.",
+      "comment": "Commentaire",
+      "commentHint": "Seuls la personne et les gestionnaires le lisent.",
+      "create": "Déclarer",
+      "save": "Enregistrer"
+    }
   }
 }

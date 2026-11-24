@@ -1,0 +1,50 @@
+<h2 mat-dialog-title>{{ (data.absence ? 'absences.dialog.editTitle' : 'absences.dialog.createTitle') | transloco }}</h2>
+<form [formGroup]="form" (ngSubmit)="save()" novalidate>
+  <mat-dialog-content class="fields">
+    @if (errorKey(); as errorKey) {
+      <p class="message error" role="alert">{{ errorKey | transloco }}</p>
+    }
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'absences.dialog.kind' | transloco }}</mat-label>
+      <mat-select formControlName="kind">
+        @for (kind of kinds; track kind) {
+          <mat-option [value]="kind">{{ 'absences.kinds.' + kind | transloco }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'absences.dialog.start' | transloco }}</mat-label>
+      <input matInput [matDatepicker]="startPicker" formControlName="start" required />
+      <mat-datepicker-toggle matIconSuffix [for]="startPicker" />
+      <mat-datepicker #startPicker />
+      <mat-error>{{ (form.controls.start.getError('api') ?? 'errors.field.required') | transloco }}</mat-error>
+    </mat-form-field>
+    <mat-slide-toggle formControlName="startsAtNoon">{{ 'absences.dialog.startsAtNoon' | transloco }}</mat-slide-toggle>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'absences.dialog.end' | transloco }}</mat-label>
+      <input matInput [matDatepicker]="endPicker" formControlName="end" required />
+      <mat-datepicker-toggle matIconSuffix [for]="endPicker" />
+      <mat-datepicker #endPicker />
+      <mat-error>{{ (form.controls.end.getError('api') ?? 'errors.field.required') | transloco }}</mat-error>
+    </mat-form-field>
+    <mat-slide-toggle formControlName="endsAtNoon">{{ 'absences.dialog.endsAtNoon' | transloco }}</mat-slide-toggle>
+    @if (form.controls.endsAtNoon.getError('api'); as key) {
+      <p class="message error" role="alert">{{ key | transloco }}</p>
+    }
+    <p class="choice-hint">{{ 'absences.dialog.halfDayHint' | transloco }}</p>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'absences.dialog.comment' | transloco }}</mat-label>
+      <textarea matInput formControlName="comment" rows="2" maxlength="500"></textarea>
+      <mat-hint>{{ 'absences.dialog.commentHint' | transloco }}</mat-hint>
+      @if (form.controls.comment.getError('api'); as key) {
+        <mat-error>{{ key | transloco }}</mat-error>
+      }
+    </mat-form-field>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button matButton type="button" mat-dialog-close>{{ 'dialog.cancel' | transloco }}</button>
+    <button matButton="filled" type="submit" [disabled]="saving()">
+      {{ (data.absence ? 'absences.dialog.save' : 'absences.dialog.create') | transloco }}
+    </button>
+  </mat-dialog-actions>
+</form>

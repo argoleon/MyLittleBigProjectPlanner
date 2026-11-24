@@ -82,13 +82,14 @@
   }
 }
 
-.next {
-  margin: var(--app-space-4) 0 0;
-  font: var(--mat-sys-body-small);
-  color: var(--mat-sys-on-surface-variant);
-}
 
 .capacity {
   max-width: 960px;
   margin-top: var(--app-space-4);
+}
+
+.actions-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--app-space-2);
 }

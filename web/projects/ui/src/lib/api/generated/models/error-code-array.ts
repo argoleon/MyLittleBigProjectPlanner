@@ -56,6 +56,7 @@ export const ERROR_CODE: ErrorCode[] = [
   'team.name_taken',
   'capacity_pattern.date_taken',
   'calendar_exception.day_taken',
+  'absence.overlap',
   'calendar.tenant',
   'calendar.name_taken',
   'board.name_taken',

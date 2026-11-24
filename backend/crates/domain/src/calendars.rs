@@ -10,6 +10,7 @@
 //! - A non-working day (holiday or closure) has no capacity; a `working`
 //!   exception cancels a holiday, the capacity of the weekday applying.
 
+use crate::absences::{self, Absence, AbsenceKind, DayPart};
 use crate::capacity::{self, Period, WeekMinutes};
 use crate::dates::Date;
 use crate::holidays::{HolidayName, HolidaySet};
@@ -122,17 +123,20 @@ pub struct Day {
     pub date: Date,
     pub status: Status,
     pub source: Option<Source>,
-    /// Minutes of capacity: 0 on a non-working day.
+    /// The absence taking (part of) the day, if any.
+    pub absence: Option<(AbsenceKind, DayPart)>,
+    /// Minutes of capacity: 0 on a non-working day, less an absence.
     pub minutes: u16,
 }
 
 /// The days of a resource from `from` to `to` included: its calendar
 /// `levels` (resource, site, tenant) over its capacity `periods` and the
-/// tenant's `default` week.
+/// tenant's `default` week, less its `absences`.
 pub fn days(
     levels: &[(Source, Level<'_>)],
     periods: &[Period],
     default: WeekMinutes,
+    absences: &[Absence],
     from: Date,
     to: Date,
 ) -> Vec<Day> {
@@ -141,14 +145,21 @@ pub fn days(
         .map(|offset| {
             let date = from.add_days(offset);
             let (status, source) = status_on(levels, date);
+            let absence = absences
+                .iter()
+                .find_map(|a| a.part_of(date).map(|part| (a.kind, part)));
             let minutes = match status {
-                Status::Working => capacity::minutes_on(periods, default, date),
+                Status::Working => absences::minutes_left(
+                    capacity::minutes_on(periods, default, date),
+                    absence.map(|(_, part)| part),
+                ),
                 Status::Holiday { .. } | Status::NonWorking { .. } => 0,
             };
             Day {
                 date,
                 status,
                 source,
+                absence,
                 minutes,
             }
         })
@@ -207,7 +218,7 @@ mod tests {
             }
         );
         assert_eq!(source, Some(Source::Tenant));
-        let week = days(&levels, &[], WEEK, date("2026-12-21"), date("2026-12-27"));
+        let week = days(&levels, &[], WEEK, &[], date("2026-12-21"), date("2026-12-27"));
         assert_eq!(
             week.iter().map(|d| d.minutes).collect::<Vec<_>>(),
             [420, 420, 420, 420, 0, 0, 0],
@@ -275,7 +286,7 @@ mod tests {
         let (status, source) = status_on(&levels, date("2026-05-25"));
         assert_eq!((status, source), (Status::Working, Some(Source::Tenant)));
         assert_eq!(
-            days(&levels, &[], WEEK, date("2026-05-25"), date("2026-05-25"))[0].minutes,
+            days(&levels, &[], WEEK, &[], date("2026-05-25"), date("2026-05-25"))[0].minutes,
             420
         );
 
@@ -317,7 +328,14 @@ mod tests {
             effective_from: date("2026-06-01"),
             week: WeekMinutes([240; 7]),
         }];
-        let days = days(&levels, &periods, WEEK, date("2026-06-11"), date("2026-06-13"));
+        let days = days(
+            &levels,
+            &periods,
+            WEEK,
+            &[],
+            date("2026-06-11"),
+            date("2026-06-13"),
+        );
         assert_eq!(days.iter().map(|d| d.minutes).collect::<Vec<_>>(), [240, 0, 240]);
         assert_eq!(
             days[1].status,
@@ -330,7 +348,17 @@ mod tests {
 
     #[test]
     fn an_empty_range_has_no_day_and_labels_are_checked() {
-        assert!(days(&[tenant(&[])], &[], WEEK, date("2026-01-02"), date("2026-01-01")).is_empty());
+        assert!(
+            days(
+                &[tenant(&[])],
+                &[],
+                WEEK,
+                &[],
+                date("2026-01-02"),
+                date("2026-01-01")
+            )
+            .is_empty()
+        );
         assert!(validate_exception(Some("Bridge day")).is_ok());
         assert_eq!(
             validate_exception(Some(&"x".repeat(LABEL_MAX_CHARS + 1))).unwrap_err()[0].code,
@@ -339,5 +367,33 @@ mod tests {
         for kind in ExceptionKind::ALL {
             assert_eq!(ExceptionKind::parse(kind.as_str()), Some(kind));
         }
+    }
+
+    #[test]
+    fn an_absence_takes_its_part_of_a_worked_day_and_nothing_of_a_holiday() {
+        let levels = [tenant(&[])];
+        let leave = Absence {
+            kind: AbsenceKind::Leave,
+            start: date("2026-12-24"),
+            starts_at_noon: true,
+            end: date("2026-12-28"),
+            ends_at_noon: false,
+        };
+        let week = days(
+            &levels,
+            &[],
+            WEEK,
+            &[leave],
+            date("2026-12-23"),
+            date("2026-12-28"),
+        );
+        assert_eq!(
+            week.iter().map(|d| d.minutes).collect::<Vec<_>>(),
+            [420, 210, 0, 0, 0, 0],
+            "Wednesday worked, Thursday afternoon off, Christmas, the weekend, Monday off"
+        );
+        assert_eq!(week[1].absence, Some((AbsenceKind::Leave, DayPart::Afternoon)));
+        assert_eq!(week[5].absence, Some((AbsenceKind::Leave, DayPart::Whole)));
+        assert_eq!(week[0].absence, None);
     }
 }

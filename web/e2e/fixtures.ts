@@ -79,6 +79,8 @@ export const test = base.extend<{ language: 'fr' | 'en'; theme: 'system' | 'ligh
     );
     // The bell of the top app bar: nothing unread unless a test says so.
     await page.route('**/api/v1/me/notifications/unread', (route) => route.fulfill({ json: { total: 0, byTenant: [] } }));
+    // My account links to the member's resource: none unless a test says so.
+    await page.route('**/api/v1/resources/mine', (route) => route.fulfill({ status: 404, json: problem(404, 'not_found') }));
     await page.route('**/api/v1/auth/session', (route) =>
       signedIn ? route.fulfill({ json: SESSION }) : route.fulfill(problem(401, 'unauthenticated')),
     );

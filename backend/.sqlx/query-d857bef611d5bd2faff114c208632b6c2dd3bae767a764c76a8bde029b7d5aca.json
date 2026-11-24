@@ -1,0 +1,144 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, resource_id, kind, start_date, starts_at_noon, end_date, ends_at_noon, comment, declared_by,\n               app_member_name(declared_by) AS declared_by_name, version\n        FROM absence\n        WHERE id = $1 AND resource_id = $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "absence",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "resource_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "absence",
+            "name": "resource_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "absence",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "start_date",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "absence",
+            "name": "start_date"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "starts_at_noon",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "absence",
+            "name": "starts_at_noon"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "end_date",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "absence",
+            "name": "end_date"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "ends_at_noon",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "absence",
+            "name": "ends_at_noon"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "comment",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "absence",
+            "name": "comment"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "declared_by",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "absence",
+            "name": "declared_by"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "declared_by_name",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 10,
+        "name": "version",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "absence",
+            "name": "version"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      null,
+      false
+    ]
+  },
+  "hash": "d857bef611d5bd2faff114c208632b6c2dd3bae767a764c76a8bde029b7d5aca"
+}

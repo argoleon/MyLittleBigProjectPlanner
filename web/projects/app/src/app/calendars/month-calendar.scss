@@ -76,6 +76,12 @@
     border-color: var(--app-calendar-absence-outline);
   }
 
+  &[data-look='absence'] {
+    border: 2px solid var(--app-calendar-absence-outline);
+    background: var(--app-load-absence);
+    color: var(--app-load-absence-on);
+  }
+
   &.today {
     border: 2px solid var(--app-calendar-today-outline);
   }
@@ -132,6 +138,10 @@
 
   &.own {
     border-color: var(--app-calendar-absence-outline);
+  }
+
+  &[data-look='absence'] {
+    border: 2px solid var(--app-calendar-absence-outline);
   }
 }
 
