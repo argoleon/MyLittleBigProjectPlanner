@@ -462,7 +462,8 @@
       "order_by_not_allowed": "A quick filter cannot sort: remove ORDER BY.",
       "person_only": "Only a person is linked to an account.",
       "not_internal_member": "Not an internal member of the organization.",
-      "not_a_site": "Not a site of the organization."
+      "not_a_site": "Not a site of the organization.",
+      "overlap": "Another absence takes this half day."
     },
     "invitation": {
       "invalid": "This invitation link is invalid, has expired or was already used. Ask for a new one.",
@@ -579,6 +580,9 @@
     },
     "calendar_exception": {
       "day_taken": "There is already an exception that day."
+    },
+    "absence": {
+      "overlap": "Another absence of the resource takes a same half day."
     }
   },
   "dialog": {
@@ -688,7 +692,8 @@
       "mismatch": "This is not the email of your account.",
       "purgeComments": "Also delete my comments",
       "submit": "Delete for good"
-    }
+    },
+    "myAbsences": "My absences"
   },
   "hierarchy": {
     "intro": "The top of the hierarchy: portfolios, programs and projects, with their aggregated indicators.",
@@ -2245,7 +2250,6 @@
       "generic": "Generic role, without account",
       "status": "Status",
       "edit": "Edit",
-      "next": "Absences will appear here.",
       "teams": "Teams",
       "noTeam": "No team",
       "siteOf": "Site {{ name }}",
@@ -2443,9 +2447,52 @@
       "working": "worked",
       "off": "not worked",
       "closed": "closed",
-      "holiday": "public holiday"
+      "holiday": "public holiday",
+      "absence": "absent"
     },
     "ownException": "Exception of the resource",
     "ownExceptions": "Exceptions of the resource this month"
+  },
+  "absences": {
+    "title": "Absences",
+    "declare": "Declare an absence",
+    "loading": "Loading the absences…",
+    "none": "No absence from a month ago to a year ahead.",
+    "kinds": {
+      "leave": "Leave",
+      "training": "Training",
+      "other": "Other absence"
+    },
+    "parts": {
+      "whole": "whole day",
+      "morning": "morning",
+      "afternoon": "afternoon"
+    },
+    "range": "From {{ from }} to {{ to }}",
+    "fromNoon": "from noon",
+    "toNoon": "until noon",
+    "declaredBy": "declared by {{ name }}",
+    "editOf": "Edit the absence of {{ day }}",
+    "deleteOf": "Delete the absence of {{ day }}",
+    "deleteTitle": "Delete this absence?",
+    "deleteMessage": "Its days get their capacity back.",
+    "deleteConfirm": "Delete",
+    "created": "The absence was declared.",
+    "saved": "The absence was saved.",
+    "deleted": "The absence was deleted.",
+    "dialog": {
+      "createTitle": "Declare an absence",
+      "editTitle": "Edit the absence",
+      "kind": "Kind",
+      "start": "First day",
+      "startsAtNoon": "Starts at noon (the morning is worked)",
+      "end": "Last day",
+      "endsAtNoon": "Ends at noon (the afternoon is worked)",
+      "halfDayHint": "A half day off removes half of that day’s capacity.",
+      "comment": "Comment",
+      "commentHint": "Only the person and the managers read it.",
+      "create": "Declare",
+      "save": "Save"
+    }
   }
 }

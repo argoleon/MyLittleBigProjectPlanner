@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggle, MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import {
   AccountPreferences,
@@ -18,6 +19,7 @@ import {
   getMfa,
   isApiProblem,
   knownTimeZones,
+  getMyResource,
   listMyMemberships,
   listMySessions,
 } from 'ui';
@@ -49,6 +51,7 @@ const AUTO = 'auto';
     MatSelectModule,
     MatSlideToggleModule,
     PersonalDataCard,
+    RouterLink,
     TranslocoPipe,
   ],
   styleUrl: './account-page.scss',
@@ -67,6 +70,8 @@ export class AccountPage {
   protected readonly mfa = resource({ loader: () => this.api.invoke(getMfa) });
   protected readonly sessions = resource({ loader: () => this.api.invoke(listMySessions) });
   protected readonly memberships = resource({ loader: () => this.api.invoke(listMyMemberships) });
+  /** The resource the member is, where they declare their absences; none: not linked. */
+  protected readonly myResource = resource({ loader: () => this.api.invoke(getMyResource) });
 
   /** The latest sign-in among the open sessions. */
   protected readonly lastSignIn = computed(() => {

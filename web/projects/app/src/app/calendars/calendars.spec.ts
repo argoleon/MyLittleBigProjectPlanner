@@ -276,6 +276,7 @@ describe('MonthCalendar', () => {
       'public holiday',
       'closed',
       'not worked',
+      'absent',
       'Exception of the resource',
     ]);
     expect(text(host.querySelector('.exceptions li'))).toContain('Training');

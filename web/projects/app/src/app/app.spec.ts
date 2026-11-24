@@ -352,6 +352,7 @@ describe('App', () => {
     await answer('/api/v1/account/mfa', { enabled: false, backupCodesLeft: 0, requiredByPolicy: false });
     await answer('/api/v1/me/sessions', []);
     await answer(MEMBERSHIPS_URL, [ACME]);
+    await answer('/api/v1/resources/mine', { code: 'not_found', title: 'Not found', status: 404 }, 404);
     await fixture.whenStable();
     expect(TestBed.inject(Router).url).toBe('/account');
     expect(query(fixture, 'main h1')?.textContent).toBe('My account');

@@ -1,0 +1,79 @@
+<section class="card" aria-labelledby="absences-title">
+  <div class="card-header">
+    <h2 class="card-title" id="absences-title">{{ 'absences.title' | transloco }}</h2>
+    @if (canManage()) {
+      <button matButton="tonal" type="button" id="absence-new" (click)="declare()">
+        <mat-icon aria-hidden="true">event_busy</mat-icon>
+        {{ 'absences.declare' | transloco }}
+      </button>
+    }
+  </div>
+
+  @if (notice(); as notice) {
+    <p class="message" [class.info]="notice.ok" [class.error]="!notice.ok" [attr.role]="notice.ok ? 'status' : 'alert'">
+      {{ notice.messageKey | transloco }}
+    </p>
+  }
+
+  @if (list.error()) {
+    <ui-error-state [error]="list.error()" [headingLevel]="3" (retry)="list.reload()" />
+  } @else if (!list.hasValue()) {
+    <mat-progress-bar mode="indeterminate" [attr.aria-label]="'absences.loading' | transloco" />
+  } @else if (absences().length === 0) {
+    <p class="empty">{{ 'absences.none' | transloco }}</p>
+  } @else {
+    <ul class="absences">
+      @for (absence of absences(); track absence.id) {
+        <li class="absence">
+          <mat-icon class="kind-icon" aria-hidden="true">{{ absence.kind === 'training' ? 'school' : 'beach_access' }}</mat-icon>
+          <div class="what">
+            <span class="kind">{{ 'absences.kinds.' + absence.kind | transloco }}</span>
+            <span class="when">
+              @let s = span(absence);
+              @if (s.single) {
+                {{ absence.start | localDate: { weekday: 'short', day: 'numeric', month: 'short' } }} ·
+                {{ 'absences.parts.' + s.part | transloco }}
+              } @else {
+                {{ 'absences.range' | transloco: { from: (absence.start | localDate: { day: 'numeric', month: 'short' }), to: (absence.end | localDate: { day: 'numeric', month: 'short', year: 'numeric' }) } }}
+                @if (s.fromNoon) {
+                  · {{ 'absences.fromNoon' | transloco }}
+                }
+                @if (s.toNoon) {
+                  · {{ 'absences.toNoon' | transloco }}
+                }
+              }
+              @if (absence.declaredBy; as declarer) {
+                · {{ 'absences.declaredBy' | transloco: { name: declarer.displayName } }}
+              }
+            </span>
+            @if (absence.comment) {
+              <span class="comment">{{ absence.comment }}</span>
+            }
+          </div>
+          @if (canManage()) {
+            <div class="actions">
+              <button
+                matIconButton
+                type="button"
+                [id]="actionId(absence, 'edit')"
+                [attr.aria-label]="'absences.editOf' | transloco: { day: (absence.start | localDate) }"
+                (click)="edit(absence)"
+              >
+                <mat-icon aria-hidden="true">edit</mat-icon>
+              </button>
+              <button
+                matIconButton
+                type="button"
+                [id]="actionId(absence, 'delete')"
+                [attr.aria-label]="'absences.deleteOf' | transloco: { day: (absence.start | localDate) }"
+                (click)="remove(absence)"
+              >
+                <mat-icon aria-hidden="true">delete</mat-icon>
+              </button>
+            </div>
+          }
+        </li>
+      }
+    </ul>
+  }
+</section>

@@ -37,6 +37,12 @@
         }
       </ul>
     }
+    @if (myResource.hasValue()) {
+      <a class="my-absences" mat-button [routerLink]="['/workload/resources', myResource.value().id]">
+        <mat-icon aria-hidden="true">event_busy</mat-icon>
+        {{ 'account.myAbsences' | transloco }}
+      </a>
+    }
   </section>
 
   <div class="side">

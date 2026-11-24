@@ -18,6 +18,7 @@ import {
   resourceHolding,
 } from 'ui';
 
+import { AbsencesCard } from '../absences/absences-card';
 import { MonthCalendar } from '../calendars/month-calendar';
 import { CapacityCard } from '../capacity/capacity-card';
 import { ResourceDialog, ResourceDialogData } from './resource-dialog';
@@ -30,11 +31,13 @@ export function managesResources(role: TenantRole | undefined): boolean {
 /**
  * The page of a resource (mockup 20, L07-US01): its name, kind, job title,
  * account, status, site, weekly capacity (L07-US03) and month calendar
- * (L07-US04). Absences come with L07-US05.
+ * (L07-US04), and its absences (L07-US05), which the person and the
+ * managers declare.
  */
 @Component({
   selector: 'app-resource-page',
   imports: [
+    AbsencesCard,
     Avatar,
     CapacityCard,
     ErrorState,
@@ -47,65 +50,7 @@ export function managesResources(role: TenantRole | undefined): boolean {
     RouterLink,
     TranslocoPipe,
   ],
-  template: `
-    <nav class="breadcrumb" [attr.aria-label]="'resources.breadcrumb' | transloco">
-      <span>{{ 'nav.workload' | transloco }}</span>
-      <mat-icon aria-hidden="true">chevron_right</mat-icon>
-      <a routerLink="/workload/resources">{{ 'resources.title' | transloco }}</a>
-    </nav>
-    @if (current.error()) {
-      <ui-error-state [error]="current.error()" (retry)="current.reload()" />
-    } @else if (shown(); as shown) {
-      <div class="header">
-        <ui-avatar [name]="shown.displayName" size="medium" aria-hidden="true" />
-        <div class="identity">
-          <h1 class="title">{{ shown.displayName }}</h1>
-          <div class="chips">
-            <ui-resource-kind-chip [holding]="holding(shown)" />
-            @if (shown.jobTitle) {
-              <span class="job-title">{{ shown.jobTitle }}</span>
-            }
-            <ui-resource-state-chip [active]="shown.active" />
-            <span class="job-title site">
-              {{ shown.site ? ('resources.page.siteOf' | transloco: { name: shown.site.name }) : ('resources.page.noSite' | transloco) }}
-            </span>
-          </div>
-        </div>
-        @if (canManage()) {
-          <button matButton="outlined" type="button" class="edit" id="resource-edit" (click)="edit(shown)">
-            <mat-icon aria-hidden="true">edit</mat-icon>
-            {{ 'resources.page.edit' | transloco }}
-          </button>
-        }
-      </div>
-      <section class="card" aria-labelledby="resource-details">
-        <h2 class="card-title" id="resource-details">{{ 'resources.page.details' | transloco }}</h2>
-        <dl class="details">
-          <dt>{{ 'resources.page.kind' | transloco }}</dt>
-          <dd>{{ 'resource.holding.' + holding(shown) | transloco }}</dd>
-          <dt>{{ 'resources.page.account' | transloco }}</dt>
-          <dd>{{ 'resources.page.' + holding(shown) | transloco }}</dd>
-          <dt>{{ 'resources.page.teams' | transloco }}</dt>
-          <dd class="teams">
-            @for (team of shown.teams; track team.id; let last = $last) {
-              <a [routerLink]="['/workload/teams', team.id]">{{ team.name }}</a>{{ last ? '' : ', ' }}
-            } @empty {
-              {{ 'resources.page.noTeam' | transloco }}
-            }
-          </dd>
-          <dt>{{ 'resources.page.jobTitle' | transloco }}</dt>
-          <dd>{{ shown.jobTitle ?? '–' }}</dd>
-          <dt>{{ 'resources.page.status' | transloco }}</dt>
-          <dd>{{ (shown.active ? 'resource.state.active' : 'resource.state.inactive') | transloco }}</dd>
-        </dl>
-        <p class="next">{{ 'resources.page.next' | transloco }}</p>
-      </section>
-      <app-capacity-card class="capacity" [resourceId]="shown.id" />
-      <app-month-calendar class="capacity" [resourceId]="shown.id" [canManage]="canManage()" />
-    } @else {
-      <ui-loading-state [label]="'resources.loading' | transloco" />
-    }
-  `,
+  templateUrl: './resource-page.html',
   styleUrl: './resource-page.scss',
 })
 export class ResourcePage {
