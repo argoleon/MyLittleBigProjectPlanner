@@ -6,7 +6,8 @@
 //! - Without such a period (none at all, or a date before the first one),
 //!   the tenant's default capacity applies, as it stands: it is never
 //!   copied.
-//! - Public holidays and absences come with L07-US04 and L07-US05.
+//! - The capacity of a day, after public holidays, closures and absences,
+//!   is `crate::calendars::ResourceCalendar` (L07-US06).
 
 use crate::dates::{Date, Weekday};
 use crate::tenant::DAY_MINUTES;
