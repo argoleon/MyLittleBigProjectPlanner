@@ -57,10 +57,13 @@ test('a resource of the Paris site does not work on Christmas', async ({ browser
   const calendar = page.locator('app-month-calendar');
   const title = calendar.getByRole('heading', { level: 2 });
   await expect(title).not.toBeEmpty();
-  for (let i = 0; i < 48 && (await title.textContent())?.trim() !== 'December 2026'; i++) {
-    const current = new Date(`1 ${(await title.textContent())?.trim()}`);
-    const forward = current < new Date(2026, 11, 1);
+  for (let i = 0; i < 48; i++) {
+    const shown = (await title.textContent())?.trim() ?? '';
+    if (shown === 'December 2026') break;
+    const forward = new Date(`1 ${shown}`) < new Date(2026, 11, 1);
     await calendar.getByRole('button', { name: forward ? 'Next month' : 'Previous month' }).click();
+    // The title changes once the month is drawn: read it only then.
+    await expect(title).not.toHaveText(shown);
   }
   await expect(title).toHaveText('December 2026');
   const christmas = calendar.locator('[data-day="2026-12-25"]');
