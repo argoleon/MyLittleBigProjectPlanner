@@ -28,6 +28,12 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
   - A **Calendars** tab in Workload lists the calendars; each has a page with its holidays and exceptions by year. The resource page shows its site and a month grid (holidays, closures, days not worked, its own exceptions), navigable with the keyboard; managers add an exception by choosing a day.
   - Every change is recorded in the event outbox (`calendar.changed`, `resource.capacity_changed`) for the load computation of L08.
   - `/api/v1/calendars` (list, create a site, read, change, delete), `GET /api/v1/calendars/{id}/year`, `/api/v1/calendars/{id}/exceptions` and `/api/v1/resources/{id}/exceptions` (create, change, delete), `GET /api/v1/resources/{id}/days` (each day's status and capacity). A resource takes a `calendarId` and tells its `site`.
+- **Absences** (#212)
+  - Leave, training or other time off, from a first to a last day, possibly starting or ending at noon; a half day removes half of the day's capacity, a whole day all of it. Absences of a resource never overlap (`absence.overlap`).
+  - The person linked to a resource declares their own, from the resource page or **My absences** in My account; organization admins and resource managers declare anyone's and are recorded as the declarer. Everyone sees the dates and kind; the comment is for the person and the managers, and goes when the person is erased.
+  - The resource page shows an **Absences** card and the absences on its month grid; `GET /api/v1/resources/{id}/days` tells each day's absence and remaining capacity.
+  - Every change is recorded in the event outbox (`resource.absence_changed`) for the load computation of L08.
+  - `/api/v1/resources/{id}/absences` (list, declare, change, delete) and `GET /api/v1/resources/mine`.
 
 ### Fixed
 
