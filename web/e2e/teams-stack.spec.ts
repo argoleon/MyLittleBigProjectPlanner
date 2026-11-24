@@ -55,7 +55,7 @@ test('create a team, add a resource to it, filter by it, remove it', async ({ br
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(team);
   await page.getByRole('button', { name: 'Add a resource' }).click();
   dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Resource').fill(String(stamp));
+  await dialog.getByRole('combobox', { name: 'Resource' }).fill(String(stamp));
   await page.getByRole('option', { name: new RegExp(role) }).click();
   await dialog.getByRole('button', { name: 'Add' }).click();
   await expect(page.getByRole('status')).toHaveText(`${role} was added to the team.`);
