@@ -458,57 +458,6 @@ pub async fn delete_exception(
     Ok(Ok(()))
 }
 
-/// A resource's calendar: its own exceptions, its site's and the tenant's,
-/// with their holiday sets, from `from` to `to`.
-#[derive(Debug, Clone, Default)]
-pub struct ResourceCalendar {
-    pub resource: Vec<Exception>,
-    pub site: Option<(Calendar, Vec<Exception>)>,
-    pub tenant: Option<(Calendar, Vec<Exception>)>,
-}
-
-/// The calendar of `resource_id` from `from` to `to`.
-pub async fn of_resource(
-    conn: &mut PgConnection,
-    resource_id: Uuid,
-    from: Date,
-    to: Date,
-) -> Result<ResourceCalendar, sqlx::Error> {
-    let rules = |stored: Vec<StoredException>| -> Vec<Exception> {
-        stored.iter().filter_map(StoredException::rule).collect()
-    };
-    let resource = rules(exceptions(conn, Owner::Resource(resource_id), from, to).await?);
-    let site_id = sqlx::query_scalar!("SELECT calendar_id FROM resource WHERE id = $1", resource_id)
-        .fetch_optional(&mut *conn)
-        .await?
-        .flatten();
-    let site = match site_id {
-        Some(id) => match find(conn, id).await? {
-            Some(calendar) => Some((
-                calendar,
-                rules(exceptions(conn, Owner::Calendar(id), from, to).await?),
-            )),
-            None => None,
-        },
-        None => None,
-    };
-    let tenant = match tenant_calendar(conn).await? {
-        Some(calendar) => {
-            let id = calendar.id;
-            Some((
-                calendar,
-                rules(exceptions(conn, Owner::Calendar(id), from, to).await?),
-            ))
-        }
-        None => None,
-    };
-    Ok(ResourceCalendar {
-        resource,
-        site,
-        tenant,
-    })
-}
-
 fn owner_ids(owner: Owner) -> (Option<Uuid>, Option<Uuid>) {
     match owner {
         Owner::Calendar(id) => (Some(id), None),

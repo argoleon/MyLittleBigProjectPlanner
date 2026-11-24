@@ -2345,6 +2345,14 @@
       "labelHint": "Optional, such as “Part time 80%”.",
       "create": "Add",
       "save": "Save"
+    },
+    "weeks": {
+      "title": "Capacity over the next 4 weeks",
+      "subtitle": "Hours available, after public holidays, closures and absences.",
+      "loading": "Loading the capacity of the weeks…",
+      "short": "W{{ week }}",
+      "weekOf": "Week {{ week }}",
+      "range": "{{ from }} to {{ to }}"
     }
   },
   "calendars": {
@@ -2451,7 +2459,8 @@
       "absence": "absent"
     },
     "ownException": "Exception of the resource",
-    "ownExceptions": "Exceptions of the resource this month"
+    "ownExceptions": "Exceptions of the resource this month",
+    "monthTotal": "Capacity this month: {{ hours }}"
   },
   "absences": {
     "title": "Absences",

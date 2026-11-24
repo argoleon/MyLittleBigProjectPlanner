@@ -279,7 +279,7 @@ Une ressource peut cumuler plusieurs tâches sur une même journée tant que la 
 - Historisée avec des dates d'effet (passage à 80 % au 1er mars).
 - Valeur par défaut définie par tenant, par exemple 7 h × 5 jours ; l'admin du tenant la modifie, avec la tolérance et le mode de surcharge. Elle s'applique telle quelle (jamais copiée) aux ressources sans période et aux jours qui précèdent leur première période.
 - Une période par ressource et par date d'effet, avec un libellé facultatif (« Temps partiel 80 % ») ; une période qui commence après aujourd'hui est signalée comme planifiée. Les durées sont stockées en minutes.
-- Capacité d'un jour = modèle hebdomadaire, moins les jours fériés du site, moins les absences.
+- Capacité d'un jour = modèle hebdomadaire, moins les jours fériés et fermetures de ses calendriers, moins les absences (une matinée et un après-midi d'absence le même jour prennent toute la journée). Elle se lit jour par jour, pour une ressource ou pour des centaines à la fois (heatmap, recherche de disponibilité).
 - La capacité est la charge maximale journalière. Une tolérance de dépassement est configurable par tenant (0 % par défaut).
 
 **Affectations**

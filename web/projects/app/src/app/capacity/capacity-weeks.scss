@@ -1,0 +1,53 @@
+:host {
+  display: block;
+}
+
+.card {
+  padding: var(--app-space-4);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface);
+}
+
+.card-title {
+  margin: 0;
+  font: var(--mat-sys-title-medium);
+}
+
+.subtitle {
+  margin: var(--app-space-1) 0 var(--app-space-3);
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.weeks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.week {
+  display: grid;
+  grid-template-columns: 4rem 1fr auto;
+  align-items: center;
+  gap: var(--app-space-3);
+  padding: var(--app-space-3) 0;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  font: var(--mat-sys-body-medium);
+}
+
+.number {
+  font: var(--mat-sys-title-small);
+
+  abbr {
+    text-decoration: none;
+  }
+}
+
+.range {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.hours {
+  font: var(--mat-sys-title-small);
+}

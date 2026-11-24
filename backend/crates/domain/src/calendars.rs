@@ -13,7 +13,7 @@
 use crate::absences::{self, Absence, AbsenceKind, DayPart};
 use crate::capacity::{self, Period, WeekMinutes};
 use crate::dates::Date;
-use crate::holidays::{HolidayName, HolidaySet};
+use crate::holidays::{Holiday, HolidayName, HolidaySet};
 use crate::validation::{FieldError, Violations};
 
 /// Longest label of an exception, in characters.
@@ -91,6 +91,15 @@ pub enum Status {
 /// The status of `date` and the level that decided it; `None` when no
 /// level says anything (a plain day).
 pub fn status_on(levels: &[(Source, Level<'_>)], date: Date) -> (Status, Option<Source>) {
+    status_with(levels, date, HolidaySet::holiday_on)
+}
+
+/// [`status_on`], public holidays coming from `holiday_on`.
+fn status_with(
+    levels: &[(Source, Level<'_>)],
+    date: Date,
+    holiday_on: impl Fn(HolidaySet, Date) -> Option<Holiday>,
+) -> (Status, Option<Source>) {
     for (source, level) in levels {
         if let Some(exception) = level.exceptions.iter().find(|e| e.date == date) {
             let label = exception.label.clone();
@@ -101,8 +110,8 @@ pub fn status_on(levels: &[(Source, Level<'_>)], date: Date) -> (Status, Option<
             };
             return (status, Some(*source));
         }
-        if let Some(set) = level.holidays {
-            return match set.holiday_on(date) {
+        if let Some(holidays) = level.holidays {
+            return match holiday_on(holidays, date) {
                 Some(holiday) => (
                     Status::Holiday {
                         name: Some(holiday.name),
@@ -129,41 +138,100 @@ pub struct Day {
     pub minutes: u16,
 }
 
-/// The days of a resource from `from` to `to` included: its calendar
-/// `levels` (resource, site, tenant) over its capacity `periods` and the
-/// tenant's `default` week, less its `absences`.
-pub fn days(
-    levels: &[(Source, Level<'_>)],
-    periods: &[Period],
-    default: WeekMinutes,
-    absences: &[Absence],
-    from: Date,
-    to: Date,
-) -> Vec<Day> {
-    let count = to.days_since(from);
-    (0..=count.max(-1))
-        .map(|offset| {
-            let date = from.add_days(offset);
-            let (status, source) = status_on(levels, date);
-            let absence = absences
-                .iter()
-                .find_map(|a| a.part_of(date).map(|part| (a.kind, part)));
-            let minutes = match status {
-                Status::Working => absences::minutes_left(
-                    capacity::minutes_on(periods, default, date),
-                    absence.map(|(_, part)| part),
-                ),
-                Status::Holiday { .. } | Status::NonWorking { .. } => 0,
-            };
-            Day {
-                date,
-                status,
-                source,
-                absence,
-                minutes,
+/// Everything the capacity of a resource depends on (§8, L07-US06): its
+/// calendar `levels` (resource, site, tenant), its capacity `periods` over
+/// the tenant's `default` week, and its `absences`. Loaded by infra, it is
+/// the single source of the capacity of a day: capacity = weekly pattern,
+/// less the public holidays and closures, less the absences.
+#[derive(Debug, Clone, Copy)]
+pub struct ResourceCalendar<'a> {
+    pub levels: &'a [(Source, Level<'a>)],
+    pub periods: &'a [Period],
+    pub default: WeekMinutes,
+    pub absences: &'a [Absence],
+}
+
+impl ResourceCalendar<'_> {
+    /// The day `date` of the resource.
+    pub fn day(&self, date: Date) -> Day {
+        self.day_with(date, status_on(self.levels, date))
+    }
+
+    /// The day `date`, of status and source `decided`.
+    fn day_with(&self, date: Date, decided: (Status, Option<Source>)) -> Day {
+        let (status, source) = decided;
+        let mut absence = None;
+        let (mut morning, mut afternoon) = (false, false);
+        for (kind, part) in self
+            .absences
+            .iter()
+            .filter_map(|a| a.part_of(date).map(|part| (a.kind, part)))
+        {
+            absence.get_or_insert((kind, part));
+            morning |= matches!(part, DayPart::Whole | DayPart::Morning);
+            afternoon |= matches!(part, DayPart::Whole | DayPart::Afternoon);
+        }
+        // A morning off and an afternoon off, of two absences: the whole day.
+        let off = match (morning, afternoon) {
+            (true, true) => Some(DayPart::Whole),
+            (true, false) => Some(DayPart::Morning),
+            (false, true) => Some(DayPart::Afternoon),
+            (false, false) => None,
+        };
+        let minutes = match status {
+            Status::Working => {
+                absences::minutes_left(capacity::minutes_on(self.periods, self.default, date), off)
             }
-        })
-        .collect()
+            Status::Holiday { .. } | Status::NonWorking { .. } => 0,
+        };
+        Day {
+            date,
+            status,
+            source,
+            absence,
+            minutes,
+        }
+    }
+
+    /// The capacity of `date`, in minutes.
+    pub fn minutes_on(&self, date: Date) -> u16 {
+        self.day(date).minutes
+    }
+
+    /// The days from `from` to `to` included; none when `to` is before `from`.
+    pub fn days(&self, from: Date, to: Date) -> Vec<Day> {
+        let count = to.days_since(from);
+        if count < 0 {
+            return Vec::new();
+        }
+        // The holidays of each set and year of the range, computed once.
+        let mut known: Vec<(HolidaySet, i32, Vec<Holiday>)> = Vec::new();
+        for holidays in self.levels.iter().filter_map(|(_, level)| level.holidays) {
+            for year in from.ymd().0..=to.ymd().0 {
+                if !known.iter().any(|(h, y, _)| *h == holidays && *y == year) {
+                    known.push((holidays, year, holidays.holidays(year)));
+                }
+            }
+        }
+        let holiday_on = |holidays: HolidaySet, date: Date| {
+            let year = date.ymd().0;
+            known
+                .iter()
+                .find(|(h, y, _)| *h == holidays && *y == year)
+                .and_then(|(_, _, days)| days.iter().find(|d| d.date == date).copied())
+        };
+        (0..=count)
+            .map(|offset| {
+                let date = from.add_days(offset);
+                self.day_with(date, status_with(self.levels, date, holiday_on))
+            })
+            .collect()
+    }
+
+    /// The capacity of each day from `from` to `to` included, in minutes.
+    pub fn minutes(&self, from: Date, to: Date) -> Vec<u16> {
+        self.days(from, to).into_iter().map(|d| d.minutes).collect()
+    }
 }
 
 /// Checks the label of an exception (field `label`).
@@ -195,6 +263,23 @@ mod tests {
     }
 
     const WEEK: WeekMinutes = WeekMinutes([420, 420, 420, 420, 420, 0, 0]);
+
+    fn days(
+        levels: &[(Source, Level<'_>)],
+        periods: &[Period],
+        default: WeekMinutes,
+        absences: &[Absence],
+        from: Date,
+        to: Date,
+    ) -> Vec<Day> {
+        ResourceCalendar {
+            levels,
+            periods,
+            default,
+            absences,
+        }
+        .days(from, to)
+    }
 
     fn tenant(exceptions: &[Exception]) -> (Source, Level<'_>) {
         (
@@ -395,5 +480,229 @@ mod tests {
         assert_eq!(week[1].absence, Some((AbsenceKind::Leave, DayPart::Afternoon)));
         assert_eq!(week[5].absence, Some((AbsenceKind::Leave, DayPart::Whole)));
         assert_eq!(week[0].absence, None);
+    }
+
+    fn absence(start: &str, starts_at_noon: bool, end: &str, ends_at_noon: bool) -> Absence {
+        Absence {
+            kind: AbsenceKind::Leave,
+            start: date(start),
+            starts_at_noon,
+            end: date(end),
+            ends_at_noon,
+        }
+    }
+
+    #[test]
+    fn capacity_over_christmas_takes_off_the_holiday_and_the_leave() {
+        // L07-US06 AC1: 7 h pattern, Christmas, a leave on 28 December.
+        let levels = [tenant(&[])];
+        let leave = [absence("2026-12-28", false, "2026-12-28", false)];
+        let calendar = ResourceCalendar {
+            levels: &levels,
+            periods: &[],
+            default: WEEK,
+            absences: &leave,
+        };
+        assert_eq!(
+            calendar.minutes(date("2026-12-21"), date("2026-12-31")),
+            [420, 420, 420, 420, 0, 0, 0, 0, 420, 420, 420],
+            "Mon 21 – Thu 24 worked, Christmas, weekend, the leave, Tue 29 – Thu 31 worked"
+        );
+        assert_eq!(calendar.minutes_on(date("2026-12-25")), 0);
+        assert_eq!(calendar.minutes_on(date("2026-12-28")), 0);
+    }
+
+    #[test]
+    fn a_part_time_wednesday_has_no_capacity() {
+        // L07-US06 AC2.
+        let levels = [tenant(&[])];
+        let periods = [Period {
+            effective_from: date("2026-01-01"),
+            week: WeekMinutes([420, 420, 0, 420, 420, 0, 0]),
+        }];
+        let calendar = ResourceCalendar {
+            levels: &levels,
+            periods: &periods,
+            default: WEEK,
+            absences: &[],
+        };
+        // 2026-11-23 is a Monday.
+        assert_eq!(
+            calendar.minutes(date("2026-11-23"), date("2026-11-29")),
+            [420, 420, 0, 420, 420, 0, 0]
+        );
+    }
+
+    #[test]
+    fn a_half_day_off_a_short_friday_leaves_half_of_it() {
+        // L07-US06 AC3: half of a 3.5 h Friday is 1 h 45.
+        let levels = [tenant(&[])];
+        let short_friday = WeekMinutes([420, 420, 420, 420, 210, 0, 0]);
+        let afternoon = [absence("2026-11-27", true, "2026-11-27", false)];
+        let calendar = ResourceCalendar {
+            levels: &levels,
+            periods: &[],
+            default: short_friday,
+            absences: &afternoon,
+        };
+        assert_eq!(calendar.minutes_on(date("2026-11-27")), 105);
+        assert_eq!(
+            calendar.day(date("2026-11-27")).absence,
+            Some((AbsenceKind::Leave, DayPart::Afternoon))
+        );
+    }
+
+    #[test]
+    fn each_day_uses_the_period_in_force_that_day() {
+        // L07-US06 AC4: the 80% period starts on Wednesday 2027-03-03.
+        let levels = [tenant(&[])];
+        let periods = [
+            Period {
+                effective_from: date("2026-01-01"),
+                week: WEEK,
+            },
+            Period {
+                effective_from: date("2027-03-03"),
+                week: WeekMinutes([420, 420, 0, 420, 420, 0, 0]),
+            },
+        ];
+        let calendar = ResourceCalendar {
+            levels: &levels,
+            periods: &periods,
+            default: WeekMinutes([0; 7]),
+            absences: &[],
+        };
+        assert_eq!(
+            calendar.minutes(date("2027-03-01"), date("2027-03-10")),
+            [420, 420, 0, 420, 420, 0, 0, 420, 420, 0],
+            "Monday 1 and Tuesday 2 full time, then Wednesdays off"
+        );
+    }
+
+    #[test]
+    fn a_morning_off_and_an_afternoon_off_take_the_whole_day() {
+        let levels = [tenant(&[])];
+        let two_halves = [
+            absence("2026-11-20", false, "2026-11-23", true),
+            Absence {
+                kind: AbsenceKind::Training,
+                ..absence("2026-11-23", true, "2026-11-24", false)
+            },
+        ];
+        let calendar = ResourceCalendar {
+            levels: &levels,
+            periods: &[],
+            default: WEEK,
+            absences: &two_halves,
+        };
+        assert_eq!(calendar.minutes_on(date("2026-11-23")), 0);
+        // The first absence of the day is the one shown.
+        assert_eq!(
+            calendar.day(date("2026-11-23")).absence,
+            Some((AbsenceKind::Leave, DayPart::Morning))
+        );
+        assert_eq!(calendar.minutes_on(date("2026-11-25")), 420);
+    }
+
+    #[test]
+    fn days_around_a_daylight_saving_change_keep_their_capacity() {
+        // Planning dates are local dates: the weekends when France changes
+        // time (last Sundays of March and October) change nothing.
+        let levels = [tenant(&[])];
+        let calendar = ResourceCalendar {
+            levels: &levels,
+            periods: &[],
+            default: WeekMinutes([420, 420, 420, 420, 420, 240, 120]),
+            absences: &[],
+        };
+        for (friday, monday) in [("2026-03-27", "2026-03-30"), ("2026-10-23", "2026-10-26")] {
+            let days = calendar.days(date(friday), date(monday));
+            assert_eq!(
+                days.iter().map(|d| d.minutes).collect::<Vec<_>>(),
+                [420, 240, 120, 420],
+                "{friday}"
+            );
+            assert_eq!(days[3].date, date(monday));
+        }
+    }
+
+    mod properties {
+        use super::*;
+        use proptest::prelude::*;
+
+        fn any_date() -> impl Strategy<Value = Date> {
+            // 2025-01-01 and the 4 years after it.
+            (0..1461_i32).prop_map(|offset| date("2025-01-01").add_days(offset))
+        }
+
+        fn any_week() -> impl Strategy<Value = WeekMinutes> {
+            proptest::array::uniform7(0..=1440_u16).prop_map(WeekMinutes)
+        }
+
+        fn any_absence() -> impl Strategy<Value = Absence> {
+            (any_date(), 0..20_i32, any::<bool>(), any::<bool>(), 0..3_usize).prop_map(
+                |(start, length, starts_at_noon, ends_at_noon, kind)| Absence {
+                    kind: AbsenceKind::ALL[kind],
+                    start,
+                    starts_at_noon,
+                    end: start.add_days(length),
+                    ends_at_noon,
+                },
+            )
+        }
+
+        fn any_exception() -> impl Strategy<Value = Exception> {
+            (any_date(), 0..3_usize).prop_map(|(date, kind)| Exception {
+                date,
+                kind: ExceptionKind::ALL[kind],
+                label: None,
+            })
+        }
+
+        proptest! {
+            #[test]
+            fn capacity_is_never_above_the_pattern_and_a_range_matches_its_days(
+                default in any_week(),
+                periods in proptest::collection::vec((any_date(), any_week()), 0..4),
+                absences in proptest::collection::vec(any_absence(), 0..6),
+                exceptions in proptest::collection::vec(any_exception(), 0..8),
+                from in any_date(),
+                length in 0..120_i32,
+            ) {
+                let periods: Vec<Period> = periods
+                    .into_iter()
+                    .map(|(effective_from, week)| Period { effective_from, week })
+                    .collect();
+                let levels = [
+                    (Source::Resource, Level { exceptions: &exceptions, holidays: None }),
+                    tenant(&[]),
+                ];
+                let calendar = ResourceCalendar {
+                    levels: &levels,
+                    periods: &periods,
+                    default,
+                    absences: &absences,
+                };
+                let to = from.add_days(length);
+                let minutes = calendar.minutes(from, to);
+                let days = calendar.days(from, to);
+                prop_assert_eq!(minutes.len(), usize::try_from(length + 1).unwrap_or(0));
+                for ((offset, day_minutes), ranged) in (0..).zip(&minutes).zip(&days) {
+                    let date = from.add_days(offset);
+                    let pattern = capacity::minutes_on(&periods, default, date);
+                    prop_assert!(*day_minutes <= pattern, "{:?}: {} > {}", date, day_minutes, pattern);
+                    prop_assert_eq!(*day_minutes, calendar.minutes_on(date));
+                    let day = calendar.day(date);
+                    // A range and a single day agree (holidays computed once per year).
+                    prop_assert_eq!(ranged, &day);
+                    if !matches!(day.status, Status::Working) {
+                        prop_assert_eq!(*day_minutes, 0);
+                    }
+                    if day.absence.is_none() && matches!(day.status, Status::Working) {
+                        prop_assert_eq!(*day_minutes, pattern);
+                    }
+                }
+            }
+        }
     }
 }

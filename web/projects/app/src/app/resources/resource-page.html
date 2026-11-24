@@ -57,9 +57,10 @@
       <dd>{{ (shown.active ? 'resource.state.active' : 'resource.state.inactive') | transloco }}</dd>
     </dl>
   </section>
-  <app-absences-card #absences class="capacity" [resourceId]="shown.id" (changed)="calendar.reload()" />
-  <app-capacity-card class="capacity" [resourceId]="shown.id" />
-  <app-month-calendar #calendar class="capacity" [resourceId]="shown.id" [canManage]="canManage()" />
+  <app-absences-card #absences class="capacity" [resourceId]="shown.id" (changed)="calendar.reload(); weeks.reload()" />
+  <app-capacity-weeks #weeks class="capacity" [resourceId]="shown.id" />
+  <app-capacity-card class="capacity" [resourceId]="shown.id" (changed)="calendar.reload(); weeks.reload()" />
+  <app-month-calendar #calendar class="capacity" [resourceId]="shown.id" [canManage]="canManage()" (changed)="weeks.reload()" />
 } @else {
   <ui-loading-state [label]="'resources.loading' | transloco" />
 }

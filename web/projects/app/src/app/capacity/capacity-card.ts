@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, resource, signal } from '@angular/core';
+import { Component, computed, inject, input, output, resource, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -51,6 +51,8 @@ const DAYS = ['d0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6'];
 export class CapacityCard {
   /** The resource. */
   readonly resourceId = input.required<string>();
+  /** A period was added, changed or deleted. */
+  readonly changed = output<void>();
 
   private readonly api = inject(Api);
   private readonly dialog = inject(MatDialog);
@@ -118,6 +120,7 @@ export class CapacityCard {
           await this.api.invoke(deleteCapacityPattern, { id: this.resourceId(), patternId: period.id, 'If-Match': `"${period.version}"` });
           this.notice.set({ ok: true, messageKey: 'capacity.deleted' });
           this.list.reload();
+          this.changed.emit();
         } catch (error) {
           this.notice.set({ ok: false, messageKey: isApiProblem(error) ? error.translationKey : errorTranslationKey('unknown') });
         }
@@ -137,6 +140,7 @@ export class CapacityCard {
         if (!saved) return;
         this.notice.set({ ok: true, messageKey: data.period ? 'capacity.saved' : 'capacity.created' });
         this.list.reload();
+        this.changed.emit();
       });
   }
 }

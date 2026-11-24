@@ -1,4 +1,4 @@
-import { Component, ElementRef, computed, inject, input, resource, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, computed, inject, input, output, resource, signal, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -54,7 +54,9 @@ export function monthWeeks<T>(days: readonly T[], firstWeekday: number): (T | nu
 
 /**
  * The month of a resource (mockup 20, L07-US04): each day worked or not —
- * public holidays, closures, days of no capacity — with a legend. The grid
+ * public holidays, closures, days of no capacity — with its hours left
+ * (L07-US06: half of it on a half-day absence), the month's total and a
+ * legend. The grid
  * moves with the arrow keys (Home, End, Page Up, Page Down change month);
  * each day has an accessible name. Managers click (or press Enter on) a
  * day to add or change the resource's own exception that day.
@@ -70,6 +72,8 @@ export class MonthCalendar {
   readonly resourceId = input.required<string>();
   /** The member manages its exceptions. */
   readonly canManage = input(false);
+  /** An exception of the resource was added, changed or deleted. */
+  readonly changed = output<void>();
 
   private readonly api = inject(Api);
   private readonly dialog = inject(MatDialog);
@@ -100,6 +104,8 @@ export class MonthCalendar {
     const first = new Date(`${this.bounds().from}T00:00:00Z`).getUTCDay();
     return monthWeeks(this.days.value(), (first + 6) % 7);
   });
+  /** Capacity of the month: its days after holidays, closures and absences. */
+  protected readonly total = computed(() => (this.days.hasValue() ? this.days.value().reduce((sum, day) => sum + day.minutes, 0) : 0));
   protected readonly ownExceptions = computed<readonly CalendarException[]>(() =>
     this.exceptions.hasValue() ? this.exceptions.value().items : [],
   );
@@ -197,6 +203,7 @@ export class MonthCalendar {
         if (!saved) return;
         this.notice.set({ ok: true, messageKey: exception ? 'calendars.exception.saved' : 'calendars.exception.created' });
         this.reload();
+        this.changed.emit();
       });
   }
 
@@ -214,6 +221,7 @@ export class MonthCalendar {
           await this.api.invoke(deleteResourceException, { id: this.resourceId(), exceptionId: exception.id, 'If-Match': `"${exception.version}"` });
           this.notice.set({ ok: true, messageKey: 'calendars.exception.deleted' });
           this.reload();
+          this.changed.emit();
         } catch (error) {
           this.notice.set({ ok: false, messageKey: isApiProblem(error) ? error.translationKey : errorTranslationKey('unknown') });
         }

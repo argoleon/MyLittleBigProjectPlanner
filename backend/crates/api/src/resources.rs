@@ -261,11 +261,11 @@ pub struct LinkableParams {
 
 const CURSOR_VERSION: &str = "r1";
 
-fn encode_cursor(key: &NameKey) -> String {
+pub(crate) fn encode_cursor(key: &NameKey) -> String {
     URL_SAFE_NO_PAD.encode(format!("{CURSOR_VERSION}:{}:{}", key.id.simple(), key.name))
 }
 
-fn decode_cursor(cursor: &str) -> Option<NameKey> {
+pub(crate) fn decode_cursor(cursor: &str) -> Option<NameKey> {
     let raw = String::from_utf8(URL_SAFE_NO_PAD.decode(cursor).ok()?).ok()?;
     let (version, rest) = raw.split_once(':')?;
     let (id, name) = rest.split_once(':')?;
@@ -337,6 +337,7 @@ pub async fn list(
         active: params.active,
         search: trimmed(params.search.as_deref()),
         team: params.team,
+        ids: None,
     };
     let page = repo::list(&mut tx, &filter, after.as_ref(), limit).await?;
     let can_manage = manages_resources(tx.member().tenant_role);

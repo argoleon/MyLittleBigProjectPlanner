@@ -113,7 +113,9 @@ describe('CapacityCard', () => {
     const host = fixture.nativeElement as HTMLElement;
     const rows = () => Array.from(host.querySelectorAll('tr[mat-row]'));
     const cells = (row: Element) => Array.from(row.querySelectorAll('td')).map((cell) => kit.text(cell));
-    return { ...kit, fixture, host, rows, cells };
+    const changes = { count: 0 };
+    fixture.componentInstance.changed.subscribe(() => changes.count++);
+    return { ...kit, fixture, host, rows, cells, changes };
   }
 
   afterEach(() => {
@@ -151,7 +153,7 @@ describe('CapacityCard', () => {
   });
 
   it('adds a period from the latest week, typed in hours', async () => {
-    const { host, click, type, reply, dialog, closed, text } = await open([JANUARY]);
+    const { host, click, type, reply, dialog, closed, text, changes } = await open([JANUARY]);
     await click(host.querySelector('button.new'));
     expect(text(dialog().querySelector('h2'))).toBe('New capacity period');
     const days = () => Array.from(dialog().querySelectorAll<HTMLInputElement>('app-week-hours input'));
@@ -177,6 +179,8 @@ describe('CapacityCard', () => {
     await closed();
     await reply(isList, { items: [JANUARY, LATER], defaultMinutes: DEFAULT, canManage: true });
     expect(text(host.querySelector('[role="status"]'))).toBe('The period was added.');
+    // The month and the weeks of the resource page read their days again.
+    expect(changes.count).toBe(1);
   });
 
   it('tells a date already taken on the date field, and refuses hours that are not', async () => {
@@ -201,7 +205,7 @@ describe('CapacityCard', () => {
   });
 
   it('deletes a period after confirmation', async () => {
-    const { host, click, reply, dialog, closed, text } = await open([JANUARY, LATER]);
+    const { host, click, reply, dialog, closed, text, changes } = await open([JANUARY, LATER]);
     await click(host.querySelector(`#period-delete-${LATER.id}`));
     expect(text(dialog().querySelector('h2'))).toBe('Delete this period?');
     await click(Array.from(dialog().querySelectorAll('button')).find((b) => text(b) === 'Delete') ?? null);
@@ -210,6 +214,7 @@ describe('CapacityCard', () => {
     expect(deleted.request.headers.get('If-Match')).toBe('"2"');
     await reply(isList, { items: [JANUARY], defaultMinutes: DEFAULT, canManage: true });
     expect(text(host.querySelector('[role="status"]'))).toBe('The period was deleted.');
+    expect(changes.count).toBe(1);
   });
 });
 

@@ -34,6 +34,10 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
   - The resource page shows an **Absences** card and the absences on its month grid; `GET /api/v1/resources/{id}/days` tells each day's absence and remaining capacity.
   - Every change is recorded in the event outbox (`resource.absence_changed`) for the load computation of L08.
   - `/api/v1/resources/{id}/absences` (list, declare, change, delete) and `GET /api/v1/resources/mine`.
+- **Capacity of each day** (#216)
+  - A single computation of a day's capacity — the weekly pattern, less the public holidays and closures of the resource's calendars, less its absences — shared by every screen and, from L08, by the load. A morning off and an afternoon off on the same day take the whole day.
+  - The resource page shows the hours left on a half day off, the month's total under its grid, and a **Capacity over the next 4 weeks** card, week by week.
+  - `GET /api/v1/capacity`: the minutes of each day and the days off of many resources at once — named ones, a team's, or every active resource —, 200 per page, up to 366 days; 200 resources over 3 months are read in under 200 ms.
 
 ### Fixed
 

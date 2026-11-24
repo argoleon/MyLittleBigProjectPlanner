@@ -242,21 +242,23 @@ describe('MonthCalendar', () => {
     return { day, status: 'working', source: null, minutes: weekday === 0 || weekday === 6 ? 0 : 420 };
   });
 
-  async function open(canManage = true) {
+  async function open(canManage = true, days: ResourceDay[] = DECEMBER) {
     const kit = setup();
     const fixture = TestBed.createComponent(MonthCalendar);
     fixture.componentRef.setInput('resourceId', 'r1');
     fixture.componentRef.setInput('canManage', canManage);
     (fixture.componentInstance as unknown as { month: { set(m: { year: number; month: number }): void } }).month.set({ year: 2026, month: 11 });
     await kit.settle();
-    await kit.reply((url) => url === '/api/v1/resources/r1/days?from=2026-12-01&to=2026-12-31', DECEMBER);
+    await kit.reply((url) => url === '/api/v1/resources/r1/days?from=2026-12-01&to=2026-12-31', days);
     await kit.reply((url) => url === '/api/v1/resources/r1/exceptions?from=2026-12-01&to=2026-12-31', {
       items: [{ id: 'x1', day: '2026-12-23', kind: 'non_working', label: 'Training', version: 1 }],
       canManage,
     });
     const host = fixture.nativeElement as HTMLElement;
     const cell = (day: string) => host.querySelector<HTMLElement>(`[data-day="${day}"]`);
-    return { ...kit, fixture, host, cell };
+    const changes = { count: 0 };
+    fixture.componentInstance.changed.subscribe(() => changes.count++);
+    return { ...kit, fixture, host, cell, changes };
   }
 
   afterEach(() => TestBed.inject(MatDialog).closeAll());
@@ -280,7 +282,37 @@ describe('MonthCalendar', () => {
       'Exception of the resource',
     ]);
     expect(text(host.querySelector('.exceptions li'))).toContain('Training');
+    // 23 weekdays, less Christmas and the closure on the 23rd.
+    expect(text(host.querySelector('.total'))).toBe('Capacity this month: 147 h');
     expect(await axeViolations(fixture.nativeElement)).toEqual([]);
+  });
+
+  it('shows the hours left of a half-day absence and counts absences in the total', async () => {
+    const days: ResourceDay[] = DECEMBER.map((day) => {
+      if (day.day === '2026-12-18') return { ...day, absence: { kind: 'leave', part: 'afternoon' }, minutes: 210 };
+      if (day.day === '2026-12-28') return { ...day, absence: { kind: 'training', part: 'whole' }, minutes: 0 };
+      return day;
+    });
+    const { host, cell, text, fixture } = await open(false, days);
+    const tags = (day: string) => Array.from(cell(day)?.querySelectorAll('.tag') ?? []).map((tag) => text(tag));
+    expect(cell('2026-12-18')?.getAttribute('data-look')).toBe('absence');
+    expect(tags('2026-12-18')).toEqual(['Leave', '3 h 30 min']);
+    expect(tags('2026-12-28')).toEqual(['Training']);
+    expect(text(cell('2026-12-18'))).toContain('Friday, December 18, 2026, absent, Leave, afternoon, 3 h 30 min');
+    expect(text(host.querySelector('.total'))).toBe('Capacity this month: 136 h 30 min');
+    expect(await axeViolations(fixture.nativeElement)).toEqual([]);
+  });
+
+  it('tells the page when an exception of the resource is deleted', async () => {
+    const { host, click, reply, dialog, closed, text, changes } = await open();
+    await click(host.querySelector('#own-exception-x1'));
+    await click(Array.from(dialog().querySelectorAll('button')).find((b) => text(b) === 'Delete') ?? null);
+    await closed();
+    const deleted = await reply((url, method) => url === '/api/v1/resources/r1/exceptions/x1' && method === 'DELETE', null, 204);
+    expect(deleted.request.headers.get('If-Match')).toBe('"1"');
+    await reply((url) => url.startsWith('/api/v1/resources/r1/days'), DECEMBER);
+    await reply((url) => url.startsWith('/api/v1/resources/r1/exceptions'), { items: [], canManage: true });
+    expect(changes.count).toBe(1);
   });
 
   it('moves with the arrow keys and opens the day’s exception with Enter', async () => {

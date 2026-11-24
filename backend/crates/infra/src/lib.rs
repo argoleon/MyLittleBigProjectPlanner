@@ -19,6 +19,7 @@ pub mod config_migrations;
 pub mod configs;
 pub mod credentials;
 pub mod crypto;
+pub mod day_capacity;
 pub mod db;
 pub mod email;
 pub mod erasure;

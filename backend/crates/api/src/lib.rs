@@ -15,6 +15,7 @@ pub mod cli;
 pub mod config_fields;
 pub mod configs;
 pub mod correlation;
+pub mod day_capacity;
 pub mod etag;
 pub mod events;
 pub mod extract;

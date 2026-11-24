@@ -57,6 +57,8 @@ pub struct ResourceFilter<'a> {
     pub search: Option<&'a str>,
     /// Only the members of this team.
     pub team: Option<Uuid>,
+    /// Only these resources.
+    pub ids: Option<&'a [Uuid]>,
 }
 
 /// A resource as written: texts trimmed, empty ones absent.
@@ -156,6 +158,7 @@ pub async fn list(
           AND ($3::text IS NULL OR lower(name) LIKE $3 OR lower(job_title) LIKE $3)
           AND ($4::text IS NULL OR (lower(name), id) > ($4, $5::uuid))
           AND ($7::uuid IS NULL OR EXISTS (SELECT 1 FROM team_member tm WHERE tm.team_id = $7 AND tm.resource_id = r.id))
+          AND ($8::uuid[] IS NULL OR id = ANY($8))
         ORDER BY lower(name), id
         LIMIT $6
         "#,
@@ -165,7 +168,8 @@ pub async fn list(
         after.map(|k| k.name.as_str()),
         after.map(|k| k.id),
         fetch,
-        filter.team
+        filter.team,
+        filter.ids
     )
     .fetch_all(conn)
     .await?;

@@ -276,57 +276,6 @@ async fn exceptions_of_calendars_and_resources_one_per_day_each_change_recorded(
 }
 
 #[tokio::test]
-async fn a_resource_calendar_gathers_its_own_its_site_and_the_tenant_exceptions() {
-    let db = TestDb::new().await;
-    let a = &db.tenant_a;
-    let mut tx = begin_tenant_tx(&db.app_pool, a.id).await.unwrap();
-    let site = calendars::insert_site(
-        &mut tx,
-        new_id(),
-        &named("Strasbourg", Some(HolidaySet::FranceAlsaceMoselle)),
-        None,
-    )
-    .await
-    .unwrap()
-    .unwrap();
-    tx.commit().await.unwrap();
-    let id = resource(&db, a, Some(site.id)).await;
-    let mut tx = begin_tenant_tx(&db.app_pool, a.id).await.unwrap();
-    let tenant = calendars::tenant_calendar(&mut tx).await.unwrap().unwrap();
-    for (owner, day) in [
-        (Owner::Calendar(tenant.id), date!(2026 - 12 - 24)),
-        (Owner::Calendar(site.id), date!(2026 - 12 - 31)),
-        (Owner::Resource(id), date!(2026 - 12 - 23)),
-        (Owner::Resource(id), date!(2027 - 01 - 15)),
-    ] {
-        calendars::insert_exception(
-            &mut tx,
-            new_id(),
-            owner,
-            &ExceptionInput {
-                day,
-                kind: ExceptionKind::NonWorking,
-                label: None,
-            },
-            None,
-        )
-        .await
-        .unwrap()
-        .unwrap();
-    }
-    let calendar = calendars::of_resource(&mut tx, id, date!(2026 - 12 - 01), date!(2026 - 12 - 31))
-        .await
-        .unwrap();
-    assert_eq!(calendar.resource.len(), 1, "the January one is outside");
-    let (site_calendar, site_exceptions) = calendar.site.unwrap();
-    assert_eq!(
-        (site_calendar.holiday_set, site_exceptions.len()),
-        (Some(HolidaySet::FranceAlsaceMoselle), 1)
-    );
-    assert_eq!(calendar.tenant.unwrap().1.len(), 1);
-}
-
-#[tokio::test]
 async fn a_tenant_sees_and_writes_only_its_own_calendars() {
     let db = TestDb::new().await;
     let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
