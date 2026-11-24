@@ -26,6 +26,7 @@ use crate::calendars;
 use crate::capacity;
 use crate::config_fields;
 use crate::configs;
+use crate::day_capacity;
 use crate::events;
 use crate::gdpr;
 use crate::grants;
@@ -236,6 +237,7 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
             calendars::delete_resource_exception
         ))
         .routes(routes!(calendars::resource_days))
+        .routes(routes!(day_capacity::list))
         .routes(routes!(capacity::list, capacity::create))
         .routes(routes!(capacity::update, capacity::delete))
         .routes(routes!(capacity::settings, capacity::update_settings))

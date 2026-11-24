@@ -1,0 +1,90 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT resource_id, kind, start_date, starts_at_noon, end_date, ends_at_noon\n        FROM absence\n        WHERE resource_id = ANY($1) AND start_date <= $3 AND end_date >= $2\n        ORDER BY start_date, id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "resource_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "absence",
+            "name": "resource_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "absence",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "start_date",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "absence",
+            "name": "start_date"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "starts_at_noon",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "absence",
+            "name": "starts_at_noon"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "end_date",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "absence",
+            "name": "end_date"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "ends_at_noon",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "absence",
+            "name": "ends_at_noon"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "b1e028a82d4b7b950d8479f8ba7a5465a36892242ba34aca71af8c03f68670a0"
+}

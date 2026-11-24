@@ -11,8 +11,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
-use domain::calendars::{self as rules, ExceptionKind, Level, Source, Status, validate_exception};
-use domain::capacity::{Period, WeekMinutes};
+use domain::calendars::{self as rules, ExceptionKind, Source, Status, validate_exception};
 use domain::holidays::HolidaySet;
 use domain::resources::{manages_resources, trimmed};
 use domain::validation::FieldError;
@@ -404,6 +403,27 @@ pub enum DayPartView {
     Whole,
     Morning,
     Afternoon,
+}
+
+impl From<domain::absences::DayPart> for DayPartView {
+    fn from(part: domain::absences::DayPart) -> Self {
+        match part {
+            domain::absences::DayPart::Whole => Self::Whole,
+            domain::absences::DayPart::Morning => Self::Morning,
+            domain::absences::DayPart::Afternoon => Self::Afternoon,
+        }
+    }
+}
+
+/// The status of a day, the key of its public holiday and its label.
+pub(crate) fn status_view(status: Status) -> (DayStatusView, Option<String>, Option<String>) {
+    match status {
+        Status::Working => (DayStatusView::Working, None, None),
+        Status::Holiday { name, label } => {
+            (DayStatusView::Holiday, name.map(|n| n.as_str().to_owned()), label)
+        }
+        Status::NonWorking { label } => (DayStatusView::NonWorking, None, label),
+    }
 }
 
 /// The absence of a day.
@@ -1059,68 +1079,25 @@ pub async fn resource_days(
     ApiQuery(range): ApiQuery<RangeParams>,
 ) -> Result<ApiJson<Vec<DayView>>, Problem> {
     range.checked()?;
-    require_resource(&mut tx, id).await?;
-    let calendar = repo::of_resource(&mut tx, id, range.from, range.to).await?;
-    let patterns = infra::capacity::list(&mut tx, id).await?;
-    let absences = infra::absences::list(&mut tx, id, range.from, range.to).await?;
-    let default = infra::capacity::workload_settings(&mut tx)
+    let resource = infra::resources::find(&mut tx, id)
         .await?
-        .map_or(WeekMinutes([420, 420, 420, 420, 420, 0, 0]), |s| {
-            s.default_capacity
-        });
+        .ok_or_else(|| Problem::new(ErrorCode::NotFound).with_detail("no such resource"))?;
+    let inputs =
+        infra::day_capacity::load(&mut tx, &[(id, resource.calendar_id)], range.from, range.to).await?;
     tx.commit().await?;
 
-    let periods: Vec<Period> = patterns
-        .iter()
-        .filter_map(|p| {
-            Some(Period {
-                effective_from: local_date(p.effective_from)?,
-                week: p.week,
-            })
-        })
-        .collect();
-    let mut levels = vec![(
-        Source::Resource,
-        Level {
-            exceptions: &calendar.resource,
-            holidays: None,
-        },
-    )];
-    if let Some((site, exceptions)) = &calendar.site {
-        levels.push((
-            Source::Site,
-            Level {
-                exceptions,
-                holidays: site.holiday_set,
-            },
-        ));
-    }
-    if let Some((tenant, exceptions)) = &calendar.tenant {
-        levels.push((
-            Source::Tenant,
-            Level {
-                exceptions,
-                holidays: tenant.holiday_set,
-            },
-        ));
-    }
     let (Some(from), Some(to)) = (local_date(range.from), local_date(range.to)) else {
         return Err(Problem::new(ErrorCode::InvalidQuery));
     };
-    let absences: Vec<_> = absences
-        .iter()
-        .filter_map(infra::absences::StoredAbsence::rule)
-        .collect();
-    let days = rules::days(&levels, &periods, default, &absences, from, to)
+    let levels = inputs.levels(id);
+    let calendar = inputs
+        .calendar(id, &levels)
+        .ok_or_else(|| Problem::new(ErrorCode::NotFound))?;
+    let days = calendar
+        .days(from, to)
         .into_iter()
         .filter_map(|day| {
-            let (status, holiday, label) = match day.status {
-                Status::Working => (DayStatusView::Working, None, None),
-                Status::Holiday { name, label } => {
-                    (DayStatusView::Holiday, name.map(|n| n.as_str().to_owned()), label)
-                }
-                Status::NonWorking { label } => (DayStatusView::NonWorking, None, label),
-            };
+            let (status, holiday, label) = status_view(day.status);
             Some(DayView {
                 day: infra::capacity::sql_date(day.date)?,
                 status,
@@ -1133,11 +1110,7 @@ pub async fn resource_days(
                 label,
                 absence: day.absence.map(|(kind, part)| DayAbsenceView {
                     kind: kind.into(),
-                    part: match part {
-                        domain::absences::DayPart::Whole => DayPartView::Whole,
-                        domain::absences::DayPart::Morning => DayPartView::Morning,
-                        domain::absences::DayPart::Afternoon => DayPartView::Afternoon,
-                    },
+                    part: part.into(),
                 }),
                 minutes: day.minutes,
             })

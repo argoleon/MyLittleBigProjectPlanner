@@ -75,6 +75,8 @@ export type { DeleteCalendarException$Params as DeleteCalendarException$Params }
 export { deleteCalendarException as deleteCalendarException } from './fn/resources/delete-calendar-exception';
 export type { GetCalendarYear$Params as GetCalendarYear$Params } from './fn/resources/get-calendar-year';
 export { getCalendarYear as getCalendarYear } from './fn/resources/get-calendar-year';
+export type { ListCapacity$Params as ListCapacity$Params } from './fn/resources/list-capacity';
+export { listCapacity as listCapacity } from './fn/resources/list-capacity';
 export type { ListResources$Params as ListResources$Params } from './fn/resources/list-resources';
 export { listResources as listResources } from './fn/resources/list-resources';
 export type { CreateResource$Params as CreateResource$Params } from './fn/resources/create-resource';

@@ -2889,6 +2889,119 @@
         }
       }
     },
+    "/api/v1/capacity": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Read the capacity of resources, day by day",
+        "description": "Any internal member: for each resource of the page, the minutes of each day from `from` to `to` (366 days at most) — its capacity periods, less the public holidays and closures of its calendars, less its absences —, and the days off. Without `resources` nor `team`, every active resource, 200 per page.",
+        "operationId": "listCapacity",
+        "parameters": [
+          {
+            "name": "resources",
+            "in": "query",
+            "description": "Ids of resources, separated by commas (200 at most); inactive ones\nincluded. Without it (nor `team`), every active resource.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "description": "Only the members of this team (active ones, unless `resources`\nnames them).",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "First day, a local date.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Last day, included (366 days at most).",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, from 1 to 200 (default 200).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "`nextCursor` of the previous page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of capacities",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapacityPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`invalid_query`: bad range, `resources`, `limit` or `cursor`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: an external member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/events": {
       "get": {
         "tags": [
@@ -22852,6 +22965,40 @@
           }
         }
       },
+      "CapacityPage": {
+        "type": "object",
+        "description": "A page of capacities.",
+        "required": [
+          "from",
+          "to",
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceCapacity"
+            },
+            "description": "In the order of the resource list (name, then id)."
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cursor of the next page, `null` on the last page."
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
       "CapacityPattern": {
         "type": "object",
         "description": "A capacity period of a resource.",
@@ -29511,6 +29658,63 @@
           }
         }
       },
+      "ResourceCapacity": {
+        "type": "object",
+        "description": "The capacity of a resource over the range.",
+        "required": [
+          "resourceId",
+          "displayName",
+          "active",
+          "minutes",
+          "totalMinutes",
+          "unavailable"
+        ],
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Camille Martin"
+          },
+          "minutes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "description": "Minutes of each day, from `from` to `to`.",
+            "example": [
+              420,
+              420,
+              0,
+              420,
+              210,
+              0,
+              0
+            ]
+          },
+          "resourceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "totalMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Their sum.",
+            "example": 1470,
+            "minimum": 0
+          },
+          "unavailable": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnavailableDay"
+            },
+            "description": "The public holidays, closures and absences of the range, by day."
+          }
+        }
+      },
       "ResourceDay": {
         "type": "object",
         "description": "A day of a resource.",
@@ -30940,6 +31144,58 @@
           }
         },
         "additionalProperties": false
+      },
+      "UnavailableDay": {
+        "type": "object",
+        "description": "A day off, or partly off, of a resource.",
+        "required": [
+          "day",
+          "reason"
+        ],
+        "properties": {
+          "day": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-12-25"
+          },
+          "holiday": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Key of the public holiday (`christmas`…)."
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Label of the exception."
+          },
+          "part": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DayPart",
+                "description": "The part an absence takes."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "$ref": "#/components/schemas/UnavailableReason"
+          }
+        }
+      },
+      "UnavailableReason": {
+        "type": "string",
+        "description": "Why a day has no capacity, or less than its weekday.",
+        "enum": [
+          "holiday",
+          "non_working",
+          "absence"
+        ]
       },
       "UnreadNotifications": {
         "type": "object",
