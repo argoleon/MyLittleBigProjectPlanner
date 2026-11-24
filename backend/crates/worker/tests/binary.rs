@@ -53,18 +53,26 @@ fn exits_with_an_error_naming_a_malformed_variable() {
 #[cfg(unix)]
 #[test]
 fn stops_cleanly_on_sigterm() {
+    // A free port, so parallel tests never compete for the default one.
+    let port = free_port();
     let mut child = required_env(Command::new(BIN).env_clear())
         .env("WORKER_POLL_INTERVAL_MS", "50")
-        // A free port, so parallel tests never compete for the default one.
-        .env("WORKER_HEALTH_ADDR", format!("127.0.0.1:{}", free_port()))
+        .env("WORKER_HEALTH_ADDR", format!("127.0.0.1:{port}"))
         .stdout(Stdio::null())
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
 
-    // Give the runtime time to install its signal handlers.
-    std::thread::sleep(Duration::from_millis(500));
-    assert!(child.try_wait().unwrap().is_none(), "worker is running");
+    // Started: its health endpoint answers (it listens for signals before).
+    let started = Instant::now() + Duration::from_secs(30);
+    while !healthcheck(port).success() {
+        assert!(
+            child.try_wait().unwrap().is_none(),
+            "the worker exited while starting"
+        );
+        assert!(Instant::now() < started, "the worker never became healthy");
+        std::thread::sleep(Duration::from_millis(50));
+    }
 
     let killed = Command::new("kill")
         .args(["-TERM", &child.id().to_string()])

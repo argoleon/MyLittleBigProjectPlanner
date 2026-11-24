@@ -23,6 +23,11 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
   - Every change is recorded in the event outbox (`resource.capacity_changed` with the days concerned, `tenant.capacity_changed`) for the load computation of L08.
   - `/api/v1/resources/{id}/capacity-patterns` (list, create, change, delete) and `GET`/`PUT /api/v1/tenant/workload-settings`.
 
+### Fixed
+
+- The API and the worker listen for SIGTERM and Ctrl+C from the start of their startup: a stop requested while they start (migrations, connections, storage check) is now a graceful shutdown, no longer an abrupt kill. This also fixes the worker test `stops_cleanly_on_sigterm`, which failed now and then under load.
+
+
 ## [0.6.0] - 2026-11-19
 
 Work package **L06 Search and Kanban**: a query language with a visual builder and suggestions, full-text search with typo correction, saved and shared filters, Kanban boards, CSV and Excel exports of list views, and bulk actions on a search result.
