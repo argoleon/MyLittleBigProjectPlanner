@@ -21,6 +21,7 @@ use crate::account;
 use crate::auth;
 use crate::boards;
 use crate::bulk_actions;
+use crate::calendars;
 use crate::capacity;
 use crate::config_fields;
 use crate::configs;
@@ -214,6 +215,23 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(resources::list, resources::create))
         .routes(routes!(resources::linkable_accounts))
         .routes(routes!(resources::read, resources::update))
+        .routes(routes!(calendars::list, calendars::create))
+        .routes(routes!(calendars::read, calendars::update, calendars::delete))
+        .routes(routes!(calendars::year))
+        .routes(routes!(calendars::create_calendar_exception))
+        .routes(routes!(
+            calendars::update_calendar_exception,
+            calendars::delete_calendar_exception
+        ))
+        .routes(routes!(
+            calendars::resource_exceptions,
+            calendars::create_resource_exception
+        ))
+        .routes(routes!(
+            calendars::update_resource_exception,
+            calendars::delete_resource_exception
+        ))
+        .routes(routes!(calendars::resource_days))
         .routes(routes!(capacity::list, capacity::create))
         .routes(routes!(capacity::update, capacity::delete))
         .routes(routes!(capacity::settings, capacity::update_settings))

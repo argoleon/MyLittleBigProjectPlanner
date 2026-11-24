@@ -27,6 +27,8 @@ pub struct Resource {
     /// It was a member who left the tenant.
     pub former_member: bool,
     pub active: bool,
+    /// Its site calendar; none: the tenant calendar.
+    pub calendar_id: Option<Uuid>,
     pub version: i64,
     pub created_at: OffsetDateTime,
 }
@@ -66,6 +68,8 @@ pub struct ResourceInput<'a> {
     pub job_title: Option<&'a str>,
     pub account_id: Option<Uuid>,
     pub active: bool,
+    /// A site calendar of the tenant; none: the tenant calendar.
+    pub calendar_id: Option<Uuid>,
 }
 
 /// Why a write did not happen.
@@ -77,6 +81,8 @@ pub enum WriteConflict {
     AccountTaken,
     /// The account is not an internal member of the tenant.
     NotInternalMember,
+    /// The calendar is not a site calendar of the tenant.
+    NotASite,
 }
 
 pub type WriteResult<T> = Result<Result<T, WriteConflict>, sqlx::Error>;
@@ -89,6 +95,7 @@ struct Row {
     account_id: Option<Uuid>,
     former_member: bool,
     active: bool,
+    calendar_id: Option<Uuid>,
     version: i64,
     created_at: OffsetDateTime,
 }
@@ -104,6 +111,7 @@ impl From<Row> for Resource {
             account_id: row.account_id,
             former_member: row.former_member,
             active: row.active,
+            calendar_id: row.calendar_id,
             version: row.version,
             created_at: row.created_at,
         }
@@ -119,6 +127,7 @@ struct ListRow {
     account_id: Option<Uuid>,
     former_member: bool,
     active: bool,
+    calendar_id: Option<Uuid>,
     version: i64,
     created_at: OffsetDateTime,
 }
@@ -136,7 +145,7 @@ pub async fn list(
         ListRow,
         r#"
         SELECT lower(name) AS "sort_key!", id, kind, name AS "display_name!", job_title, account_id,
-               former_member AS "former_member!", active, version, created_at
+               former_member AS "former_member!", active, calendar_id, version, created_at
         FROM (
             SELECT r.*, coalesce(app_member_name(r.account_id), r.display_name) AS name,
                    r.former_account_id IS NOT NULL AS former_member
@@ -180,6 +189,7 @@ pub async fn list(
                 account_id: row.account_id,
                 former_member: row.former_member,
                 active: row.active,
+                calendar_id: row.calendar_id,
                 version: row.version,
                 created_at: row.created_at,
             })
@@ -194,7 +204,7 @@ pub async fn find(conn: &mut PgConnection, id: Uuid) -> Result<Option<Resource>,
         Row,
         r#"
         SELECT id, kind, coalesce(app_member_name(account_id), display_name) AS "display_name!", job_title,
-               account_id, former_account_id IS NOT NULL AS "former_member!", active, version, created_at
+               account_id, former_account_id IS NOT NULL AS "former_member!", active, calendar_id, version, created_at
         FROM resource
         WHERE id = $1
         "#,
@@ -226,19 +236,25 @@ pub async fn insert(conn: &mut PgConnection, id: Uuid, input: &ResourceInput<'_>
     {
         return Ok(Err(WriteConflict::NotInternalMember));
     }
+    if let Some(calendar) = input.calendar_id
+        && !crate::calendars::is_site(conn, calendar).await?
+    {
+        return Ok(Err(WriteConflict::NotASite));
+    }
     let inserted = sqlx::query!(
         r#"
-        INSERT INTO resource (id, tenant_id, kind, display_name, job_title, account_id, active)
+        INSERT INTO resource (id, tenant_id, kind, display_name, job_title, account_id, active, calendar_id)
         VALUES ($1, app_current_tenant(), $2,
                 coalesce((SELECT nullif(left(btrim(display_name), 200), '') FROM account WHERE id = $5), $3),
-                $4, $5, $6)
+                $4, $5, $6, $7)
         "#,
         id,
         input.kind.as_str(),
         input.display_name,
         input.job_title,
         input.account_id,
-        input.active
+        input.active,
+        input.calendar_id
     )
     .execute(&mut *conn)
     .await;
@@ -262,6 +278,15 @@ pub async fn update(
     {
         return Ok(Err(WriteConflict::NotInternalMember));
     }
+    if let Some(calendar) = input.calendar_id
+        && !crate::calendars::is_site(conn, calendar).await?
+    {
+        return Ok(Err(WriteConflict::NotASite));
+    }
+    let site_before = sqlx::query_scalar!("SELECT calendar_id FROM resource WHERE id = $1", id)
+        .fetch_optional(&mut *conn)
+        .await?
+        .flatten();
     let updated = sqlx::query_scalar!(
         r#"
         UPDATE resource
@@ -272,6 +297,7 @@ pub async fn update(
             account_id = $6,
             former_account_id = CASE WHEN $6::uuid IS NULL AND $3 = 'person' THEN former_account_id END,
             active = $7,
+            calendar_id = $8,
             version = version + 1
         WHERE id = $1 AND ($2::bigint[] IS NULL OR version = ANY($2))
         RETURNING id
@@ -282,7 +308,8 @@ pub async fn update(
         input.display_name,
         input.job_title,
         input.account_id,
-        input.active
+        input.active,
+        input.calendar_id
     )
     .fetch_optional(&mut *conn)
     .await;
@@ -290,6 +317,20 @@ pub async fn update(
         Ok(Some(_)) => {}
         Ok(None) => return Ok(Err(missing_or_stale(conn, id).await?)),
         Err(conflict) => return Ok(Err(conflict)),
+    }
+    if site_before != input.calendar_id {
+        // Another site: other holidays, any day.
+        crate::outbox::record(
+            conn,
+            &crate::outbox::Event {
+                kind: crate::capacity::RESOURCE_CHANGED,
+                aggregate_type: "resource",
+                aggregate_id: id,
+                payload: serde_json::json!({ "resourceId": id, "from": null, "until": null }),
+                actor_id: None,
+            },
+        )
+        .await?;
     }
     Ok(find(conn, id).await?.ok_or(WriteConflict::NotFound))
 }
