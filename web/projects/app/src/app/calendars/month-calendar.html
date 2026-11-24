@@ -60,6 +60,9 @@
                     }
                     @case ('absence') {
                       <span class="tag">{{ 'absences.kinds.' + day.absence?.kind | transloco }}</span>
+                      @if (day.minutes > 0) {
+                        <span class="tag hours">{{ day.minutes | duration }}</span>
+                      }
                     }
                   }
                   <span class="cdk-visually-hidden">, {{ dayDetail(day) }}</span>
@@ -72,6 +75,7 @@
         }
       </tbody>
     </table>
+    <p class="total">{{ 'calendars.monthTotal' | transloco: { hours: (total() | duration) } }}</p>
     <ul class="legend" [attr.aria-label]="'calendars.legend' | transloco">
       <li><span class="swatch" data-look="holiday" aria-hidden="true"></span>{{ 'calendars.look.holiday' | transloco }}</li>
       <li><span class="swatch" data-look="closed" aria-hidden="true"></span>{{ 'calendars.look.closed' | transloco }}</li>

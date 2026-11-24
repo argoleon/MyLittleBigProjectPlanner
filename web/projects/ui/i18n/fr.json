@@ -2345,6 +2345,14 @@
       "labelHint": "Facultatif, par exemple « Temps partiel 80 % ».",
       "create": "Ajouter",
       "save": "Enregistrer"
+    },
+    "weeks": {
+      "title": "Capacité des 4 prochaines semaines",
+      "subtitle": "Heures disponibles, après jours fériés, fermetures et absences.",
+      "loading": "Chargement de la capacité des semaines…",
+      "short": "S{{ week }}",
+      "weekOf": "Semaine {{ week }}",
+      "range": "du {{ from }} au {{ to }}"
     }
   },
   "calendars": {
@@ -2451,7 +2459,8 @@
       "absence": "absent"
     },
     "ownException": "Exception de la ressource",
-    "ownExceptions": "Exceptions de la ressource ce mois-ci"
+    "ownExceptions": "Exceptions de la ressource ce mois-ci",
+    "monthTotal": "Capacité du mois : {{ hours }}"
   },
   "absences": {
     "title": "Absences",

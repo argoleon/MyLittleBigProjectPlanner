@@ -21,6 +21,7 @@ import {
 import { AbsencesCard } from '../absences/absences-card';
 import { MonthCalendar } from '../calendars/month-calendar';
 import { CapacityCard } from '../capacity/capacity-card';
+import { CapacityWeeks } from '../capacity/capacity-weeks';
 import { ResourceDialog, ResourceDialogData } from './resource-dialog';
 
 /** Whether a member with `role` creates and changes resources. */
@@ -31,8 +32,8 @@ export function managesResources(role: TenantRole | undefined): boolean {
 /**
  * The page of a resource (mockup 20, L07-US01): its name, kind, job title,
  * account, status, site, weekly capacity (L07-US03) and month calendar
- * (L07-US04), and its absences (L07-US05), which the person and the
- * managers declare.
+ * (L07-US04), its absences (L07-US05), which the person and the managers
+ * declare, and its capacity over the next 4 weeks (L07-US06).
  */
 @Component({
   selector: 'app-resource-page',
@@ -40,6 +41,7 @@ export function managesResources(role: TenantRole | undefined): boolean {
     AbsencesCard,
     Avatar,
     CapacityCard,
+    CapacityWeeks,
     ErrorState,
     LoadingState,
     MatButtonModule,

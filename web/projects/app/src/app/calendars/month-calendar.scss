@@ -104,6 +104,11 @@
   color: var(--mat-sys-on-surface-variant);
 }
 
+.total {
+  margin: var(--app-space-3) 0 0;
+  font: var(--mat-sys-title-small);
+}
+
 .legend {
   display: flex;
   flex-wrap: wrap;

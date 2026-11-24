@@ -46,6 +46,28 @@ export function parseLocalDate(value: string): { year: number; month: number; da
   return { year, month, day };
 }
 
+/** The local date `days` after `value` (`YYYY-MM-DD`; before it when negative), in UTC so no daylight saving time shifts it. */
+export function addDays(value: string, days: number): string {
+  const date = parseLocalDate(value);
+  if (!date) {
+    throw new RangeError(`not a local date (YYYY-MM-DD): ${value}`);
+  }
+  return new Date(Date.UTC(date.year, date.month - 1, date.day + days)).toISOString().slice(0, 10);
+}
+
+/** The Monday of the week of a local date. */
+export function mondayOf(value: string): string {
+  const weekday = (new Date(`${value}T00:00:00Z`).getUTCDay() + 6) % 7;
+  return addDays(value, -weekday);
+}
+
+/** The ISO 8601 week number of a local date: week 1 holds the year's first Thursday. */
+export function isoWeek(value: string): number {
+  const thursday = new Date(`${addDays(mondayOf(value), 3)}T00:00:00Z`);
+  const firstJanuary = Date.UTC(thursday.getUTCFullYear(), 0, 1);
+  return Math.floor((thursday.getTime() - firstJanuary) / 86_400_000 / 7) + 1;
+}
+
 /**
  * Formats a planning date in `locale`, e.g. `29 mars 2026`. The date is
  * formatted in UTC on purpose: UTC midnight of that day is the same calendar

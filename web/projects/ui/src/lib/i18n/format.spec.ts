@@ -1,10 +1,13 @@
 import {
+  addDays,
   formatDuration,
   formatFileSize,
   formatInstant,
   formatLocalDate,
   formatNumber,
   fromLocalDate,
+  isoWeek,
+  mondayOf,
   parseHours,
   parseLocalDate,
   toLocalDate,
@@ -24,6 +27,33 @@ describe('parseLocalDate', () => {
     for (const bad of ['2026-02-30', '2027-02-29', '2026-13-01', '2026-3-29', '29/03/2026', '2026-03-29T00:00:00Z', '']) {
       expect(parseLocalDate(bad), bad).toBeNull();
     }
+  });
+});
+
+describe('addDays, mondayOf and isoWeek', () => {
+  it('move across months, years, leap days and daylight saving time changes', () => {
+    expect(addDays('2026-12-28', 4)).toBe('2027-01-01');
+    expect(addDays('2028-03-01', -1)).toBe('2028-02-29');
+    // The Sunday France goes to summer time, and the one it leaves it.
+    expect(addDays('2026-03-28', 1)).toBe('2026-03-29');
+    expect(addDays('2026-03-29', 1)).toBe('2026-03-30');
+    expect(addDays('2026-10-25', 1)).toBe('2026-10-26');
+    expect(() => addDays('2026-02-30', 1)).toThrowError(RangeError);
+  });
+
+  it('find the Monday of a week', () => {
+    expect(mondayOf('2026-11-24')).toBe('2026-11-23');
+    expect(mondayOf('2026-11-23')).toBe('2026-11-23');
+    expect(mondayOf('2027-01-03')).toBe('2026-12-28');
+  });
+
+  it('number weeks the ISO way', () => {
+    expect(isoWeek('2026-11-24')).toBe(48);
+    // 1 January 2027 is a Friday: still week 53 of 2026.
+    expect(isoWeek('2027-01-01')).toBe(53);
+    expect(isoWeek('2027-01-04')).toBe(1);
+    // 29 December 2025 is a Monday of week 1 of 2026.
+    expect(isoWeek('2025-12-29')).toBe(1);
   });
 });
 
