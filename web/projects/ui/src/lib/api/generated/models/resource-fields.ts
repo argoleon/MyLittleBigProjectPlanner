@@ -20,6 +20,11 @@ export interface ResourceFields {
   active?: boolean;
 
   /**
+   * A site calendar of the tenant; the tenant calendar when left out.
+   */
+  calendarId?: (string | null);
+
+  /**
    * 1 to 200 characters. Required unless `accountId` is set: a linked
    * person shows its member's name, and this one is ignored.
    */

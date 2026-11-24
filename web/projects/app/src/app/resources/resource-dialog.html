@@ -73,6 +73,19 @@
         <mat-error>{{ key | transloco }}</mat-error>
       }
     </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'resources.dialog.site' | transloco }}</mat-label>
+      <mat-select formControlName="calendarId">
+        <mat-option [value]="null">{{ 'resources.dialog.noSite' | transloco }}</mat-option>
+        @for (site of sites(); track site.id) {
+          <mat-option [value]="site.id">{{ site.name }}</mat-option>
+        }
+      </mat-select>
+      <mat-hint>{{ 'resources.dialog.siteHint' | transloco }}</mat-hint>
+      @if (form.controls.calendarId.getError('api'); as key) {
+        <mat-error>{{ key | transloco }}</mat-error>
+      }
+    </mat-form-field>
 
     @if (existing) {
       <mat-slide-toggle formControlName="active" aria-describedby="resource-active-hint">

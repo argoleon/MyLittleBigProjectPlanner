@@ -1,0 +1,102 @@
+<section class="card" aria-labelledby="month-title">
+  <div class="month-bar">
+    <button matIconButton type="button" class="previous" [attr.aria-label]="'calendars.previousMonth' | transloco" (click)="shift(-1)">
+      <mat-icon aria-hidden="true">chevron_left</mat-icon>
+    </button>
+    <h2 class="month" id="month-title" aria-live="polite">{{ title() }}</h2>
+    <button matIconButton type="button" class="next" [attr.aria-label]="'calendars.nextMonth' | transloco" (click)="shift(1)">
+      <mat-icon aria-hidden="true">chevron_right</mat-icon>
+    </button>
+  </div>
+
+  @if (notice(); as notice) {
+    <p class="message" [class.info]="notice.ok" [class.error]="!notice.ok" [attr.role]="notice.ok ? 'status' : 'alert'">
+      {{ notice.messageKey | transloco }}
+    </p>
+  }
+
+  @if (days.error()) {
+    <ui-error-state [error]="days.error()" [headingLevel]="3" (retry)="days.reload()" />
+  } @else if (!days.hasValue()) {
+    <mat-progress-bar mode="indeterminate" [attr.aria-label]="'calendars.loading' | transloco" />
+  } @else {
+    <p class="hint" id="month-hint">{{ (canManage() ? 'calendars.gridHintManage' : 'calendars.gridHint') | transloco }}</p>
+    <table class="grid" role="grid" #grid aria-labelledby="month-title" aria-describedby="month-hint">
+      <thead>
+        <tr>
+          @for (name of weekdays(); track $index; let index = $index) {
+            <th scope="col"><abbr [title]="weekdayLong()[index]">{{ name }}</abbr></th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (week of weeks(); track $index) {
+          <tr>
+            @for (day of week; track $index) {
+              @if (day; as day) {
+                <td
+                  role="gridcell"
+                  class="day"
+                  [attr.data-day]="day.day"
+                  [attr.data-look]="look(day)"
+                  [class.today]="isToday(day)"
+                  [class.own]="day.source === 'resource'"
+                  [attr.tabindex]="tabbable(day) ? 0 : -1"
+                  [attr.aria-current]="isToday(day) ? 'date' : null"
+                  (focus)="focused.set(day.day)"
+                  (keydown)="onKey($event, day)"
+                  (click)="open(day)"
+                >
+                  <span class="number">{{ dayNumber(day) }}</span>&ngsp;
+                  @switch (look(day)) {
+                    @case ('holiday') {
+                      <span class="tag">{{ day.holiday ? ('calendars.holidays.' + day.holiday | transloco) : day.label }}</span>
+                    }
+                    @case ('closed') {
+                      <span class="tag">{{ day.label ?? ('calendars.look.closed' | transloco) }}</span>
+                    }
+                    @case ('working') {
+                      <span class="tag hours">{{ day.minutes | duration }}</span>
+                    }
+                  }
+                  <span class="cdk-visually-hidden">, {{ dayDetail(day) }}</span>
+                </td>
+              } @else {
+                <td class="outside" aria-hidden="true"></td>
+              }
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+    <ul class="legend" [attr.aria-label]="'calendars.legend' | transloco">
+      <li><span class="swatch" data-look="holiday" aria-hidden="true"></span>{{ 'calendars.look.holiday' | transloco }}</li>
+      <li><span class="swatch" data-look="closed" aria-hidden="true"></span>{{ 'calendars.look.closed' | transloco }}</li>
+      <li><span class="swatch" data-look="off" aria-hidden="true"></span>{{ 'calendars.look.off' | transloco }}</li>
+      <li><span class="swatch own" aria-hidden="true"></span>{{ 'calendars.ownException' | transloco }}</li>
+    </ul>
+  }
+
+  @if (ownExceptions().length > 0) {
+    <h3 class="subtitle">{{ 'calendars.ownExceptions' | transloco }}</h3>
+    <ul class="exceptions">
+      @for (exception of ownExceptions(); track exception.id) {
+        <li>
+          <span class="when">{{ exception.day | localDate: { weekday: 'short', day: 'numeric', month: 'long' } }}</span>
+          <span>{{ 'calendars.kinds.' + exception.kind | transloco }}{{ exception.label ? ' · ' + exception.label : '' }}</span>
+          @if (canManage()) {
+            <button
+              matIconButton
+              type="button"
+              [id]="'own-exception-' + exception.id"
+              [attr.aria-label]="'calendars.exception.deleteOf' | transloco: { day: (exception.day | localDate) }"
+              (click)="remove(exception)"
+            >
+              <mat-icon aria-hidden="true">delete</mat-icon>
+            </button>
+          }
+        </li>
+      }
+    </ul>
+  }
+</section>

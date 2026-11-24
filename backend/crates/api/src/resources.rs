@@ -17,6 +17,7 @@ use infra::uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
+use crate::calendars::{SiteRefView, sites};
 use crate::etag::{etag, if_none_match, require_if_match};
 use crate::extract::{AcceptLanguage, ApiJson, ApiPath, ApiQuery};
 use crate::idempotency::{self, Start};
@@ -93,12 +94,15 @@ pub struct ResourceView {
     active: bool,
     /// The teams it belongs to, by name in the language of the request.
     teams: Vec<TeamRefView>,
+    /// Its site calendar; `null`: the tenant calendar applies.
+    #[schema(required = true)]
+    site: Option<SiteRefView>,
     #[schema(example = 1)]
     version: i64,
 }
 
 impl ResourceView {
-    fn new(resource: Resource, teams: Vec<TeamRefView>) -> Self {
+    fn new(resource: Resource, teams: Vec<TeamRefView>, site: Option<SiteRefView>) -> Self {
         Self {
             id: resource.id,
             kind: resource.kind.into(),
@@ -108,6 +112,7 @@ impl ResourceView {
             former_member: resource.former_member,
             active: resource.active,
             teams,
+            site,
             version: resource.version,
         }
     }
@@ -121,11 +126,13 @@ async fn views(
 ) -> Result<Vec<ResourceView>, Problem> {
     let ids: Vec<Uuid> = resources.iter().map(|r| r.id).collect();
     let mut teams = teams_of(tx, language, &ids).await?;
+    let sites = sites(tx, language).await?;
     Ok(resources
         .into_iter()
         .map(|r| {
             let of_resource = teams.remove(&r.id).unwrap_or_default();
-            ResourceView::new(r, of_resource)
+            let site = r.calendar_id.and_then(|id| sites.get(&id).cloned());
+            ResourceView::new(r, of_resource, site)
         })
         .collect())
 }
@@ -135,11 +142,10 @@ async fn view_of(
     language: &Language,
     resource: Resource,
 ) -> Result<ResourceView, Problem> {
-    let teams = teams_of(tx, language, &[resource.id])
+    views(tx, language, vec![resource])
         .await?
-        .remove(&resource.id)
-        .unwrap_or_default();
-    Ok(ResourceView::new(resource, teams))
+        .pop()
+        .ok_or_else(|| Problem::new(ErrorCode::Internal))
 }
 
 /// A page of resources.
@@ -201,6 +207,9 @@ pub struct ResourceBody {
     /// `true` when left out.
     #[serde(default = "active_by_default")]
     active: bool,
+    /// A site calendar of the tenant; the tenant calendar when left out.
+    #[serde(default)]
+    calendar_id: Option<Uuid>,
 }
 
 const fn active_by_default() -> bool {
@@ -223,6 +232,7 @@ impl ResourceBody {
             job_title: trimmed(fields.job_title),
             account_id: self.account_id,
             active: self.active,
+            calendar_id: self.calendar_id,
         })
     }
 }
@@ -273,6 +283,7 @@ fn conflict_problem(conflict: WriteConflict) -> Problem {
         WriteConflict::AccountTaken => Problem::new(ErrorCode::ResourceAccountTaken)
             .with_detail("this member is already linked to another resource")
             .with_errors(vec![FieldError::new("accountId", "taken")]),
+        WriteConflict::NotASite => Problem::validation(vec![FieldError::new("calendarId", "not_a_site")]),
         WriteConflict::NotInternalMember => {
             Problem::validation(vec![FieldError::new("accountId", "not_internal_member")])
         }

@@ -1,0 +1,77 @@
+@if (canManage()) {
+  <div class="toolbar">
+    <button matButton="filled" type="button" class="new" (click)="create()">
+      <mat-icon aria-hidden="true">add</mat-icon>
+      {{ 'calendars.new' | transloco }}
+    </button>
+  </div>
+}
+
+@if (notice(); as notice) {
+  <p class="message" [class.info]="notice.ok" [class.error]="!notice.ok" [attr.role]="notice.ok ? 'status' : 'alert'">
+    {{ notice.messageKey | transloco: notice.params }}
+  </p>
+}
+
+@if (list.error()) {
+  <ui-error-state [error]="list.error()" [headingLevel]="2" (retry)="list.reload()" />
+} @else if (!list.hasValue()) {
+  <mat-progress-bar mode="indeterminate" [attr.aria-label]="'calendars.loading' | transloco" />
+} @else {
+  <div class="table-card">
+    <table mat-table [dataSource]="calendars()" [trackBy]="trackCalendar" class="table">
+      <caption class="cdk-visually-hidden">{{ 'calendars.caption' | transloco }}</caption>
+
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef scope="col">{{ 'calendars.columns.name' | transloco }}</th>
+        <td mat-cell *matCellDef="let row">
+          <a class="team-link" [routerLink]="['/workload/calendars', row.id]">{{ row.name }}</a>
+          <span class="secondary">{{ 'calendars.kindOf.' + row.kind | transloco }}</span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="holidays">
+        <th mat-header-cell *matHeaderCellDef scope="col">{{ 'calendars.columns.holidays' | transloco }}</th>
+        <td mat-cell *matCellDef="let row">{{ 'calendars.sets.' + (row.holidaySet ?? 'inherit') | transloco }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="resources">
+        <th mat-header-cell *matHeaderCellDef scope="col">{{ 'calendars.columns.resources' | transloco }}</th>
+        <td mat-cell *matCellDef="let row" class="count">
+          {{ row.kind === 'tenant' ? ('calendars.othersResources' | transloco) : row.resourceCount }}
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef scope="col">
+          <span class="cdk-visually-hidden">{{ 'calendars.columns.actions' | transloco }}</span>
+        </th>
+        <td mat-cell *matCellDef="let row" class="actions">
+          <button
+            matIconButton
+            type="button"
+            [id]="actionsId(row, 'edit')"
+            [attr.aria-label]="'calendars.editOf' | transloco: { name: row.name }"
+            (click)="edit(row)"
+          >
+            <mat-icon aria-hidden="true">edit</mat-icon>
+          </button>
+          @if (row.kind === 'site') {
+            <button
+              matIconButton
+              type="button"
+              [id]="actionsId(row, 'delete')"
+              [attr.aria-label]="'calendars.deleteOf' | transloco: { name: row.name }"
+              (click)="remove(row)"
+            >
+              <mat-icon aria-hidden="true">delete</mat-icon>
+            </button>
+          }
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="columns()"></tr>
+      <tr mat-row *matRowDef="let row; columns: columns()"></tr>
+    </table>
+  </div>
+}

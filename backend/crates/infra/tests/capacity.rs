@@ -41,6 +41,7 @@ async fn resource(db: &TestDb, tenant: &SeedTenant) -> Uuid {
             job_title: None,
             account_id: None,
             active: true,
+            calendar_id: None,
         },
     )
     .await

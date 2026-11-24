@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, kind, coalesce(app_member_name(account_id), display_name) AS \"display_name!\", job_title,\n               account_id, former_account_id IS NOT NULL AS \"former_member!\", active, version, created_at\n        FROM resource\n        WHERE id = $1\n        ",
+  "query": "\n        SELECT id, kind, coalesce(app_member_name(account_id), display_name) AS \"display_name!\", job_title,\n               account_id, former_account_id IS NOT NULL AS \"former_member!\", active, calendar_id, version, created_at\n        FROM resource\n        WHERE id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -72,6 +72,17 @@
       },
       {
         "ordinal": 7,
+        "name": "calendar_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "resource",
+            "name": "calendar_id"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
         "name": "version",
         "type_info": "Int8",
         "origin": {
@@ -82,7 +93,7 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -106,9 +117,10 @@
       true,
       null,
       false,
+      true,
       false,
       false
     ]
   },
-  "hash": "a881d311086f1585c5ab7c6671952991c4ca1da8e201258ca007063a070ddeda"
+  "hash": "9c76788201ccd19b5bda23b60860cfea2e9620cca78091ca16a30162ce569555"
 }

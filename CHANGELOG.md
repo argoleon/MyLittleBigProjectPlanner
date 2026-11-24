@@ -22,6 +22,12 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
   - A **Workload** tab in Administration lets organization admins change the default capacity, the overload tolerance and the overload mode (used from L08).
   - Every change is recorded in the event outbox (`resource.capacity_changed` with the days concerned, `tenant.capacity_changed`) for the load computation of L08.
   - `/api/v1/resources/{id}/capacity-patterns` (list, create, change, delete) and `GET`/`PUT /api/v1/tenant/workload-settings`.
+- **Calendars and public holidays** (#207)
+  - Every organization has its calendar, with the French public holidays computed for any year; sites ("Paris", "Strasbourg") have theirs, with the organization's holidays, the Alsace-Moselle ones or none. A resource belongs to a site, or to none.
+  - Dated exceptions at three levels — the organization, a site, a resource — the closest deciding: a holiday added, a closure, or a day worked that cancels a holiday. Working weekdays stay those of the capacity.
+  - A **Calendars** tab in Workload lists the calendars; each has a page with its holidays and exceptions by year. The resource page shows its site and a month grid (holidays, closures, days not worked, its own exceptions), navigable with the keyboard; managers add an exception by choosing a day.
+  - Every change is recorded in the event outbox (`calendar.changed`, `resource.capacity_changed`) for the load computation of L08.
+  - `/api/v1/calendars` (list, create a site, read, change, delete), `GET /api/v1/calendars/{id}/year`, `/api/v1/calendars/{id}/exceptions` and `/api/v1/resources/{id}/exceptions` (create, change, delete), `GET /api/v1/resources/{id}/days` (each day's status and capacity). A resource takes a `calendarId` and tells its `site`.
 
 ### Fixed
 

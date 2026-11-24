@@ -252,6 +252,9 @@ Le Gantt est développé en interne : aucune librairie commerciale ou GPL n'est 
 - **Calendrier du tenant** : jours ouvrés et jours fériés par défaut.
 - **Calendriers de site ou de pays** : jours fériés préchargés (France en premier, puis d'autres pays) et modifiables.
 - **Calendrier de ressource** : rattaché à un site, avec ses propres exceptions.
+- Les jours ouvrés de la semaine viennent de la capacité (§8) : un jour à 0 h n'est pas travaillé. Les calendriers ne portent que des exceptions datées (jour férié ajouté, fermeture, jour travaillé qui annule un férié) et un jeu de jours fériés.
+- Les jours fériés sont calculés pour n'importe quelle année (dates fixes et fêtes liées à Pâques) : France, ou France avec Alsace-Moselle (Vendredi saint, 26 décembre). Le tenant ne stocke que ses exceptions. Un site utilise son propre jeu, ou celui du tenant.
+- Le niveau le plus proche décide : exceptions de la ressource, puis de son site, puis du tenant ; à chaque niveau, ses exceptions passent avant son jeu de fériés. Un jour férié ou fermé n'a aucune capacité.
 - Les dates de planification sont des dates locales (`date`), pas des instants UTC. Ça évite qu'une tâche du lundi bascule sur le dimanche pour un utilisateur situé dans un autre fuseau.
 
 Après le MVP : un calendrier propre au projet.

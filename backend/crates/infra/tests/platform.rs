@@ -340,6 +340,7 @@ async fn fill_beta(db: &TestDb) -> (TestMember, TestMember) {
                 job_title: None,
                 account_id: account,
                 active: true,
+                calendar_id: None,
             },
         )
         .await
