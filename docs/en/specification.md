@@ -252,6 +252,9 @@ The Gantt chart is built in-house: no commercial or GPL library is compatible wi
 - **Tenant calendar**: default working days and public holidays.
 - **Site or country calendars**: preloaded public holidays (France first, then other countries), editable.
 - **Resource calendar**: attached to a site, with its own exceptions.
+- Working weekdays come from the capacity (§8): a day of 0 h is not worked. Calendars only hold dated exceptions (an added holiday, a closure, a day worked that cancels a holiday) and a set of public holidays.
+- Public holidays are computed for any year (fixed dates and Easter-based feasts): France, or France with Alsace-Moselle (Good Friday, 26 December). The tenant only stores its exceptions. A site uses its own set, or the tenant's.
+- The closest level decides: the resource's exceptions, then its site's, then the tenant's; at each level, its exceptions come before its holiday set. A holiday or closed day has no capacity.
 - Planning dates are local dates (`date`), not UTC instants. This prevents a Monday task from moving to Sunday for a user in another time zone.
 
 After the MVP: a project-specific calendar.
