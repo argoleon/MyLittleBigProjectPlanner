@@ -21,6 +21,7 @@ use crate::account;
 use crate::auth;
 use crate::boards;
 use crate::bulk_actions;
+use crate::capacity;
 use crate::config_fields;
 use crate::configs;
 use crate::events;
@@ -213,6 +214,9 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(resources::list, resources::create))
         .routes(routes!(resources::linkable_accounts))
         .routes(routes!(resources::read, resources::update))
+        .routes(routes!(capacity::list, capacity::create))
+        .routes(routes!(capacity::update, capacity::delete))
+        .routes(routes!(capacity::settings, capacity::update_settings))
         .routes(routes!(teams::list, teams::create))
         .routes(routes!(teams::read, teams::update, teams::delete))
         .routes(routes!(teams::add_member, teams::remove_member))

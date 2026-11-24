@@ -274,7 +274,8 @@ A resource can combine several tasks on the same day as long as the sum of its a
 
 - Weekly pattern: hours per weekday (for example Monday 7 h, …, Friday 3.5 h), which covers part-time work.
 - Historized with effective dates (switch to 80% on 1 March).
-- Default value defined per tenant, for example 7 h × 5 days.
+- Default value defined per tenant, for example 7 h × 5 days; the tenant admin changes it, with the overload tolerance and mode. It applies as it stands (never copied) to resources without a period and to the days before their first one.
+- One period per resource and effective date, with an optional label ("Part time 80%"); a period starting after today is shown as planned. Durations are stored in minutes.
 - Capacity of a day = weekly pattern, minus the site's public holidays, minus absences.
 - Capacity is the maximum daily load. An overload tolerance can be configured per tenant (0% by default).
 

@@ -10,6 +10,7 @@ pub mod auth_policy;
 pub mod boards;
 pub mod bootstrap;
 pub mod bulk_actions;
+pub mod capacity;
 pub mod comments;
 pub mod config;
 pub mod config_migrations;

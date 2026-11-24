@@ -242,6 +242,11 @@ export const routes: Routes = [
             loadComponent: () => import('./admin/authentication-settings').then((m) => m.AuthenticationSettings),
           },
           {
+            path: 'workload',
+            title: 'admin.tabs.workload',
+            loadComponent: () => import('./admin/workload-settings').then((m) => m.WorkloadSettingsTab),
+          },
+          {
             path: 'configurations',
             title: 'admin.tabs.configurations',
             loadComponent: () => import('./configuration/configurations-tab').then((m) => m.ConfigurationsTab),

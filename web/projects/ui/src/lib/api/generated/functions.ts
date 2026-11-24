@@ -323,6 +323,14 @@ export type { GetResource$Params as GetResource$Params } from './fn/resources/ge
 export { getResource as getResource } from './fn/resources/get-resource';
 export type { UpdateResource$Params as UpdateResource$Params } from './fn/resources/update-resource';
 export { updateResource as updateResource } from './fn/resources/update-resource';
+export type { ListCapacityPatterns$Params as ListCapacityPatterns$Params } from './fn/resources/list-capacity-patterns';
+export { listCapacityPatterns as listCapacityPatterns } from './fn/resources/list-capacity-patterns';
+export type { CreateCapacityPattern$Params as CreateCapacityPattern$Params } from './fn/resources/create-capacity-pattern';
+export { createCapacityPattern as createCapacityPattern } from './fn/resources/create-capacity-pattern';
+export type { UpdateCapacityPattern$Params as UpdateCapacityPattern$Params } from './fn/resources/update-capacity-pattern';
+export { updateCapacityPattern as updateCapacityPattern } from './fn/resources/update-capacity-pattern';
+export type { DeleteCapacityPattern$Params as DeleteCapacityPattern$Params } from './fn/resources/delete-capacity-pattern';
+export { deleteCapacityPattern as deleteCapacityPattern } from './fn/resources/delete-capacity-pattern';
 export type { ListTeams$Params as ListTeams$Params } from './fn/resources/list-teams';
 export { listTeams as listTeams } from './fn/resources/list-teams';
 export type { CreateTeam$Params as CreateTeam$Params } from './fn/resources/create-team';
@@ -337,6 +345,10 @@ export type { AddTeamMember$Params as AddTeamMember$Params } from './fn/resource
 export { addTeamMember as addTeamMember } from './fn/resources/add-team-member';
 export type { RemoveTeamMember$Params as RemoveTeamMember$Params } from './fn/resources/remove-team-member';
 export { removeTeamMember as removeTeamMember } from './fn/resources/remove-team-member';
+export type { GetWorkloadSettings$Params as GetWorkloadSettings$Params } from './fn/resources/get-workload-settings';
+export { getWorkloadSettings as getWorkloadSettings } from './fn/resources/get-workload-settings';
+export type { UpdateWorkloadSettings$Params as UpdateWorkloadSettings$Params } from './fn/resources/update-workload-settings';
+export { updateWorkloadSettings as updateWorkloadSettings } from './fn/resources/update-workload-settings';
 export type { ListSavedFilters$Params as ListSavedFilters$Params } from './fn/search/list-saved-filters';
 export { listSavedFilters as listSavedFilters } from './fn/search/list-saved-filters';
 export type { CreateSavedFilter$Params as CreateSavedFilter$Params } from './fn/search/create-saved-filter';

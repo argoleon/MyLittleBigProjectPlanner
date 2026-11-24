@@ -8,6 +8,7 @@ pub mod account;
 pub mod auth;
 pub mod boards;
 pub mod bulk_actions;
+pub mod capacity;
 pub mod cli;
 pub mod config_fields;
 pub mod configs;

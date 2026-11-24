@@ -16,6 +16,12 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
   - Teams group resources for views and filters; a resource may belong to several teams, and leaving one keeps its assignments. A team has a translatable name, unique in the organization, and an optional description. Organization admins and resource managers manage them; every internal member reads them.
   - The **Workload** screen has two tabs, Resources and Teams. The resource list filters by team, a resource's page lists its teams, and each team has a page where its resources are added (found by name) and removed.
   - `/api/v1/teams` (list, create, read, change, delete) and `PUT`/`DELETE /api/v1/teams/{id}/members/{resourceId}`; `GET /api/v1/resources?team=`. A resource now tells its `teams`.
+- **Weekly capacity** (#202)
+  - A resource's hours per weekday, historized by effective date: "Part time 80% from 1 March". Before its first period, or without any, the organization's default applies as it stands. One period per resource and date (`capacity_pattern.date_taken`); durations are kept in minutes.
+  - The resource page shows a **Weekly capacity** card: each period with its hours per day ("7 h", "3 h 30") and weekly total, its label, and "planned" when it starts later. Hours are typed as 7, 3.5, 3,5 or 3:30. Organization admins and resource managers add, change and delete periods.
+  - A **Workload** tab in Administration lets organization admins change the default capacity, the overload tolerance and the overload mode (used from L08).
+  - Every change is recorded in the event outbox (`resource.capacity_changed` with the days concerned, `tenant.capacity_changed`) for the load computation of L08.
+  - `/api/v1/resources/{id}/capacity-patterns` (list, create, change, delete) and `GET`/`PUT /api/v1/tenant/workload-settings`.
 
 ## [0.6.0] - 2026-11-19
 

@@ -1,0 +1,45 @@
+@if (current.error()) {
+  <ui-error-state [error]="current.error()" [headingLevel]="2" (retry)="current.reload()" />
+} @else if (!current.hasValue()) {
+  <mat-progress-bar mode="indeterminate" [attr.aria-label]="'admin.workload.loading' | transloco" />
+} @else {
+  <form class="settings" [formGroup]="form" (ngSubmit)="save()" novalidate>
+    <p class="intro">{{ 'admin.workload.intro' | transloco }}</p>
+
+    @if (notice(); as notice) {
+      <p class="message" [class.info]="notice.ok" [class.error]="!notice.ok" [attr.role]="notice.ok ? 'status' : 'alert'">
+        {{ notice.messageKey | transloco }}
+      </p>
+    }
+
+    <section class="block" aria-labelledby="workload-capacity">
+      <h2 class="block-title" id="workload-capacity">{{ 'admin.workload.capacity' | transloco }}</h2>
+      <app-week-hours [form]="form.controls.week" [legend]="'admin.workload.capacityLegend' | transloco" />
+    </section>
+
+    <section class="block" aria-labelledby="workload-overload">
+      <h2 class="block-title" id="workload-overload">{{ 'admin.workload.overload' | transloco }}</h2>
+      <mat-form-field appearance="outline" class="tolerance">
+        <mat-label>{{ 'admin.workload.tolerance' | transloco }}</mat-label>
+        <input matInput type="number" min="0" max="100" step="1" formControlName="tolerance" />
+        <span matTextSuffix>%</span>
+        <mat-hint>{{ 'admin.workload.toleranceHint' | transloco }}</mat-hint>
+        <mat-error>
+          {{ (form.controls.tolerance.getError('api') ?? 'errors.field.out_of_range') | transloco }}
+        </mat-error>
+      </mat-form-field>
+      <div class="choice">
+        <span class="choice-label" id="overload-mode-label">{{ 'admin.workload.mode' | transloco }}</span>
+        <mat-button-toggle-group formControlName="mode" aria-labelledby="overload-mode-label" hideSingleSelectionIndicator>
+          <mat-button-toggle value="blocking">{{ 'admin.workload.modes.blocking' | transloco }}</mat-button-toggle>
+          <mat-button-toggle value="warning">{{ 'admin.workload.modes.warning' | transloco }}</mat-button-toggle>
+        </mat-button-toggle-group>
+        <p class="choice-hint">{{ 'admin.workload.modeHints.' + form.controls.mode.value | transloco }}</p>
+      </div>
+    </section>
+
+    <div class="actions">
+      <button matButton="filled" type="submit" [disabled]="saving() || form.pristine">{{ 'admin.workload.save' | transloco }}</button>
+    </div>
+  </form>
+}

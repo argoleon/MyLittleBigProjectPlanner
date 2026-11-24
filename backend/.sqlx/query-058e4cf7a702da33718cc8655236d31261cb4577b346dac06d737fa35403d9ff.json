@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM capacity_pattern\n        WHERE id = $1 AND resource_id = $2 AND ($3::bigint[] IS NULL OR version = ANY($3))\n        RETURNING effective_from\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "effective_from",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "capacity_pattern",
+            "name": "effective_from"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "058e4cf7a702da33718cc8655236d31261cb4577b346dac06d737fa35403d9ff"
+}

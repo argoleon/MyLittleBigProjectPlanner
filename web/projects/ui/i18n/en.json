@@ -162,6 +162,7 @@
     "tabs": {
       "label": "Administration sections",
       "authentication": "Authentication",
+      "workload": "Workload",
       "members": "Members",
       "groups": "Groups",
       "roles": "Roles",
@@ -333,6 +334,26 @@
       "discardTitle": "Discard the changes?",
       "discardMessage": "The changes to this role are not saved.",
       "discardConfirm": "Discard"
+    },
+    "workload": {
+      "loading": "Loading the workload settings…",
+      "intro": "These settings apply to the whole organization. The default capacity applies to every resource without a capacity period, and to the days before its first one.",
+      "capacity": "Default capacity",
+      "capacityLegend": "Hours per day of a resource without a capacity period",
+      "overload": "Overload",
+      "tolerance": "Tolerance",
+      "toleranceHint": "Load accepted above capacity before a day counts as overloaded, from 0 to 100%.",
+      "mode": "When an assignment overloads a resource",
+      "modes": {
+        "blocking": "Refuse it",
+        "warning": "Accept it with a warning"
+      },
+      "modeHints": {
+        "blocking": "The assignment is refused, and the message lists the days concerned. Roles with “Force an overload” may override it.",
+        "warning": "The assignment is accepted, and the overloaded days are flagged."
+      },
+      "save": "Save",
+      "saved": "The workload settings were saved."
     }
   },
   "errors": {
@@ -547,6 +568,9 @@
     },
     "team": {
       "name_taken": "Another team already has this name."
+    },
+    "capacity_pattern": {
+      "date_taken": "The resource already has a capacity period starting that day."
     }
   },
   "dialog": {
@@ -2210,7 +2234,7 @@
       "generic": "Generic role, without account",
       "status": "Status",
       "edit": "Edit",
-      "next": "Weekly capacity, calendar and absences will appear here.",
+      "next": "Calendar and absences will appear here.",
       "teams": "Teams",
       "noTeam": "No team"
     },
@@ -2265,6 +2289,45 @@
       "hint": "Search an active resource by name or job title.",
       "inTeam": "already in the team",
       "add": "Add"
+    }
+  },
+  "capacity": {
+    "title": "Weekly capacity",
+    "subtitle": "Historized by effective date. The capacity is also the maximum load of each day.",
+    "loading": "Loading the capacity…",
+    "new": "New period",
+    "caption": "Capacity periods of the resource",
+    "columns": {
+      "from": "From",
+      "total": "Total",
+      "actions": "Actions"
+    },
+    "default": "Organization default",
+    "defaultHint": "Applies until a period is added.",
+    "defaultBefore": "Before {{ date }}: the organization default ({{ total }} a week).",
+    "planned": "planned",
+    "none": "No hours",
+    "editOf": "Edit the period from {{ date }}",
+    "deleteOf": "Delete the period from {{ date }}",
+    "deleteTitle": "Delete this period?",
+    "deleteMessage": "Its days take the capacity of the previous period, or the organization default.",
+    "deleteConfirm": "Delete",
+    "created": "The period was added.",
+    "saved": "The period was saved.",
+    "deleted": "The period was deleted.",
+    "hoursHint": "Hours such as 7, 3.5 or 3:30",
+    "hoursInvalid": "Hours of a day, such as 7, 3.5 or 3:30.",
+    "weekTotal": "Week: {{ total }}",
+    "dialog": {
+      "createTitle": "New capacity period",
+      "editTitle": "Edit the capacity period",
+      "from": "From",
+      "fromHint": "It applies from this day until the next period.",
+      "week": "Hours per day",
+      "label": "Label",
+      "labelHint": "Optional, such as “Part time 80%”.",
+      "create": "Add",
+      "save": "Save"
     }
   }
 }
