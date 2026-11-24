@@ -3,6 +3,7 @@
 //! This crate performs no I/O and depends on no other crate, so every rule
 //! can be unit-tested in isolation. `just check-domain` enforces it.
 
+pub mod absences;
 pub mod account;
 pub mod aggregates;
 pub mod attachments;

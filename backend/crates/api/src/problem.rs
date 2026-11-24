@@ -88,6 +88,7 @@ pub enum ErrorCode {
     TeamNameTaken,
     CapacityPatternDateTaken,
     CalendarExceptionDayTaken,
+    AbsenceOverlap,
     CalendarTenant,
     CalendarNameTaken,
     BoardNameTaken,
@@ -145,7 +146,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 101] = [
+    pub const ALL: [Self; 102] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -195,6 +196,7 @@ impl ErrorCode {
         Self::TeamNameTaken,
         Self::CapacityPatternDateTaken,
         Self::CalendarExceptionDayTaken,
+        Self::AbsenceOverlap,
         Self::CalendarTenant,
         Self::CalendarNameTaken,
         Self::BoardNameTaken,
@@ -300,6 +302,7 @@ impl ErrorCode {
             Self::TeamNameTaken => "team.name_taken",
             Self::CapacityPatternDateTaken => "capacity_pattern.date_taken",
             Self::CalendarExceptionDayTaken => "calendar_exception.day_taken",
+            Self::AbsenceOverlap => "absence.overlap",
             Self::CalendarTenant => "calendar.tenant",
             Self::CalendarNameTaken => "calendar.name_taken",
             Self::BoardNameTaken => "board.name_taken",
@@ -403,6 +406,7 @@ impl ErrorCode {
             | Self::TeamNameTaken
             | Self::CapacityPatternDateTaken
             | Self::CalendarExceptionDayTaken
+            | Self::AbsenceOverlap
             | Self::CalendarTenant
             | Self::CalendarNameTaken
             | Self::BoardNameTaken
@@ -512,6 +516,7 @@ impl ErrorCode {
             Self::TeamNameTaken => "Another team already has this name",
             Self::CapacityPatternDateTaken => "The resource already has a capacity period starting that day",
             Self::CalendarExceptionDayTaken => "There is already an exception that day",
+            Self::AbsenceOverlap => "Another absence of the resource takes a same half day",
             Self::CalendarTenant => "The tenant calendar is never deleted and keeps a holiday set",
             Self::CalendarNameTaken => "Another calendar already has this name",
             Self::BoardNameTaken => "This node already has a board with this name",

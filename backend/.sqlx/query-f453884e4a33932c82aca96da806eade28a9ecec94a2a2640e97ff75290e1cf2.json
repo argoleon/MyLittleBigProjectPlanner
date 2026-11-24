@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO absence (id, tenant_id, resource_id, kind, start_date, starts_at_noon, end_date, ends_at_noon, comment, declared_by)\n        VALUES ($1, app_current_tenant(), $2, $3, $4, $5, $6, $7, $8, $9)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Date",
+        "Bool",
+        "Date",
+        "Bool",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f453884e4a33932c82aca96da806eade28a9ecec94a2a2640e97ff75290e1cf2"
+}

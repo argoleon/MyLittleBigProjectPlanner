@@ -341,7 +341,7 @@ pub struct RangeParams {
 }
 
 impl RangeParams {
-    fn checked(&self) -> Result<(), Problem> {
+    pub(crate) fn checked(&self) -> Result<(), Problem> {
         let days = (self.to - self.from).whole_days();
         if !(0..MAX_DAYS).contains(&days) {
             return Err(Problem::new(ErrorCode::InvalidQuery).with_detail("from ≤ to, 366 days at most"));
@@ -388,9 +388,31 @@ pub struct DayView {
     /// Label of the exception.
     #[serde(skip_serializing_if = "Option::is_none")]
     label: Option<String>,
-    /// Capacity of the day: 0 when not worked.
+    /// The absence taking (part of) the day.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    absence: Option<DayAbsenceView>,
+    /// Capacity of the day: 0 when not worked, less an absence.
     #[schema(example = 420)]
     minutes: u16,
+}
+
+/// Which part of a day an absence takes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+#[schema(as = DayPart)]
+pub enum DayPartView {
+    Whole,
+    Morning,
+    Afternoon,
+}
+
+/// The absence of a day.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(as = DayAbsence)]
+pub struct DayAbsenceView {
+    kind: crate::absences::KindView,
+    part: DayPartView,
 }
 
 fn conflict_problem(conflict: WriteConflict) -> Problem {
@@ -1022,7 +1044,7 @@ pub async fn delete_resource_exception(
     summary = "Read the days of a resource",
     description = "Any internal member: for each day from `from` to `to` (366 days at most), whether \
                    the resource works it — its exceptions, then its site's, then the tenant's, and \
-                   their public holidays — and its capacity in minutes. Absences come with L07-US05.",
+                   their public holidays —, its absences, and its capacity in minutes.",
     params(("id" = Uuid, Path, description = "Id of the resource"), RangeParams),
     responses(
         (status = 200, description = "The days", body = Vec<DayView>),
@@ -1040,6 +1062,7 @@ pub async fn resource_days(
     require_resource(&mut tx, id).await?;
     let calendar = repo::of_resource(&mut tx, id, range.from, range.to).await?;
     let patterns = infra::capacity::list(&mut tx, id).await?;
+    let absences = infra::absences::list(&mut tx, id, range.from, range.to).await?;
     let default = infra::capacity::workload_settings(&mut tx)
         .await?
         .map_or(WeekMinutes([420, 420, 420, 420, 420, 0, 0]), |s| {
@@ -1084,7 +1107,11 @@ pub async fn resource_days(
     let (Some(from), Some(to)) = (local_date(range.from), local_date(range.to)) else {
         return Err(Problem::new(ErrorCode::InvalidQuery));
     };
-    let days = rules::days(&levels, &periods, default, from, to)
+    let absences: Vec<_> = absences
+        .iter()
+        .filter_map(infra::absences::StoredAbsence::rule)
+        .collect();
+    let days = rules::days(&levels, &periods, default, &absences, from, to)
         .into_iter()
         .filter_map(|day| {
             let (status, holiday, label) = match day.status {
@@ -1104,6 +1131,14 @@ pub async fn resource_days(
                 }),
                 holiday,
                 label,
+                absence: day.absence.map(|(kind, part)| DayAbsenceView {
+                    kind: kind.into(),
+                    part: match part {
+                        domain::absences::DayPart::Whole => DayPartView::Whole,
+                        domain::absences::DayPart::Morning => DayPartView::Morning,
+                        domain::absences::DayPart::Afternoon => DayPartView::Afternoon,
+                    },
+                }),
                 minutes: day.minutes,
             })
         })

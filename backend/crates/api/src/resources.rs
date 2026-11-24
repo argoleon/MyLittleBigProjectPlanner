@@ -507,6 +507,35 @@ pub async fn update(
     Ok(with_etag(response, version))
 }
 
+/// `GET /api/v1/resources/mine`.
+#[utoipa::path(
+    get,
+    path = "/resources/mine",
+    tag = TAG,
+    operation_id = "getMyResource",
+    summary = "Read the resource of the signed-in member",
+    description = "The person resource linked to the signed-in member's account: where they declare \
+                   their absences.",
+    params(("Accept-Language" = Option<String>, Header, description = "Language of the team names")),
+    responses(
+        (status = 200, description = "Their resource", body = ResourceView),
+        (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 404, description = "The member is linked to no resource", body = ProblemBody, content_type = PROBLEM_JSON),
+    )
+)]
+pub async fn mine(mut tx: TenantTx, accept: AcceptLanguage) -> Result<Response, Problem> {
+    let account = tx.account_id();
+    let resource = repo::find_by_account(&mut tx, account)
+        .await?
+        .ok_or_else(|| Problem::new(ErrorCode::NotFound).with_detail("linked to no resource"))?;
+    let language = Language::of(&tx, &accept);
+    let view = view_of(&mut tx, &language, resource).await?;
+    tx.commit().await?;
+    let mut response = ApiJson(view).into_response();
+    language.headers(&mut response);
+    Ok(response)
+}
+
 /// `GET /api/v1/resources/linkable-accounts`.
 #[utoipa::path(
     get,
