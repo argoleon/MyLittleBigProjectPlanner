@@ -18,6 +18,7 @@ import {
   resourceHolding,
 } from 'ui';
 
+import { MonthCalendar } from '../calendars/month-calendar';
 import { CapacityCard } from '../capacity/capacity-card';
 import { ResourceDialog, ResourceDialogData } from './resource-dialog';
 
@@ -28,12 +29,24 @@ export function managesResources(role: TenantRole | undefined): boolean {
 
 /**
  * The page of a resource (mockup 20, L07-US01): its name, kind, job title,
- * account, status and weekly capacity (L07-US03). Its calendar and absences
- * come with the next stories of L07.
+ * account, status, site, weekly capacity (L07-US03) and month calendar
+ * (L07-US04). Absences come with L07-US05.
  */
 @Component({
   selector: 'app-resource-page',
-  imports: [Avatar, CapacityCard, ErrorState, LoadingState, MatButtonModule, MatIconModule, ResourceKindChip, ResourceStateChip, RouterLink, TranslocoPipe],
+  imports: [
+    Avatar,
+    CapacityCard,
+    ErrorState,
+    LoadingState,
+    MatButtonModule,
+    MatIconModule,
+    MonthCalendar,
+    ResourceKindChip,
+    ResourceStateChip,
+    RouterLink,
+    TranslocoPipe,
+  ],
   template: `
     <nav class="breadcrumb" [attr.aria-label]="'resources.breadcrumb' | transloco">
       <span>{{ 'nav.workload' | transloco }}</span>
@@ -53,6 +66,9 @@ export function managesResources(role: TenantRole | undefined): boolean {
               <span class="job-title">{{ shown.jobTitle }}</span>
             }
             <ui-resource-state-chip [active]="shown.active" />
+            <span class="job-title site">
+              {{ shown.site ? ('resources.page.siteOf' | transloco: { name: shown.site.name }) : ('resources.page.noSite' | transloco) }}
+            </span>
           </div>
         </div>
         @if (canManage()) {
@@ -85,6 +101,7 @@ export function managesResources(role: TenantRole | undefined): boolean {
         <p class="next">{{ 'resources.page.next' | transloco }}</p>
       </section>
       <app-capacity-card class="capacity" [resourceId]="shown.id" />
+      <app-month-calendar class="capacity" [resourceId]="shown.id" [canManage]="canManage()" />
     } @else {
       <ui-loading-state [label]="'resources.loading' | transloco" />
     }

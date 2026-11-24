@@ -21,6 +21,7 @@ fn person<'a>(name: &'a str, account: Option<Uuid>) -> ResourceInput<'a> {
         job_title: None,
         account_id: account,
         active: true,
+        calendar_id: None,
     }
 }
 
@@ -31,6 +32,7 @@ fn generic(name: &str) -> ResourceInput<'_> {
         job_title: Some("Back end"),
         account_id: None,
         active: true,
+        calendar_id: None,
     }
 }
 

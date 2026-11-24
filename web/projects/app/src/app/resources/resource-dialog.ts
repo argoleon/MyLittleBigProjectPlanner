@@ -8,6 +8,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { debounceTime, map } from 'rxjs';
@@ -20,6 +21,7 @@ import {
   createResource,
   errorTranslationKey,
   isApiProblem,
+  listCalendars,
   listLinkableAccounts,
   updateResource,
 } from 'ui';
@@ -46,6 +48,7 @@ export function resourceBody(
   displayName: string,
   jobTitle: string,
   active: boolean,
+  calendarId: string | null = null,
 ): ResourceFields {
   const linked = kind === 'person' ? account : null;
   return {
@@ -54,13 +57,14 @@ export function resourceBody(
     displayName: linked ? null : displayName.trim(),
     jobTitle: jobTitle.trim() || null,
     active,
+    calendarId,
   };
 }
 
 /**
  * Creates or changes a resource (L07-US01): a person, linked to a member
- * or not, or a generic role; its name, job title and, once created,
- * whether it is active. Closes with the saved resource.
+ * or not, or a generic role; its name, job title, site (L07-US04) and,
+ * once created, whether it is active. Closes with the saved resource.
  */
 @Component({
   selector: 'app-resource-dialog',
@@ -72,6 +76,7 @@ export function resourceBody(
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    MatSelectModule,
     MatSlideToggleModule,
     ReactiveFormsModule,
     TranslocoPipe,
@@ -90,7 +95,11 @@ export class ResourceDialog {
     displayName: [this.existing && !this.existing.accountId ? this.existing.displayName : ''],
     jobTitle: [this.existing?.jobTitle ?? ''],
     active: [this.existing?.active ?? true],
+    calendarId: [(this.existing?.site?.id ?? null) as string | null],
   });
+  /** The sites a resource may use. */
+  private readonly calendars = resource({ loader: () => this.api.invoke(listCalendars) });
+  protected readonly sites = computed(() => (this.calendars.hasValue() ? this.calendars.value().items.filter((c) => c.kind === 'site') : []));
   protected readonly kind = toSignal(this.form.controls.kind.valueChanges, { initialValue: this.form.controls.kind.value });
 
   /** The member chosen, if any. */
@@ -136,8 +145,8 @@ export class ResourceDialog {
   }
 
   protected async save(): Promise<void> {
-    const { kind, displayName, jobTitle, active } = this.form.getRawValue();
-    const body = resourceBody(kind, this.account(), displayName, jobTitle, active);
+    const { kind, displayName, jobTitle, active, calendarId } = this.form.getRawValue();
+    const body = resourceBody(kind, this.account(), displayName, jobTitle, active, calendarId);
     if (body.accountId === null && !body.displayName) {
       this.form.controls.displayName.setErrors({ required: true });
       this.form.controls.displayName.markAsTouched();
@@ -165,7 +174,7 @@ export class ResourceDialog {
     }
     const keys = error.fieldTranslationKeys();
     let placed = false;
-    for (const field of ['displayName', 'jobTitle'] as const) {
+    for (const field of ['displayName', 'jobTitle', 'calendarId'] as const) {
       if (keys[field] && !(field === 'displayName' && this.linked())) {
         this.form.controls[field].setErrors({ api: keys[field] });
         this.form.controls[field].markAsTouched();

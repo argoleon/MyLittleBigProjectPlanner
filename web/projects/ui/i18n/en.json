@@ -461,7 +461,8 @@
       "immutable": "This value cannot be changed.",
       "order_by_not_allowed": "A quick filter cannot sort: remove ORDER BY.",
       "person_only": "Only a person is linked to an account.",
-      "not_internal_member": "Not an internal member of the organization."
+      "not_internal_member": "Not an internal member of the organization.",
+      "not_a_site": "Not a site of the organization."
     },
     "invitation": {
       "invalid": "This invitation link is invalid, has expired or was already used. Ask for a new one.",
@@ -571,6 +572,13 @@
     },
     "capacity_pattern": {
       "date_taken": "The resource already has a capacity period starting that day."
+    },
+    "calendar": {
+      "name_taken": "Another calendar already has this name.",
+      "tenant": "The organization calendar is never deleted and keeps its public holidays."
+    },
+    "calendar_exception": {
+      "day_taken": "There is already an exception that day."
     }
   },
   "dialog": {
@@ -2221,7 +2229,10 @@
       "active": "Active",
       "activeHint": "An inactive resource is no longer offered for new assignments.",
       "create": "Create",
-      "save": "Save"
+      "save": "Save",
+      "site": "Site",
+      "noSite": "Organization calendar",
+      "siteHint": "The public holidays and closures of its site apply."
     },
     "page": {
       "details": "Details",
@@ -2234,9 +2245,11 @@
       "generic": "Generic role, without account",
       "status": "Status",
       "edit": "Edit",
-      "next": "Calendar and absences will appear here.",
+      "next": "Absences will appear here.",
       "teams": "Teams",
-      "noTeam": "No team"
+      "noTeam": "No team",
+      "siteOf": "Site {{ name }}",
+      "noSite": "Organization calendar"
     },
     "team": "Team",
     "allTeams": "All teams"
@@ -2329,5 +2342,110 @@
       "create": "Add",
       "save": "Save"
     }
+  },
+  "calendars": {
+    "title": "Calendars",
+    "loading": "Loading the calendars…",
+    "new": "New site",
+    "caption": "Calendars of the organization",
+    "columns": {
+      "name": "Calendar",
+      "holidays": "Public holidays",
+      "resources": "Resources",
+      "actions": "Actions",
+      "day": "Day",
+      "kind": "Kind",
+      "label": "Name"
+    },
+    "kindOf": {
+      "tenant": "Organization calendar",
+      "site": "Site"
+    },
+    "sets": {
+      "fr": "France",
+      "fr-alsace-moselle": "France, Alsace-Moselle",
+      "none": "No public holiday",
+      "inherit": "Same as the organization"
+    },
+    "othersResources": "Every resource without a site",
+    "editOf": "Edit {{ name }}",
+    "deleteOf": "Delete {{ name }}",
+    "deleteTitle": "Delete {{ name }}?",
+    "deleteMessage": "Its resources use the organization calendar again; its exceptions go.",
+    "deleteConfirm": "Delete",
+    "created": "{{ name }} was created.",
+    "saved": "{{ name }} was saved.",
+    "deleted": "{{ name }} was deleted.",
+    "edit": "Edit",
+    "previousYear": "Previous year",
+    "nextYear": "Next year",
+    "inherited": "Its public holidays are the organization’s.",
+    "yearCaption": "Public holidays and exceptions of {{ year }}",
+    "kinds": {
+      "set": "Public holiday",
+      "holiday": "Holiday added",
+      "non_working": "Closed",
+      "working": "Worked"
+    },
+    "kindHints": {
+      "holiday": "A public holiday the set does not hold: no capacity that day.",
+      "non_working": "A closure or a bridge day: no capacity that day.",
+      "working": "Worked anyway: cancels a public holiday, the hours of the weekday apply."
+    },
+    "holidays": {
+      "new_years_day": "New Year’s Day",
+      "good_friday": "Good Friday",
+      "easter_monday": "Easter Monday",
+      "labour_day": "Labour Day",
+      "victory_in_europe": "Victory in Europe Day",
+      "ascension_day": "Ascension Day",
+      "whit_monday": "Whit Monday",
+      "bastille_day": "Bastille Day",
+      "assumption": "Assumption",
+      "all_saints_day": "All Saints’ Day",
+      "armistice": "Armistice Day",
+      "christmas": "Christmas",
+      "st_stephens_day": "St Stephen’s Day"
+    },
+    "dialog": {
+      "createTitle": "New site",
+      "editTitle": "Edit {{ name }}",
+      "name": "Name",
+      "holidays": "Public holidays",
+      "tenantHint": "The public holidays of every resource without a site.",
+      "siteHint": "Its resources take these public holidays, then its exceptions.",
+      "create": "Create",
+      "save": "Save"
+    },
+    "exception": {
+      "createTitle": "New exception",
+      "editTitle": "Edit the exception",
+      "day": "Day",
+      "kind": "Kind",
+      "label": "Name",
+      "create": "Add",
+      "save": "Save",
+      "add": "Add an exception",
+      "created": "The exception was added.",
+      "saved": "The exception was saved.",
+      "deleted": "The exception was deleted.",
+      "deleteTitle": "Delete this exception?",
+      "deleteMessage": "The day follows the calendars and the capacity again.",
+      "editOf": "Edit the exception of {{ day }}",
+      "deleteOf": "Delete the exception of {{ day }}"
+    },
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "gridHint": "Arrow keys move from day to day, Page Up and Page Down change month.",
+    "gridHintManage": "Arrow keys move from day to day, Page Up and Page Down change month; Enter adds or changes the resource’s exception that day.",
+    "legend": "Legend",
+    "look": {
+      "working": "worked",
+      "off": "not worked",
+      "closed": "closed",
+      "holiday": "public holiday"
+    },
+    "ownException": "Exception of the resource",
+    "ownExceptions": "Exceptions of the resource this month"
   }
 }

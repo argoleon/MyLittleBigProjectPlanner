@@ -461,7 +461,8 @@
       "immutable": "Cette valeur ne peut pas être modifiée.",
       "order_by_not_allowed": "Un filtre rapide ne trie pas : retirez ORDER BY.",
       "person_only": "Seule une personne est liée à un compte.",
-      "not_internal_member": "Pas un membre interne de l’organisation."
+      "not_internal_member": "Pas un membre interne de l’organisation.",
+      "not_a_site": "Pas un site de l’organisation."
     },
     "invitation": {
       "invalid": "Ce lien d’invitation est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
@@ -571,6 +572,13 @@
     },
     "capacity_pattern": {
       "date_taken": "La ressource a déjà une période de capacité qui commence ce jour-là."
+    },
+    "calendar": {
+      "name_taken": "Un autre calendrier porte déjà ce nom.",
+      "tenant": "Le calendrier de l’organisation n’est jamais supprimé et garde ses jours fériés."
+    },
+    "calendar_exception": {
+      "day_taken": "Il y a déjà une exception ce jour-là."
     }
   },
   "dialog": {
@@ -2221,7 +2229,10 @@
       "active": "Active",
       "activeHint": "Une ressource inactive n’est plus proposée pour de nouvelles affectations.",
       "create": "Créer",
-      "save": "Enregistrer"
+      "save": "Enregistrer",
+      "site": "Site",
+      "noSite": "Calendrier de l’organisation",
+      "siteHint": "Les jours fériés et fermetures de son site s’appliquent."
     },
     "page": {
       "details": "Informations",
@@ -2234,9 +2245,11 @@
       "generic": "Rôle générique, sans compte",
       "status": "Statut",
       "edit": "Modifier",
-      "next": "Le calendrier et les absences apparaîtront ici.",
+      "next": "Les absences apparaîtront ici.",
       "teams": "Équipes",
-      "noTeam": "Aucune équipe"
+      "noTeam": "Aucune équipe",
+      "siteOf": "Site {{ name }}",
+      "noSite": "Calendrier de l’organisation"
     },
     "team": "Équipe",
     "allTeams": "Toutes les équipes"
@@ -2329,5 +2342,110 @@
       "create": "Ajouter",
       "save": "Enregistrer"
     }
+  },
+  "calendars": {
+    "title": "Calendriers",
+    "loading": "Chargement des calendriers…",
+    "new": "Nouveau site",
+    "caption": "Calendriers de l’organisation",
+    "columns": {
+      "name": "Calendrier",
+      "holidays": "Jours fériés",
+      "resources": "Ressources",
+      "actions": "Actions",
+      "day": "Jour",
+      "kind": "Type",
+      "label": "Nom"
+    },
+    "kindOf": {
+      "tenant": "Calendrier de l’organisation",
+      "site": "Site"
+    },
+    "sets": {
+      "fr": "France",
+      "fr-alsace-moselle": "France, Alsace-Moselle",
+      "none": "Aucun jour férié",
+      "inherit": "Ceux de l’organisation"
+    },
+    "othersResources": "Toute ressource sans site",
+    "editOf": "Modifier {{ name }}",
+    "deleteOf": "Supprimer {{ name }}",
+    "deleteTitle": "Supprimer {{ name }} ?",
+    "deleteMessage": "Ses ressources reprennent le calendrier de l’organisation ; ses exceptions disparaissent.",
+    "deleteConfirm": "Supprimer",
+    "created": "{{ name }} a été créé.",
+    "saved": "{{ name }} a été enregistré.",
+    "deleted": "{{ name }} a été supprimé.",
+    "edit": "Modifier",
+    "previousYear": "Année précédente",
+    "nextYear": "Année suivante",
+    "inherited": "Ses jours fériés sont ceux de l’organisation.",
+    "yearCaption": "Jours fériés et exceptions de {{ year }}",
+    "kinds": {
+      "set": "Jour férié",
+      "holiday": "Férié ajouté",
+      "non_working": "Fermé",
+      "working": "Travaillé"
+    },
+    "kindHints": {
+      "holiday": "Un jour férié absent du jeu : aucune capacité ce jour-là.",
+      "non_working": "Une fermeture ou un pont : aucune capacité ce jour-là.",
+      "working": "Travaillé malgré tout : annule un jour férié, les heures du jour de la semaine s’appliquent."
+    },
+    "holidays": {
+      "new_years_day": "Jour de l’an",
+      "good_friday": "Vendredi saint",
+      "easter_monday": "Lundi de Pâques",
+      "labour_day": "Fête du Travail",
+      "victory_in_europe": "Victoire 1945",
+      "ascension_day": "Ascension",
+      "whit_monday": "Lundi de Pentecôte",
+      "bastille_day": "Fête nationale",
+      "assumption": "Assomption",
+      "all_saints_day": "Toussaint",
+      "armistice": "Armistice 1918",
+      "christmas": "Noël",
+      "st_stephens_day": "Saint-Étienne"
+    },
+    "dialog": {
+      "createTitle": "Nouveau site",
+      "editTitle": "Modifier {{ name }}",
+      "name": "Nom",
+      "holidays": "Jours fériés",
+      "tenantHint": "Les jours fériés de toute ressource sans site.",
+      "siteHint": "Ses ressources suivent ces jours fériés, puis ses exceptions.",
+      "create": "Créer",
+      "save": "Enregistrer"
+    },
+    "exception": {
+      "createTitle": "Nouvelle exception",
+      "editTitle": "Modifier l’exception",
+      "day": "Jour",
+      "kind": "Type",
+      "label": "Nom",
+      "create": "Ajouter",
+      "save": "Enregistrer",
+      "add": "Ajouter une exception",
+      "created": "L’exception a été ajoutée.",
+      "saved": "L’exception a été enregistrée.",
+      "deleted": "L’exception a été supprimée.",
+      "deleteTitle": "Supprimer cette exception ?",
+      "deleteMessage": "Le jour suit de nouveau les calendriers et la capacité.",
+      "editOf": "Modifier l’exception du {{ day }}",
+      "deleteOf": "Supprimer l’exception du {{ day }}"
+    },
+    "previousMonth": "Mois précédent",
+    "nextMonth": "Mois suivant",
+    "gridHint": "Les flèches passent d’un jour à l’autre, Page précédente et Page suivante changent de mois.",
+    "gridHintManage": "Les flèches passent d’un jour à l’autre, Page précédente et Page suivante changent de mois ; Entrée ajoute ou modifie l’exception de la ressource ce jour-là.",
+    "legend": "Légende",
+    "look": {
+      "working": "travaillé",
+      "off": "non ouvré",
+      "closed": "fermé",
+      "holiday": "jour férié"
+    },
+    "ownException": "Exception de la ressource",
+    "ownExceptions": "Exceptions de la ressource ce mois-ci"
   }
 }

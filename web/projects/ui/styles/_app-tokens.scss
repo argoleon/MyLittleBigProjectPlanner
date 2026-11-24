@@ -116,6 +116,16 @@
   --app-load-absence-on: var(--mat-sys-on-surface-variant);
 
   // ---------------------------------------------------------------------------
+  // Month calendar of a resource (mockup 20): public holidays, closures and
+  // days not worked (weekends), absences (L07-US05), today.
+  --app-calendar-holiday: var(--mat-sys-error-container);
+  --app-calendar-holiday-on: var(--mat-sys-on-error-container);
+  --app-calendar-off: var(--mat-sys-surface-container-high);
+  --app-calendar-off-on: var(--mat-sys-on-surface-variant);
+  --app-calendar-absence-outline: var(--mat-sys-outline);
+  --app-calendar-today-outline: var(--mat-sys-primary);
+
+  // ---------------------------------------------------------------------------
   // Kanban board: columns, and a column over its work in progress limit
   --app-board-column: var(--mat-sys-surface-container);
   --app-board-column-on: var(--mat-sys-on-surface);

@@ -13,6 +13,7 @@ interface WorkloadTab {
 export const WORKLOAD_TABS: readonly WorkloadTab[] = [
   { path: 'resources', labelKey: 'resources.title' },
   { path: 'teams', labelKey: 'teams.title' },
+  { path: 'calendars', labelKey: 'calendars.title' },
 ];
 
 /** The Workload screen (specification §8): routed tabs. */

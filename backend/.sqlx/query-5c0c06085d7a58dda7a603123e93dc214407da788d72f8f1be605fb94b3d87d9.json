@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO calendar_exception (id, tenant_id, calendar_id, resource_id, day, kind, label)\n        VALUES ($1, app_current_tenant(), $2, $3, $4, $5, $6)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Date",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5c0c06085d7a58dda7a603123e93dc214407da788d72f8f1be605fb94b3d87d9"
+}

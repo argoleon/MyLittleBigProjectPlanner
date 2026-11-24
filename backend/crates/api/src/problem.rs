@@ -87,6 +87,9 @@ pub enum ErrorCode {
     ResourceAccountTaken,
     TeamNameTaken,
     CapacityPatternDateTaken,
+    CalendarExceptionDayTaken,
+    CalendarTenant,
+    CalendarNameTaken,
     BoardNameTaken,
     BoardNoTransition,
     ExportTooLarge,
@@ -142,7 +145,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 98] = [
+    pub const ALL: [Self; 101] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -191,6 +194,9 @@ impl ErrorCode {
         Self::ResourceAccountTaken,
         Self::TeamNameTaken,
         Self::CapacityPatternDateTaken,
+        Self::CalendarExceptionDayTaken,
+        Self::CalendarTenant,
+        Self::CalendarNameTaken,
         Self::BoardNameTaken,
         Self::BoardNoTransition,
         Self::ExportTooLarge,
@@ -293,6 +299,9 @@ impl ErrorCode {
             Self::ResourceAccountTaken => "resource.account_taken",
             Self::TeamNameTaken => "team.name_taken",
             Self::CapacityPatternDateTaken => "capacity_pattern.date_taken",
+            Self::CalendarExceptionDayTaken => "calendar_exception.day_taken",
+            Self::CalendarTenant => "calendar.tenant",
+            Self::CalendarNameTaken => "calendar.name_taken",
             Self::BoardNameTaken => "board.name_taken",
             Self::BoardNoTransition => "board.no_transition",
             Self::ExportTooLarge => "export.too_large",
@@ -393,6 +402,9 @@ impl ErrorCode {
             | Self::ResourceAccountTaken
             | Self::TeamNameTaken
             | Self::CapacityPatternDateTaken
+            | Self::CalendarExceptionDayTaken
+            | Self::CalendarTenant
+            | Self::CalendarNameTaken
             | Self::BoardNameTaken
             | Self::BoardNoTransition
             | Self::ExportNotReady
@@ -499,6 +511,9 @@ impl ErrorCode {
             Self::ResourceAccountTaken => "This member is already linked to another resource",
             Self::TeamNameTaken => "Another team already has this name",
             Self::CapacityPatternDateTaken => "The resource already has a capacity period starting that day",
+            Self::CalendarExceptionDayTaken => "There is already an exception that day",
+            Self::CalendarTenant => "The tenant calendar is never deleted and keeps a holiday set",
+            Self::CalendarNameTaken => "Another calendar already has this name",
             Self::BoardNameTaken => "This node already has a board with this name",
             Self::BoardNoTransition => "No transition of the workflow leads to this column",
             Self::ExportTooLarge => "The query finds more tickets than an export holds",
