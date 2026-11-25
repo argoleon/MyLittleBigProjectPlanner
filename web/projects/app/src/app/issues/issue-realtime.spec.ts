@@ -163,6 +163,7 @@ describe('the ticket page in real time', () => {
     expect(await askedAll()).toEqual([
       '/api/v1/issues/PLAT-142',
       '/api/v1/issues/i142/activity',
+      '/api/v1/issues/i142/assignments',
       '/api/v1/issues/i142/attachments',
       '/api/v1/issues/i142/comments',
       '/api/v1/issues/i142/transitions',

@@ -89,6 +89,9 @@ pub enum ErrorCode {
     CapacityPatternDateTaken,
     CalendarExceptionDayTaken,
     AbsenceOverlap,
+    AssignmentResourceTaken,
+    AssignmentSegmentsOverlap,
+    AssignmentOutsideIssueDates,
     CalendarTenant,
     CalendarNameTaken,
     BoardNameTaken,
@@ -146,7 +149,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 102] = [
+    pub const ALL: [Self; 105] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -197,6 +200,9 @@ impl ErrorCode {
         Self::CapacityPatternDateTaken,
         Self::CalendarExceptionDayTaken,
         Self::AbsenceOverlap,
+        Self::AssignmentResourceTaken,
+        Self::AssignmentSegmentsOverlap,
+        Self::AssignmentOutsideIssueDates,
         Self::CalendarTenant,
         Self::CalendarNameTaken,
         Self::BoardNameTaken,
@@ -303,6 +309,9 @@ impl ErrorCode {
             Self::CapacityPatternDateTaken => "capacity_pattern.date_taken",
             Self::CalendarExceptionDayTaken => "calendar_exception.day_taken",
             Self::AbsenceOverlap => "absence.overlap",
+            Self::AssignmentResourceTaken => "assignment.resource_taken",
+            Self::AssignmentSegmentsOverlap => "assignment.segments_overlap",
+            Self::AssignmentOutsideIssueDates => "assignment.outside_issue_dates",
             Self::CalendarTenant => "calendar.tenant",
             Self::CalendarNameTaken => "calendar.name_taken",
             Self::BoardNameTaken => "board.name_taken",
@@ -407,6 +416,9 @@ impl ErrorCode {
             | Self::CapacityPatternDateTaken
             | Self::CalendarExceptionDayTaken
             | Self::AbsenceOverlap
+            | Self::AssignmentResourceTaken
+            | Self::AssignmentSegmentsOverlap
+            | Self::AssignmentOutsideIssueDates
             | Self::CalendarTenant
             | Self::CalendarNameTaken
             | Self::BoardNameTaken
@@ -517,6 +529,9 @@ impl ErrorCode {
             Self::CapacityPatternDateTaken => "The resource already has a capacity period starting that day",
             Self::CalendarExceptionDayTaken => "There is already an exception that day",
             Self::AbsenceOverlap => "Another absence of the resource takes a same half day",
+            Self::AssignmentResourceTaken => "The resource is already assigned to this ticket",
+            Self::AssignmentSegmentsOverlap => "Two segments of the assignment take a same day",
+            Self::AssignmentOutsideIssueDates => "Segments must stay within the ticket's dates",
             Self::CalendarTenant => "The tenant calendar is never deleted and keeps a holiday set",
             Self::CalendarNameTaken => "Another calendar already has this name",
             Self::BoardNameTaken => "This node already has a board with this name",
@@ -899,7 +914,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 95] = [
+        let expected: [(ErrorCode, u16); 98] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -995,6 +1010,9 @@ mod tests {
             (ErrorCode::AttachmentNotScanned, 409),
             (ErrorCode::StorageUnavailable, 503),
             (ErrorCode::QueryInvalid, 400),
+            (ErrorCode::AssignmentResourceTaken, 409),
+            (ErrorCode::AssignmentSegmentsOverlap, 409),
+            (ErrorCode::AssignmentOutsideIssueDates, 409),
         ];
         for (code, status) in expected {
             assert_eq!(code.status().as_u16(), status, "{}", code.as_str());

@@ -1,0 +1,111 @@
+@use '../admin/admin-shared';
+
+:host {
+  display: block;
+}
+
+.card {
+  padding: var(--app-space-4);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface);
+}
+
+.card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--app-space-2) var(--app-space-4);
+  margin-bottom: var(--app-space-3);
+}
+
+.card-title {
+  margin: 0;
+  font: var(--mat-sys-title-medium);
+}
+
+.subtitle,
+.secondary,
+.empty {
+  margin: var(--app-space-1) 0 0;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.assignment {
+  margin-top: var(--app-space-3);
+  padding: var(--app-space-3) var(--app-space-4);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-medium);
+}
+
+.assignment-header {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-3);
+}
+
+.who {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.name {
+  margin: 0;
+  font: var(--mat-sys-title-small);
+}
+
+.secondary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--app-space-2);
+}
+
+.tag {
+  padding: 0 var(--app-space-2);
+  border-radius: var(--mat-sys-corner-extra-small);
+  background: var(--mat-sys-surface-container-high);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-label-small);
+}
+
+.load {
+  font: var(--mat-sys-title-medium);
+}
+
+.message.warning {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-2);
+  margin: var(--app-space-2) 0 0;
+  padding: var(--app-space-2) var(--app-space-3);
+  border-radius: var(--mat-sys-corner-small);
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+  font: var(--mat-sys-body-medium);
+}
+
+.segments {
+  width: 100%;
+  margin-top: var(--app-space-2);
+  border-collapse: collapse;
+  font: var(--mat-sys-body-medium);
+
+  th {
+    padding: var(--app-space-2) var(--app-space-2) var(--app-space-2) 0;
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+    font: var(--mat-sys-label-medium);
+    color: var(--mat-sys-on-surface-variant);
+    text-align: start;
+  }
+
+  td {
+    padding: var(--app-space-2) var(--app-space-2) var(--app-space-2) 0;
+  }
+
+  .number {
+    text-align: end;
+  }
+}

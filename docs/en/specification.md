@@ -293,7 +293,9 @@ An assignment links a resource to a ticket. It is made of one or more successive
 | Total effort | 40 h between 3 and 28 March | effort spread evenly over working days |
 
 - Multi-segment example: 4 h/day in week 1, then 2 h/day in week 2, on the same ticket.
-- Segments must stay within the ticket's dates.
+- Segments of an assignment never overlap and must stay within the ticket's dates, when it has them (only the bounds set are checked). If the ticket's dates change later, segments left outside are flagged on the ticket, not blocked.
+- One assignment per resource and ticket: a new period is a new segment.
+- A working day is a day the calendar and the capacity give the resource hours, absences aside. Total effort is spread evenly over these days, the minutes left over going to the first days; hours falling on an absence stay there and become a conflict.
 - Several resources can be assigned to the same ticket, each with its own independent assignment. The ticket's load is the sum of its assignments.
 - An assignment can be marked "provisional": hatched in the heatmap, and counted or not in the overload check depending on a tenant setting.
 - To book someone on a project without a specific task, create a "Project activity" ticket.

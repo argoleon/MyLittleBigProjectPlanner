@@ -290,7 +290,8 @@ describe('ResourcesPage', () => {
     });
     await reply(isList, page([BOB, CAMILLE]));
     expect(text(root().querySelector('[role="status"]'))).toBe('Camille Martin was created.');
-    http.match(isLinkable as never);
+    // Drops a search the dialog may still send (match hands requests, not URLs).
+    http.match((request) => isLinkable(request.urlWithParams));
   });
 
   it('creates a generic resource, and shows why one is refused', async () => {
@@ -357,7 +358,7 @@ describe('ResourcesPage', () => {
     expect(text(dialog().querySelector('[role="alert"]'))).toBe(
       'This member is already linked to another resource.',
     );
-    http.match(isLinkable as never);
+    http.match((request) => isLinkable(request.urlWithParams));
   });
 });
 

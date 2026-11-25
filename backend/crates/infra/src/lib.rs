@@ -5,6 +5,7 @@ pub mod absences;
 pub mod accounts;
 pub mod aggregates;
 pub mod antivirus;
+pub mod assignments;
 pub mod attachments;
 pub mod audit;
 pub mod auth_policy;

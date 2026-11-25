@@ -10,7 +10,7 @@
  * deploy/tests/e2e.sh creates the admin and passes E2E_ADMIN_EMAIL and
  * E2E_ADMIN_SECRET.
  */
-import { expect, test } from '@playwright/test';
+import { type Locator, expect, test } from '@playwright/test';
 
 import { accessibilityViolations } from './fixtures';
 
@@ -37,6 +37,14 @@ const hours = (minutes: number) => {
   const whole = `${Math.trunc(minutes / 60).toLocaleString('en')} h`;
   return rest === 0 ? whole : `${whole} ${String(rest).padStart(2, '0')} min`;
 };
+
+/**
+ * Waits for a dialog to give the focus to its first field: filled before,
+ * a field may lose its text to that late focus.
+ */
+async function opened(dialog: Locator): Promise<void> {
+  await expect(dialog.locator(':focus')).toHaveCount(1);
+}
 
 test('the capacity of a part-time person after a leave and a half day', async ({ browser }) => {
   test.setTimeout(150_000);
@@ -65,6 +73,7 @@ test('the capacity of a part-time person after a leave and a half day', async ({
   await page.goto('/workload/calendars');
   await page.getByRole('button', { name: 'New site' }).click();
   let dialog = page.getByRole('dialog');
+  await opened(dialog);
   await dialog.getByLabel('Name (English)').fill(site);
   await dialog.getByLabel('Name (Français)').fill(site);
   await dialog.getByRole('combobox', { name: 'Public holidays' }).click();
@@ -76,6 +85,7 @@ test('the capacity of a part-time person after a leave and a half day', async ({
   await page.goto('/workload/resources');
   await page.getByRole('button', { name: 'New resource' }).click();
   dialog = page.getByRole('dialog');
+  await opened(dialog);
   await dialog.getByLabel('Name').fill(name);
   await dialog.getByRole('combobox', { name: 'Site' }).click();
   await page.getByRole('option', { name: site }).click();
@@ -88,6 +98,7 @@ test('the capacity of a part-time person after a leave and a half day', async ({
   const capacity = page.locator('app-capacity-card');
   await capacity.getByRole('button', { name: 'New period' }).click();
   dialog = page.getByRole('dialog');
+  await opened(dialog);
   await dialog.getByLabel('From').fill(`1/1/${now.getFullYear()}`);
   await dialog.getByLabel('Wednesday').fill('0');
   await dialog.getByLabel('Friday').fill('3,5');
@@ -102,6 +113,7 @@ test('the capacity of a part-time person after a leave and a half day', async ({
   ] as const) {
     await page.getByRole('button', { name: 'Declare an absence' }).first().click();
     dialog = page.getByRole('dialog');
+    await opened(dialog);
     await dialog.getByRole('combobox', { name: 'Kind' }).click();
     await page.getByRole('option', { name: 'Leave' }).click();
     await dialog.getByLabel('First day').fill(typed(day));

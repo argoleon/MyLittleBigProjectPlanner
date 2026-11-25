@@ -230,6 +230,291 @@
         }
       }
     },
+    "/api/v1/assignments/{id}": {
+      "get": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Read an assignment",
+        "description": "Members who see its ticket.",
+        "operationId": "getAssignment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the assignment",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The assignment",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Assignment"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such assignment visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Change an assignment",
+        "description": "Members with `assign_resources` on the ticket's project: its segments and provisional flag are replaced; its resource stays.",
+        "operationId": "updateAssignment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the assignment",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the version being replaced, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignmentChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The assignment",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "New version"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Assignment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`permission.denied`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such assignment visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`assignment.segments_overlap`, `assignment.outside_issue_dates`, or `node.archived`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The assignment changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Remove an assignment",
+        "description": "Members with `assign_resources` on the ticket's project.",
+        "operationId": "deleteAssignment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the assignment",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the assignment, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed"
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`permission.denied`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such assignment visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`node.archived`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The assignment changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/invitation": {
       "post": {
         "tags": [
@@ -3773,6 +4058,186 @@
           },
           "404": {
             "description": "No such ticket visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/issues/{idOrKey}/assignments": {
+      "get": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "List the assignments of a ticket",
+        "description": "Members who see the ticket: each assignment with its segments and their load, computed from the resource's capacity, public holidays and absences; the ticket's load is their sum.",
+        "operationId": "listIssueAssignments",
+        "parameters": [
+          {
+            "name": "idOrKey",
+            "in": "path",
+            "description": "Id, key or former key of the ticket",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The assignments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignmentList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such ticket visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Assign a resource to a ticket",
+        "description": "Members with `assign_resources` on its project (tenant admins always). One assignment per resource and ticket; its segments never take a same day and stay within the ticket's dates, when it has them.",
+        "operationId": "createIssueAssignment",
+        "parameters": [
+          {
+            "name": "idOrKey",
+            "in": "path",
+            "description": "Id, key or former key of the ticket",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique key of this creation",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignmentFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Assigned",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the assignment"
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "URL of the assignment"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Assignment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed` (`resourceId`: `not_found`, `inactive`; `segments`: `required`, `too_many`; `segments.{i}.end`: `before_start`, `out_of_range`; `segments.{i}.value`: `out_of_range`; `segments.{i}.start`: `no_working_day`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`permission.denied`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such ticket visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`assignment.resource_taken`, `assignment.segments_overlap`, `assignment.outside_issue_dates`, `node.archived`, or `idempotency_key.in_flight`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`idempotency_key.reused`",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -21548,6 +22013,274 @@
           "nobody"
         ]
       },
+      "AssignedResource": {
+        "type": "object",
+        "description": "The resource of an assignment.",
+        "required": [
+          "id",
+          "kind",
+          "displayName",
+          "active",
+          "linked"
+        ],
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Camille Martin"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "jobTitle": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ResourceKind"
+          },
+          "linked": {
+            "type": "boolean",
+            "description": "Linked to a member's account."
+          }
+        }
+      },
+      "Assignment": {
+        "type": "object",
+        "description": "An assignment of a resource to a ticket.",
+        "required": [
+          "id",
+          "issueId",
+          "resource",
+          "provisional",
+          "segments",
+          "loadMinutes",
+          "outsideIssueDates",
+          "version"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "issueId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "loadMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The load of its segments.",
+            "example": 1830,
+            "minimum": 0
+          },
+          "outsideIssueDates": {
+            "type": "boolean",
+            "description": "Some segments fall outside the ticket's dates, changed since."
+          },
+          "provisional": {
+            "type": "boolean"
+          },
+          "resource": {
+            "$ref": "#/components/schemas/AssignedResource"
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssignmentSegment"
+            }
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          }
+        }
+      },
+      "AssignmentChange": {
+        "type": "object",
+        "description": "The new state of an assignment: its resource stays.",
+        "required": [
+          "segments"
+        ],
+        "properties": {
+          "provisional": {
+            "type": "boolean"
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssignmentSegmentFields"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "AssignmentFields": {
+        "type": "object",
+        "description": "An assignment to create.",
+        "required": [
+          "resourceId",
+          "segments"
+        ],
+        "properties": {
+          "provisional": {
+            "type": "boolean",
+            "description": "`false` by default."
+          },
+          "resourceId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "An active resource of the tenant (never a team)."
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssignmentSegmentFields"
+            },
+            "description": "1 to 50 segments that never take a same day."
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "resourceId": "0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7b01",
+          "segments": [
+            {
+              "end": "2026-11-20",
+              "mode": "hours_per_day",
+              "start": "2026-11-16",
+              "value": 240
+            },
+            {
+              "end": "2026-11-27",
+              "mode": "percentage",
+              "start": "2026-11-23",
+              "value": 30
+            }
+          ]
+        }
+      },
+      "AssignmentList": {
+        "type": "object",
+        "description": "The assignments of a ticket.",
+        "required": [
+          "items",
+          "loadMinutes",
+          "canAssign"
+        ],
+        "properties": {
+          "canAssign": {
+            "type": "boolean",
+            "description": "The signed-in member assigns resources to this ticket."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Assignment"
+            },
+            "description": "By resource name."
+          },
+          "loadMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The ticket's load: the sum of its assignments.",
+            "minimum": 0
+          }
+        }
+      },
+      "AssignmentMode": {
+        "type": "string",
+        "description": "How a segment loads its days.",
+        "enum": [
+          "percentage",
+          "hours_per_day",
+          "total_effort"
+        ]
+      },
+      "AssignmentSegment": {
+        "type": "object",
+        "description": "A segment and its load.",
+        "required": [
+          "start",
+          "end",
+          "mode",
+          "value",
+          "loadMinutes",
+          "workingDays"
+        ],
+        "properties": {
+          "end": {
+            "type": "string",
+            "format": "date"
+          },
+          "loadMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Minutes it puts on the resource over its days.",
+            "example": 1200,
+            "minimum": 0
+          },
+          "mode": {
+            "$ref": "#/components/schemas/AssignmentMode"
+          },
+          "start": {
+            "type": "string",
+            "format": "date"
+          },
+          "value": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "workingDays": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Working days it covers (days the resource has capacity, absences aside).",
+            "example": 5,
+            "minimum": 0
+          }
+        }
+      },
+      "AssignmentSegmentFields": {
+        "type": "object",
+        "description": "A segment as written.",
+        "required": [
+          "start",
+          "end",
+          "mode",
+          "value"
+        ],
+        "properties": {
+          "end": {
+            "type": "string",
+            "format": "date",
+            "description": "Last day, included.",
+            "example": "2026-11-20"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/AssignmentMode"
+          },
+          "start": {
+            "type": "string",
+            "format": "date",
+            "description": "First day, a local date.",
+            "example": "2026-11-16"
+          },
+          "value": {
+            "type": "integer",
+            "format": "int32",
+            "description": "A percentage, or minutes (see `mode`).",
+            "example": 240,
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
       "AttachmentStatus": {
         "type": "string",
         "description": "Where an attachment stands.",
@@ -23576,7 +24309,7 @@
       },
       "ErrorCode": {
         "type": "string",
-        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n| `invitation.invalid` | 400 | This invitation link is invalid, expired or already used |\n| `invitation.pending` | 409 | This email already has an open invitation; send it again instead |\n| `invitation.already_member` | 409 | This email already belongs to a member of the tenant |\n| `invitation.closed` | 409 | This invitation was already accepted or revoked |\n| `member.last_admin` | 409 | The tenant needs at least one active tenant admin |\n| `group.name_taken` | 409 | Another group already has this name |\n| `saved_filter.name_taken` | 409 | You already have a saved filter with this name |\n| `resource.account_taken` | 409 | This member is already linked to another resource |\n| `team.name_taken` | 409 | Another team already has this name |\n| `capacity_pattern.date_taken` | 409 | The resource already has a capacity period starting that day |\n| `calendar_exception.day_taken` | 409 | There is already an exception that day |\n| `absence.overlap` | 409 | Another absence of the resource takes a same half day |\n| `calendar.tenant` | 409 | The tenant calendar is never deleted and keeps a holiday set |\n| `calendar.name_taken` | 409 | Another calendar already has this name |\n| `board.name_taken` | 409 | This node already has a board with this name |\n| `board.no_transition` | 409 | No transition of the workflow leads to this column |\n| `export.too_large` | 422 | The query finds more tickets than an export holds |\n| `export.not_ready` | 409 | The export is not ready |\n| `bulk.too_many` | 422 | More tickets than a bulk action takes |\n| `permission.denied` | 403 | You do not have the permission this needs |\n| `role.label_taken` | 409 | Another role already has this label |\n| `role.in_use` | 409 | Grants use this role: remove them first |\n| `account.no_password` | 409 | This account signs in through its organization: it has no password |\n| `session.current` | 409 | This is the session of the request: sign out instead |\n| `account.reauthentication_required` | 403 | Sign in again through your organization, then erase your account within 10 minutes |\n| `account.platform_admin` | 409 | A platform super admin cannot be erased: another one removes the role first |\n| `export.pending` | 409 | The export is not ready yet |\n| `node.key_taken` | 409 | Another project of the organization has this key |\n| `node.cycle` | 409 | This link would make the node its own ancestor |\n| `node.parent_not_allowed` | 409 | This type of node cannot be attached under that parent |\n| `node.grant_exists` | 409 | They already have this role on this node |\n| `node.confidential_lockout` | 409 | You would lose your own access: get a role granted on the project itself first |\n| `node.archived` | 409 | This project is archived: it is read-only until it is restored |\n| `node.active_children` | 409 | This project still has active sub-projects: archive or detach them first |\n| `node.parent_archived` | 409 | This project is under an archived project: restore that one first |\n| `config.name_taken` | 409 | Another project configuration already has this name |\n| `config.no_draft` | 409 | This configuration has no draft: nothing to publish or discard |\n| `config.default` | 409 | The default configuration stays: new projects get it |\n| `config.in_use` | 409 | Projects use this configuration: move them to another one first |\n| `issue_type.key_taken` | 409 | Another type of this configuration already has this identifier |\n| `issue_type.cycle` | 409 | A type cannot be its own ancestor |\n| `issue_type.subtask_parent` | 409 | A sub-task type cannot be the parent of another type |\n| `issue_type.last_type` | 409 | A configuration keeps at least one type that is not a sub-task |\n| `issue_type.orphan_subtask` | 409 | A sub-task type would have no parent type left: change it first |\n| `workflow.key_taken` | 409 | Another workflow of this configuration, or status of this workflow, already has this identifier |\n| `workflow.in_use` | 409 | Issue types follow this workflow: move them to another one first |\n| `workflow.last` | 409 | A configuration keeps at least one workflow |\n| `workflow.invalid` | 409 | Workflows of the draft cannot be published as they are: see errors |\n| `config_field.key_taken` | 409 | Another field of this configuration already has this identifier |\n| `config_field.system` | 409 | A system field keeps its label and options and cannot be removed; only its types and rules change |\n| `screen.exists` | 409 | This type, or the configuration, already has a screen of this kind |\n| `screen.general` | 409 | The general creation and view screens of a configuration stay |\n| `screen.in_use` | 409 | Transitions show this screen: give them another one first |\n| `mapping_incomplete` | 400 | Every removed status and type must be mapped to one the draft keeps: see errors |\n| `config.migration_running` | 409 | A migration of this configuration is already under way |\n| `config.migration_required` | 409 | Tickets use statuses or types the draft removes: map them through a migration first |\n| `issue.subtask_moves_with_parent` | 409 | A sub-task moves with its parent: move the parent instead |\n| `issue_link.exists` | 409 | The two tickets already have this link |\n| `attachment.too_large` | 413 | The file is larger than the maximum allowed |\n| `attachment.quota_exceeded` | 413 | The organization's storage quota would be exceeded |\n| `attachment.not_uploaded` | 409 | The file was not uploaded, or not whole |\n| `attachment.not_scanned` | 409 | The file is not available: not scanned yet, or refused by the antivirus |\n| `storage.unavailable` | 503 | The file storage is not available |\n| `query.invalid` | 400 | The query cannot be run |\n",
+        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n| `invitation.invalid` | 400 | This invitation link is invalid, expired or already used |\n| `invitation.pending` | 409 | This email already has an open invitation; send it again instead |\n| `invitation.already_member` | 409 | This email already belongs to a member of the tenant |\n| `invitation.closed` | 409 | This invitation was already accepted or revoked |\n| `member.last_admin` | 409 | The tenant needs at least one active tenant admin |\n| `group.name_taken` | 409 | Another group already has this name |\n| `saved_filter.name_taken` | 409 | You already have a saved filter with this name |\n| `resource.account_taken` | 409 | This member is already linked to another resource |\n| `team.name_taken` | 409 | Another team already has this name |\n| `capacity_pattern.date_taken` | 409 | The resource already has a capacity period starting that day |\n| `calendar_exception.day_taken` | 409 | There is already an exception that day |\n| `absence.overlap` | 409 | Another absence of the resource takes a same half day |\n| `assignment.resource_taken` | 409 | The resource is already assigned to this ticket |\n| `assignment.segments_overlap` | 409 | Two segments of the assignment take a same day |\n| `assignment.outside_issue_dates` | 409 | Segments must stay within the ticket's dates |\n| `calendar.tenant` | 409 | The tenant calendar is never deleted and keeps a holiday set |\n| `calendar.name_taken` | 409 | Another calendar already has this name |\n| `board.name_taken` | 409 | This node already has a board with this name |\n| `board.no_transition` | 409 | No transition of the workflow leads to this column |\n| `export.too_large` | 422 | The query finds more tickets than an export holds |\n| `export.not_ready` | 409 | The export is not ready |\n| `bulk.too_many` | 422 | More tickets than a bulk action takes |\n| `permission.denied` | 403 | You do not have the permission this needs |\n| `role.label_taken` | 409 | Another role already has this label |\n| `role.in_use` | 409 | Grants use this role: remove them first |\n| `account.no_password` | 409 | This account signs in through its organization: it has no password |\n| `session.current` | 409 | This is the session of the request: sign out instead |\n| `account.reauthentication_required` | 403 | Sign in again through your organization, then erase your account within 10 minutes |\n| `account.platform_admin` | 409 | A platform super admin cannot be erased: another one removes the role first |\n| `export.pending` | 409 | The export is not ready yet |\n| `node.key_taken` | 409 | Another project of the organization has this key |\n| `node.cycle` | 409 | This link would make the node its own ancestor |\n| `node.parent_not_allowed` | 409 | This type of node cannot be attached under that parent |\n| `node.grant_exists` | 409 | They already have this role on this node |\n| `node.confidential_lockout` | 409 | You would lose your own access: get a role granted on the project itself first |\n| `node.archived` | 409 | This project is archived: it is read-only until it is restored |\n| `node.active_children` | 409 | This project still has active sub-projects: archive or detach them first |\n| `node.parent_archived` | 409 | This project is under an archived project: restore that one first |\n| `config.name_taken` | 409 | Another project configuration already has this name |\n| `config.no_draft` | 409 | This configuration has no draft: nothing to publish or discard |\n| `config.default` | 409 | The default configuration stays: new projects get it |\n| `config.in_use` | 409 | Projects use this configuration: move them to another one first |\n| `issue_type.key_taken` | 409 | Another type of this configuration already has this identifier |\n| `issue_type.cycle` | 409 | A type cannot be its own ancestor |\n| `issue_type.subtask_parent` | 409 | A sub-task type cannot be the parent of another type |\n| `issue_type.last_type` | 409 | A configuration keeps at least one type that is not a sub-task |\n| `issue_type.orphan_subtask` | 409 | A sub-task type would have no parent type left: change it first |\n| `workflow.key_taken` | 409 | Another workflow of this configuration, or status of this workflow, already has this identifier |\n| `workflow.in_use` | 409 | Issue types follow this workflow: move them to another one first |\n| `workflow.last` | 409 | A configuration keeps at least one workflow |\n| `workflow.invalid` | 409 | Workflows of the draft cannot be published as they are: see errors |\n| `config_field.key_taken` | 409 | Another field of this configuration already has this identifier |\n| `config_field.system` | 409 | A system field keeps its label and options and cannot be removed; only its types and rules change |\n| `screen.exists` | 409 | This type, or the configuration, already has a screen of this kind |\n| `screen.general` | 409 | The general creation and view screens of a configuration stay |\n| `screen.in_use` | 409 | Transitions show this screen: give them another one first |\n| `mapping_incomplete` | 400 | Every removed status and type must be mapped to one the draft keeps: see errors |\n| `config.migration_running` | 409 | A migration of this configuration is already under way |\n| `config.migration_required` | 409 | Tickets use statuses or types the draft removes: map them through a migration first |\n| `issue.subtask_moves_with_parent` | 409 | A sub-task moves with its parent: move the parent instead |\n| `issue_link.exists` | 409 | The two tickets already have this link |\n| `attachment.too_large` | 413 | The file is larger than the maximum allowed |\n| `attachment.quota_exceeded` | 413 | The organization's storage quota would be exceeded |\n| `attachment.not_uploaded` | 409 | The file was not uploaded, or not whole |\n| `attachment.not_scanned` | 409 | The file is not available: not scanned yet, or refused by the antivirus |\n| `storage.unavailable` | 503 | The file storage is not available |\n| `query.invalid` | 400 | The query cannot be run |\n",
         "enum": [
           "bad_request",
           "validation_failed",
@@ -23628,6 +24361,9 @@
           "capacity_pattern.date_taken",
           "calendar_exception.day_taken",
           "absence.overlap",
+          "assignment.resource_taken",
+          "assignment.segments_overlap",
+          "assignment.outside_issue_dates",
           "calendar.tenant",
           "calendar.name_taken",
           "board.name_taken",

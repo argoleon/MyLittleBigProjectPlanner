@@ -1,0 +1,121 @@
+<section class="card" aria-labelledby="issue-assignments-title">
+  <div class="card-header">
+    <div>
+      <h2 class="card-title" id="issue-assignments-title">{{ 'assignments.title' | transloco }}</h2>
+      @if (items().length > 0) {
+        <p class="subtitle">
+          {{ 'assignments.total' | transloco: { hours: (total() | duration) } }}
+          @if (span(); as span) {
+            ·
+            {{
+              'assignments.span'
+                | transloco
+                  : {
+                      from: (span.from | localDate: { day: 'numeric', month: 'short' }),
+                      to: (span.to | localDate: { day: 'numeric', month: 'short' }),
+                    }
+            }}
+          }
+        </p>
+      }
+    </div>
+    @if (canAssign()) {
+      <button matButton="tonal" type="button" id="assignment-add" (click)="add()">
+        <mat-icon aria-hidden="true">person_add</mat-icon>
+        {{ 'assignments.add' | transloco }}
+      </button>
+    }
+  </div>
+
+  @if (notice(); as notice) {
+    <p class="message" [class.info]="notice.ok" [class.error]="!notice.ok" [attr.role]="notice.ok ? 'status' : 'alert'">
+      {{ notice.messageKey | transloco: notice.params }}
+    </p>
+  }
+
+  @if (list.error()) {
+    <ui-error-state [error]="list.error()" [headingLevel]="3" (retry)="list.reload()" />
+  } @else if (!list.hasValue()) {
+    <mat-progress-bar mode="indeterminate" [attr.aria-label]="'assignments.loading' | transloco" />
+  } @else {
+    @for (assignment of items(); track assignment.id) {
+      <article class="assignment" [attr.aria-labelledby]="'assignment-' + assignment.id">
+        <div class="assignment-header">
+          <ui-avatar [name]="assignment.resource.displayName" size="small" aria-hidden="true" />
+          <div class="who">
+            <h3 class="name" [id]="'assignment-' + assignment.id">{{ assignment.resource.displayName }}</h3>
+            <p class="secondary">
+              @if (assignment.resource.kind === 'generic') {
+                <span class="tag">{{ 'resource.holding.generic' | transloco }}</span>
+              }
+              @if (assignment.provisional) {
+                <span class="tag provisional">{{ 'assignments.provisional' | transloco }}</span>
+              }
+              @if (assignment.resource.jobTitle) {
+                <span>{{ assignment.resource.jobTitle }}</span>
+              }
+            </p>
+          </div>
+          <span class="load">{{ assignment.loadMinutes | duration }}</span>
+          @if (canAssign()) {
+            <button
+              matIconButton
+              type="button"
+              [id]="'assignment-edit-' + assignment.id"
+              [attr.aria-label]="'assignments.editOf' | transloco: { name: assignment.resource.displayName }"
+              (click)="edit(assignment)"
+            >
+              <mat-icon aria-hidden="true">edit</mat-icon>
+            </button>
+            <button
+              matIconButton
+              type="button"
+              [attr.aria-label]="'assignments.deleteOf' | transloco: { name: assignment.resource.displayName }"
+              (click)="remove(assignment)"
+            >
+              <mat-icon aria-hidden="true">delete</mat-icon>
+            </button>
+          }
+        </div>
+        @if (assignment.outsideIssueDates) {
+          <p class="message warning" role="note">
+            <mat-icon aria-hidden="true">event_busy</mat-icon>
+            {{ 'assignments.outside' | transloco }}
+          </p>
+        }
+        <table class="segments">
+          <caption class="cdk-visually-hidden">{{ 'assignments.caption' | transloco: { name: assignment.resource.displayName } }}</caption>
+          <thead>
+            <tr>
+              <th scope="col">{{ 'assignments.columns.period' | transloco }}</th>
+              <th scope="col">{{ 'assignments.columns.mode' | transloco }}</th>
+              <th scope="col">{{ 'assignments.columns.value' | transloco }}</th>
+              <th scope="col" class="number">{{ 'assignments.columns.load' | transloco }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (segment of assignment.segments; track $index) {
+              <tr>
+                <td>
+                  {{
+                    'assignments.period'
+                      | transloco
+                        : {
+                            from: (segment.start | localDate: { day: 'numeric', month: 'short' }),
+                            to: (segment.end | localDate: { day: 'numeric', month: 'short', year: 'numeric' }),
+                          }
+                  }}
+                </td>
+                <td>{{ 'assignments.modeNames.' + segment.mode | transloco }}</td>
+                <td>{{ valueText(segment) }}</td>
+                <td class="number">{{ segment.loadMinutes | duration }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </article>
+    } @empty {
+      <p class="empty">{{ 'assignments.empty' | transloco }}</p>
+    }
+  }
+</section>

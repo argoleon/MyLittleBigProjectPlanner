@@ -134,7 +134,10 @@ pub struct Day {
     pub source: Option<Source>,
     /// The absence taking (part of) the day, if any.
     pub absence: Option<(AbsenceKind, DayPart)>,
-    /// Minutes of capacity: 0 on a non-working day, less an absence.
+    /// Minutes the calendar and the capacity give the day, before absences:
+    /// 0 on a non-working day. A day of more than 0 is a working day.
+    pub scheduled: u16,
+    /// Minutes of capacity: `scheduled` less an absence.
     pub minutes: u16,
 }
 
@@ -178,10 +181,8 @@ impl ResourceCalendar<'_> {
             (false, true) => Some(DayPart::Afternoon),
             (false, false) => None,
         };
-        let minutes = match status {
-            Status::Working => {
-                absences::minutes_left(capacity::minutes_on(self.periods, self.default, date), off)
-            }
+        let scheduled = match status {
+            Status::Working => capacity::minutes_on(self.periods, self.default, date),
             Status::Holiday { .. } | Status::NonWorking { .. } => 0,
         };
         Day {
@@ -189,7 +190,8 @@ impl ResourceCalendar<'_> {
             status,
             source,
             absence,
-            minutes,
+            scheduled,
+            minutes: absences::minutes_left(scheduled, off),
         }
     }
 

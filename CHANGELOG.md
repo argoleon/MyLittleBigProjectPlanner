@@ -4,6 +4,14 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
 
 ## [Unreleased]
 
+### Added
+
+- **Assignments** (#220)
+  - A resource is assigned to a ticket through one or more successive segments, each with its period and mode: a percentage of each day's actual capacity (50% of a 3.5 h Friday is 1 h 45, a public holiday 0), hours per working day, or a total effort spread evenly over the working days. One assignment per resource and ticket; segments never overlap (`assignment.segments_overlap`) and stay within the ticket's dates when it has them (`assignment.outside_issue_dates`); a resource is assigned once per ticket (`assignment.resource_taken`), never a team.
+  - The ticket page shows an **Assignments** card: one block per resource with its segments, their load and the ticket's planned total; members with **Assign resources** on the project add, change and remove assignments in the **Assign a resource** dialog. Segments left outside dates changed since are flagged.
+  - Every change is recorded in the event outbox (`assignment.changed`, with the days concerned) for the daily load of L08.
+  - `/api/v1/issues/{idOrKey}/assignments` (list, create) and `/api/v1/assignments/{id}` (read, change, delete).
+
 ## [0.7.0] - 2026-11-24
 
 Work package **L07 Resources and capacity**: resources (persons and generic roles) and teams, weekly capacity historized by effective date, calendars with French public holidays and sites, absences by whole or half days, and the capacity of each day, read for one resource or for hundreds at once.
