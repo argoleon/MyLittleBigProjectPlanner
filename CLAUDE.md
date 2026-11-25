@@ -33,7 +33,9 @@ deploy/         docker-compose and profiles (sso, observability)
 docs/           specification (en, fr) and mockups
 ```
 
-Every CI step is a `just` recipe; GitHub Actions only calls them (one `ci-*` recipe per job, see `docs/en/developer-guide/ci.md`). Run the same recipes locally before declaring work done: `just ci` is the whole pipeline. Never put logic in the workflow files: add or change a recipe instead.
+Every CI step is a `just` recipe; GitHub Actions only calls them (one `ci-*` recipe per job, see `docs/en/developer-guide/ci.md`). Never put logic in the workflow files: add or change a recipe instead.
+
+The GitHub CI is the gate before a pull request, not the local `just ci`. GitHub runs the same recipes, but its four jobs run in parallel on clean runners with a fresh stack database, while the local pipeline runs them one after another and much longer. While developing, run locally only what the change touches: the tests of the crates and specs changed, the linters, and the relevant e2e specs (`just e2e <spec>`, or `just compose-e2e <spec>` on the stack). Before opening a pull request, push the branch and run the CI on it: pushes to a `feature/` branch do not trigger it, so dispatch it with `gh workflow run ci.yml --ref <branch>`, then open the pull request once it is green. `just ci` (or one `ci-*` recipe) stays available to reproduce a failing job locally.
 
 ## Development environment (containers only)
 
@@ -41,7 +43,7 @@ Every CI step is a `just` recipe; GitHub Actions only calls them (one `ci-*` rec
 
 - `just dev` starts PostgreSQL, the API (http://127.0.0.1:18080) and the internal application (http://127.0.0.1:4200, `/api` proxied to the API), all with live reload.
 - `just build`, `just lint`, `just test`, `just migrate`, `just sqlx-prepare`… run in the `backend` toolchain container; `just shell` opens a shell in it.
-- `just web-lint`, `just web-test`, `just web-build`, `just generate-client`… run in the `web` container; `just e2e` runs Playwright in the `e2e` container. Before a pull request: `just ci-backend` and `just ci-web` (quality gates, licenses, vulnerabilities), and `just gitleaks`.
+- `just web-lint`, `just web-test`, `just web-build`, `just generate-client`… run in the `web` container; `just e2e` runs Playwright in the `e2e` container. Before a pull request, the CI dispatched on the branch (above) runs the quality gates, licenses, vulnerabilities and `gitleaks`.
 - The production stack (`deploy/compose.yaml`, see `deploy/README.md`) also runs locally: `just compose-up` (https://localhost:18443), `just compose-test`, `just images-test` (images and SBOMs), `just deploy-lint`, `just compose-down`. A change to a Dockerfile, the compose file or a service's configuration must keep these green.
 - Never install a toolchain (Rust, Node, sqlx-cli, Playwright…) on the host for project work, and never call `cargo` or `npm` directly from the host. A new tool goes into the matching dev image (`deploy/dev/*.Dockerfile`) and is reached through a `just` recipe.
 - Containers run with the host user's uid and gid, so generated files (lock files, `.sqlx`, formatted code) belong to the developer.
@@ -56,7 +58,7 @@ Unit tests and integration tests are **mandatory** for every development. A feat
 - Key user flows also get a Playwright end-to-end test.
 - A bug fix starts with a test that reproduces the bug.
 - Never delete, skip or weaken an existing test to make the build pass; fix the code, or stop and ask if the test itself looks wrong.
-- All tests run in CI through `just` and must pass before a feature is closed.
+- All tests run in the GitHub CI through `just` and must pass before a pull request is opened and before a feature is closed.
 
 ## Git workflow (Gitflow)
 

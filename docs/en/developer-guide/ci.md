@@ -7,9 +7,19 @@ just ci            # the whole pipeline, as GitHub Actions runs it
 just ci-backend    # or one job at a time
 ```
 
+The GitHub CI is the gate before a pull request: its four jobs run in parallel on clean runners, with a fresh stack database, where `just ci` runs them one after another (and the local stack keeps the data of earlier runs). While developing, run locally only what the change touches; before opening the pull request, run the CI on the branch, which a push to a `feature/` branch does not do:
+
+```sh
+git push -u origin feature/L08-US02-daily-load
+gh workflow run ci.yml --ref feature/L08-US02-daily-load
+gh run watch "$(gh run list --workflow ci.yml --branch feature/L08-US02-daily-load --limit 1 --json databaseId -q '.[0].databaseId')"
+```
+
+Keep `just ci` and the `ci-*` recipes to reproduce a failing job locally.
+
 ## Jobs
 
-`.github/workflows/ci.yml` runs on every pull request to `develop` and `main`, and on pushes to `develop`, `main`, `release/**` and `hotfix/**`. Its four jobs run in parallel:
+`.github/workflows/ci.yml` runs on every pull request to `develop` and `main`, on pushes to `develop`, `main`, `release/**` and `hotfix/**`, and on demand (`workflow_dispatch`, e.g. on a feature branch before its pull request). Its four jobs run in parallel:
 
 | Job | Recipe | Checks |
 | --- | --- | --- |
