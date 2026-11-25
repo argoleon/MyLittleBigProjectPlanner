@@ -6,6 +6,7 @@
 
 pub mod absences;
 pub mod account;
+pub mod assignments;
 pub mod auth;
 pub mod boards;
 pub mod bulk_actions;

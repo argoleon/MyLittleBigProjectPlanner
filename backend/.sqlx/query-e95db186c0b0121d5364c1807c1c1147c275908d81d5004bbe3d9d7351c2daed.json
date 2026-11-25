@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO assignment (id, tenant_id, issue_id, resource_id, provisional, created_by)\n        VALUES ($1, app_current_tenant(), $2, $3, $4, $5)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Bool",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e95db186c0b0121d5364c1807c1c1147c275908d81d5004bbe3d9d7351c2daed"
+}

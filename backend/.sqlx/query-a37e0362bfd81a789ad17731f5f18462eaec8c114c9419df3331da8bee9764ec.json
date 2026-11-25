@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO assignment_segment (id, tenant_id, assignment_id, position, start_date, end_date, mode, value)\n        SELECT s.id, app_current_tenant(), $1, s.position, s.start_date, s.end_date, s.mode, s.value\n        FROM unnest($2::uuid[], $3::smallint[], $4::date[], $5::date[], $6::text[], $7::integer[])\n             AS s (id, position, start_date, end_date, mode, value)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray",
+        "Int2Array",
+        "DateArray",
+        "DateArray",
+        "TextArray",
+        "Int4Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a37e0362bfd81a789ad17731f5f18462eaec8c114c9419df3331da8bee9764ec"
+}

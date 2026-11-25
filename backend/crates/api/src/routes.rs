@@ -19,6 +19,7 @@ use utoipa_axum::routes;
 
 use crate::absences;
 use crate::account;
+use crate::assignments;
 use crate::auth;
 use crate::boards;
 use crate::bulk_actions;
@@ -238,6 +239,12 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         ))
         .routes(routes!(calendars::resource_days))
         .routes(routes!(day_capacity::list))
+        .routes(routes!(assignments::list, assignments::create))
+        .routes(routes!(
+            assignments::read,
+            assignments::update,
+            assignments::delete
+        ))
         .routes(routes!(capacity::list, capacity::create))
         .routes(routes!(capacity::update, capacity::delete))
         .routes(routes!(capacity::settings, capacity::update_settings))
