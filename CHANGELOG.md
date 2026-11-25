@@ -4,6 +4,10 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-24
+
+Work package **L07 Resources and capacity**: resources (persons and generic roles) and teams, weekly capacity historized by effective date, calendars with French public holidays and sites, absences by whole or half days, and the capacity of each day, read for one resource or for hundreds at once.
+
 ### Added
 
 - **Resources** (#194)
@@ -42,6 +46,16 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
 ### Fixed
 
 - The API and the worker listen for SIGTERM and Ctrl+C from the start of their startup: a stop requested while they start (migrations, connections, storage check) is now a graceful shutdown, no longer an abrupt kill. This also fixes the worker test `stops_cleanly_on_sigterm`, which failed now and then under load.
+
+### Security
+
+- **cookie 0.18.3 and url 2.5.9** (backend dependencies): fix RUSTSEC-2026-0594 and RUSTSEC-2026-0592, published after 0.6.0.
+
+### Upgrading from 0.6.0
+
+- **Resources**: the migrations add resources, teams, capacity periods, calendars and absences; no existing data is converted, and the workload screens start empty. Organization admins create the resources (linking members' accounts where relevant) and the sites; to let someone else manage them, give them the new **Resource manager** role in Administration, Members.
+- **Calendars**: every existing organization gets its calendar with the French public holidays. Organizations in Alsace-Moselle, or with closures or bridge days, adjust it in Workload, Calendars.
+- **Default capacity**: resources without a capacity period work the organization's default week (7 h × 5 days unless changed). Organization admins review it in Administration, Workload, with the overload tolerance and mode that L08 will use.
 
 
 ## [0.6.0] - 2026-11-19
@@ -314,6 +328,7 @@ Work package **L01 Technical foundation**: the base every later work package bui
   - License policy enforced on Rust crates and npm packages, RustSec and npm advisories, secret scan of the git history.
   - CI: every step a `just` recipe (`just ci` locally), GitHub Actions only calls them; release workflow publishing the images to GitHub Container Registry.
 
+[0.7.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.7.0
 [0.6.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.6.0
 [0.5.1]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.5.1
 [0.5.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.5.0
