@@ -463,7 +463,10 @@
       "person_only": "Only a person is linked to an account.",
       "not_internal_member": "Not an internal member of the organization.",
       "not_a_site": "Not a site of the organization.",
-      "overlap": "Another absence takes this half day."
+      "overlap": "Another absence takes this half day.",
+      "inactive": "This resource is deactivated.",
+      "no_working_day": "The resource has no working day in this period.",
+      "outside_issue_dates": "Outside the ticket’s dates."
     },
     "invitation": {
       "invalid": "This invitation link is invalid, has expired or was already used. Ask for a new one.",
@@ -583,6 +586,11 @@
     },
     "absence": {
       "overlap": "Another absence of the resource takes a same half day."
+    },
+    "assignment": {
+      "resource_taken": "This resource is already assigned to the ticket: add a segment to its assignment.",
+      "segments_overlap": "Two segments of the assignment take a same day.",
+      "outside_issue_dates": "Segments must stay within the ticket’s dates."
     }
   },
   "dialog": {
@@ -2502,6 +2510,76 @@
       "commentHint": "Only the person and the managers read it.",
       "create": "Declare",
       "save": "Save"
+    }
+  },
+  "assignments": {
+    "title": "Assignments",
+    "loading": "Loading the assignments…",
+    "add": "Add a resource",
+    "total": "Planned total: {{ hours }}",
+    "span": "from {{ from }} to {{ to }}",
+    "empty": "No resource is assigned to this ticket.",
+    "provisional": "Provisional",
+    "outside": "Some segments fall outside the ticket’s dates, changed since.",
+    "caption": "Segments of {{ name }}’s assignment",
+    "columns": {
+      "period": "Period",
+      "mode": "Mode",
+      "value": "Value",
+      "load": "Load"
+    },
+    "period": "{{ from }} → {{ to }}",
+    "modeNames": {
+      "percentage": "Percentage",
+      "hours_per_day": "Hours per day",
+      "total_effort": "Total effort"
+    },
+    "modes": {
+      "percentage": "%",
+      "hours_per_day": "h/day",
+      "total_effort": "Total effort"
+    },
+    "perDay": "{{ hours }}/day",
+    "over": "{{ hours }} over {{ days }} working days",
+    "editOf": "Edit {{ name }}’s assignment",
+    "deleteOf": "Remove {{ name }} from the ticket",
+    "deleteTitle": "Remove {{ name }}?",
+    "deleteMessage": "Their segments and load on this ticket go.",
+    "deleteConfirm": "Remove",
+    "created": "{{ name }} was assigned to the ticket.",
+    "saved": "{{ name }}’s assignment was saved.",
+    "deleted": "{{ name }} was removed from the ticket.",
+    "dialog": {
+      "createTitle": "Assign a resource",
+      "editTitle": "Edit the assignment",
+      "dates": "from {{ from }} to {{ to }}",
+      "resource": "Resource",
+      "resourceHint": "By name or job title; never a team.",
+      "segments": "Segments",
+      "period": "Period {{ number }}",
+      "start": "Start of period {{ number }}",
+      "end": "End of period {{ number }}",
+      "mode": "Mode of segment {{ number }}",
+      "value": "Value {{ number }}",
+      "remove": "Delete segment {{ number }}",
+      "addSegment": "Add a segment",
+      "create": "Save",
+      "save": "Save",
+      "suffix": {
+        "percentage": "%",
+        "hours_per_day": "h/day",
+        "total_effort": "h"
+      },
+      "hints": {
+        "percentage": "Share of each day’s capacity",
+        "hours_per_day": "Hours per working day, such as 4 or 3:30",
+        "total_effort": "Hours spread over the working days, such as 40"
+      },
+      "invalid": {
+        "percentage": "A percentage from 1 to 100.",
+        "hours_per_day": "Hours of a day, such as 4, 3.5 or 3:30.",
+        "total_effort": "Hours, such as 40 or 12:30."
+      }
     }
   }
 }

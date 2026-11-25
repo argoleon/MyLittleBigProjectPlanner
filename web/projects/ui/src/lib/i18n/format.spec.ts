@@ -169,6 +169,14 @@ describe('parseHours', () => {
       expect(parseHours(text), text).toBeNull();
     }
   });
+
+  it('reads longer durations up to the maximum given', () => {
+    expect(parseHours('40', 9_999 * 60)).toBe(2400);
+    expect(parseHours('117,5', 9_999 * 60)).toBe(7050);
+    expect(parseHours('12:30', 9_999 * 60)).toBe(750);
+    expect(parseHours('10000', 9_999 * 60)).toBeNull();
+    expect(parseHours('40')).toBeNull();
+  });
 });
 
 describe('weekdayNames', () => {

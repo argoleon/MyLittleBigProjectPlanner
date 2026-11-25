@@ -140,15 +140,15 @@ export function formatDuration(minutes: number, locale: string): string {
   return locale.startsWith('fr') ? `${h} ${mm}` : `${h} ${mm} min`;
 }
 
-const DECIMAL_HOURS = /^(\d{1,2})(?:[.,](\d{1,4}))?\s*h?$/i;
-const HOURS_MINUTES = /^(\d{1,2})\s*(?:h|:)\s*(\d{1,2})\s*(?:min|m)?$/i;
+const DECIMAL_HOURS = /^(\d{1,5})(?:[.,](\d{1,4}))?\s*h?$/i;
+const HOURS_MINUTES = /^(\d{1,5})\s*(?:h|:)\s*(\d{1,2})\s*(?:min|m)?$/i;
 
 /**
  * The minutes of a duration typed in hours: `7`, `3,5`, `3.5`, `3:30`,
- * `3 h 30`; empty is 0. `null` when it reads as none of these, or exceeds a
- * day.
+ * `3 h 30`; empty is 0. `null` when it reads as none of these, or exceeds
+ * `maxMinutes` (a day unless given: 40 hours of effort take more).
  */
-export function parseHours(text: string): number | null {
+export function parseHours(text: string, maxMinutes = 24 * 60): number | null {
   const value = text.trim();
   if (value === '') return 0;
   let minutes: number | null = null;
@@ -159,7 +159,7 @@ export function parseHours(text: string): number | null {
   } else if (clock && Number(clock[2]) < 60) {
     minutes = Number(clock[1]) * 60 + Number(clock[2]);
   }
-  return minutes !== null && minutes <= 24 * 60 ? minutes : null;
+  return minutes !== null && minutes <= maxMinutes ? minutes : null;
 }
 
 /**

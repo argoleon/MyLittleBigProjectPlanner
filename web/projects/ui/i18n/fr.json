@@ -463,7 +463,10 @@
       "person_only": "Seule une personne est liée à un compte.",
       "not_internal_member": "Pas un membre interne de l’organisation.",
       "not_a_site": "Pas un site de l’organisation.",
-      "overlap": "Une autre absence occupe cette demi-journée."
+      "overlap": "Une autre absence occupe cette demi-journée.",
+      "inactive": "Cette ressource est désactivée.",
+      "no_working_day": "Aucun jour ouvré de la ressource sur cette période.",
+      "outside_issue_dates": "En dehors des dates du ticket."
     },
     "invitation": {
       "invalid": "Ce lien d’invitation est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
@@ -583,6 +586,11 @@
     },
     "absence": {
       "overlap": "Une autre absence de la ressource occupe déjà cette demi-journée."
+    },
+    "assignment": {
+      "resource_taken": "Cette ressource est déjà affectée au ticket : ajoutez un segment à son affectation.",
+      "segments_overlap": "Deux segments de l’affectation prennent un même jour.",
+      "outside_issue_dates": "Les segments doivent rester dans les dates du ticket."
     }
   },
   "dialog": {
@@ -2502,6 +2510,76 @@
       "commentHint": "Seuls la personne et les gestionnaires le lisent.",
       "create": "Déclarer",
       "save": "Enregistrer"
+    }
+  },
+  "assignments": {
+    "title": "Affectations",
+    "loading": "Chargement des affectations…",
+    "add": "Ajouter une ressource",
+    "total": "Total planifié : {{ hours }}",
+    "span": "du {{ from }} au {{ to }}",
+    "empty": "Aucune ressource affectée à ce ticket.",
+    "provisional": "Provisoire",
+    "outside": "Certains segments sortent des dates du ticket, modifiées depuis.",
+    "caption": "Segments de l’affectation de {{ name }}",
+    "columns": {
+      "period": "Période",
+      "mode": "Mode",
+      "value": "Valeur",
+      "load": "Charge"
+    },
+    "period": "{{ from }} → {{ to }}",
+    "modeNames": {
+      "percentage": "Pourcentage",
+      "hours_per_day": "Heures par jour",
+      "total_effort": "Effort total"
+    },
+    "modes": {
+      "percentage": "%",
+      "hours_per_day": "h/jour",
+      "total_effort": "Effort total"
+    },
+    "perDay": "{{ hours }}/j",
+    "over": "{{ hours }} répartis sur {{ days }} jours ouvrés",
+    "editOf": "Modifier l’affectation de {{ name }}",
+    "deleteOf": "Retirer {{ name }} du ticket",
+    "deleteTitle": "Retirer {{ name }} ?",
+    "deleteMessage": "Ses segments et sa charge sur ce ticket disparaissent.",
+    "deleteConfirm": "Retirer",
+    "created": "{{ name }} a été affecté au ticket.",
+    "saved": "L’affectation de {{ name }} a été enregistrée.",
+    "deleted": "{{ name }} a été retiré du ticket.",
+    "dialog": {
+      "createTitle": "Affecter une ressource",
+      "editTitle": "Modifier l’affectation",
+      "dates": "du {{ from }} au {{ to }}",
+      "resource": "Ressource",
+      "resourceHint": "Par nom ou intitulé de poste ; jamais une équipe.",
+      "segments": "Segments",
+      "period": "Période {{ number }}",
+      "start": "Début de la période {{ number }}",
+      "end": "Fin de la période {{ number }}",
+      "mode": "Mode du segment {{ number }}",
+      "value": "Valeur {{ number }}",
+      "remove": "Supprimer le segment {{ number }}",
+      "addSegment": "Ajouter un segment",
+      "create": "Enregistrer",
+      "save": "Enregistrer",
+      "suffix": {
+        "percentage": "%",
+        "hours_per_day": "h/j",
+        "total_effort": "h"
+      },
+      "hints": {
+        "percentage": "Part de la capacité de chaque jour",
+        "hours_per_day": "Heures par jour ouvré, comme 4 ou 3:30",
+        "total_effort": "Heures réparties sur les jours ouvrés, comme 40"
+      },
+      "invalid": {
+        "percentage": "Un pourcentage de 1 à 100.",
+        "hours_per_day": "Des heures d’une journée, comme 4, 3,5 ou 3:30.",
+        "total_effort": "Des heures, comme 40 ou 12:30."
+      }
     }
   }
 }
