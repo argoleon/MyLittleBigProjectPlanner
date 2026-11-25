@@ -293,7 +293,9 @@ Une affectation relie une ressource à un ticket. Elle se compose d'un ou plusie
 | Effort total | 40 h entre le 3 et le 28 mars | effort réparti uniformément sur les jours ouvrés |
 
 - Exemple multi-segments : 4 h/jour la semaine 1, puis 2 h/jour la semaine 2, sur le même ticket.
-- Les segments doivent rester dans les dates du ticket.
+- Les segments d'une affectation ne se chevauchent pas et doivent rester dans les dates du ticket, quand il en a (seules les bornes renseignées sont vérifiées). Si les dates du ticket changent ensuite, les segments qui en sortent sont signalés sur le ticket, sans blocage.
+- Une seule affectation par ressource et par ticket : une nouvelle période est un nouveau segment.
+- Un jour ouvré est un jour où le calendrier et la capacité donnent des heures à la ressource, absences mises à part. L'effort total est réparti à parts égales sur ces jours, les minutes restantes allant aux premiers jours ; les heures qui tombent sur une absence y restent et deviennent un conflit.
 - Plusieurs ressources peuvent être affectées au même ticket, chacune avec son affectation indépendante. La charge du ticket est la somme des affectations.
 - Une affectation peut être marquée « provisoire » : hachurée dans la heatmap, et prise en compte ou non dans le contrôle de dépassement selon un réglage du tenant.
 - Pour réserver quelqu'un sur un projet sans tâche précise, on crée un ticket « Activité projet ».
