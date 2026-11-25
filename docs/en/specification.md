@@ -89,6 +89,7 @@ A tenant is an isolated organization; a user account is global and can belong to
 | Platform | Super admin: creates and deletes tenants, erases a global account, supervision |
 | Tenant | Tenant admin: members, roles, configurations, portals, authentication policy |
 | Tenant | Configuration admin: workflows, types and fields, without member management |
+| Tenant | Resource manager: resources, teams, capacities, calendars and absences, without member management |
 | Node | Node admin: members and roles of the node and its descendants, creation of child projects |
 
 ## 4. Portfolio, program and project hierarchy
@@ -251,6 +252,9 @@ The Gantt chart is built in-house: no commercial or GPL library is compatible wi
 - **Tenant calendar**: default working days and public holidays.
 - **Site or country calendars**: preloaded public holidays (France first, then other countries), editable.
 - **Resource calendar**: attached to a site, with its own exceptions.
+- Working weekdays come from the capacity (§8): a day of 0 h is not worked. Calendars only hold dated exceptions (an added holiday, a closure, a day worked that cancels a holiday) and a set of public holidays.
+- Public holidays are computed for any year (fixed dates and Easter-based feasts): France, or France with Alsace-Moselle (Good Friday, 26 December). The tenant only stores its exceptions. A site uses its own set, or the tenant's.
+- The closest level decides: the resource's exceptions, then its site's, then the tenant's; at each level, its exceptions come before its holiday set. A holiday or closed day has no capacity.
 - Planning dates are local dates (`date`), not UTC instants. This prevents a Monday task from moving to Sunday for a user in another time zone.
 
 After the MVP: a project-specific calendar.
@@ -265,14 +269,17 @@ A resource can combine several tasks on the same day as long as the sum of its a
   - **Person**: linked to an account, or without an account (a subcontractor who never logs in).
   - **Generic resource**: an unnamed role ("Rust developer"), replaceable later by a person. Replacement transfers the assignments.
   - **Equipment, room, object**: after the MVP, with the same capacity and assignment mechanisms.
-- Teams group resources for views and filters. Assignments always target a resource, never a team.
+- An internal member is linked to one resource of the tenant at most, which shows their name. When they leave the tenant, their resource stays, unlinked and deactivated, under the name it showed (their pseudonym once erased). Resources are never deleted, only deactivated.
+- The tenant admin and resource managers manage them; every internal member reads them.
+- Teams group resources for views and filters. Assignments always target a resource, never a team. A resource may belong to several teams; a team's name is translatable and unique in the tenant. A team has no lead: the tenant admin and resource managers manage teams.
 
 **Capacity**
 
 - Weekly pattern: hours per weekday (for example Monday 7 h, …, Friday 3.5 h), which covers part-time work.
 - Historized with effective dates (switch to 80% on 1 March).
-- Default value defined per tenant, for example 7 h × 5 days.
-- Capacity of a day = weekly pattern, minus the site's public holidays, minus absences.
+- Default value defined per tenant, for example 7 h × 5 days; the tenant admin changes it, with the overload tolerance and mode. It applies as it stands (never copied) to resources without a period and to the days before their first one.
+- One period per resource and effective date, with an optional label ("Part time 80%"); a period starting after today is shown as planned. Durations are stored in minutes.
+- Capacity of a day = weekly pattern, minus the public holidays and closures of its calendars, minus absences (a morning off and an afternoon off on the same day take the whole day). It is read day by day, for one resource or for hundreds at once (heatmap, availability search).
 - Capacity is the maximum daily load. An overload tolerance can be configured per tenant (0% by default).
 
 **Assignments**
@@ -309,6 +316,8 @@ An assignment links a resource to a ticket. It is made of one or more successive
 **Absences**
 
 - Entered in the tool (leave, training, half days), by the person or their manager. After the MVP: approval workflow, import from an HRIS or Exchange through the API.
+- An absence runs from a first to a last day included; it may start or end at noon. A half day removes half of that day's capacity. Absences of a resource never overlap, half day by half day. Kinds: leave, training, other (no "sick leave" kind: health data).
+- The person linked to the resource enters their own; the tenant admin and resource managers enter anyone's. Every internal member sees the dates and kind; the comment is for the person and the managers only, and goes when the person is erased.
 - Percentage assignment: the load drops to 0 on the absence day, automatically.
 - Hours-per-day or total-effort assignment: hours falling on the absence become a conflict, reported to the project manager ("7 h to reschedule on PROJ-42"). Nothing is shifted automatically.
 
@@ -477,7 +486,7 @@ Permissions rely on roles granted on hierarchy nodes and inherited downwards. Po
 
 **Permission model**
 
-- **Global roles**: platform super admin. Per tenant: tenant admin, configuration admin, internal user, external user.
+- **Global roles**: platform super admin. Per tenant: tenant admin, configuration admin, resource manager, internal user, external user.
 - **Node roles**: defined by each tenant as sets of permissions. Example permissions: view, create a ticket, edit, comment, log time, assign resources, force an overload, manage sprints, manage boards, manage members, administer the node.
 - **Grants**: to users or groups, on a node. Inherited downwards, union in multi-parent, can be blocked (section 4).
 - **In the MVP**: restricted visibility on the portal (requesters only see their own tickets), internal or public comments, confidential projects.

@@ -287,6 +287,8 @@ pub struct PasswordResetConfirmation {
 pub enum TenantRoleView {
     Member,
     ConfigurationAdmin,
+    /// Resources, teams, capacities, calendars and absences.
+    ResourceManager,
     TenantAdmin,
 }
 
@@ -295,6 +297,7 @@ impl From<TenantRoleView> for TenantRole {
         match role {
             TenantRoleView::Member => Self::Member,
             TenantRoleView::ConfigurationAdmin => Self::ConfigurationAdmin,
+            TenantRoleView::ResourceManager => Self::ResourceManager,
             TenantRoleView::TenantAdmin => Self::TenantAdmin,
         }
     }
@@ -305,6 +308,7 @@ impl From<TenantRole> for TenantRoleView {
         match role {
             TenantRole::Member => Self::Member,
             TenantRole::ConfigurationAdmin => Self::ConfigurationAdmin,
+            TenantRole::ResourceManager => Self::ResourceManager,
             TenantRole::TenantAdmin => Self::TenantAdmin,
         }
     }

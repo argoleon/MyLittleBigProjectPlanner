@@ -1,0 +1,106 @@
+<section class="card" aria-labelledby="capacity-title">
+  <div class="card-header">
+    <div>
+      <h2 class="card-title" id="capacity-title">{{ 'capacity.title' | transloco }}</h2>
+      <p class="subtitle">{{ 'capacity.subtitle' | transloco }}</p>
+    </div>
+    @if (canManage()) {
+      <button matButton="tonal" type="button" class="new" (click)="create()">
+        <mat-icon aria-hidden="true">add</mat-icon>
+        {{ 'capacity.new' | transloco }}
+      </button>
+    }
+  </div>
+
+  @if (notice(); as notice) {
+    <p class="message" [class.info]="notice.ok" [class.error]="!notice.ok" [attr.role]="notice.ok ? 'status' : 'alert'">
+      {{ notice.messageKey | transloco }}
+    </p>
+  }
+
+  @if (list.error()) {
+    <ui-error-state [error]="list.error()" [headingLevel]="3" (retry)="list.reload()" />
+  } @else if (!list.hasValue()) {
+    <mat-progress-bar mode="indeterminate" [attr.aria-label]="'capacity.loading' | transloco" />
+  } @else {
+    @if (periods().length > 0) {
+      <p class="default">
+        {{ 'capacity.defaultBefore' | transloco: { date: (periods()[0].effectiveFrom | localDate), total: (total(defaultMinutes()) | duration) } }}
+      </p>
+    }
+    <div class="table-wrap">
+      <table mat-table [dataSource]="rows()" [trackBy]="trackPeriod" class="table">
+        <caption class="cdk-visually-hidden">{{ 'capacity.caption' | transloco }}</caption>
+
+        <ng-container matColumnDef="from">
+          <th mat-header-cell *matHeaderCellDef scope="col">{{ 'capacity.columns.from' | transloco }}</th>
+          <td mat-cell *matCellDef="let row">
+            @if (row.isDefault) {
+              <span class="from">{{ 'capacity.default' | transloco }}</span>
+              <span class="secondary">{{ 'capacity.defaultHint' | transloco }}</span>
+            } @else {
+              <span class="from">{{ row.effectiveFrom | localDate: { dateStyle: 'medium' } }}</span>
+            }
+            @if (row.label || planned(row)) {
+              <span class="secondary">
+                {{ row.label }}{{ row.label && planned(row) ? ' · ' : '' }}{{ planned(row) ? ('capacity.planned' | transloco) : '' }}
+              </span>
+            }
+          </td>
+        </ng-container>
+
+        @for (day of days; track day; let index = $index) {
+          <ng-container [matColumnDef]="day">
+            <th mat-header-cell *matHeaderCellDef scope="col" class="num">
+              <abbr [title]="dayLongNames()[index]">{{ dayNames()[index] }}</abbr>
+            </th>
+            <td mat-cell *matCellDef="let row" class="num">
+              @if (row.minutes[index] === 0) {
+                <span aria-hidden="true">–</span>
+                <span class="cdk-visually-hidden">{{ 'capacity.none' | transloco }}</span>
+              } @else {
+                {{ row.minutes[index] | duration }}
+              }
+            </td>
+          </ng-container>
+        }
+
+        <ng-container matColumnDef="total">
+          <th mat-header-cell *matHeaderCellDef scope="col" class="num">{{ 'capacity.columns.total' | transloco }}</th>
+          <td mat-cell *matCellDef="let row" class="num total">{{ row.weeklyMinutes | duration }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef scope="col">
+            <span class="cdk-visually-hidden">{{ 'capacity.columns.actions' | transloco }}</span>
+          </th>
+          <td mat-cell *matCellDef="let row" class="actions">
+            @if (!row.isDefault) {
+            <button
+              matIconButton
+              type="button"
+              [id]="actionId(row, 'edit')"
+              [attr.aria-label]="'capacity.editOf' | transloco: { date: (row.effectiveFrom | localDate) }"
+              (click)="edit(row)"
+            >
+              <mat-icon aria-hidden="true">edit</mat-icon>
+            </button>
+            <button
+              matIconButton
+              type="button"
+              [id]="actionId(row, 'delete')"
+              [attr.aria-label]="'capacity.deleteOf' | transloco: { date: (row.effectiveFrom | localDate) }"
+              (click)="remove(row)"
+            >
+              <mat-icon aria-hidden="true">delete</mat-icon>
+            </button>
+            }
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="columns()"></tr>
+        <tr mat-row *matRowDef="let row; columns: columns()"></tr>
+      </table>
+    </div>
+  }
+</section>

@@ -11,6 +11,7 @@
     "role": {
       "member": "Membre",
       "configuration_admin": "Admin de configuration",
+      "resource_manager": "Gestionnaire de ressources",
       "tenant_admin": "Admin de l’organisation"
     },
     "language": "Langue : {{ language }}",
@@ -161,6 +162,7 @@
     "tabs": {
       "label": "Rubriques de l’administration",
       "authentication": "Authentification",
+      "workload": "Charge",
       "members": "Membres",
       "groups": "Groupes",
       "roles": "Rôles",
@@ -332,6 +334,26 @@
       "discardTitle": "Abandonner les modifications ?",
       "discardMessage": "Les modifications de ce rôle ne sont pas enregistrées.",
       "discardConfirm": "Abandonner"
+    },
+    "workload": {
+      "loading": "Chargement des réglages de charge…",
+      "intro": "Ces réglages valent pour toute l’organisation. La capacité par défaut s’applique à chaque ressource sans période de capacité, et aux jours précédant sa première période.",
+      "capacity": "Capacité par défaut",
+      "capacityLegend": "Heures par jour d’une ressource sans période de capacité",
+      "overload": "Surcharge",
+      "tolerance": "Tolérance",
+      "toleranceHint": "Charge acceptée au-delà de la capacité avant qu’un jour soit en surcharge, de 0 à 100 %.",
+      "mode": "Quand une affectation surcharge une ressource",
+      "modes": {
+        "blocking": "La refuser",
+        "warning": "L’accepter avec une alerte"
+      },
+      "modeHints": {
+        "blocking": "L’affectation est refusée et le message liste les jours en conflit. Les rôles ayant « Forcer une surcharge » peuvent passer outre.",
+        "warning": "L’affectation est acceptée et les jours en surcharge sont signalés."
+      },
+      "save": "Enregistrer",
+      "saved": "Les réglages de charge ont été enregistrés."
     }
   },
   "errors": {
@@ -437,7 +459,11 @@
       "self": "Un ticket ne peut pas être lié à lui-même.",
       "cycle": "Ce ticket est rattaché sous celui que vous modifiez.",
       "immutable": "Cette valeur ne peut pas être modifiée.",
-      "order_by_not_allowed": "Un filtre rapide ne trie pas : retirez ORDER BY."
+      "order_by_not_allowed": "Un filtre rapide ne trie pas : retirez ORDER BY.",
+      "person_only": "Seule une personne est liée à un compte.",
+      "not_internal_member": "Pas un membre interne de l’organisation.",
+      "not_a_site": "Pas un site de l’organisation.",
+      "overlap": "Une autre absence occupe cette demi-journée."
     },
     "invitation": {
       "invalid": "Ce lien d’invitation est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
@@ -538,6 +564,25 @@
     },
     "bulk": {
       "too_many": "Plus de tickets qu’une action groupée n’en prend (10 000)."
+    },
+    "resource": {
+      "account_taken": "Ce membre est déjà lié à une autre ressource."
+    },
+    "team": {
+      "name_taken": "Une autre équipe porte déjà ce nom."
+    },
+    "capacity_pattern": {
+      "date_taken": "La ressource a déjà une période de capacité qui commence ce jour-là."
+    },
+    "calendar": {
+      "name_taken": "Un autre calendrier porte déjà ce nom.",
+      "tenant": "Le calendrier de l’organisation n’est jamais supprimé et garde ses jours fériés."
+    },
+    "calendar_exception": {
+      "day_taken": "Il y a déjà une exception ce jour-là."
+    },
+    "absence": {
+      "overlap": "Une autre absence de la ressource occupe déjà cette demi-journée."
     }
   },
   "dialog": {
@@ -647,7 +692,8 @@
       "mismatch": "Ce n’est pas l’e-mail de votre compte.",
       "purgeComments": "Supprimer aussi mes commentaires",
       "submit": "Supprimer définitivement"
-    }
+    },
+    "myAbsences": "Mes absences"
   },
   "hierarchy": {
     "intro": "Le haut de la hiérarchie : portefeuilles, programmes et projets, avec leurs indicateurs agrégés.",
@@ -2121,6 +2167,341 @@
       "tickets": "{{ count }} tickets se déplacent (leurs sous-tâches les suivent).",
       "subtasksAlone": "{{ count }} sous-tâches sélectionnées sans leur parent restent où elles sont.",
       "confirm": "Déplacer {{ count }} tickets"
+    }
+  },
+  "resource": {
+    "holding": {
+      "label": "Type de ressource :",
+      "linked": "Personne · compte lié",
+      "person": "Personne",
+      "former": "Ancien membre",
+      "generic": "Ressource générique"
+    },
+    "state": {
+      "label": "Statut :",
+      "active": "Active",
+      "inactive": "Inactive"
+    }
+  },
+  "resources": {
+    "title": "Ressources",
+    "breadcrumb": "Emplacement",
+    "loading": "Chargement des ressources…",
+    "search": "Rechercher",
+    "searchPlaceholder": "Nom ou fonction",
+    "kinds": "Types de ressource",
+    "states": "Statuts",
+    "kind": {
+      "person": "Personnes",
+      "generic": "Génériques"
+    },
+    "state": {
+      "active": "Actives",
+      "inactive": "Inactives"
+    },
+    "new": "Nouvelle ressource",
+    "caption": "Ressources de l’organisation",
+    "columns": {
+      "name": "Ressource",
+      "holding": "Type",
+      "status": "Statut",
+      "actions": "Actions"
+    },
+    "empty": "Aucune ressource",
+    "emptyHint": "Ajoutez les personnes et les rôles génériques sur lesquels planifier le travail.",
+    "noMatch": "Aucune ressource ne correspond",
+    "noMatchHint": "Modifiez la recherche ou les filtres.",
+    "more": "Afficher plus",
+    "editOf": "Modifier {{ name }}",
+    "created": "{{ name }} a été créée.",
+    "saved": "{{ name }} a été enregistrée.",
+    "dialog": {
+      "createTitle": "Nouvelle ressource",
+      "editTitle": "Modifier {{ name }}",
+      "kind": "Type",
+      "person": "Personne",
+      "generic": "Ressource générique",
+      "personHint": "Quelqu’un, avec ou sans compte : un sous-traitant qui ne se connecte jamais n’en a pas.",
+      "genericHint": "Un rôle non nominatif, comme « Développeur Rust », remplacé plus tard par une personne.",
+      "account": "Compte lié",
+      "noAccount": "Aucun compte",
+      "accountHint": "La ressource affiche le nom du membre.",
+      "accountSearchHint": "Cherchez un membre par nom ou e-mail ; laissez vide pour une personne sans compte.",
+      "clearAccount": "Retirer le compte lié",
+      "name": "Nom",
+      "role": "Rôle",
+      "jobTitle": "Fonction",
+      "active": "Active",
+      "activeHint": "Une ressource inactive n’est plus proposée pour de nouvelles affectations.",
+      "create": "Créer",
+      "save": "Enregistrer",
+      "site": "Site",
+      "noSite": "Calendrier de l’organisation",
+      "siteHint": "Les jours fériés et fermetures de son site s’appliquent."
+    },
+    "page": {
+      "details": "Informations",
+      "kind": "Type",
+      "jobTitle": "Fonction",
+      "account": "Compte",
+      "linked": "Liée au compte du membre",
+      "person": "Sans compte : ne se connecte jamais",
+      "former": "Ancien membre : déliée à son départ de l’organisation",
+      "generic": "Rôle générique, sans compte",
+      "status": "Statut",
+      "edit": "Modifier",
+      "teams": "Équipes",
+      "noTeam": "Aucune équipe",
+      "siteOf": "Site {{ name }}",
+      "noSite": "Calendrier de l’organisation"
+    },
+    "team": "Équipe",
+    "allTeams": "Toutes les équipes"
+  },
+  "workload": {
+    "tabs": "Rubriques de la charge"
+  },
+  "teams": {
+    "title": "Équipes",
+    "loading": "Chargement des équipes…",
+    "new": "Nouvelle équipe",
+    "caption": "Équipes de l’organisation",
+    "columns": {
+      "name": "Équipe",
+      "members": "Ressources",
+      "actions": "Actions"
+    },
+    "empty": "Aucune équipe",
+    "emptyHint": "Regroupez les ressources en équipes pour filtrer les vues et la disponibilité.",
+    "editOf": "Modifier {{ name }}",
+    "deleteOf": "Supprimer {{ name }}",
+    "deleteTitle": "Supprimer {{ name }} ?",
+    "deleteMessage": "L’équipe disparaît ; ses ressources restent, avec leurs affectations.",
+    "deleteConfirm": "Supprimer",
+    "created": "L’équipe {{ name }} a été créée.",
+    "saved": "L’équipe {{ name }} a été enregistrée.",
+    "deleted": "L’équipe {{ name }} a été supprimée.",
+    "dialog": {
+      "createTitle": "Nouvelle équipe",
+      "editTitle": "Modifier {{ name }}",
+      "name": "Nom",
+      "description": "Description",
+      "create": "Créer",
+      "save": "Enregistrer"
+    },
+    "page": {
+      "edit": "Modifier",
+      "add": "Ajouter une ressource",
+      "members": "Ressources ({{ count }})",
+      "caption": "Ressources de {{ name }}",
+      "empty": "Aucune ressource dans cette équipe",
+      "emptyHint": "Ajoutez les ressources qui travaillent ensemble.",
+      "removeOf": "Retirer {{ name }} de l’équipe",
+      "added": "{{ name }} a été ajoutée à l’équipe.",
+      "removed": "{{ name }} a été retirée de l’équipe."
+    },
+    "addDialog": {
+      "title": "Ajouter une ressource à {{ name }}",
+      "resource": "Ressource",
+      "hint": "Cherchez une ressource active par nom ou fonction.",
+      "inTeam": "déjà dans l’équipe",
+      "add": "Ajouter"
+    }
+  },
+  "capacity": {
+    "title": "Capacité hebdomadaire",
+    "subtitle": "Historisée par date d’effet. La capacité est aussi la charge maximale par jour.",
+    "loading": "Chargement de la capacité…",
+    "new": "Nouvelle période",
+    "caption": "Périodes de capacité de la ressource",
+    "columns": {
+      "from": "À partir du",
+      "total": "Total",
+      "actions": "Actions"
+    },
+    "default": "Défaut de l’organisation",
+    "defaultHint": "S’applique tant qu’aucune période n’est ajoutée.",
+    "defaultBefore": "Avant le {{ date }} : défaut de l’organisation ({{ total }} par semaine).",
+    "planned": "planifiée",
+    "none": "Aucune heure",
+    "editOf": "Modifier la période du {{ date }}",
+    "deleteOf": "Supprimer la période du {{ date }}",
+    "deleteTitle": "Supprimer cette période ?",
+    "deleteMessage": "Ses jours reprennent la capacité de la période précédente, ou le défaut de l’organisation.",
+    "deleteConfirm": "Supprimer",
+    "created": "La période a été ajoutée.",
+    "saved": "La période a été enregistrée.",
+    "deleted": "La période a été supprimée.",
+    "hoursHint": "Heures comme 7, 3,5 ou 3:30",
+    "hoursInvalid": "Heures d’une journée, comme 7, 3,5 ou 3:30.",
+    "weekTotal": "Semaine : {{ total }}",
+    "dialog": {
+      "createTitle": "Nouvelle période de capacité",
+      "editTitle": "Modifier la période de capacité",
+      "from": "À partir du",
+      "fromHint": "Elle s’applique de ce jour jusqu’à la période suivante.",
+      "week": "Heures par jour",
+      "label": "Libellé",
+      "labelHint": "Facultatif, par exemple « Temps partiel 80 % ».",
+      "create": "Ajouter",
+      "save": "Enregistrer"
+    },
+    "weeks": {
+      "title": "Capacité des 4 prochaines semaines",
+      "subtitle": "Heures disponibles, après jours fériés, fermetures et absences.",
+      "loading": "Chargement de la capacité des semaines…",
+      "short": "S{{ week }}",
+      "weekOf": "Semaine {{ week }}",
+      "range": "du {{ from }} au {{ to }}"
+    }
+  },
+  "calendars": {
+    "title": "Calendriers",
+    "loading": "Chargement des calendriers…",
+    "new": "Nouveau site",
+    "caption": "Calendriers de l’organisation",
+    "columns": {
+      "name": "Calendrier",
+      "holidays": "Jours fériés",
+      "resources": "Ressources",
+      "actions": "Actions",
+      "day": "Jour",
+      "kind": "Type",
+      "label": "Nom"
+    },
+    "kindOf": {
+      "tenant": "Calendrier de l’organisation",
+      "site": "Site"
+    },
+    "sets": {
+      "fr": "France",
+      "fr-alsace-moselle": "France, Alsace-Moselle",
+      "none": "Aucun jour férié",
+      "inherit": "Ceux de l’organisation"
+    },
+    "othersResources": "Toute ressource sans site",
+    "editOf": "Modifier {{ name }}",
+    "deleteOf": "Supprimer {{ name }}",
+    "deleteTitle": "Supprimer {{ name }} ?",
+    "deleteMessage": "Ses ressources reprennent le calendrier de l’organisation ; ses exceptions disparaissent.",
+    "deleteConfirm": "Supprimer",
+    "created": "{{ name }} a été créé.",
+    "saved": "{{ name }} a été enregistré.",
+    "deleted": "{{ name }} a été supprimé.",
+    "edit": "Modifier",
+    "previousYear": "Année précédente",
+    "nextYear": "Année suivante",
+    "inherited": "Ses jours fériés sont ceux de l’organisation.",
+    "yearCaption": "Jours fériés et exceptions de {{ year }}",
+    "kinds": {
+      "set": "Jour férié",
+      "holiday": "Férié ajouté",
+      "non_working": "Fermé",
+      "working": "Travaillé"
+    },
+    "kindHints": {
+      "holiday": "Un jour férié absent du jeu : aucune capacité ce jour-là.",
+      "non_working": "Une fermeture ou un pont : aucune capacité ce jour-là.",
+      "working": "Travaillé malgré tout : annule un jour férié, les heures du jour de la semaine s’appliquent."
+    },
+    "holidays": {
+      "new_years_day": "Jour de l’an",
+      "good_friday": "Vendredi saint",
+      "easter_monday": "Lundi de Pâques",
+      "labour_day": "Fête du Travail",
+      "victory_in_europe": "Victoire 1945",
+      "ascension_day": "Ascension",
+      "whit_monday": "Lundi de Pentecôte",
+      "bastille_day": "Fête nationale",
+      "assumption": "Assomption",
+      "all_saints_day": "Toussaint",
+      "armistice": "Armistice 1918",
+      "christmas": "Noël",
+      "st_stephens_day": "Saint-Étienne"
+    },
+    "dialog": {
+      "createTitle": "Nouveau site",
+      "editTitle": "Modifier {{ name }}",
+      "name": "Nom",
+      "holidays": "Jours fériés",
+      "tenantHint": "Les jours fériés de toute ressource sans site.",
+      "siteHint": "Ses ressources suivent ces jours fériés, puis ses exceptions.",
+      "create": "Créer",
+      "save": "Enregistrer"
+    },
+    "exception": {
+      "createTitle": "Nouvelle exception",
+      "editTitle": "Modifier l’exception",
+      "day": "Jour",
+      "kind": "Type",
+      "label": "Nom",
+      "create": "Ajouter",
+      "save": "Enregistrer",
+      "add": "Ajouter une exception",
+      "created": "L’exception a été ajoutée.",
+      "saved": "L’exception a été enregistrée.",
+      "deleted": "L’exception a été supprimée.",
+      "deleteTitle": "Supprimer cette exception ?",
+      "deleteMessage": "Le jour suit de nouveau les calendriers et la capacité.",
+      "editOf": "Modifier l’exception du {{ day }}",
+      "deleteOf": "Supprimer l’exception du {{ day }}"
+    },
+    "previousMonth": "Mois précédent",
+    "nextMonth": "Mois suivant",
+    "gridHint": "Les flèches passent d’un jour à l’autre, Page précédente et Page suivante changent de mois.",
+    "gridHintManage": "Les flèches passent d’un jour à l’autre, Page précédente et Page suivante changent de mois ; Entrée ajoute ou modifie l’exception de la ressource ce jour-là.",
+    "legend": "Légende",
+    "look": {
+      "working": "travaillé",
+      "off": "non ouvré",
+      "closed": "fermé",
+      "holiday": "jour férié",
+      "absence": "absent"
+    },
+    "ownException": "Exception de la ressource",
+    "ownExceptions": "Exceptions de la ressource ce mois-ci",
+    "monthTotal": "Capacité du mois : {{ hours }}"
+  },
+  "absences": {
+    "title": "Absences",
+    "declare": "Déclarer une absence",
+    "loading": "Chargement des absences…",
+    "none": "Aucune absence entre il y a un mois et l’an prochain.",
+    "kinds": {
+      "leave": "Congé",
+      "training": "Formation",
+      "other": "Autre absence"
+    },
+    "parts": {
+      "whole": "journée",
+      "morning": "matin",
+      "afternoon": "après-midi"
+    },
+    "range": "Du {{ from }} au {{ to }}",
+    "fromNoon": "à partir de midi",
+    "toNoon": "jusqu’à midi",
+    "declaredBy": "déclarée par {{ name }}",
+    "editOf": "Modifier l’absence du {{ day }}",
+    "deleteOf": "Supprimer l’absence du {{ day }}",
+    "deleteTitle": "Supprimer cette absence ?",
+    "deleteMessage": "Ses jours retrouvent leur capacité.",
+    "deleteConfirm": "Supprimer",
+    "created": "L’absence a été déclarée.",
+    "saved": "L’absence a été enregistrée.",
+    "deleted": "L’absence a été supprimée.",
+    "dialog": {
+      "createTitle": "Déclarer une absence",
+      "editTitle": "Modifier l’absence",
+      "kind": "Type",
+      "start": "Premier jour",
+      "startsAtNoon": "Commence à midi (le matin est travaillé)",
+      "end": "Dernier jour",
+      "endsAtNoon": "Finit à midi (l’après-midi est travaillé)",
+      "halfDayHint": "Une demi-journée d’absence retire la moitié de la capacité du jour.",
+      "comment": "Commentaire",
+      "commentHint": "Seuls la personne et les gestionnaires le lisent.",
+      "create": "Déclarer",
+      "save": "Enregistrer"
     }
   }
 }

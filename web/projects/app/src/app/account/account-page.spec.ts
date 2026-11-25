@@ -62,7 +62,7 @@ function problem(status: number, code: string, errors: object[] = []) {
   return { type: `urn:mlbpp:problem:${code}`, title: code, status, code, errors };
 }
 
-async function open({ mfa = MFA_ON as object, sessions = [THIS, PHONE] } = {}) {
+async function open({ mfa = MFA_ON as object, sessions = [THIS, PHONE], myResource = null as object | null } = {}) {
   localStorage.clear();
   TestBed.configureTestingModule({
     providers: [
@@ -99,6 +99,9 @@ async function open({ mfa = MFA_ON as object, sessions = [THIS, PHONE] } = {}) {
   await reply(get('/api/v1/account/mfa'), mfa);
   await reply(get('/api/v1/me/sessions'), sessions);
   await reply(get('/api/v1/me/memberships'), MEMBERSHIPS);
+  // Linked to a resource, or not (404).
+  if (myResource) await reply(get('/api/v1/resources/mine'), myResource);
+  else await reply(get('/api/v1/resources/mine'), problem(404, 'not_found'), 404);
   const root = () => document.body;
   const page = () => root().querySelector('app-account-page')!;
   const text = (element: Element | null | undefined) => element?.textContent?.replace(/\s+/g, ' ').trim();
@@ -155,6 +158,17 @@ describe('AccountPage', () => {
     const sessions = Array.from(page().querySelectorAll('.row')).find((r) => r.textContent?.includes('Active sessions'));
     expect(text(sessions?.querySelector('.row-detail'))).toBe('Devices: 2 · latest sign-in Nov 11, 2026, 9:00 AM');
     expect(await axeViolations(page())).toEqual([]);
+  });
+
+  it('links to the member’s absences when they are a resource', async () => {
+    const { page } = await open({ myResource: { id: 'r1', kind: 'person', displayName: 'Lucas Bernard', accountId: 'me', formerMember: false, active: true, teams: [], site: null, version: 1 } });
+    expect(page().querySelector('a.my-absences')?.getAttribute('href')).toBe('/workload/resources/r1');
+    expect(page().querySelector('a.my-absences')?.textContent).toContain('My absences');
+  });
+
+  it('shows no such link to a member who is no resource', async () => {
+    const { page } = await open();
+    expect(page().querySelector('a.my-absences')).toBeNull();
   });
 
   it('applies and saves the language and the time zone at once', async () => {

@@ -50,7 +50,7 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       // Screens not built yet show "coming soon".
-      ...NAVIGATION.filter((item) => !['/admin', '/boards', '/portfolios', '/search', '/tickets'].includes(item.route)).map((item) => ({
+      ...NAVIGATION.filter((item) => !['/admin', '/boards', '/portfolios', '/search', '/tickets', '/workload'].includes(item.route)).map((item) => ({
         path: item.route.slice(1),
         pathMatch: 'full' as const,
         title: item.labelKey,
@@ -91,6 +91,48 @@ export const routes: Routes = [
         path: 'boards/:id',
         title: 'nav.boards',
         loadComponent: () => import('./boards/board-page').then((m) => m.BoardPage),
+      },
+      {
+        // Workload: its tabs (the heatmap comes with L08).
+        path: 'workload',
+        title: 'nav.workload',
+        loadComponent: () => import('./workload/workload-page').then((m) => m.WorkloadPage),
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'resources' },
+          {
+            path: 'resources',
+            title: 'resources.title',
+            loadComponent: () => import('./resources/resources-page').then((m) => m.ResourcesPage),
+          },
+          {
+            path: 'teams',
+            title: 'teams.title',
+            loadComponent: () => import('./teams/teams-page').then((m) => m.TeamsPage),
+          },
+          {
+            path: 'calendars',
+            title: 'calendars.title',
+            loadComponent: () => import('./calendars/calendars-page').then((m) => m.CalendarsPage),
+          },
+        ],
+      },
+      {
+        // A resource, by its id.
+        path: 'workload/resources/:id',
+        title: 'resources.title',
+        loadComponent: () => import('./resources/resource-page').then((m) => m.ResourcePage),
+      },
+      {
+        // A team and its members, by its id.
+        path: 'workload/teams/:id',
+        title: 'teams.title',
+        loadComponent: () => import('./teams/team-page').then((m) => m.TeamPage),
+      },
+      {
+        // A calendar and its year, by its id.
+        path: 'workload/calendars/:id',
+        title: 'calendars.title',
+        loadComponent: () => import('./calendars/calendar-page').then((m) => m.CalendarPage),
       },
       {
         path: 'tickets',
@@ -209,6 +251,11 @@ export const routes: Routes = [
             path: 'authentication',
             title: 'admin.tabs.authentication',
             loadComponent: () => import('./admin/authentication-settings').then((m) => m.AuthenticationSettings),
+          },
+          {
+            path: 'workload',
+            title: 'admin.tabs.workload',
+            loadComponent: () => import('./admin/workload-settings').then((m) => m.WorkloadSettingsTab),
           },
           {
             path: 'configurations',

@@ -1,0 +1,24 @@
+<section class="card" aria-labelledby="weeks-title">
+  <h2 class="card-title" id="weeks-title">{{ 'capacity.weeks.title' | transloco }}</h2>
+  <p class="subtitle">{{ 'capacity.weeks.subtitle' | transloco }}</p>
+
+  @if (capacity.error()) {
+    <ui-error-state [error]="capacity.error()" [headingLevel]="3" (retry)="capacity.reload()" />
+  } @else if (!capacity.hasValue()) {
+    <mat-progress-bar mode="indeterminate" [attr.aria-label]="'capacity.weeks.loading' | transloco" />
+  } @else {
+    <ul class="weeks">
+      @for (week of weeks(); track week.from) {
+        <li class="week" [attr.data-week]="week.from">
+          <span class="number">
+            <abbr [title]="'capacity.weeks.weekOf' | transloco: { week: week.week }">{{ 'capacity.weeks.short' | transloco: { week: week.week } }}</abbr>
+          </span>
+          <span class="range">
+            {{ 'capacity.weeks.range' | transloco: { from: (week.from | localDate: { day: 'numeric', month: 'short' }), to: (week.to | localDate: { day: 'numeric', month: 'short' }) } }}
+          </span>
+          <span class="hours">{{ week.minutes | duration }}</span>
+        </li>
+      }
+    </ul>
+  }
+</section>

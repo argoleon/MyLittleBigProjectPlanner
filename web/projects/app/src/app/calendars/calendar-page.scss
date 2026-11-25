@@ -1,0 +1,113 @@
+@use '../admin/admin-shared';
+
+:host {
+  display: block;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-1);
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+
+  a {
+    color: var(--mat-sys-primary);
+  }
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--app-space-3) var(--app-space-4);
+  margin: var(--app-space-2) 0 var(--app-space-4);
+}
+
+.identity {
+  flex: 1 1 280px;
+}
+
+.title {
+  margin: 0;
+  font: var(--mat-sys-headline-medium);
+}
+
+.subtitle {
+  margin: var(--app-space-1) 0 0;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.actions-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--app-space-2);
+}
+
+.card {
+  max-width: 880px;
+  padding: var(--app-space-4);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface);
+}
+
+.year-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-2);
+}
+
+.year {
+  margin: 0;
+  font: var(--mat-sys-title-large);
+}
+
+.table-wrap {
+  overflow-x: auto;
+  margin-top: var(--app-space-3);
+}
+
+.table {
+  min-width: 520px;
+  background: transparent;
+}
+
+.day {
+  white-space: nowrap;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 var(--app-space-2);
+  border-radius: var(--mat-sys-corner-small);
+  font: var(--mat-sys-label-medium);
+  background: var(--app-calendar-off);
+  color: var(--app-calendar-off-on);
+
+  &[data-kind='set'],
+  &[data-kind='holiday'] {
+    background: var(--app-calendar-holiday);
+    color: var(--app-calendar-holiday-on);
+  }
+
+  &[data-kind='working'] {
+    background: var(--app-success-container);
+    color: var(--app-on-success-container);
+  }
+}
+
+.actions {
+  width: 104px;
+  white-space: nowrap;
+  text-align: end;
+}

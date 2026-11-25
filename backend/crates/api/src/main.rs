@@ -199,6 +199,8 @@ fn serve() -> ExitCode {
 }
 
 async fn run(config: ApiConfig) -> ExitCode {
+    // First: a SIGTERM during migrations or startup is kept, not fatal.
+    let shutdown = infra::shutdown::listen();
     if let Some(migration_url) = &config.migration_url {
         if let Err(err) = infra::db::migrate(migration_url).await {
             eprintln!("api: migration failed: {err}");
@@ -273,14 +275,7 @@ async fn run(config: ApiConfig) -> ExitCode {
         state = state.with_storage(storage);
     }
     let app = api::app(state, &api::HttpSettings::from(&config));
-    match api::serve(
-        listener,
-        app,
-        infra::shutdown::signal(),
-        config.common.shutdown_grace,
-    )
-    .await
-    {
+    match api::serve(listener, app, shutdown.wait(), config.common.shutdown_grace).await {
         Ok(()) => {
             tracing::info!("api stopped");
             ExitCode::SUCCESS

@@ -46,6 +46,28 @@ export function parseLocalDate(value: string): { year: number; month: number; da
   return { year, month, day };
 }
 
+/** The local date `days` after `value` (`YYYY-MM-DD`; before it when negative), in UTC so no daylight saving time shifts it. */
+export function addDays(value: string, days: number): string {
+  const date = parseLocalDate(value);
+  if (!date) {
+    throw new RangeError(`not a local date (YYYY-MM-DD): ${value}`);
+  }
+  return new Date(Date.UTC(date.year, date.month - 1, date.day + days)).toISOString().slice(0, 10);
+}
+
+/** The Monday of the week of a local date. */
+export function mondayOf(value: string): string {
+  const weekday = (new Date(`${value}T00:00:00Z`).getUTCDay() + 6) % 7;
+  return addDays(value, -weekday);
+}
+
+/** The ISO 8601 week number of a local date: week 1 holds the year's first Thursday. */
+export function isoWeek(value: string): number {
+  const thursday = new Date(`${addDays(mondayOf(value), 3)}T00:00:00Z`);
+  const firstJanuary = Date.UTC(thursday.getUTCFullYear(), 0, 1);
+  return Math.floor((thursday.getTime() - firstJanuary) / 86_400_000 / 7) + 1;
+}
+
 /**
  * Formats a planning date in `locale`, e.g. `29 mars 2026`. The date is
  * formatted in UTC on purpose: UTC midnight of that day is the same calendar
@@ -101,4 +123,51 @@ export function formatFileSize(bytes: number, locale: string): string {
     unitDisplay: unit === 0 ? 'long' : 'short',
     maximumFractionDigits: unit === 0 ? 0 : 1,
   }).format(value);
+}
+
+/**
+ * A duration of `minutes` in hours and minutes, the way planners read it:
+ * `7 h`, `3 h 30` (`3 h 30 min` in English). Hours are formatted in
+ * `locale`, so a week of 1,680 minutes reads `28 h`.
+ */
+export function formatDuration(minutes: number, locale: string): string {
+  const whole = Math.round(minutes);
+  const hours = Math.trunc(whole / 60);
+  const rest = Math.abs(whole % 60);
+  const h = `${formatNumber(hours, locale)} h`;
+  if (rest === 0) return h;
+  const mm = String(rest).padStart(2, '0');
+  return locale.startsWith('fr') ? `${h} ${mm}` : `${h} ${mm} min`;
+}
+
+const DECIMAL_HOURS = /^(\d{1,2})(?:[.,](\d{1,4}))?\s*h?$/i;
+const HOURS_MINUTES = /^(\d{1,2})\s*(?:h|:)\s*(\d{1,2})\s*(?:min|m)?$/i;
+
+/**
+ * The minutes of a duration typed in hours: `7`, `3,5`, `3.5`, `3:30`,
+ * `3 h 30`; empty is 0. `null` when it reads as none of these, or exceeds a
+ * day.
+ */
+export function parseHours(text: string): number | null {
+  const value = text.trim();
+  if (value === '') return 0;
+  let minutes: number | null = null;
+  const decimal = DECIMAL_HOURS.exec(value);
+  const clock = HOURS_MINUTES.exec(value);
+  if (decimal) {
+    minutes = Math.round(Number(`${decimal[1]}.${decimal[2] ?? '0'}`) * 60);
+  } else if (clock && Number(clock[2]) < 60) {
+    minutes = Number(clock[1]) * 60 + Number(clock[2]);
+  }
+  return minutes !== null && minutes <= 24 * 60 ? minutes : null;
+}
+
+/**
+ * The names of the days of the week in `locale`, Monday first: `lundi`…
+ * (`long`) or `lun.`… (`short`).
+ */
+export function weekdayNames(locale: string, style: 'long' | 'short' = 'long'): string[] {
+  const format = new Intl.DateTimeFormat(locale, { weekday: style, timeZone: 'UTC' });
+  // 2024-01-01 was a Monday.
+  return Array.from({ length: 7 }, (_, day) => format.format(new Date(Date.UTC(2024, 0, 1 + day))));
 }

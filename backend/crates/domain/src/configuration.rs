@@ -171,6 +171,7 @@ mod tests {
     fn tenant_and_configuration_admins_manage_configurations() {
         assert!(manages_configurations(TenantRole::TenantAdmin));
         assert!(manages_configurations(TenantRole::ConfigurationAdmin));
+        assert!(!manages_configurations(TenantRole::ResourceManager));
         assert!(!manages_configurations(TenantRole::Member));
     }
 

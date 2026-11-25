@@ -1,6 +1,6 @@
 import { Pipe, PipeTransform, inject } from '@angular/core';
 
-import { formatInstant, formatLocalDate, formatNumber } from './format';
+import { formatDuration, formatInstant, formatLocalDate, formatNumber } from './format';
 import { LocaleService } from './locale.service';
 
 // Not pure: they follow language changes. Formatting is cheap.
@@ -41,5 +41,18 @@ export class LocalNumberPipe implements PipeTransform {
       return '';
     }
     return formatNumber(value, this.locale.formattingLocale(), options);
+  }
+}
+
+/** `{{ day.minutes | duration }}`: minutes as `7 h` or `3 h 30`. */
+@Pipe({ name: 'duration', pure: false })
+export class DurationPipe implements PipeTransform {
+  private readonly locale = inject(LocaleService);
+
+  transform(minutes: number | null | undefined): string {
+    if (minutes === null || minutes === undefined) {
+      return '';
+    }
+    return formatDuration(minutes, this.locale.formattingLocale());
   }
 }

@@ -58,7 +58,7 @@ async function storyForTheMember(browser: Browser, run: string): Promise<{ admin
   const access = admin.getByRole('region', { name: 'Effective access' });
   await access.getByRole('button', { name: 'Add a role' }).click();
   const grant = admin.getByRole('dialog', { name: `Grant a role on ${name}` });
-  await grant.getByLabel('Member or group').fill(memberEmail!);
+  await grant.getByRole('combobox', { name: 'Member or group' }).fill(memberEmail!);
   await admin.getByRole('option', { name: memberEmail! }).click();
   await grant.getByRole('combobox', { name: 'Role' }).click();
   await admin.getByRole('option', { name: 'Reader', exact: true }).click();
@@ -111,7 +111,7 @@ test('a mention reaches the member on the bell, and opens the ticket', async ({ 
   const access = admin.getByRole('region', { name: 'Effective access' });
   await access.getByRole('button', { name: 'Add a role' }).click();
   const grant = admin.getByRole('dialog', { name: `Grant a role on ${name}` });
-  await grant.getByLabel('Member or group').fill(memberEmail!);
+  await grant.getByRole('combobox', { name: 'Member or group' }).fill(memberEmail!);
   await admin.getByRole('option', { name: memberEmail! }).click();
   await grant.getByRole('combobox', { name: 'Role' }).click();
   await admin.getByRole('option', { name: 'Reader', exact: true }).click();

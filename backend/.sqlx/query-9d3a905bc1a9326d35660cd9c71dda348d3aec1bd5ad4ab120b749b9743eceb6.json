@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM calendar WHERE id = $1 AND ($2::bigint[] IS NULL OR version = ANY($2))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9d3a905bc1a9326d35660cd9c71dda348d3aec1bd5ad4ab120b749b9743eceb6"
+}

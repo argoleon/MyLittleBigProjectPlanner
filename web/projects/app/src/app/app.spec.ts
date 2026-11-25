@@ -261,13 +261,13 @@ describe('App', () => {
     expect(query(fixture, 'main h1')?.textContent).toBe('Home');
     expect(document.title).toBe('Home · My Little Big Project Planner');
 
-    query(fixture, 'nav a[href="/workload"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    query(fixture, 'nav a[href="/portals"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
     await fixture.whenStable();
-    expect(TestBed.inject(Router).url).toBe('/workload');
-    expect(query(fixture, 'main h1')?.textContent).toBe('Workload');
+    expect(TestBed.inject(Router).url).toBe('/portals');
+    expect(query(fixture, 'main h1')?.textContent).toBe('Portals');
     expect(query(fixture, 'main [role="heading"]')?.textContent).toBe('Coming soon');
-    expect(query(fixture, 'nav a[aria-current="page"]')?.getAttribute('href')).toBe('/workload');
-    expect(document.title).toBe('Workload · My Little Big Project Planner');
+    expect(query(fixture, 'nav a[aria-current="page"]')?.getAttribute('href')).toBe('/portals');
+    expect(document.title).toBe('Portals · My Little Big Project Planner');
 
     await navigate(fixture, '/gantt');
     expect(query(fixture, 'main h1')?.textContent).toBe('Gantt');
@@ -287,9 +287,9 @@ describe('App', () => {
   });
 
   it('sends signed-out visitors to the sign-in page, then back where they were going', async () => {
-    const { fixture } = await boot(TENANT, { url: '/workload', session: null });
+    const { fixture } = await boot(TENANT, { url: '/portals', session: null });
     const router = TestBed.inject(Router);
-    expect(router.url).toBe('/sign-in?returnUrl=%2Fworkload');
+    expect(router.url).toBe('/sign-in?returnUrl=%2Fportals');
     expect(query(fixture, 'main h1')?.textContent).toBe('Sign in');
     expect(query(fixture, '.subtitle')?.textContent?.trim()).toBe('Organization: Acme Industrie');
     expect(query(fixture, 'ui-shell')).toBeNull();
@@ -306,12 +306,12 @@ describe('App', () => {
     await answerFrame([ACME]);
     await fixture.whenStable();
 
-    expect(router.url).toBe('/workload');
-    expect(query(fixture, 'main h1')?.textContent).toBe('Workload');
+    expect(router.url).toBe('/portals');
+    expect(query(fixture, 'main h1')?.textContent).toBe('Portals');
   });
 
   it('asks for the second factor after the password, then goes where the member was going', async () => {
-    const { fixture } = await boot(TENANT, { url: '/workload', session: null });
+    const { fixture } = await boot(TENANT, { url: '/portals', session: null });
     const router = TestBed.inject(Router);
     const input = (name: string) => query(fixture, `input[formcontrolname="${name}"]`) as HTMLInputElement;
     input('email').value = 'lucas.bernard@acme.example';
@@ -321,7 +321,7 @@ describe('App', () => {
     (query(fixture, 'button[type="submit"]') as HTMLButtonElement).click();
     await answer('/api/v1/auth/sign-in', { ...SESSION, stage: 'mfa_challenge' });
     await fixture.whenStable();
-    expect(router.url).toBe('/sign-in/verify?returnUrl=%2Fworkload');
+    expect(router.url).toBe('/sign-in/verify?returnUrl=%2Fportals');
     expect(query(fixture, 'main h1')?.textContent).toBe('Two-step verification');
 
     // The application stays closed meanwhile.
@@ -352,6 +352,7 @@ describe('App', () => {
     await answer('/api/v1/account/mfa', { enabled: false, backupCodesLeft: 0, requiredByPolicy: false });
     await answer('/api/v1/me/sessions', []);
     await answer(MEMBERSHIPS_URL, [ACME]);
+    await answer('/api/v1/resources/mine', { code: 'not_found', title: 'Not found', status: 404 }, 404);
     await fixture.whenStable();
     expect(TestBed.inject(Router).url).toBe('/account');
     expect(query(fixture, 'main h1')?.textContent).toBe('My account');

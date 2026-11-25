@@ -19,7 +19,7 @@ import {
 } from 'ui';
 
 /** Tenant roles an admin can give, in display order. */
-export const TENANT_ROLES: readonly TenantRole[] = ['member', 'configuration_admin', 'tenant_admin'];
+export const TENANT_ROLES: readonly TenantRole[] = ['member', 'configuration_admin', 'resource_manager', 'tenant_admin'];
 
 /**
  * Invites someone by email, with an account type and a tenant role. An

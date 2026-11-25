@@ -313,6 +313,57 @@ async fn fill_beta(db: &TestDb) -> (TestMember, TestMember) {
     infra::groups::add_member(&mut tx, group.id, only_beta.account_id)
         .await
         .unwrap();
+    // Resources, one linked to a member (its foreign key reaches the
+    // membership).
+    // A team holding them (its members reach both tables).
+    let team = infra::teams::insert(
+        &mut tx,
+        new_id(),
+        &domain::teams::TeamInput {
+            name_translations: std::collections::BTreeMap::from([("fr".to_owned(), "Plateforme".to_owned())]),
+            description: None,
+        },
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    for (kind, account) in [
+        (domain::resources::Kind::Person, Some(only_beta.account_id)),
+        (domain::resources::Kind::Generic, None),
+    ] {
+        let resource = infra::resources::insert(
+            &mut tx,
+            new_id(),
+            &infra::resources::ResourceInput {
+                kind,
+                display_name: Some("Resource"),
+                job_title: None,
+                account_id: account,
+                active: true,
+                calendar_id: None,
+            },
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        infra::teams::add_member(&mut tx, team.id, resource.id)
+            .await
+            .unwrap();
+        infra::capacity::insert(
+            &mut tx,
+            new_id(),
+            resource.id,
+            &infra::capacity::PatternInput {
+                effective_from: time::macros::date!(2026 - 01 - 01),
+                week: domain::capacity::WeekMinutes([420, 420, 420, 420, 420, 0, 0]),
+                label: None,
+            },
+            None,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    }
     infra::invitations::insert(
         &mut tx,
         &infra::invitations::NewInvitation {

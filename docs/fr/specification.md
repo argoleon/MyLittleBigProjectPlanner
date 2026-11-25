@@ -89,6 +89,7 @@ Un tenant est une organisation isolée ; un compte utilisateur est global et peu
 | Plateforme | Super-admin : création et suppression de tenants, effacement d'un compte global, supervision |
 | Tenant | Admin du tenant : membres, rôles, configurations, portails, politique d'authentification |
 | Tenant | Admin de configuration : workflows, types et champs, sans gestion des membres |
+| Tenant | Gestionnaire de ressources : ressources, équipes, capacités, calendriers et absences, sans gestion des membres |
 | Nœud | Admin de nœud : membres et rôles du nœud et de ses descendants, création de projets enfants |
 
 ## 4. Hiérarchie portefeuilles, programmes, projets
@@ -251,6 +252,9 @@ Le Gantt est développé en interne : aucune librairie commerciale ou GPL n'est 
 - **Calendrier du tenant** : jours ouvrés et jours fériés par défaut.
 - **Calendriers de site ou de pays** : jours fériés préchargés (France en premier, puis d'autres pays) et modifiables.
 - **Calendrier de ressource** : rattaché à un site, avec ses propres exceptions.
+- Les jours ouvrés de la semaine viennent de la capacité (§8) : un jour à 0 h n'est pas travaillé. Les calendriers ne portent que des exceptions datées (jour férié ajouté, fermeture, jour travaillé qui annule un férié) et un jeu de jours fériés.
+- Les jours fériés sont calculés pour n'importe quelle année (dates fixes et fêtes liées à Pâques) : France, ou France avec Alsace-Moselle (Vendredi saint, 26 décembre). Le tenant ne stocke que ses exceptions. Un site utilise son propre jeu, ou celui du tenant.
+- Le niveau le plus proche décide : exceptions de la ressource, puis de son site, puis du tenant ; à chaque niveau, ses exceptions passent avant son jeu de fériés. Un jour férié ou fermé n'a aucune capacité.
 - Les dates de planification sont des dates locales (`date`), pas des instants UTC. Ça évite qu'une tâche du lundi bascule sur le dimanche pour un utilisateur situé dans un autre fuseau.
 
 Après le MVP : un calendrier propre au projet.
@@ -265,14 +269,17 @@ Une ressource peut cumuler plusieurs tâches sur une même journée tant que la 
   - **Personne** : liée à un compte, ou sans compte (sous-traitant qui ne se connecte pas).
   - **Ressource générique** : un rôle non nommé (« Dev Rust »), remplaçable plus tard par une personne. Le remplacement transfère les affectations.
   - **Équipement, salle, objet** : après le MVP, avec les mêmes mécanismes de capacité et d'affectation.
-- Les équipes regroupent des ressources pour les vues et les filtres. On affecte toujours une ressource, jamais une équipe.
+- Un membre interne est lié à une seule ressource du tenant, qui affiche son nom. S'il quitte le tenant, sa ressource reste, déliée et désactivée, sous le nom qu'elle portait (son pseudonyme s'il est effacé). Les ressources ne sont jamais supprimées, seulement désactivées.
+- L'admin du tenant et les gestionnaires de ressources les gèrent ; tous les membres internes les consultent.
+- Les équipes regroupent des ressources pour les vues et les filtres. On affecte toujours une ressource, jamais une équipe. Une ressource peut appartenir à plusieurs équipes ; le nom d'une équipe est traduisible et unique dans le tenant. Une équipe n'a pas de responsable : l'admin du tenant et les gestionnaires de ressources gèrent les équipes.
 
 **Capacité**
 
 - Modèle hebdomadaire : heures par jour de semaine (par exemple lundi 7 h, …, vendredi 3,5 h), ce qui couvre le temps partiel.
 - Historisée avec des dates d'effet (passage à 80 % au 1er mars).
-- Valeur par défaut définie par tenant, par exemple 7 h × 5 jours.
-- Capacité d'un jour = modèle hebdomadaire, moins les jours fériés du site, moins les absences.
+- Valeur par défaut définie par tenant, par exemple 7 h × 5 jours ; l'admin du tenant la modifie, avec la tolérance et le mode de surcharge. Elle s'applique telle quelle (jamais copiée) aux ressources sans période et aux jours qui précèdent leur première période.
+- Une période par ressource et par date d'effet, avec un libellé facultatif (« Temps partiel 80 % ») ; une période qui commence après aujourd'hui est signalée comme planifiée. Les durées sont stockées en minutes.
+- Capacité d'un jour = modèle hebdomadaire, moins les jours fériés et fermetures de ses calendriers, moins les absences (une matinée et un après-midi d'absence le même jour prennent toute la journée). Elle se lit jour par jour, pour une ressource ou pour des centaines à la fois (heatmap, recherche de disponibilité).
 - La capacité est la charge maximale journalière. Une tolérance de dépassement est configurable par tenant (0 % par défaut).
 
 **Affectations**
@@ -309,6 +316,8 @@ Une affectation relie une ressource à un ticket. Elle se compose d'un ou plusie
 **Absences**
 
 - Saisie dans l'outil (congés, formation, demi-journées), par la personne ou son manager. Après le MVP : circuit de validation, import depuis un SIRH ou Exchange via l'API.
+- Une absence va d'un premier à un dernier jour inclus ; elle peut commencer ou finir à midi. Une demi-journée retire la moitié de la capacité du jour. Les absences d'une ressource ne se chevauchent pas, demi-journée par demi-journée. Types : congé, formation, autre (pas de type « maladie », donnée de santé).
+- La personne liée à la ressource saisit les siennes, l'admin du tenant et les gestionnaires de ressources celles de tous. Tous les membres internes voient les dates et le type ; le commentaire est réservé à la personne et aux gestionnaires, et disparaît si la personne est effacée.
 - Affectation en pourcentage : la charge tombe à 0 sur le jour d'absence, automatiquement.
 - Affectation en heures par jour ou en effort total : les heures tombant sur l'absence deviennent un conflit, signalé au chef de projet (« 7 h à replanifier sur PROJ-42 »). Rien n'est décalé automatiquement.
 
@@ -477,7 +486,7 @@ Les droits reposent sur des rôles attribués sur les nœuds de la hiérarchie e
 
 **Modèle de droits**
 
-- **Rôles globaux** : super-admin de plateforme. Par tenant : admin du tenant, admin de configuration, utilisateur interne, utilisateur externe.
+- **Rôles globaux** : super-admin de plateforme. Par tenant : admin du tenant, admin de configuration, gestionnaire de ressources, utilisateur interne, utilisateur externe.
 - **Rôles sur les nœuds** : définis par chaque tenant, comme ensembles de permissions. Exemples de permissions : voir, créer un ticket, modifier, commenter, saisir du temps, affecter des ressources, forcer une surcharge, gérer les sprints, gérer les boards, gérer les membres, administrer le nœud.
 - **Attribution** : à des utilisateurs ou à des groupes, sur un nœud. Héritage vers le bas, union en multi-parent, blocage possible (section 4).
 - **Dans le MVP** : visibilité restreinte côté portail (un demandeur ne voit que ses tickets), commentaires internes ou publics, projets confidentiels.

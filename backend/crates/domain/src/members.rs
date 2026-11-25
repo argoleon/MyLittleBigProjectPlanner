@@ -144,6 +144,7 @@ mod tests {
     fn only_tenant_admins_manage_members() {
         assert!(manages_members(TenantRole::TenantAdmin));
         assert!(!manages_members(TenantRole::ConfigurationAdmin));
+        assert!(!manages_members(TenantRole::ResourceManager));
         assert!(!manages_members(TenantRole::Member));
     }
 
@@ -152,6 +153,7 @@ mod tests {
         for role in [
             TenantRole::Member,
             TenantRole::ConfigurationAdmin,
+            TenantRole::ResourceManager,
             TenantRole::TenantAdmin,
         ] {
             let internal = Access {

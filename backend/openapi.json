@@ -7,7 +7,7 @@
       "name": "MIT",
       "identifier": "MIT"
     },
-    "version": "0.6.0"
+    "version": "0.7.0"
   },
   "paths": {
     "/api/v1/account/mfa": {
@@ -1994,6 +1994,1003 @@
           },
           "404": {
             "description": "No such bulk action of the member, or expired",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calendars": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "List the calendars of the tenant",
+        "description": "Any internal member: the tenant calendar first, then the site calendars.",
+        "operationId": "listCalendars",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `name`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The calendars",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Create a site calendar",
+        "description": "Tenant admins and resource managers. Its resources use its holidays and exceptions.",
+        "operationId": "createCalendar",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique key of this creation, 1 to 255 visible ASCII characters",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `name`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the calendar"
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "URL of the calendar"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Calendar"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: neither tenant admin nor resource manager; or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`calendar.name_taken`, or `idempotency_key.in_flight`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`Idempotency-Key` already used for another request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calendars/{id}": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Read a calendar",
+        "description": "Any internal member.",
+        "operationId": "getCalendar",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the calendar",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `name`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The calendar",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the calendar"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Calendar"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such calendar in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Change a calendar's name and holidays",
+        "description": "Tenant admins and resource managers. The tenant calendar always keeps a holiday set.",
+        "operationId": "updateCalendar",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the calendar",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the version being replaced, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `name`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The calendar",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "New version"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Calendar"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such calendar in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`calendar.name_taken`, or `calendar.tenant`: the tenant calendar without holiday set",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The calendar changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Delete a site calendar",
+        "description": "Tenant admins and resource managers. Its resources use the tenant calendar again; the tenant calendar is never deleted.",
+        "operationId": "deleteCalendar",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the calendar",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the calendar, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such calendar in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`calendar.tenant`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The calendar changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calendars/{id}/exceptions": {
+      "post": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Add an exception to a calendar",
+        "description": "Tenant admins and resource managers: a holiday, a closure, or a day worked anyway (which cancels a holiday). One exception per calendar and day.",
+        "operationId": "createCalendarException",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the calendar",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique key of this creation",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarExceptionFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Added",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarException"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed` (`label`: `too_long`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such calendar in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`calendar_exception.day_taken`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calendars/{id}/exceptions/{exceptionId}": {
+      "put": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Change an exception of a calendar",
+        "description": "Tenant admins and resource managers.",
+        "operationId": "updateCalendarException",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the calendar",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "exceptionId",
+            "in": "path",
+            "description": "Id of the exception",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the exception, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarExceptionFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The exception",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarException"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such calendar or exception",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`calendar_exception.day_taken`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The exception changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Delete an exception of a calendar",
+        "description": "Tenant admins and resource managers.",
+        "operationId": "deleteCalendarException",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the calendar",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "exceptionId",
+            "in": "path",
+            "description": "Id of the exception",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the exception, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such calendar or exception",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The exception changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calendars/{id}/year": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Read a calendar's year",
+        "description": "Any internal member: the public holidays of the year (the calendar's set, or the organization's for a site without one) and the calendar's exceptions.",
+        "operationId": "getCalendarYear",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the calendar",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "description": "From 1970 to 2200.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 2200,
+              "minimum": 1970
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The year",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarYear"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`invalid_query`: a year out of 1970–2200",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such calendar in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/capacity": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Read the capacity of resources, day by day",
+        "description": "Any internal member: for each resource of the page, the minutes of each day from `from` to `to` (366 days at most) — its capacity periods, less the public holidays and closures of its calendars, less its absences —, and the days off. Without `resources` nor `team`, every active resource, 200 per page.",
+        "operationId": "listCapacity",
+        "parameters": [
+          {
+            "name": "resources",
+            "in": "query",
+            "description": "Ids of resources, separated by commas (200 at most); inactive ones\nincluded. Without it (nor `team`), every active resource.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "description": "Only the members of this team (active ones, unless `resources`\nnames them).",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "First day, a local date.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Last day, included (366 days at most).",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, from 1 to 200 (default 200).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "`nextCursor` of the previous page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of capacities",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapacityPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`invalid_query`: bad range, `resources`, `limit` or `cursor`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: an external member",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -13801,6 +14798,1966 @@
         }
       }
     },
+    "/api/v1/resources": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "List the resources of the tenant",
+        "description": "Any internal member. By name; follow `nextCursor` until it is `null`.",
+        "operationId": "listResources",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "description": "Only this kind.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ResourceKind"
+            }
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "description": "Only active (`true`) or inactive (`false`) resources; all when left\nout.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Part of the name or job title, any case.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "description": "Only the members of this team.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, from 1 to 200 (default 50).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "`nextCursor` of the previous page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of the team names",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of resources",
+            "headers": {
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Language of the team names"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourcePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`invalid_query`: bad `limit`, `cursor` or `kind`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Create a resource",
+        "description": "Tenant admins and resource managers. A person linked to a member shows the member's name; one member is linked to one resource at most.",
+        "operationId": "createResource",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique key of this creation, 1 to 255 visible ASCII characters",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of the team names",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the resource"
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "URL of the resource"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed` (`displayName`: `required`, `too_long`; `jobTitle`: `too_long`; `accountId`: `person_only`, `not_internal_member`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: neither tenant admin nor resource manager; or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`resource.account_taken`: the member is linked to another resource; or `idempotency_key.in_flight`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`Idempotency-Key` already used for another request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/resources/linkable-accounts": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Search the members a person can be linked to",
+        "description": "Tenant admins and resource managers. The internal members linked to no resource yet, whose name or email holds `search`, by name.",
+        "operationId": "listLinkableAccounts",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Part of the name or email, any case.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Most members, from 1 to 50 (default 10).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The members",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LinkableAccount"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid `limit`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: neither tenant admin nor resource manager",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/resources/mine": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Read the resource of the signed-in member",
+        "description": "The person resource linked to the signed-in member's account: where they declare their absences.",
+        "operationId": "getMyResource",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of the team names",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Their resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Resource"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The member is linked to no resource",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/resources/{id}": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Read a resource",
+        "description": "Any internal member.",
+        "operationId": "getResource",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the resource",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "description": "ETag already held: 304 if still current",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of the team names",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The resource",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the resource"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Resource"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified since the `If-None-Match` ETag"
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such resource in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Change or deactivate a resource",
+        "description": "Tenant admins and resource managers: every field replaced. `active: false` deactivates it (resources are never deleted). Linking a member forgets the member it was; leaving `accountId` out unlinks it.",
+        "operationId": "updateResource",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the resource",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the version being replaced, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of the team names",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The resource",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "New version of the resource"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`, as on creation",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: neither tenant admin nor resource manager; or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such resource in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`resource.account_taken`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The resource changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/resources/{id}/absences": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "List the absences of a resource",
+        "description": "Any internal member: the absences meeting `from`–`to` (366 days at most). The comment only shows to the person and the managers.",
+        "operationId": "listAbsences",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the resource",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "First day, a local date.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Last day, included.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The absences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AbsenceList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`invalid_query`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such resource in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Declare an absence",
+        "description": "The person linked to the resource, tenant admins and resource managers; the signed-in member is recorded as the declarer. Absences of a resource never take a same half day.",
+        "operationId": "createAbsence",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the resource",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique key of this creation",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AbsenceFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Declared",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the absence"
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "URL of the absence"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Absence"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed` (`end`: `before_start`, `out_of_range`; `endsAtNoon`: `not_allowed`; `comment`: `too_long`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: neither the person nor a manager; or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such resource in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`absence.overlap`, or `idempotency_key.in_flight`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/resources/{id}/absences/{absenceId}": {
+      "put": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Change an absence",
+        "description": "The person and the managers; the signed-in member becomes its declarer.",
+        "operationId": "updateAbsence",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the resource",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "absenceId",
+            "in": "path",
+            "description": "Id of the absence",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the version being replaced, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AbsenceFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The absence",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "New version"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Absence"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such resource or absence",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`absence.overlap`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The absence changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Delete an absence",
+        "description": "The person and the managers.",
+        "operationId": "deleteAbsence",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the resource",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "absenceId",
+            "in": "path",
+            "description": "Id of the absence",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the absence, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such resource or absence",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The absence changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/resources/{id}/capacity-patterns": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "List the capacity periods of a resource",
+        "description": "Any internal member. By effective date, with the tenant's default capacity, which applies before the first period or without any.",
+        "operationId": "listCapacityPatterns",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the resource",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The periods",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapacityPatternList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such resource in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Add a capacity period to a resource",
+        "description": "Tenant admins and resource managers. It applies from its date until the next period.",
+        "operationId": "createCapacityPattern",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the resource",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique key of this creation, 1 to 255 visible ASCII characters",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CapacityPatternFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Added",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the period"
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "URL of the period"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapacityPattern"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed` (`minutes`: `length`; `minutes.<day>`: `out_of_range`; `label`: `too_long`; `effectiveFrom`: `out_of_range`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: neither tenant admin nor resource manager; or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such resource in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`capacity_pattern.date_taken`: another period starts that day; or `idempotency_key.in_flight`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`Idempotency-Key` already used for another request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/resources/{id}/capacity-patterns/{patternId}": {
+      "put": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Change a capacity period",
+        "description": "Tenant admins and resource managers: its date, minutes and label, all replaced.",
+        "operationId": "updateCapacityPattern",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the resource",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "patternId",
+            "in": "path",
+            "description": "Id of the period",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the version being replaced, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CapacityPatternFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The period",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "New version of the period"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapacityPattern"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`, as on creation",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: neither tenant admin nor resource manager; or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such resource or period in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`capacity_pattern.date_taken`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The period changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Delete a capacity period",
+        "description": "Tenant admins and resource managers. The previous period, or the tenant's default, then applies to its days.",
+        "operationId": "deleteCapacityPattern",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the resource",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "patternId",
+            "in": "path",
+            "description": "Id of the period",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the period, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: neither tenant admin nor resource manager; or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such resource or period in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The period changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/resources/{id}/days": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Read the days of a resource",
+        "description": "Any internal member: for each day from `from` to `to` (366 days at most), whether the resource works it — its exceptions, then its site's, then the tenant's, and their public holidays —, its absences, and its capacity in minutes.",
+        "operationId": "listResourceDays",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the resource",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "First day, a local date.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Last day, included.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The days",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ResourceDay"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`invalid_query`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such resource in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/resources/{id}/exceptions": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "List a resource's own calendar exceptions",
+        "description": "Any internal member, from `from` to `to` (366 days at most).",
+        "operationId": "listResourceExceptions",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the resource",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "First day, a local date.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Last day, included.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The exceptions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`invalid_query`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such resource in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Add an exception to a resource's calendar",
+        "description": "Tenant admins and resource managers. It wins over its site's and the tenant's.",
+        "operationId": "createResourceException",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the resource",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique key of this creation",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarExceptionFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Added",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarException"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such resource in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`calendar_exception.day_taken`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/resources/{id}/exceptions/{exceptionId}": {
+      "put": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Change an exception of a resource",
+        "description": "Tenant admins and resource managers.",
+        "operationId": "updateResourceException",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the resource",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "exceptionId",
+            "in": "path",
+            "description": "Id of the exception",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the exception, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarExceptionFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The exception",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarException"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such resource or exception",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`calendar_exception.day_taken`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The exception changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Delete an exception of a resource",
+        "description": "Tenant admins and resource managers.",
+        "operationId": "deleteResourceException",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the resource",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "exceptionId",
+            "in": "path",
+            "description": "Id of the exception",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the exception, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such resource or exception",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The exception changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/saved-filters": {
       "get": {
         "tags": [
@@ -14501,6 +17458,632 @@
           },
           "403": {
             "description": "`csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "List the teams of the tenant",
+        "description": "Any internal member. Every team, by name in the language of the request: a tenant has a few dozen, no pages.",
+        "operationId": "listTeams",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `name`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The teams",
+            "headers": {
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Language of `name`"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Create a team",
+        "description": "Tenant admins and resource managers.",
+        "operationId": "createTeam",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique key of this creation, 1 to 255 visible ASCII characters",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `name`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the team"
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "URL of the team"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Team"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed` (`nameTranslations`: `required`; `nameTranslations.<locale>`: `too_long`, `unsupported_locale`; `description`: `too_long`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: neither tenant admin nor resource manager; or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`team.name_taken`, or `idempotency_key.in_flight`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`Idempotency-Key` already used for another request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{id}": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Read a team",
+        "description": "Any internal member. Its members: `GET /resources?team={id}`.",
+        "operationId": "getTeam",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the team",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "description": "ETag already held: 304 if still current",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `name`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The team",
+            "headers": {
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Language of `name`"
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the team"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Team"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified since the `If-None-Match` ETag"
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such team in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Change a team's name and description",
+        "description": "Tenant admins and resource managers.",
+        "operationId": "updateTeam",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the team",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the version being replaced, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Language of `name`",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The team",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "New version of the team"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Team"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`, as on creation",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: neither tenant admin nor resource manager; or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such team in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`team.name_taken`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The team changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Delete a team",
+        "description": "Tenant admins and resource managers. Its resources stay, with their assignments.",
+        "operationId": "deleteTeam",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the team",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the team, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: neither tenant admin nor resource manager; or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such team in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The team changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{id}/members/{resourceId}": {
+      "put": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Add a resource to a team",
+        "description": "Tenant admins and resource managers. Adding a resource already in the team changes nothing; a resource may belong to several teams.",
+        "operationId": "addTeamMember",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the team",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "resourceId",
+            "in": "path",
+            "description": "Id of a resource of the tenant",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "In the team"
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: neither tenant admin nor resource manager; or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such team, or no such resource, in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Remove a resource from a team",
+        "description": "Tenant admins and resource managers. The resource keeps its assignments.",
+        "operationId": "removeTeamMember",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the team",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "resourceId",
+            "in": "path",
+            "description": "Id of the resource",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Out of the team"
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: neither tenant admin nor resource manager; or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such team in this tenant, or the resource is not in it",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -17252,10 +20835,318 @@
           }
         }
       }
+    },
+    "/api/v1/tenant/workload-settings": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Read the workload settings of the tenant",
+        "description": "Tenant admins only: default capacity, overload tolerance and mode.",
+        "operationId": "getWorkloadSettings",
+        "responses": {
+          "200": {
+            "description": "The settings",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the tenant"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkloadSettings"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: not a tenant admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Change the workload settings of the tenant",
+        "description": "Tenant admins only. A new default capacity applies at once to every resource without a capacity period, and to the days before their first one.",
+        "operationId": "updateWorkloadSettings",
+        "parameters": [
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the settings, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkloadSettingsFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The settings",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "New version of the tenant"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkloadSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed` (`defaultCapacityMinutes`: `length`; `defaultCapacityMinutes.<day>`, `overloadTolerancePercent`: `out_of_range`; `overloadMode`: `format`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: not a tenant admin; or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The settings changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "Absence": {
+        "type": "object",
+        "description": "An absence.",
+        "required": [
+          "id",
+          "kind",
+          "start",
+          "startsAtNoon",
+          "end",
+          "endsAtNoon",
+          "declaredBy",
+          "version"
+        ],
+        "properties": {
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "For the person and the managers only; absent for others."
+          },
+          "declaredBy": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AbsenceDeclarer",
+                "description": "`null`: the account no longer exists."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "end": {
+            "type": "string",
+            "format": "date",
+            "description": "Last day off, included.",
+            "example": "2026-12-04"
+          },
+          "endsAtNoon": {
+            "type": "boolean",
+            "description": "The last day's afternoon is worked."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AbsenceKind"
+          },
+          "start": {
+            "type": "string",
+            "format": "date",
+            "description": "First day off, a local date.",
+            "example": "2026-12-04"
+          },
+          "startsAtNoon": {
+            "type": "boolean",
+            "description": "The first day's morning is worked."
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          }
+        }
+      },
+      "AbsenceDeclarer": {
+        "type": "object",
+        "description": "Who declared an absence.",
+        "required": [
+          "accountId",
+          "displayName"
+        ],
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Lucas Bernard"
+          }
+        }
+      },
+      "AbsenceFields": {
+        "type": "object",
+        "description": "An absence to declare, or its new state.",
+        "required": [
+          "kind",
+          "start",
+          "end"
+        ],
+        "properties": {
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Up to 500 characters; read by the person and the managers only."
+          },
+          "end": {
+            "type": "string",
+            "format": "date",
+            "description": "On or after `start`, 366 days at most."
+          },
+          "endsAtNoon": {
+            "type": "boolean"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AbsenceKind"
+          },
+          "start": {
+            "type": "string",
+            "format": "date"
+          },
+          "startsAtNoon": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "comment": "Rust training",
+          "end": "2026-12-07",
+          "endsAtNoon": false,
+          "kind": "training",
+          "start": "2026-12-07",
+          "startsAtNoon": true
+        }
+      },
+      "AbsenceKind": {
+        "type": "string",
+        "description": "Kind of an absence.",
+        "enum": [
+          "leave",
+          "training",
+          "other"
+        ]
+      },
+      "AbsenceList": {
+        "type": "object",
+        "description": "The absences of a resource.",
+        "required": [
+          "items",
+          "canManage"
+        ],
+        "properties": {
+          "canManage": {
+            "type": "boolean",
+            "description": "The signed-in member declares and changes them: the person, or a\nmanager."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Absence"
+            },
+            "description": "By start date."
+          }
+        }
+      },
       "AcceptInvitationBody": {
         "type": "object",
         "description": "Accepting an invitation.",
@@ -18828,6 +22719,430 @@
           }
         }
       },
+      "Calendar": {
+        "type": "object",
+        "description": "A calendar.",
+        "required": [
+          "id",
+          "kind",
+          "nameTranslations",
+          "holidaySet",
+          "resourceCount",
+          "version"
+        ],
+        "properties": {
+          "holidaySet": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/HolidaySet",
+                "description": "Its public holidays; `null`: the organization's (a site)."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CalendarKind"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "In the language of the request.",
+            "example": "Paris"
+          },
+          "nameTranslations": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "example": {
+              "en": "Paris",
+              "fr": "Paris"
+            }
+          },
+          "resourceCount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Resources of this site.",
+            "example": 12
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          }
+        }
+      },
+      "CalendarException": {
+        "type": "object",
+        "description": "A dated exception of a calendar or a resource.",
+        "required": [
+          "id",
+          "day",
+          "kind",
+          "version"
+        ],
+        "properties": {
+          "day": {
+            "type": "string",
+            "format": "date",
+            "description": "A local date.",
+            "example": "2026-12-24"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CalendarExceptionKind"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Bridge day"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          }
+        }
+      },
+      "CalendarExceptionFields": {
+        "type": "object",
+        "description": "An exception to add, or its new state.",
+        "required": [
+          "day",
+          "kind"
+        ],
+        "properties": {
+          "day": {
+            "type": "string",
+            "format": "date",
+            "description": "One exception per calendar (or resource) and day."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CalendarExceptionKind"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Up to 100 characters."
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "day": "2026-12-24",
+          "kind": "non_working",
+          "label": "Bridge day"
+        }
+      },
+      "CalendarExceptionKind": {
+        "type": "string",
+        "description": "What an exception makes of its day.",
+        "enum": [
+          "holiday",
+          "non_working",
+          "working"
+        ]
+      },
+      "CalendarFields": {
+        "type": "object",
+        "description": "A site calendar to create, or a calendar's new state.",
+        "required": [
+          "nameTranslations"
+        ],
+        "properties": {
+          "holidaySet": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/HolidaySet",
+                "description": "Required for the tenant calendar; for a site, `null` uses the\norganization's."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nameTranslations": {
+            "type": "object",
+            "description": "One name per language, at least one; 100 characters at most, unique\nin the tenant.",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "holidaySet": "fr-alsace-moselle",
+          "nameTranslations": {
+            "fr": "Strasbourg"
+          }
+        }
+      },
+      "CalendarKind": {
+        "type": "string",
+        "description": "Kind of a calendar.",
+        "enum": [
+          "tenant",
+          "site"
+        ]
+      },
+      "CalendarList": {
+        "type": "object",
+        "description": "The calendars of the tenant.",
+        "required": [
+          "items",
+          "canManage"
+        ],
+        "properties": {
+          "canManage": {
+            "type": "boolean",
+            "description": "The signed-in member manages calendars."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Calendar"
+            },
+            "description": "The tenant's first, then the sites by creation."
+          }
+        }
+      },
+      "CalendarYear": {
+        "type": "object",
+        "description": "A calendar's year: its holidays (its set, or the organization's for a\nsite without one) and its exceptions.",
+        "required": [
+          "year",
+          "holidaySet",
+          "inherited",
+          "holidays",
+          "exceptions"
+        ],
+        "properties": {
+          "exceptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CalendarException"
+            },
+            "description": "By date."
+          },
+          "holidaySet": {
+            "$ref": "#/components/schemas/HolidaySet",
+            "description": "The set the holidays come from."
+          },
+          "holidays": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HolidayView"
+            }
+          },
+          "inherited": {
+            "type": "boolean",
+            "description": "The set is the organization's (a site without its own)."
+          },
+          "year": {
+            "type": "integer",
+            "format": "int32",
+            "example": 2026
+          }
+        }
+      },
+      "CapacityPage": {
+        "type": "object",
+        "description": "A page of capacities.",
+        "required": [
+          "from",
+          "to",
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceCapacity"
+            },
+            "description": "In the order of the resource list (name, then id)."
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cursor of the next page, `null` on the last page."
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "CapacityPattern": {
+        "type": "object",
+        "description": "A capacity period of a resource.",
+        "required": [
+          "id",
+          "effectiveFrom",
+          "minutes",
+          "weeklyMinutes",
+          "version"
+        ],
+        "properties": {
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date",
+            "description": "First day it applies (a local date); it applies until the next\nperiod.",
+            "example": "2026-03-01"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Part time 80%"
+          },
+          "minutes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "description": "Minutes per weekday, Monday first.",
+            "example": [
+              420,
+              420,
+              0,
+              420,
+              420,
+              0,
+              0
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          },
+          "weeklyMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Minutes of the whole week.",
+            "example": 1680,
+            "minimum": 0
+          }
+        }
+      },
+      "CapacityPatternFields": {
+        "type": "object",
+        "description": "A period to add, or its new state.",
+        "required": [
+          "effectiveFrom",
+          "minutes"
+        ],
+        "properties": {
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date",
+            "description": "First day it applies; one period per resource and date."
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Up to 100 characters."
+          },
+          "minutes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "Seven values, Monday first, from 0 to 1,440 minutes."
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "effectiveFrom": "2026-03-01",
+          "label": "Part time 80%",
+          "minutes": [
+            420,
+            420,
+            0,
+            420,
+            420,
+            0,
+            0
+          ]
+        }
+      },
+      "CapacityPatternList": {
+        "type": "object",
+        "description": "The capacity periods of a resource.",
+        "required": [
+          "items",
+          "defaultMinutes",
+          "canManage"
+        ],
+        "properties": {
+          "canManage": {
+            "type": "boolean",
+            "description": "The signed-in member manages the periods."
+          },
+          "defaultMinutes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "description": "The tenant's default minutes per weekday, Monday first: what applies\nbefore the first period, or without any.",
+            "example": [
+              420,
+              420,
+              420,
+              420,
+              420,
+              0,
+              0
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CapacityPattern"
+            },
+            "description": "By effective date."
+          }
+        }
+      },
       "CommentBody": {
         "type": "object",
         "description": "A comment to write, or what an edit makes of it.",
@@ -19205,6 +23520,49 @@
         },
         "additionalProperties": false
       },
+      "DayAbsence": {
+        "type": "object",
+        "description": "The absence of a day.",
+        "required": [
+          "kind",
+          "part"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/AbsenceKind"
+          },
+          "part": {
+            "$ref": "#/components/schemas/DayPart"
+          }
+        }
+      },
+      "DayPart": {
+        "type": "string",
+        "description": "Which part of a day an absence takes.",
+        "enum": [
+          "whole",
+          "morning",
+          "afternoon"
+        ]
+      },
+      "DaySource": {
+        "type": "string",
+        "description": "Which level decided a day.",
+        "enum": [
+          "resource",
+          "site",
+          "tenant"
+        ]
+      },
+      "DayStatus": {
+        "type": "string",
+        "description": "What a day of a resource is.",
+        "enum": [
+          "working",
+          "holiday",
+          "non_working"
+        ]
+      },
       "Erasure": {
         "type": "object",
         "description": "Erasure of another account, by an administrator.",
@@ -19218,7 +23576,7 @@
       },
       "ErrorCode": {
         "type": "string",
-        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n| `invitation.invalid` | 400 | This invitation link is invalid, expired or already used |\n| `invitation.pending` | 409 | This email already has an open invitation; send it again instead |\n| `invitation.already_member` | 409 | This email already belongs to a member of the tenant |\n| `invitation.closed` | 409 | This invitation was already accepted or revoked |\n| `member.last_admin` | 409 | The tenant needs at least one active tenant admin |\n| `group.name_taken` | 409 | Another group already has this name |\n| `saved_filter.name_taken` | 409 | You already have a saved filter with this name |\n| `board.name_taken` | 409 | This node already has a board with this name |\n| `board.no_transition` | 409 | No transition of the workflow leads to this column |\n| `export.too_large` | 422 | The query finds more tickets than an export holds |\n| `export.not_ready` | 409 | The export is not ready |\n| `bulk.too_many` | 422 | More tickets than a bulk action takes |\n| `permission.denied` | 403 | You do not have the permission this needs |\n| `role.label_taken` | 409 | Another role already has this label |\n| `role.in_use` | 409 | Grants use this role: remove them first |\n| `account.no_password` | 409 | This account signs in through its organization: it has no password |\n| `session.current` | 409 | This is the session of the request: sign out instead |\n| `account.reauthentication_required` | 403 | Sign in again through your organization, then erase your account within 10 minutes |\n| `account.platform_admin` | 409 | A platform super admin cannot be erased: another one removes the role first |\n| `export.pending` | 409 | The export is not ready yet |\n| `node.key_taken` | 409 | Another project of the organization has this key |\n| `node.cycle` | 409 | This link would make the node its own ancestor |\n| `node.parent_not_allowed` | 409 | This type of node cannot be attached under that parent |\n| `node.grant_exists` | 409 | They already have this role on this node |\n| `node.confidential_lockout` | 409 | You would lose your own access: get a role granted on the project itself first |\n| `node.archived` | 409 | This project is archived: it is read-only until it is restored |\n| `node.active_children` | 409 | This project still has active sub-projects: archive or detach them first |\n| `node.parent_archived` | 409 | This project is under an archived project: restore that one first |\n| `config.name_taken` | 409 | Another project configuration already has this name |\n| `config.no_draft` | 409 | This configuration has no draft: nothing to publish or discard |\n| `config.default` | 409 | The default configuration stays: new projects get it |\n| `config.in_use` | 409 | Projects use this configuration: move them to another one first |\n| `issue_type.key_taken` | 409 | Another type of this configuration already has this identifier |\n| `issue_type.cycle` | 409 | A type cannot be its own ancestor |\n| `issue_type.subtask_parent` | 409 | A sub-task type cannot be the parent of another type |\n| `issue_type.last_type` | 409 | A configuration keeps at least one type that is not a sub-task |\n| `issue_type.orphan_subtask` | 409 | A sub-task type would have no parent type left: change it first |\n| `workflow.key_taken` | 409 | Another workflow of this configuration, or status of this workflow, already has this identifier |\n| `workflow.in_use` | 409 | Issue types follow this workflow: move them to another one first |\n| `workflow.last` | 409 | A configuration keeps at least one workflow |\n| `workflow.invalid` | 409 | Workflows of the draft cannot be published as they are: see errors |\n| `config_field.key_taken` | 409 | Another field of this configuration already has this identifier |\n| `config_field.system` | 409 | A system field keeps its label and options and cannot be removed; only its types and rules change |\n| `screen.exists` | 409 | This type, or the configuration, already has a screen of this kind |\n| `screen.general` | 409 | The general creation and view screens of a configuration stay |\n| `screen.in_use` | 409 | Transitions show this screen: give them another one first |\n| `mapping_incomplete` | 400 | Every removed status and type must be mapped to one the draft keeps: see errors |\n| `config.migration_running` | 409 | A migration of this configuration is already under way |\n| `config.migration_required` | 409 | Tickets use statuses or types the draft removes: map them through a migration first |\n| `issue.subtask_moves_with_parent` | 409 | A sub-task moves with its parent: move the parent instead |\n| `issue_link.exists` | 409 | The two tickets already have this link |\n| `attachment.too_large` | 413 | The file is larger than the maximum allowed |\n| `attachment.quota_exceeded` | 413 | The organization's storage quota would be exceeded |\n| `attachment.not_uploaded` | 409 | The file was not uploaded, or not whole |\n| `attachment.not_scanned` | 409 | The file is not available: not scanned yet, or refused by the antivirus |\n| `storage.unavailable` | 503 | The file storage is not available |\n| `query.invalid` | 400 | The query cannot be run |\n",
+        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n| `invitation.invalid` | 400 | This invitation link is invalid, expired or already used |\n| `invitation.pending` | 409 | This email already has an open invitation; send it again instead |\n| `invitation.already_member` | 409 | This email already belongs to a member of the tenant |\n| `invitation.closed` | 409 | This invitation was already accepted or revoked |\n| `member.last_admin` | 409 | The tenant needs at least one active tenant admin |\n| `group.name_taken` | 409 | Another group already has this name |\n| `saved_filter.name_taken` | 409 | You already have a saved filter with this name |\n| `resource.account_taken` | 409 | This member is already linked to another resource |\n| `team.name_taken` | 409 | Another team already has this name |\n| `capacity_pattern.date_taken` | 409 | The resource already has a capacity period starting that day |\n| `calendar_exception.day_taken` | 409 | There is already an exception that day |\n| `absence.overlap` | 409 | Another absence of the resource takes a same half day |\n| `calendar.tenant` | 409 | The tenant calendar is never deleted and keeps a holiday set |\n| `calendar.name_taken` | 409 | Another calendar already has this name |\n| `board.name_taken` | 409 | This node already has a board with this name |\n| `board.no_transition` | 409 | No transition of the workflow leads to this column |\n| `export.too_large` | 422 | The query finds more tickets than an export holds |\n| `export.not_ready` | 409 | The export is not ready |\n| `bulk.too_many` | 422 | More tickets than a bulk action takes |\n| `permission.denied` | 403 | You do not have the permission this needs |\n| `role.label_taken` | 409 | Another role already has this label |\n| `role.in_use` | 409 | Grants use this role: remove them first |\n| `account.no_password` | 409 | This account signs in through its organization: it has no password |\n| `session.current` | 409 | This is the session of the request: sign out instead |\n| `account.reauthentication_required` | 403 | Sign in again through your organization, then erase your account within 10 minutes |\n| `account.platform_admin` | 409 | A platform super admin cannot be erased: another one removes the role first |\n| `export.pending` | 409 | The export is not ready yet |\n| `node.key_taken` | 409 | Another project of the organization has this key |\n| `node.cycle` | 409 | This link would make the node its own ancestor |\n| `node.parent_not_allowed` | 409 | This type of node cannot be attached under that parent |\n| `node.grant_exists` | 409 | They already have this role on this node |\n| `node.confidential_lockout` | 409 | You would lose your own access: get a role granted on the project itself first |\n| `node.archived` | 409 | This project is archived: it is read-only until it is restored |\n| `node.active_children` | 409 | This project still has active sub-projects: archive or detach them first |\n| `node.parent_archived` | 409 | This project is under an archived project: restore that one first |\n| `config.name_taken` | 409 | Another project configuration already has this name |\n| `config.no_draft` | 409 | This configuration has no draft: nothing to publish or discard |\n| `config.default` | 409 | The default configuration stays: new projects get it |\n| `config.in_use` | 409 | Projects use this configuration: move them to another one first |\n| `issue_type.key_taken` | 409 | Another type of this configuration already has this identifier |\n| `issue_type.cycle` | 409 | A type cannot be its own ancestor |\n| `issue_type.subtask_parent` | 409 | A sub-task type cannot be the parent of another type |\n| `issue_type.last_type` | 409 | A configuration keeps at least one type that is not a sub-task |\n| `issue_type.orphan_subtask` | 409 | A sub-task type would have no parent type left: change it first |\n| `workflow.key_taken` | 409 | Another workflow of this configuration, or status of this workflow, already has this identifier |\n| `workflow.in_use` | 409 | Issue types follow this workflow: move them to another one first |\n| `workflow.last` | 409 | A configuration keeps at least one workflow |\n| `workflow.invalid` | 409 | Workflows of the draft cannot be published as they are: see errors |\n| `config_field.key_taken` | 409 | Another field of this configuration already has this identifier |\n| `config_field.system` | 409 | A system field keeps its label and options and cannot be removed; only its types and rules change |\n| `screen.exists` | 409 | This type, or the configuration, already has a screen of this kind |\n| `screen.general` | 409 | The general creation and view screens of a configuration stay |\n| `screen.in_use` | 409 | Transitions show this screen: give them another one first |\n| `mapping_incomplete` | 400 | Every removed status and type must be mapped to one the draft keeps: see errors |\n| `config.migration_running` | 409 | A migration of this configuration is already under way |\n| `config.migration_required` | 409 | Tickets use statuses or types the draft removes: map them through a migration first |\n| `issue.subtask_moves_with_parent` | 409 | A sub-task moves with its parent: move the parent instead |\n| `issue_link.exists` | 409 | The two tickets already have this link |\n| `attachment.too_large` | 413 | The file is larger than the maximum allowed |\n| `attachment.quota_exceeded` | 413 | The organization's storage quota would be exceeded |\n| `attachment.not_uploaded` | 409 | The file was not uploaded, or not whole |\n| `attachment.not_scanned` | 409 | The file is not available: not scanned yet, or refused by the antivirus |\n| `storage.unavailable` | 503 | The file storage is not available |\n| `query.invalid` | 400 | The query cannot be run |\n",
         "enum": [
           "bad_request",
           "validation_failed",
@@ -19265,6 +23623,13 @@
           "member.last_admin",
           "group.name_taken",
           "saved_filter.name_taken",
+          "resource.account_taken",
+          "team.name_taken",
+          "capacity_pattern.date_taken",
+          "calendar_exception.day_taken",
+          "absence.overlap",
+          "calendar.tenant",
+          "calendar.name_taken",
           "board.name_taken",
           "board.no_transition",
           "export.too_large",
@@ -19316,6 +23681,27 @@
           "storage.unavailable",
           "query.invalid"
         ]
+      },
+      "ExceptionList": {
+        "type": "object",
+        "description": "The exceptions of a resource.",
+        "required": [
+          "items",
+          "canManage"
+        ],
+        "properties": {
+          "canManage": {
+            "type": "boolean",
+            "description": "The signed-in member manages them."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CalendarException"
+            },
+            "description": "By date."
+          }
+        }
       },
       "ExportFormat": {
         "type": "string",
@@ -19928,6 +24314,35 @@
           "member",
           "group"
         ]
+      },
+      "HolidaySet": {
+        "type": "string",
+        "description": "A set of public holidays.",
+        "enum": [
+          "fr",
+          "fr-alsace-moselle",
+          "none"
+        ]
+      },
+      "HolidayView": {
+        "type": "object",
+        "description": "A public holiday of a calendar's year.",
+        "required": [
+          "day",
+          "name"
+        ],
+        "properties": {
+          "day": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-12-25"
+          },
+          "name": {
+            "type": "string",
+            "description": "A stable key (`christmas`, `whit_monday`…), translated by the\ninterface.",
+            "example": "christmas"
+          }
+        }
       },
       "Invitation": {
         "type": "object",
@@ -21587,6 +26002,29 @@
           "watching": {
             "type": "boolean",
             "description": "The member reading watches it."
+          }
+        }
+      },
+      "LinkableAccount": {
+        "type": "object",
+        "description": "A member a person can be linked to.",
+        "required": [
+          "accountId",
+          "displayName",
+          "email"
+        ],
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Camille Martin"
+          },
+          "email": {
+            "type": "string",
+            "example": "camille.martin@acme.example"
           }
         }
       },
@@ -25145,6 +29583,291 @@
           }
         }
       },
+      "Resource": {
+        "type": "object",
+        "description": "A resource.",
+        "required": [
+          "id",
+          "kind",
+          "displayName",
+          "accountId",
+          "formerMember",
+          "active",
+          "teams",
+          "site",
+          "version"
+        ],
+        "properties": {
+          "accountId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "The member this person is; `null` for a person without an account\nand a generic resource."
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Offered for new assignments."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "The member's name when linked to an account, else its own.",
+            "example": "Camille Martin"
+          },
+          "formerMember": {
+            "type": "boolean",
+            "description": "A member who left the tenant: no longer linked, and inactive when\nthey left."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "jobTitle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Back-end developer"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ResourceKind"
+          },
+          "site": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SiteRef",
+                "description": "Its site calendar; `null`: the tenant calendar applies."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "teams": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TeamRef"
+            },
+            "description": "The teams it belongs to, by name in the language of the request."
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          }
+        }
+      },
+      "ResourceCapacity": {
+        "type": "object",
+        "description": "The capacity of a resource over the range.",
+        "required": [
+          "resourceId",
+          "displayName",
+          "active",
+          "minutes",
+          "totalMinutes",
+          "unavailable"
+        ],
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Camille Martin"
+          },
+          "minutes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "description": "Minutes of each day, from `from` to `to`.",
+            "example": [
+              420,
+              420,
+              0,
+              420,
+              210,
+              0,
+              0
+            ]
+          },
+          "resourceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "totalMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Their sum.",
+            "example": 1470,
+            "minimum": 0
+          },
+          "unavailable": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnavailableDay"
+            },
+            "description": "The public holidays, closures and absences of the range, by day."
+          }
+        }
+      },
+      "ResourceDay": {
+        "type": "object",
+        "description": "A day of a resource.",
+        "required": [
+          "day",
+          "status",
+          "source",
+          "minutes"
+        ],
+        "properties": {
+          "absence": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DayAbsence",
+                "description": "The absence taking (part of) the day."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "day": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-12-25"
+          },
+          "holiday": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Key of the public holiday (`christmas`…)."
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Label of the exception."
+          },
+          "minutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Capacity of the day: 0 when not worked, less an absence.",
+            "example": 420,
+            "minimum": 0
+          },
+          "source": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DaySource",
+                "description": "The level that decided it; `null`: the capacity alone."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/DayStatus"
+          }
+        }
+      },
+      "ResourceFields": {
+        "type": "object",
+        "description": "A resource to create, or its new state.",
+        "required": [
+          "kind"
+        ],
+        "properties": {
+          "accountId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "An internal member of the tenant not linked to another resource; a\nperson only."
+          },
+          "active": {
+            "type": "boolean",
+            "description": "`true` when left out."
+          },
+          "calendarId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "A site calendar of the tenant; the tenant calendar when left out."
+          },
+          "displayName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "1 to 200 characters. Required unless `accountId` is set: a linked\nperson shows its member's name, and this one is ignored."
+          },
+          "jobTitle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Up to 100 characters."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ResourceKind"
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "accountId": null,
+          "active": true,
+          "displayName": "Camille Martin",
+          "jobTitle": "Back-end developer",
+          "kind": "person"
+        }
+      },
+      "ResourceKind": {
+        "type": "string",
+        "description": "Kind of a resource.",
+        "enum": [
+          "person",
+          "generic"
+        ]
+      },
+      "ResourcePage": {
+        "type": "object",
+        "description": "A page of resources.",
+        "required": [
+          "items",
+          "nextCursor",
+          "canManage"
+        ],
+        "properties": {
+          "canManage": {
+            "type": "boolean",
+            "description": "The signed-in member creates and changes resources."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Resource"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cursor of the next page, `null` on the last page."
+          }
+        }
+      },
       "Role": {
         "type": "object",
         "description": "A node role.",
@@ -25842,6 +30565,26 @@
           }
         }
       },
+      "SiteRef": {
+        "type": "object",
+        "description": "The site of a resource.",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Paris"
+          }
+        }
+      },
       "Suggestion": {
         "type": "object",
         "description": "One suggestion.",
@@ -25961,6 +30704,137 @@
         },
         "additionalProperties": false
       },
+      "Team": {
+        "type": "object",
+        "description": "A team.",
+        "required": [
+          "id",
+          "nameTranslations",
+          "memberCount",
+          "version"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Identity and access services"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "memberCount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Resources in it, active or not.",
+            "example": 3
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "In the language of the request (`Accept-Language`), else the\ntenant's default, else any.",
+            "example": "Platform"
+          },
+          "nameTranslations": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "example": {
+              "en": "Platform",
+              "fr": "Plateforme"
+            }
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          }
+        }
+      },
+      "TeamFields": {
+        "type": "object",
+        "description": "A team to create, or its new state.",
+        "required": [
+          "nameTranslations"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Up to 1,000 characters."
+          },
+          "nameTranslations": {
+            "type": "object",
+            "description": "One name per language (`fr`, `en`), at least one; 100 characters at\nmost, unique in the tenant whatever the case.",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "description": "Identity and access services",
+          "nameTranslations": {
+            "en": "Platform",
+            "fr": "Plateforme"
+          }
+        }
+      },
+      "TeamList": {
+        "type": "object",
+        "description": "The teams of the tenant.",
+        "required": [
+          "items",
+          "canManage"
+        ],
+        "properties": {
+          "canManage": {
+            "type": "boolean",
+            "description": "The signed-in member creates and changes teams."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Team"
+            },
+            "description": "By name, in the language of the request."
+          }
+        }
+      },
+      "TeamRef": {
+        "type": "object",
+        "description": "A team a resource belongs to.",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "In the language of the request.",
+            "example": "Platform"
+          }
+        }
+      },
       "Tenant": {
         "type": "object",
         "required": [
@@ -26000,6 +30874,7 @@
         "enum": [
           "member",
           "configuration_admin",
+          "resource_manager",
           "tenant_admin"
         ]
       },
@@ -26269,6 +31144,58 @@
           }
         },
         "additionalProperties": false
+      },
+      "UnavailableDay": {
+        "type": "object",
+        "description": "A day off, or partly off, of a resource.",
+        "required": [
+          "day",
+          "reason"
+        ],
+        "properties": {
+          "day": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-12-25"
+          },
+          "holiday": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Key of the public holiday (`christmas`…)."
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Label of the exception."
+          },
+          "part": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DayPart",
+                "description": "The part an absence takes."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "$ref": "#/components/schemas/UnavailableReason"
+          }
+        }
+      },
+      "UnavailableReason": {
+        "type": "string",
+        "description": "Why a day has no capacity, or less than its weekday.",
+        "enum": [
+          "holiday",
+          "non_working",
+          "absence"
+        ]
       },
       "UnreadNotifications": {
         "type": "object",
@@ -26709,6 +31636,95 @@
           },
           "toId": "01933b2e-7c4a-7b9e-8f3d-2a6c5e1f0b9a"
         }
+      },
+      "WorkloadSettings": {
+        "type": "object",
+        "description": "The workload settings of the tenant.",
+        "required": [
+          "defaultCapacityMinutes",
+          "overloadTolerancePercent",
+          "overloadMode",
+          "version"
+        ],
+        "properties": {
+          "defaultCapacityMinutes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "description": "Minutes per weekday, Monday first, of resources without a capacity\nperiod.",
+            "example": [
+              420,
+              420,
+              420,
+              420,
+              420,
+              0,
+              0
+            ]
+          },
+          "overloadMode": {
+            "type": "string",
+            "description": "`blocking`: an overloading assignment is refused; `warning`: it is\naccepted and flagged (L08).",
+            "example": "blocking"
+          },
+          "overloadTolerancePercent": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Load accepted above capacity, in percent, before a day is overloaded.",
+            "example": 0
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Version of the tenant, for `If-Match`.",
+            "example": 3
+          }
+        }
+      },
+      "WorkloadSettingsFields": {
+        "type": "object",
+        "description": "New workload settings.",
+        "required": [
+          "defaultCapacityMinutes",
+          "overloadTolerancePercent",
+          "overloadMode"
+        ],
+        "properties": {
+          "defaultCapacityMinutes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "Seven values, Monday first, from 0 to 1,440 minutes."
+          },
+          "overloadMode": {
+            "type": "string",
+            "description": "`blocking` or `warning`."
+          },
+          "overloadTolerancePercent": {
+            "type": "integer",
+            "format": "int64",
+            "description": "From 0 to 100."
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "defaultCapacityMinutes": [
+            420,
+            420,
+            420,
+            420,
+            420,
+            0,
+            0
+          ],
+          "overloadMode": "blocking",
+          "overloadTolerancePercent": 10
+        }
       }
     },
     "securitySchemes": {
@@ -26769,6 +31785,10 @@
     {
       "name": "boards",
       "description": "Kanban boards: columns mapped to statuses, cards moved through the workflow"
+    },
+    {
+      "name": "resources",
+      "description": "Resources: persons, linked to a member or not, and generic roles that work is planned on; teams grouping them"
     },
     {
       "name": "configurations",

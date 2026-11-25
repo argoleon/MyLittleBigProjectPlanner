@@ -1,0 +1,103 @@
+<h2 mat-dialog-title>
+  @if (existing; as existing) {
+    {{ 'resources.dialog.editTitle' | transloco: { name: existing.displayName } }}
+  } @else {
+    {{ 'resources.dialog.createTitle' | transloco }}
+  }
+</h2>
+<form [formGroup]="form" (ngSubmit)="save()" novalidate>
+  <mat-dialog-content class="fields">
+    @if (errorKey(); as errorKey) {
+      <p class="message error" role="alert">{{ errorKey | transloco }}</p>
+    }
+    <div class="choice">
+      <span class="choice-label" id="resource-kind-label">{{ 'resources.dialog.kind' | transloco }}</span>
+      <mat-button-toggle-group formControlName="kind" aria-labelledby="resource-kind-label" hideSingleSelectionIndicator>
+        <mat-button-toggle value="person">{{ 'resources.dialog.person' | transloco }}</mat-button-toggle>
+        <mat-button-toggle value="generic">{{ 'resources.dialog.generic' | transloco }}</mat-button-toggle>
+      </mat-button-toggle-group>
+      <p class="choice-hint">{{ 'resources.dialog.' + kind() + 'Hint' | transloco }}</p>
+    </div>
+
+    @if (kind() === 'person') {
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'resources.dialog.account' | transloco }}</mat-label>
+        <mat-icon matPrefix aria-hidden="true">person_search</mat-icon>
+        <input
+          matInput
+          type="text"
+          class="account-input"
+          [formControl]="accountInput"
+          [matAutocomplete]="accounts"
+          [placeholder]="'resources.dialog.noAccount' | transloco"
+          (input)="account.set(null)"
+        />
+        @if (account()) {
+          <button matIconButton matSuffix type="button" [attr.aria-label]="'resources.dialog.clearAccount' | transloco" (click)="clearAccount()">
+            <mat-icon aria-hidden="true">close</mat-icon>
+          </button>
+          <mat-hint>{{ 'resources.dialog.accountHint' | transloco }}</mat-hint>
+        } @else {
+          <mat-hint>{{ 'resources.dialog.accountSearchHint' | transloco }}</mat-hint>
+        }
+        @if (fieldError('accountId'); as key) {
+          <mat-error>{{ key | transloco }}</mat-error>
+        }
+        <mat-autocomplete #accounts="matAutocomplete" [displayWith]="accountName" (optionSelected)="choose($event)">
+          @for (choice of choices(); track choice.accountId) {
+            <mat-option [value]="choice">
+              <span>{{ choice.displayName }}</span>
+              <span class="choice-hint"> · {{ choice.email }}</span>
+            </mat-option>
+          }
+        </mat-autocomplete>
+      </mat-form-field>
+    }
+
+    @if (!linked()) {
+      <mat-form-field appearance="outline">
+        <mat-label>{{ (kind() === 'generic' ? 'resources.dialog.role' : 'resources.dialog.name') | transloco }}</mat-label>
+        <input matInput formControlName="displayName" maxlength="200" required />
+        @if (form.controls.displayName.getError('api'); as key) {
+          <mat-error>{{ key | transloco }}</mat-error>
+        } @else {
+          <mat-error>{{ 'errors.field.required' | transloco }}</mat-error>
+        }
+      </mat-form-field>
+    }
+
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'resources.dialog.jobTitle' | transloco }}</mat-label>
+      <input matInput formControlName="jobTitle" maxlength="100" />
+      @if (form.controls.jobTitle.getError('api'); as key) {
+        <mat-error>{{ key | transloco }}</mat-error>
+      }
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'resources.dialog.site' | transloco }}</mat-label>
+      <mat-select formControlName="calendarId">
+        <mat-option [value]="null">{{ 'resources.dialog.noSite' | transloco }}</mat-option>
+        @for (site of sites(); track site.id) {
+          <mat-option [value]="site.id">{{ site.name }}</mat-option>
+        }
+      </mat-select>
+      <mat-hint>{{ 'resources.dialog.siteHint' | transloco }}</mat-hint>
+      @if (form.controls.calendarId.getError('api'); as key) {
+        <mat-error>{{ key | transloco }}</mat-error>
+      }
+    </mat-form-field>
+
+    @if (existing) {
+      <mat-slide-toggle formControlName="active" aria-describedby="resource-active-hint">
+        {{ 'resources.dialog.active' | transloco }}
+      </mat-slide-toggle>
+      <p class="choice-hint" id="resource-active-hint">{{ 'resources.dialog.activeHint' | transloco }}</p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button matButton type="button" mat-dialog-close>{{ 'dialog.cancel' | transloco }}</button>
+    <button matButton="filled" type="submit" [disabled]="saving()">
+      {{ (existing ? 'resources.dialog.save' : 'resources.dialog.create') | transloco }}
+    </button>
+  </mat-dialog-actions>
+</form>

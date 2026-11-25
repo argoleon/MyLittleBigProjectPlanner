@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT default_capacity_minutes FROM tenant WHERE id = app_current_tenant()",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "default_capacity_minutes",
+        "type_info": "Int4Array",
+        "origin": {
+          "Table": {
+            "table": "tenant",
+            "name": "default_capacity_minutes"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "abc21a01ef911a6685c5648e5725e372719d1cf311d79636ec9f111ac11e3f22"
+}

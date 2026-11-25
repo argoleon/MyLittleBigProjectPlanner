@@ -1,0 +1,79 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, day, kind, label, version\n        FROM calendar_exception\n        WHERE ($1::uuid IS NULL OR calendar_id = $1) AND ($2::uuid IS NULL OR resource_id = $2)\n          AND day BETWEEN $3 AND $4\n        ORDER BY day\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "calendar_exception",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "day",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "calendar_exception",
+            "name": "day"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "calendar_exception",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "label",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "calendar_exception",
+            "name": "label"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "version",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "calendar_exception",
+            "name": "version"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "f6eceb45988d90de7523ea3ccd35a00b383dbe85c1c5fa4beda45c3fdf14c97b"
+}

@@ -1,4 +1,18 @@
-import { formatFileSize, formatInstant, formatLocalDate, formatNumber, fromLocalDate, parseLocalDate, toLocalDate } from './format';
+import {
+  addDays,
+  formatDuration,
+  formatFileSize,
+  formatInstant,
+  formatLocalDate,
+  formatNumber,
+  fromLocalDate,
+  isoWeek,
+  mondayOf,
+  parseHours,
+  parseLocalDate,
+  toLocalDate,
+  weekdayNames,
+} from './format';
 
 // Time zones on both sides of UTC, with and without daylight saving time.
 const ZONES = ['Europe/Paris', 'America/Los_Angeles', 'Pacific/Kiritimati', 'Pacific/Pago_Pago', 'UTC'];
@@ -13,6 +27,33 @@ describe('parseLocalDate', () => {
     for (const bad of ['2026-02-30', '2027-02-29', '2026-13-01', '2026-3-29', '29/03/2026', '2026-03-29T00:00:00Z', '']) {
       expect(parseLocalDate(bad), bad).toBeNull();
     }
+  });
+});
+
+describe('addDays, mondayOf and isoWeek', () => {
+  it('move across months, years, leap days and daylight saving time changes', () => {
+    expect(addDays('2026-12-28', 4)).toBe('2027-01-01');
+    expect(addDays('2028-03-01', -1)).toBe('2028-02-29');
+    // The Sunday France goes to summer time, and the one it leaves it.
+    expect(addDays('2026-03-28', 1)).toBe('2026-03-29');
+    expect(addDays('2026-03-29', 1)).toBe('2026-03-30');
+    expect(addDays('2026-10-25', 1)).toBe('2026-10-26');
+    expect(() => addDays('2026-02-30', 1)).toThrowError(RangeError);
+  });
+
+  it('find the Monday of a week', () => {
+    expect(mondayOf('2026-11-24')).toBe('2026-11-23');
+    expect(mondayOf('2026-11-23')).toBe('2026-11-23');
+    expect(mondayOf('2027-01-03')).toBe('2026-12-28');
+  });
+
+  it('number weeks the ISO way', () => {
+    expect(isoWeek('2026-11-24')).toBe(48);
+    // 1 January 2027 is a Friday: still week 53 of 2026.
+    expect(isoWeek('2027-01-01')).toBe(53);
+    expect(isoWeek('2027-01-04')).toBe(1);
+    // 29 December 2025 is a Monday of week 1 of 2026.
+    expect(isoWeek('2025-12-29')).toBe(1);
   });
 });
 
@@ -95,5 +136,44 @@ describe('formatFileSize', () => {
     expect(formatFileSize(3_145_728, 'fr')).toMatch(/^3,1\s?Mo$/);
     expect(formatFileSize(52_428_800, 'en')).toBe('52.4 MB');
     expect(formatFileSize(1500, 'en')).toBe('1.5 kB');
+  });
+});
+
+describe('formatDuration', () => {
+  it('says hours and minutes the way planners read them', () => {
+    expect(formatDuration(420, 'fr')).toBe('7 h');
+    expect(formatDuration(210, 'fr')).toBe('3 h 30');
+    expect(formatDuration(210, 'en')).toBe('3 h 30 min');
+    expect(formatDuration(5, 'fr')).toBe('0 h 05');
+    expect(formatDuration(1680, 'en')).toBe('28 h');
+    expect(formatDuration(0, 'fr')).toBe('0 h');
+  });
+});
+
+describe('parseHours', () => {
+  it('reads decimal hours with a comma or a dot, and hours with minutes', () => {
+    expect(parseHours('7')).toBe(420);
+    expect(parseHours('3,5')).toBe(210);
+    expect(parseHours('3.5')).toBe(210);
+    expect(parseHours('3:30')).toBe(210);
+    expect(parseHours(' 3 h 30 ')).toBe(210);
+    expect(parseHours('3h30')).toBe(210);
+    expect(parseHours('7 h')).toBe(420);
+    expect(parseHours('0,25')).toBe(15);
+    expect(parseHours('')).toBe(0);
+    expect(parseHours('24')).toBe(1440);
+  });
+
+  it('refuses what is not a duration of a day at most', () => {
+    for (const text of ['abc', '25', '3:75', '-2', '3,5,5', '24:01', '1.5.']) {
+      expect(parseHours(text), text).toBeNull();
+    }
+  });
+});
+
+describe('weekdayNames', () => {
+  it('names the days Monday first, in the language', () => {
+    expect(weekdayNames('fr')).toEqual(['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']);
+    expect(weekdayNames('en', 'short')).toEqual(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
   });
 });

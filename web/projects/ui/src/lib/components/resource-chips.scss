@@ -1,0 +1,25 @@
+[data-holding='linked'] {
+  --chip-container: var(--app-account-internal-container);
+  --chip-on: var(--app-account-internal-on);
+}
+
+[data-holding='person'],
+[data-holding='former'] {
+  --chip-container: var(--mat-sys-surface-container-highest);
+  --chip-on: var(--mat-sys-on-surface-variant);
+}
+
+[data-holding='generic'] {
+  --chip-container: var(--app-account-external-container);
+  --chip-on: var(--app-account-external-on);
+}
+
+[data-active='true'] {
+  --chip-container: var(--app-member-active-container);
+  --chip-on: var(--app-member-active-on);
+}
+
+[data-active='false'] {
+  --chip-container: var(--app-member-invited-container);
+  --chip-on: var(--app-member-invited-on);
+}

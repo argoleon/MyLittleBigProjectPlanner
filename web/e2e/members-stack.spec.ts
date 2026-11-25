@@ -86,7 +86,7 @@ test('invite a member, who joins, then remove them', async ({ browser, playwrigh
   await expect(admin.getByRole('row').filter({ hasText: invitee })).toHaveCount(0);
 
   // The invitee's next request is refused: back to the sign-in page.
-  await page.goto('/workload');
+  await page.goto('/portals');
   await expect(page).toHaveURL(/\/sign-in/);
   await page.getByLabel('Email').fill(invitee);
   await page.getByLabel('Password').fill(inviteeSecret);

@@ -1,0 +1,48 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT default_capacity_minutes AS \"default_capacity_minutes!\", overload_tolerance_percent AS \"overload_tolerance_percent!\",\n               overload_mode AS \"overload_mode!\", version AS \"version!\"\n        FROM app_update_workload_settings($1, $2, $3, $4, $5)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "default_capacity_minutes!",
+        "type_info": "Int4Array",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "overload_tolerance_percent!",
+        "type_info": "Int2",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "overload_mode!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "version!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8Array",
+        "Int4Array",
+        "Int2",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "293d1b4aa9568803a9420d157e04473a5cb6151f143e6ae5207dd19e0d0d337c"
+}

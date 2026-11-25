@@ -17,12 +17,16 @@ use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
+use crate::absences;
 use crate::account;
 use crate::auth;
 use crate::boards;
 use crate::bulk_actions;
+use crate::calendars;
+use crate::capacity;
 use crate::config_fields;
 use crate::configs;
+use crate::day_capacity;
 use crate::events;
 use crate::gdpr;
 use crate::grants;
@@ -50,11 +54,13 @@ use crate::platform;
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
 use crate::query_assist;
 use crate::reference_items;
+use crate::resources;
 use crate::roles;
 use crate::saved_filters;
 use crate::screens;
 use crate::search;
 use crate::sso;
+use crate::teams;
 use crate::tenant::{AppState, PublicTenantTx};
 use crate::transition_rules;
 use crate::workflows;
@@ -208,6 +214,36 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(boards::read, boards::update, boards::delete))
         .routes(routes!(boards::cards))
         .routes(routes!(boards::move_card))
+        .routes(routes!(resources::list, resources::create))
+        .routes(routes!(resources::linkable_accounts))
+        .routes(routes!(resources::read, resources::update))
+        .routes(routes!(absences::list, absences::create))
+        .routes(routes!(absences::update, absences::delete))
+        .routes(routes!(resources::mine))
+        .routes(routes!(calendars::list, calendars::create))
+        .routes(routes!(calendars::read, calendars::update, calendars::delete))
+        .routes(routes!(calendars::year))
+        .routes(routes!(calendars::create_calendar_exception))
+        .routes(routes!(
+            calendars::update_calendar_exception,
+            calendars::delete_calendar_exception
+        ))
+        .routes(routes!(
+            calendars::resource_exceptions,
+            calendars::create_resource_exception
+        ))
+        .routes(routes!(
+            calendars::update_resource_exception,
+            calendars::delete_resource_exception
+        ))
+        .routes(routes!(calendars::resource_days))
+        .routes(routes!(day_capacity::list))
+        .routes(routes!(capacity::list, capacity::create))
+        .routes(routes!(capacity::update, capacity::delete))
+        .routes(routes!(capacity::settings, capacity::update_settings))
+        .routes(routes!(teams::list, teams::create))
+        .routes(routes!(teams::read, teams::update, teams::delete))
+        .routes(routes!(teams::add_member, teams::remove_member))
         .routes(routes!(saved_filters::list, saved_filters::create))
         .routes(routes!(saved_filters::share_groups))
         .routes(routes!(

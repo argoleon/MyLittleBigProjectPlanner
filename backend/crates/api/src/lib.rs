@@ -4,14 +4,18 @@
 //! Every route goes through the shared request layer in [`middleware`], so
 //! no feature can forget request IDs, timeouts or body limits.
 
+pub mod absences;
 pub mod account;
 pub mod auth;
 pub mod boards;
 pub mod bulk_actions;
+pub mod calendars;
+pub mod capacity;
 pub mod cli;
 pub mod config_fields;
 pub mod configs;
 pub mod correlation;
+pub mod day_capacity;
 pub mod etag;
 pub mod events;
 pub mod extract;
@@ -46,12 +50,14 @@ pub mod platform;
 pub mod problem;
 pub mod query_assist;
 pub mod reference_items;
+pub mod resources;
 pub mod roles;
 mod routes;
 pub mod saved_filters;
 pub mod screens;
 pub mod search;
 pub mod sso;
+pub mod teams;
 pub mod tenant;
 pub mod transition_rules;
 pub mod workflows;

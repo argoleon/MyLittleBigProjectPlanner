@@ -4,6 +4,60 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-24
+
+Work package **L07 Resources and capacity**: resources (persons and generic roles) and teams, weekly capacity historized by effective date, calendars with French public holidays and sites, absences by whole or half days, and the capacity of each day, read for one resource or for hundreds at once.
+
+### Added
+
+- **Resources** (#194)
+  - Persons, linked to a member's account or not (a subcontractor who never signs in), and generic resources (an unnamed role such as "Rust developer"), with an optional job title. A linked person shows the member's name; a member is linked to one resource at most (`resource.account_taken`), and only an internal member of the organization. Resources are deactivated, never deleted.
+  - A member who leaves the organization leaves their resource behind, unlinked and inactive, under the name it showed; erasing the member (in the organization or everywhere) replaces that name by their pseudonym.
+  - A new organization role, **Resource manager**, manages resources as the organization admin does; every internal member reads them.
+  - The **Workload** menu opens on the resources (filters by kind and status, search, pages), with a dialog to create and edit them and a page per resource.
+  - `/api/v1/resources` (list, create, read, change) and `GET /api/v1/resources/linkable-accounts`. `TenantRole` gains `resource_manager`.
+- **Teams** (#198)
+  - Teams group resources for views and filters; a resource may belong to several teams, and leaving one keeps its assignments. A team has a translatable name, unique in the organization, and an optional description. Organization admins and resource managers manage them; every internal member reads them.
+  - The **Workload** screen has two tabs, Resources and Teams. The resource list filters by team, a resource's page lists its teams, and each team has a page where its resources are added (found by name) and removed.
+  - `/api/v1/teams` (list, create, read, change, delete) and `PUT`/`DELETE /api/v1/teams/{id}/members/{resourceId}`; `GET /api/v1/resources?team=`. A resource now tells its `teams`.
+- **Weekly capacity** (#202)
+  - A resource's hours per weekday, historized by effective date: "Part time 80% from 1 March". Before its first period, or without any, the organization's default applies as it stands. One period per resource and date (`capacity_pattern.date_taken`); durations are kept in minutes.
+  - The resource page shows a **Weekly capacity** card: each period with its hours per day ("7 h", "3 h 30") and weekly total, its label, and "planned" when it starts later. Hours are typed as 7, 3.5, 3,5 or 3:30. Organization admins and resource managers add, change and delete periods.
+  - A **Workload** tab in Administration lets organization admins change the default capacity, the overload tolerance and the overload mode (used from L08).
+  - Every change is recorded in the event outbox (`resource.capacity_changed` with the days concerned, `tenant.capacity_changed`) for the load computation of L08.
+  - `/api/v1/resources/{id}/capacity-patterns` (list, create, change, delete) and `GET`/`PUT /api/v1/tenant/workload-settings`.
+- **Calendars and public holidays** (#207)
+  - Every organization has its calendar, with the French public holidays computed for any year; sites ("Paris", "Strasbourg") have theirs, with the organization's holidays, the Alsace-Moselle ones or none. A resource belongs to a site, or to none.
+  - Dated exceptions at three levels — the organization, a site, a resource — the closest deciding: a holiday added, a closure, or a day worked that cancels a holiday. Working weekdays stay those of the capacity.
+  - A **Calendars** tab in Workload lists the calendars; each has a page with its holidays and exceptions by year. The resource page shows its site and a month grid (holidays, closures, days not worked, its own exceptions), navigable with the keyboard; managers add an exception by choosing a day.
+  - Every change is recorded in the event outbox (`calendar.changed`, `resource.capacity_changed`) for the load computation of L08.
+  - `/api/v1/calendars` (list, create a site, read, change, delete), `GET /api/v1/calendars/{id}/year`, `/api/v1/calendars/{id}/exceptions` and `/api/v1/resources/{id}/exceptions` (create, change, delete), `GET /api/v1/resources/{id}/days` (each day's status and capacity). A resource takes a `calendarId` and tells its `site`.
+- **Absences** (#212)
+  - Leave, training or other time off, from a first to a last day, possibly starting or ending at noon; a half day removes half of the day's capacity, a whole day all of it. Absences of a resource never overlap (`absence.overlap`).
+  - The person linked to a resource declares their own, from the resource page or **My absences** in My account; organization admins and resource managers declare anyone's and are recorded as the declarer. Everyone sees the dates and kind; the comment is for the person and the managers, and goes when the person is erased.
+  - The resource page shows an **Absences** card and the absences on its month grid; `GET /api/v1/resources/{id}/days` tells each day's absence and remaining capacity.
+  - Every change is recorded in the event outbox (`resource.absence_changed`) for the load computation of L08.
+  - `/api/v1/resources/{id}/absences` (list, declare, change, delete) and `GET /api/v1/resources/mine`.
+- **Capacity of each day** (#216)
+  - A single computation of a day's capacity — the weekly pattern, less the public holidays and closures of the resource's calendars, less its absences — shared by every screen and, from L08, by the load. A morning off and an afternoon off on the same day take the whole day.
+  - The resource page shows the hours left on a half day off, the month's total under its grid, and a **Capacity over the next 4 weeks** card, week by week.
+  - `GET /api/v1/capacity`: the minutes of each day and the days off of many resources at once — named ones, a team's, or every active resource —, 200 per page, up to 366 days; 200 resources over 3 months are read in under 200 ms.
+
+### Fixed
+
+- The API and the worker listen for SIGTERM and Ctrl+C from the start of their startup: a stop requested while they start (migrations, connections, storage check) is now a graceful shutdown, no longer an abrupt kill. This also fixes the worker test `stops_cleanly_on_sigterm`, which failed now and then under load.
+
+### Security
+
+- **cookie 0.18.3 and url 2.5.9** (backend dependencies): fix RUSTSEC-2026-0594 and RUSTSEC-2026-0592, published after 0.6.0.
+
+### Upgrading from 0.6.0
+
+- **Resources**: the migrations add resources, teams, capacity periods, calendars and absences; no existing data is converted, and the workload screens start empty. Organization admins create the resources (linking members' accounts where relevant) and the sites; to let someone else manage them, give them the new **Resource manager** role in Administration, Members.
+- **Calendars**: every existing organization gets its calendar with the French public holidays. Organizations in Alsace-Moselle, or with closures or bridge days, adjust it in Workload, Calendars.
+- **Default capacity**: resources without a capacity period work the organization's default week (7 h × 5 days unless changed). Organization admins review it in Administration, Workload, with the overload tolerance and mode that L08 will use.
+
+
 ## [0.6.0] - 2026-11-19
 
 Work package **L06 Search and Kanban**: a query language with a visual builder and suggestions, full-text search with typo correction, saved and shared filters, Kanban boards, CSV and Excel exports of list views, and bulk actions on a search result.
@@ -274,6 +328,7 @@ Work package **L01 Technical foundation**: the base every later work package bui
   - License policy enforced on Rust crates and npm packages, RustSec and npm advisories, secret scan of the git history.
   - CI: every step a `just` recipe (`just ci` locally), GitHub Actions only calls them; release workflow publishing the images to GitHub Container Registry.
 
+[0.7.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.7.0
 [0.6.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.6.0
 [0.5.1]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.5.1
 [0.5.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.5.0

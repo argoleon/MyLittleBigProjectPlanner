@@ -1,0 +1,76 @@
+@use '../admin/admin-shared';
+
+:host {
+  display: block;
+}
+
+.card {
+  padding: var(--app-space-4);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface);
+}
+
+.card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--app-space-3);
+  margin-bottom: var(--app-space-3);
+}
+
+.card-title {
+  margin: 0;
+  font: var(--mat-sys-title-medium);
+}
+
+.subtitle,
+.default {
+  margin: var(--app-space-1) 0 0;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.default {
+  margin-bottom: var(--app-space-2);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.table {
+  min-width: 640px;
+  background: transparent;
+}
+
+.from {
+  display: block;
+  font: var(--mat-sys-title-small);
+}
+
+.secondary {
+  display: block;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.num {
+  text-align: end;
+  white-space: nowrap;
+}
+
+.total {
+  font: var(--mat-sys-title-small);
+}
+
+abbr {
+  text-decoration: none;
+}
+
+.actions {
+  width: 104px;
+  white-space: nowrap;
+  text-align: end;
+}

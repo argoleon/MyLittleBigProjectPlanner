@@ -1,6 +1,7 @@
 //! Technical adapters: configuration, process signals, PostgreSQL, and later
 //! S3 storage, email and Valkey.
 
+pub mod absences;
 pub mod accounts;
 pub mod aggregates;
 pub mod antivirus;
@@ -10,12 +11,15 @@ pub mod auth_policy;
 pub mod boards;
 pub mod bootstrap;
 pub mod bulk_actions;
+pub mod calendars;
+pub mod capacity;
 pub mod comments;
 pub mod config;
 pub mod config_migrations;
 pub mod configs;
 pub mod credentials;
 pub mod crypto;
+pub mod day_capacity;
 pub mod db;
 pub mod email;
 pub mod erasure;
@@ -51,6 +55,7 @@ pub mod platform;
 pub mod query_suggestions;
 pub mod rate_limit;
 pub mod reference_items;
+pub mod resources;
 pub mod rich_text;
 pub mod roles;
 pub mod rule_references;
@@ -60,6 +65,7 @@ pub mod search;
 pub mod sessions;
 pub mod shutdown;
 pub mod storage;
+pub mod teams;
 pub mod telemetry;
 pub mod tenant_switch;
 pub mod tickets;

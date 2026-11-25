@@ -81,6 +81,8 @@ fn serve() -> ExitCode {
 }
 
 async fn run(config: WorkerConfig) -> ExitCode {
+    // First: a SIGTERM while the worker starts is kept, not fatal.
+    let shutdown = infra::shutdown::listen();
     let pool = match infra::db::connect_lazy(&config.database) {
         Ok(pool) => pool,
         Err(err) => {
@@ -173,7 +175,7 @@ async fn run(config: WorkerConfig) -> ExitCode {
                 }
             };
         }
-        () = infra::shutdown::signal() => token.cancel(),
+        () = shutdown.wait() => token.cancel(),
     }
 
     let stopped = tokio::time::timeout(config.common.shutdown_grace, worker).await;
