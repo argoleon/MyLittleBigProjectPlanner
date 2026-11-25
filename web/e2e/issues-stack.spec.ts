@@ -332,18 +332,21 @@ test('the Activity tab tells who changed what on a ticket, a deleted comment for
   await page.getByRole('tab', { name: 'Activity' }).click();
   const entries = page.locator('app-issue-activity .entry .sentence');
   await expect(entries.first()).toContainText('deleted a comment');
-  // The list may still be filling in: wait for the entry before, then read them all.
+  // The list is read again on each change (the deletion, then its real-time
+  // echo) and is empty meanwhile: read it all again until it holds them all.
   await expect(entries.nth(1)).toContainText('commented');
-  const said = (await entries.allTextContents()).map((s) => s.replace(/\s+/g, ' ').trim());
-  expect(said[1]).toContain('commented');
-  for (const change of [
-    'changed the status: To do → In progress',
-    `changed the summary: Draft ${run} → History ${run}`,
-    'changed the priority: Medium → Highest',
-  ]) {
-    expect(said.filter((s) => s.includes(change)), change).toHaveLength(1);
-  }
-  expect(said.at(-1)).toContain('created the ticket');
+  await expect(async () => {
+    const said = (await entries.allTextContents()).map((s) => s.replace(/\s+/g, ' ').trim());
+    expect(said[1]).toContain('commented');
+    for (const change of [
+      'changed the status: To do → In progress',
+      `changed the summary: Draft ${run} → History ${run}`,
+      'changed the priority: Medium → Highest',
+    ]) {
+      expect(said.filter((s) => s.includes(change)), change).toHaveLength(1);
+    }
+    expect(said.at(-1)).toContain('created the ticket');
+  }).toPass();
   await page.getByRole('button', { name: 'Show the deleted comment' }).click();
   await expect(page.locator('app-issue-activity .deleted')).toContainText('Wrong ticket');
   expect(await accessibilityViolations(page)).toEqual([]);
