@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM resource_day_load WHERE assignment_id = ANY($1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7b7a316140c55204ff4b0dbf08a2b384a7d161cab4bf68bdfb6fe3d4b961b052"
+}

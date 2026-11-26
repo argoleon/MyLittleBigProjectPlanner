@@ -20,6 +20,7 @@ use infra::attachments::{
 };
 use infra::bulk_actions::{self, ItemJob as BulkItemJob, PurgeJob as BulkPurgeJob};
 use infra::config_migrations::{MIGRATION_JOB, MigrationJob, Outcome};
+use infra::day_load::{RECOMPUTE_JOB, Recompute};
 use infra::email::{EMAIL_JOB, EmailJob, MailError, Mailer, render};
 use infra::erasure::{ERASURE_JOB, ErasedMember};
 use infra::exports::{EXPORT_JOB, ExportJob, ExportStore};
@@ -156,6 +157,12 @@ impl JobHandler for Jobs {
                     {
                         tracing::info!(attachment = %expire.attachment_id, "upload never came: forgotten");
                     }
+                    Ok(())
+                }
+                RECOMPUTE_JOB => {
+                    let recompute: Recompute = payload(job)?;
+                    let assignments = infra::day_load::run(conn, &recompute).await.map_err(retry)?;
+                    tracing::info!(assignments, "daily load recomputed");
                     Ok(())
                 }
                 DISPATCH_JOB => {

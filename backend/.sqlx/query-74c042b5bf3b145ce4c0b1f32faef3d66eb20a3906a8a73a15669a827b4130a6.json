@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO resource_day_load (tenant_id, resource_id, day, assignment_id, issue_id, minutes, provisional)\n        SELECT app_current_tenant(), l.resource_id, l.day, l.assignment_id, l.issue_id, l.minutes, l.provisional\n        FROM unnest($1::uuid[], $2::date[], $3::uuid[], $4::uuid[], $5::integer[], $6::boolean[])\n             AS l (resource_id, day, assignment_id, issue_id, minutes, provisional)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "DateArray",
+        "UuidArray",
+        "UuidArray",
+        "Int4Array",
+        "BoolArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "74c042b5bf3b145ce4c0b1f32faef3d66eb20a3906a8a73a15669a827b4130a6"
+}

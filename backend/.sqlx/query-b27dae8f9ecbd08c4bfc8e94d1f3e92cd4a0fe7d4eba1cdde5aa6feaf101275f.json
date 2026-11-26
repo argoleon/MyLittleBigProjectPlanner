@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT a.id, a.issue_id, a.resource_id, r.kind,\n               coalesce(app_member_name(r.account_id), r.display_name) AS \"display_name!\",\n               r.job_title, r.active, r.account_id IS NOT NULL AS \"linked!\", r.calendar_id,\n               a.provisional, a.version\n        FROM assignment a\n        JOIN resource r ON r.id = a.resource_id\n        WHERE ($1::uuid IS NULL OR a.issue_id = $1) AND ($2::uuid IS NULL OR a.id = $2)\n        ORDER BY lower(coalesce(app_member_name(r.account_id), r.display_name)), a.id\n        ",
+  "query": "\n        SELECT a.id, a.issue_id, a.resource_id, r.kind,\n               coalesce(app_member_name(r.account_id), r.display_name) AS \"display_name!\",\n               r.job_title, r.active, r.account_id IS NOT NULL AS \"linked!\", r.calendar_id,\n               a.provisional, a.version\n        FROM assignment a\n        JOIN resource r ON r.id = a.resource_id\n        WHERE ($1::uuid IS NULL OR a.issue_id = $1) AND ($2::uuid[] IS NULL OR a.id = ANY($2))\n        ORDER BY lower(coalesce(app_member_name(r.account_id), r.display_name)), a.id\n        ",
   "describe": {
     "columns": [
       {
@@ -118,7 +118,7 @@
     "parameters": {
       "Left": [
         "Uuid",
-        "Uuid"
+        "UuidArray"
       ]
     },
     "nullable": [
@@ -135,5 +135,5 @@
       false
     ]
   },
-  "hash": "ed8ef5e168d841f13746192548dcba1276de486674cb5c005367566f149185d6"
+  "hash": "b27dae8f9ecbd08c4bfc8e94d1f3e92cd4a0fe7d4eba1cdde5aa6feaf101275f"
 }
