@@ -218,6 +218,7 @@ const VEILED_ROW: VeiledHierarchyNode = { veiled: true, id: 'opaque-1', type: 'p
 describe('PortfoliosPage and HierarchyTree', () => {
   afterEach(() => {
     TestBed.inject(MatDialog).closeAll();
+    answerWorkloadCard();
     TestBed.inject(HttpTestingController).verify();
   });
 
@@ -406,9 +407,17 @@ describe('PortfoliosPage and HierarchyTree', () => {
   });
 });
 
+/** Answers the load and capacity card's request (tested in workload-card.spec), so that verify sees the page's own. */
+function answerWorkloadCard(): void {
+  TestBed.inject(HttpTestingController)
+    .match((r) => /\/workload\?/.test(r.urlWithParams))
+    .forEach((r) => r.flush({ scale: 'month', periods: [], count: 0, confidentialProjects: 0 }));
+}
+
 describe('NodePage', () => {
   afterEach(() => {
     TestBed.inject(MatDialog).closeAll();
+    answerWorkloadCard();
     TestBed.inject(HttpTestingController).verify();
   });
 
@@ -558,6 +567,7 @@ describe('NodePage', () => {
 describe('NodeSettingsPage and NodeGeneralTab', () => {
   afterEach(() => {
     TestBed.inject(MatDialog).closeAll();
+    answerWorkloadCard();
     TestBed.inject(HttpTestingController).verify();
   });
 
@@ -721,6 +731,7 @@ describe('NodeSettingsPage and NodeGeneralTab', () => {
 describe('NodeLinksTab', () => {
   afterEach(() => {
     TestBed.inject(MatDialog).closeAll();
+    answerWorkloadCard();
     TestBed.inject(HttpTestingController).verify();
   });
 
@@ -1158,6 +1169,7 @@ describe('NodeLinksTab', () => {
 describe('archiving', () => {
   afterEach(() => {
     TestBed.inject(MatDialog).closeAll();
+    answerWorkloadCard();
     TestBed.inject(HttpTestingController).verify();
   });
 

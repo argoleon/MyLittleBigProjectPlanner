@@ -2399,6 +2399,15 @@
       "percentage": "{{ percent }} of the capacity",
       "inNode": "In the filter",
       "empty": "Nothing planned in this period."
+    },
+    "aggregate": {
+      "title": "Load and capacity",
+      "nodeHint": "Load planned on its projects, against the share of their resources’ capacity it takes.",
+      "teamHint": "Load and capacity of its active members.",
+      "loading": "Loading the workload…",
+      "line": "{{ load }} of {{ capacity }} · {{ percent }}",
+      "over": "overloaded",
+      "confidential": "Including {{ count }} confidential project(s), counted without detail."
     }
   },
   "teams": {

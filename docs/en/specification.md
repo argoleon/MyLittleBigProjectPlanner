@@ -115,6 +115,7 @@ The hierarchy is a directed acyclic graph: a node can have several parents, with
 - A node aggregates over all its distinct descendant projects. A project reached through two paths is counted once.
 - Each parent-child link has an optional weighting (100% by default), for budget allocations.
 - Computed aggregates: planned load, consumed capacity, progress (by status category), number of open and late tickets.
+- A project's capacity is the share of its resources' capacity their load there takes: each resource splits its capacity between its projects in proportion to its load on each, with no double counting. Load and capacity also read per week and month, for a node as for a team (the sum of its members).
 - Aggregates are precomputed by a worker and updated within seconds after each change.
 
 **Permissions in the graph**
