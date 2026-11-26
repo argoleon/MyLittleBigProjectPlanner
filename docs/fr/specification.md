@@ -303,8 +303,8 @@ Une affectation relie une ressource à un ticket. Elle se compose d'un ou plusie
 
 **Stockage et calcul**
 
-- Les segments sont la source de vérité. Le système en déduit une ligne par ressource et par jour (`resource_day_load` : date locale, minutes, ticket, statut provisoire), recalculée à chaque modification de segment, de capacité ou d'absence.
-- Cette table est partitionnée par période. Des agrégats précalculés par semaine, par mois et par nœud de la hiérarchie alimentent les vues.
+- Les segments sont la source de vérité. Le système en déduit une ligne par affectation et par jour chargé (`resource_day_load` : ressource, date locale, minutes, ticket, statut provisoire). L'écriture d'une affectation la recalcule dans la même transaction ; une modification de capacité, de calendrier, d'absence ou de la capacité par défaut la recalcule en tâche de fond, en quelques secondes, pour les ressources et les jours concernés.
+- Cette table est partitionnée par mois ; les partitions sont créées à l'avance et au besoin. Des agrégats précalculés par semaine, par mois et par nœud de la hiérarchie alimentent les vues.
 - Granularité : la journée, stockée en minutes. Les créneaux horaires relèvent de la couche de réservation horaire (section 9).
 
 **Contrôle de dépassement**

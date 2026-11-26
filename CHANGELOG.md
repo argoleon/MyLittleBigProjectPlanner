@@ -11,6 +11,9 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
   - The ticket page shows an **Assignments** card: one block per resource with its segments, their load and the ticket's planned total; members with **Assign resources** on the project add, change and remove assignments in the **Assign a resource** dialog. Segments left outside dates changed since are flagged.
   - Every change is recorded in the event outbox (`assignment.changed`, with the days concerned) for the daily load of L08.
   - `/api/v1/issues/{idOrKey}/assignments` (list, create) and `/api/v1/assignments/{id}` (read, change, delete).
+- **Daily load** (#225)
+  - The load of each resource is kept day by day: one row per assignment and day, recomputed in the same transaction when an assignment is written, and by the worker within seconds when a capacity period, a calendar exception or holiday set, an absence or the default capacity changes (job `workload.recompute`, for the resources and days concerned). Deleting an assignment, or its ticket, removes its rows. The overload check and the heatmap read it.
+  - The table is partitioned by month; the worker creates the partitions of the year before and the two years after, and a write creates the ones it needs.
 
 ## [0.7.0] - 2026-11-24
 

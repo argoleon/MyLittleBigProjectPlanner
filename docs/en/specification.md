@@ -303,8 +303,8 @@ An assignment links a resource to a ticket. It is made of one or more successive
 
 **Storage and computation**
 
-- Segments are the source of truth. The system derives one row per resource and per day (`resource_day_load`: local date, minutes, ticket, provisional flag), recomputed whenever a segment, capacity or absence changes.
-- This table is partitioned by period. Precomputed aggregates per week, per month and per hierarchy node feed the views.
+- Segments are the source of truth. The system derives one row per assignment and day it loads (`resource_day_load`: resource, local date, minutes, ticket, provisional flag). Writing an assignment recomputes it in the same transaction; a change of capacity, calendar, absence or default capacity recomputes it in the background, within seconds, for the resources and days concerned.
+- This table is partitioned by month; partitions are created ahead and as needed. Precomputed aggregates per week, per month and per hierarchy node feed the views.
 - Granularity: the day, stored in minutes. Time slots belong to the time-slot booking layer (section 9).
 
 **Overload check**
