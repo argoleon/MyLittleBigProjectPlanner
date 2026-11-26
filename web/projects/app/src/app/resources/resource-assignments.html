@@ -1,0 +1,123 @@
+<section class="card" aria-labelledby="resource-assignments-title">
+  <div class="card-header">
+    <h2 class="card-title" id="resource-assignments-title" tabindex="-1">{{ 'resources.assignments.title' | transloco }}</h2>
+    <mat-slide-toggle [checked]="showPast()" (change)="togglePast($event.checked)">{{ 'resources.assignments.showPast' | transloco }}</mat-slide-toggle>
+  </div>
+
+  @if (notice(); as notice) {
+    <p class="message" [class.info]="notice.ok" [class.error]="!notice.ok" [attr.role]="notice.ok ? 'status' : 'alert'">
+      {{ notice.messageKey | transloco: notice.params }}
+    </p>
+  }
+
+  @if (first.error()) {
+    <ui-error-state [error]="first.error()" [headingLevel]="3" (retry)="first.reload()" />
+  } @else if (!first.hasValue()) {
+    <mat-progress-bar mode="indeterminate" [attr.aria-label]="'resources.assignments.loading' | transloco" />
+  } @else {
+    @for (group of groups(); track group.id) {
+      <section class="group" [attr.aria-labelledby]="'assignment-group-' + (group.id ?? 'busy')">
+        <div class="group-header">
+          <h3 class="group-title" [id]="'assignment-group-' + (group.id ?? 'busy')">
+            @if (group.id) {
+              <a [routerLink]="['/nodes', group.id]">{{ group.name }}</a>
+              <span class="project-key">{{ group.key }}</span>
+            } @else {
+              {{ 'resources.assignments.busyGroup' | transloco }}
+            }
+          </h3>
+          <span class="group-load">{{ group.loadMinutes | duration }}</span>
+        </div>
+        @if (!group.id) {
+          <p class="busy-hint">{{ 'resources.assignments.busyHint' | transloco }}</p>
+        }
+        <table class="assignments">
+          <caption class="cdk-visually-hidden">
+            {{ group.id ? ('resources.assignments.caption' | transloco: { project: group.name }) : ('resources.assignments.busyGroup' | transloco) }}
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">{{ 'resources.assignments.columns.issue' | transloco }}</th>
+              <th scope="col">{{ 'resources.assignments.columns.periods' | transloco }}</th>
+              <th scope="col" class="number">{{ 'resources.assignments.columns.load' | transloco }}</th>
+              <th scope="col"><span class="cdk-visually-hidden">{{ 'resources.assignments.columns.actions' | transloco }}</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of group.items; track item.id) {
+              <tr>
+                <td class="issue">
+                  @if (item.issue; as issue) {
+                    <a class="key" [routerLink]="['/issues', issue.key]">{{ issue.key }}</a>
+                    <span class="summary">{{ issue.summary }}</span>
+                  } @else {
+                    <span class="busy">{{ 'resources.assignments.busy' | transloco }}</span>
+                  }
+                  <span class="tags">
+                    @if (item.provisional) {
+                      <span class="tag">{{ 'assignments.provisional' | transloco }}</span>
+                    }
+                    @if (item.overloads.length > 0) {
+                      <span class="tag overload">{{ 'assignments.overload.badge' | transloco }}</span>
+                    }
+                    @if (item.conflicts.length > 0) {
+                      <span class="tag conflict">{{ 'resources.assignments.conflict' | transloco }}</span>
+                    }
+                  </span>
+                </td>
+                <td>
+                  <ul class="periods">
+                    @for (segment of item.segments; track $index) {
+                      <li>
+                        {{
+                          'assignments.period'
+                            | transloco
+                              : {
+                                  from: (segment.start | localDate: { day: 'numeric', month: 'short' }),
+                                  to: (segment.end | localDate: { day: 'numeric', month: 'short', year: 'numeric' }),
+                                }
+                        }}
+                        · {{ valueText(segment) }}
+                      </li>
+                    }
+                  </ul>
+                </td>
+                <td class="number">{{ item.loadMinutes | duration }}</td>
+                <td class="actions">
+                  @if (item.canEdit && item.issue; as issue) {
+                    <button
+                      matIconButton
+                      type="button"
+                      [id]="'resource-assignment-edit-' + item.id"
+                      [attr.aria-label]="'resources.assignments.editOf' | transloco: { key: issue.key }"
+                      (click)="edit(item)"
+                    >
+                      <mat-icon aria-hidden="true">edit</mat-icon>
+                    </button>
+                    <button
+                      matIconButton
+                      type="button"
+                      [attr.aria-label]="'resources.assignments.deleteOf' | transloco: { key: issue.key }"
+                      (click)="remove(item)"
+                    >
+                      <mat-icon aria-hidden="true">delete</mat-icon>
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </section>
+    } @empty {
+      <p class="empty">{{ (showPast() ? 'resources.assignments.none' : 'resources.assignments.noneAhead') | transloco }}</p>
+    }
+    @if (next()) {
+      <div class="more">
+        <button matButton="outlined" type="button" [disabled]="loadingMore()" (click)="loadMore()">
+          {{ 'resources.assignments.more' | transloco }}
+        </button>
+      </div>
+    }
+  }
+</section>

@@ -16386,6 +16386,119 @@
         }
       }
     },
+    "/api/v1/resources/{id}/assignments": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "List the assignments of a resource",
+        "description": "Internal members: the resource's assignments with a segment meeting `from`–`to`, newest first, each with its segments and their load. An assignment on a ticket the member does not see shows as busy time: its periods and hours, no ticket nor project. `expand=issue` adds the ticket and its project.",
+        "operationId": "listResourceAssignments",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the resource",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Only those with a segment ending on or after this local date.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Only those with a segment starting on or before this local date.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, from 1 to 200 (default 50).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "`nextCursor` of the previous page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "description": "`issue`: each visible assignment with its ticket and project.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of assignments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceAssignmentPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid `limit`, `cursor`, dates or `expand`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such resource in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/resources/{id}/capacity-patterns": {
       "get": {
         "tags": [
@@ -22280,6 +22393,55 @@
           "member",
           "nobody"
         ]
+      },
+      "AssignedIssue": {
+        "type": "object",
+        "description": "The ticket of an assignment (`expand=issue`).",
+        "required": [
+          "id",
+          "key",
+          "summary",
+          "project"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string",
+            "example": "PLAT-148"
+          },
+          "project": {
+            "$ref": "#/components/schemas/AssignedProject"
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      },
+      "AssignedProject": {
+        "type": "object",
+        "description": "The project of a ticket, as listed with an assignment.",
+        "required": [
+          "id",
+          "key",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string",
+            "example": "PLAT"
+          },
+          "name": {
+            "type": "string",
+            "example": "Identity platform"
+          }
+        }
       },
       "AssignedResource": {
         "type": "object",
@@ -31080,6 +31242,113 @@
             "type": "integer",
             "format": "int64",
             "example": 1
+          }
+        }
+      },
+      "ResourceAssignment": {
+        "type": "object",
+        "description": "An assignment of a resource, as its page lists it.",
+        "required": [
+          "id",
+          "busy",
+          "issueId",
+          "provisional",
+          "segments",
+          "loadMinutes",
+          "overloads",
+          "conflicts",
+          "canEdit",
+          "version"
+        ],
+        "properties": {
+          "busy": {
+            "type": "boolean",
+            "description": "On a ticket the member does not see (a confidential project, or one\nnot granted to them): only its periods and hours show, as busy time."
+          },
+          "canEdit": {
+            "type": "boolean",
+            "description": "The member changes and removes it (`assign_resources` on its\nproject, not archived)."
+          },
+          "conflicts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssignmentConflict"
+            },
+            "description": "As on the ticket; empty when busy."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "issue": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AssignedIssue",
+                "description": "With `expand=issue`, when not busy."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "issueId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "`null` when busy."
+          },
+          "loadMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "example": 1830,
+            "minimum": 0
+          },
+          "overloads": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OverloadDay"
+            },
+            "description": "As on the ticket; empty when busy."
+          },
+          "provisional": {
+            "type": "boolean"
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssignmentSegment"
+            }
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          }
+        }
+      },
+      "ResourceAssignmentPage": {
+        "type": "object",
+        "description": "A page of a resource's assignments.",
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceAssignment"
+            },
+            "description": "Newest first."
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cursor of the next (older) page, `null` on the last page."
           }
         }
       },

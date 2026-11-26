@@ -36,13 +36,14 @@ use infra::overload::{self as checks, Candidate, Forced};
 use infra::uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use time::Date;
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 
 use crate::etag::{etag, require_if_match};
-use crate::extract::{ApiJson, ApiPath};
+use crate::extract::{ApiJson, ApiPath, ApiQuery};
 use crate::idempotency::{self, Start};
 use crate::issues::{TAG, visible_issue};
-use crate::nodes::{ensure_changeable, is_tenant_admin};
+use crate::nodes::{Sight, ensure_changeable, is_tenant_admin};
+use crate::pagination::{PageParams, encode_cursor};
 use crate::permissions;
 use crate::problem::{ErrorCode, OverloadDay, OverloadProblem, PROBLEM_JSON, Problem, ProblemBody};
 use crate::resources::KindView;
@@ -869,6 +870,246 @@ pub async fn delete(
     tracing::info!(target: "audit", actor = %actor, issue = %issue.id, assignment = %id, "assignment removed");
     tx.commit().await?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// `?from=&to=&limit=&cursor=&expand=` of a resource's assignments.
+#[derive(Debug, Default, Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+#[serde(rename_all = "camelCase")]
+pub struct ResourceListParams {
+    /// Only those with a segment ending on or after this local date.
+    #[param(value_type = Option<String>, format = Date)]
+    from: Option<Date>,
+    /// Only those with a segment starting on or before this local date.
+    #[param(value_type = Option<String>, format = Date)]
+    to: Option<Date>,
+    /// Page size, from 1 to 200 (default 50).
+    #[param(minimum = 1, maximum = 200)]
+    limit: Option<usize>,
+    /// `nextCursor` of the previous page.
+    cursor: Option<String>,
+    /// `issue`: each visible assignment with its ticket and project.
+    expand: Option<String>,
+}
+
+/// The project of a ticket, as listed with an assignment.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(as = AssignedProject)]
+pub struct ProjectRefView {
+    id: Uuid,
+    #[schema(example = "PLAT")]
+    key: String,
+    #[schema(example = "Identity platform")]
+    name: String,
+}
+
+/// The ticket of an assignment (`expand=issue`).
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(as = AssignedIssue)]
+pub struct IssueRefView {
+    id: Uuid,
+    #[schema(example = "PLAT-148")]
+    key: String,
+    summary: String,
+    project: ProjectRefView,
+}
+
+/// An assignment of a resource, as its page lists it.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(as = ResourceAssignment)]
+pub struct ResourceAssignmentView {
+    id: Uuid,
+    /// On a ticket the member does not see (a confidential project, or one
+    /// not granted to them): only its periods and hours show, as busy time.
+    busy: bool,
+    /// `null` when busy.
+    #[schema(required = true)]
+    issue_id: Option<Uuid>,
+    /// With `expand=issue`, when not busy.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    issue: Option<IssueRefView>,
+    provisional: bool,
+    segments: Vec<SegmentView>,
+    #[schema(example = 1830)]
+    load_minutes: u32,
+    /// As on the ticket; empty when busy.
+    overloads: Vec<OverloadDay>,
+    /// As on the ticket; empty when busy.
+    conflicts: Vec<ConflictDayView>,
+    /// The member changes and removes it (`assign_resources` on its
+    /// project, not archived).
+    can_edit: bool,
+    #[schema(example = 1)]
+    version: i64,
+}
+
+/// A page of a resource's assignments.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(as = ResourceAssignmentPage)]
+pub struct ResourceAssignmentPage {
+    /// Newest first.
+    items: Vec<ResourceAssignmentView>,
+    /// Cursor of the next (older) page, `null` on the last page.
+    #[schema(required = true)]
+    next_cursor: Option<String>,
+}
+
+/// `GET /api/v1/resources/{id}/assignments`.
+#[utoipa::path(
+    get,
+    path = "/resources/{id}/assignments",
+    tag = crate::resources::TAG,
+    operation_id = "listResourceAssignments",
+    summary = "List the assignments of a resource",
+    description = "Internal members: the resource's assignments with a segment meeting \
+                   `from`–`to`, newest first, each with its segments and their load. An assignment \
+                   on a ticket the member does not see shows as busy time: its periods and hours, \
+                   no ticket nor project. `expand=issue` adds the ticket and its project.",
+    params(("id" = Uuid, Path, description = "Id of the resource"), ResourceListParams),
+    responses(
+        (status = 200, description = "A page of assignments", body = ResourceAssignmentPage),
+        (status = 400, description = "Invalid `limit`, `cursor`, dates or `expand`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 404, description = "No such resource in this tenant", body = ProblemBody, content_type = PROBLEM_JSON),
+    )
+)]
+pub async fn resource_list(
+    State(state): State<AppState>,
+    mut tx: TenantTx,
+    ApiPath(id): ApiPath<Uuid>,
+    ApiQuery(params): ApiQuery<ResourceListParams>,
+) -> Result<ApiJson<ResourceAssignmentPage>, Problem> {
+    let (limit, before) = PageParams {
+        limit: params.limit,
+        cursor: params.cursor,
+    }
+    .resolve()?;
+    let expand_issue = match params.expand.as_deref() {
+        None | Some("") => false,
+        Some("issue") => true,
+        Some(_) => {
+            return Err(Problem::validation(vec![FieldError::new(
+                "expand",
+                "unknown_field",
+            )]));
+        }
+    };
+    if let (Some(from), Some(to)) = (params.from, params.to)
+        && to < from
+    {
+        return Err(Problem::validation(vec![FieldError::new("to", "before_start")]));
+    }
+    if infra::resources::find(&mut tx, id).await?.is_none() {
+        return Err(Problem::new(ErrorCode::NotFound).with_detail("no such resource"));
+    }
+    let page = repo::of_resource(&mut tx, id, params.from, params.to, limit, before).await?;
+    let issue_ids: Vec<Uuid> = page.items.iter().map(|a| a.issue_id).collect();
+    let refs = repo::issue_refs(&mut tx, &issue_ids).await?;
+    let sight = Sight::of(&mut tx).await?;
+    let all: Vec<&Assignment> = page.items.iter().collect();
+    let loads = loads(&mut tx, &all).await?;
+    let policy = checks::policy(&mut tx).await?;
+    let flagged = checks::flagged(&mut tx, &policy, &all).await?;
+    let ids: Vec<Uuid> = page.items.iter().map(|a| a.id).collect();
+    let conflicts = infra::conflicts::open_of(&mut tx, &ids).await?;
+    // Whether the member assigns on each project, asked once per project.
+    let mut assigns_on: HashMap<Uuid, bool> = HashMap::new();
+    let mut items = Vec::with_capacity(page.items.len());
+    for assignment in page.items {
+        let issue = refs.get(&assignment.issue_id);
+        let seen = issue.filter(|r| sight.sees(r.project_id));
+        let can_edit = match seen {
+            Some(r) if !r.project_archived => match assigns_on.get(&r.project_id) {
+                Some(known) => *known,
+                None => {
+                    let known = is_tenant_admin(&tx)
+                        || permissions::effective(&state, &mut tx, Some(r.project_id))
+                            .await?
+                            .contains(Permission::AssignResources);
+                    assigns_on.insert(r.project_id, known);
+                    known
+                }
+            },
+            _ => false,
+        };
+        let busy = seen.is_none();
+        let issue_view = seen.filter(|_| expand_issue).map(|r| IssueRefView {
+            id: r.issue_id,
+            key: r.key.clone(),
+            summary: r.summary.clone(),
+            project: ProjectRefView {
+                id: r.project_id,
+                key: r.project_key.clone(),
+                name: r.project_name.clone(),
+            },
+        });
+        let (version, provisional, assignment_id, issue_id) = (
+            assignment.version,
+            assignment.provisional,
+            assignment.id,
+            assignment.issue_id,
+        );
+        let per_segment = loads.get(&assignment_id).cloned().unwrap_or_default();
+        let segments: Vec<SegmentView> = assignment
+            .segments
+            .iter()
+            .enumerate()
+            .map(|(i, s)| {
+                let (load_minutes, working_days) = per_segment.get(i).copied().unwrap_or((0, 0));
+                SegmentView {
+                    start: s.start,
+                    end: s.end,
+                    mode: s.mode.into(),
+                    value: s.value,
+                    load_minutes,
+                    working_days,
+                }
+            })
+            .collect();
+        items.push(ResourceAssignmentView {
+            id: assignment_id,
+            busy,
+            issue_id: (!busy).then_some(issue_id),
+            issue: issue_view,
+            provisional,
+            load_minutes: segments.iter().map(|s| s.load_minutes).sum(),
+            segments,
+            overloads: if busy {
+                Vec::new()
+            } else {
+                flagged
+                    .get(&assignment_id)
+                    .map(|o| overload_days(o))
+                    .unwrap_or_default()
+            },
+            conflicts: if busy {
+                Vec::new()
+            } else {
+                conflicts
+                    .get(&assignment_id)
+                    .map(|days| {
+                        days.iter()
+                            .map(|d| ConflictDayView {
+                                date: d.day,
+                                minutes: d.minutes,
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            },
+            can_edit,
+            version,
+        });
+    }
+    tx.commit().await?;
+    Ok(ApiJson(ResourceAssignmentPage {
+        items,
+        next_cursor: page.next.map(encode_cursor),
+    }))
 }
 
 /// What a tenant does with an overload.

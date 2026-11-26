@@ -161,6 +161,8 @@ export type { UpdateAbsence$Params as UpdateAbsence$Params } from './fn/resource
 export { updateAbsence as updateAbsence } from './fn/resources/update-absence';
 export type { DeleteAbsence$Params as DeleteAbsence$Params } from './fn/resources/delete-absence';
 export { deleteAbsence as deleteAbsence } from './fn/resources/delete-absence';
+export type { ListResourceAssignments$Params as ListResourceAssignments$Params } from './fn/resources/list-resource-assignments';
+export { listResourceAssignments as listResourceAssignments } from './fn/resources/list-resource-assignments';
 export type { ListCapacityPatterns$Params as ListCapacityPatterns$Params } from './fn/resources/list-capacity-patterns';
 export { listCapacityPatterns as listCapacityPatterns } from './fn/resources/list-capacity-patterns';
 export type { CreateCapacityPattern$Params as CreateCapacityPattern$Params } from './fn/resources/create-capacity-pattern';

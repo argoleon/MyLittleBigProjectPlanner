@@ -16,6 +16,7 @@ use time::Date;
 use uuid::Uuid;
 
 use crate::outbox::{self, Event};
+use crate::pagination::{Keyset, Page, page_from_rows};
 
 /// Event of a change of an assignment: created, changed or deleted.
 pub const ASSIGNMENT_CHANGED: &str = "assignment.changed";
@@ -187,6 +188,104 @@ pub async fn find(conn: &mut PgConnection, id: Uuid) -> Result<Option<Assignment
 pub async fn find_many(conn: &mut PgConnection, ids: &[Uuid]) -> Result<Vec<Assignment>, sqlx::Error> {
     let rows = rows(conn, None, Some(ids)).await?;
     with_segments(conn, rows).await
+}
+
+/// The assignments of `resource_id` with a segment meeting `from`–`to`
+/// (each bound optional), newest first: `limit` of them before `before`
+/// (none: the newest).
+pub async fn of_resource(
+    conn: &mut PgConnection,
+    resource_id: Uuid,
+    from: Option<Date>,
+    to: Option<Date>,
+    limit: usize,
+    before: Option<Keyset>,
+) -> Result<Page<Assignment>, sqlx::Error> {
+    let fetch = i64::try_from(limit.saturating_add(1)).unwrap_or(i64::MAX);
+    let keys = sqlx::query!(
+        r#"
+        SELECT a.id, a.created_at FROM assignment a
+        WHERE a.resource_id = $1
+          AND EXISTS (
+              SELECT 1 FROM assignment_segment s
+              WHERE s.assignment_id = a.id
+                AND ($2::date IS NULL OR s.end_date >= $2)
+                AND ($3::date IS NULL OR s.start_date <= $3)
+          )
+          AND ($4::timestamptz IS NULL OR (a.created_at, a.id) < ($4, $5))
+        ORDER BY a.created_at DESC, a.id DESC
+        LIMIT $6
+        "#,
+        resource_id,
+        from,
+        to,
+        before.map(|k| k.created_at),
+        before.map(|k| k.id),
+        fetch
+    )
+    .fetch_all(&mut *conn)
+    .await?;
+    let page = page_from_rows(keys, limit, |k| Keyset {
+        created_at: k.created_at,
+        id: k.id,
+    });
+    let ids: Vec<Uuid> = page.items.iter().map(|k| k.id).collect();
+    let mut found: HashMap<Uuid, Assignment> = find_many(conn, &ids)
+        .await?
+        .into_iter()
+        .map(|a| (a.id, a))
+        .collect();
+    Ok(Page {
+        items: ids.iter().filter_map(|id| found.remove(id)).collect(),
+        next: page.next,
+    })
+}
+
+/// The ticket of an assignment and its project, as listed with it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IssueRef {
+    pub issue_id: Uuid,
+    pub key: String,
+    pub summary: String,
+    pub project_id: Uuid,
+    pub project_key: String,
+    pub project_name: String,
+    pub project_archived: bool,
+}
+
+/// The tickets `issue_ids` and their projects, by ticket.
+pub async fn issue_refs(
+    conn: &mut PgConnection,
+    issue_ids: &[Uuid],
+) -> Result<HashMap<Uuid, IssueRef>, sqlx::Error> {
+    let rows = sqlx::query!(
+        r#"
+        SELECT i.id, i.key, i.summary, n.id AS project_id, n.key AS "project_key!", n.name AS project_name,
+               n.archived_at IS NOT NULL AS "archived!"
+        FROM issue i JOIN node n ON n.id = i.project_id
+        WHERE i.id = ANY($1)
+        "#,
+        issue_ids
+    )
+    .fetch_all(conn)
+    .await?;
+    Ok(rows
+        .into_iter()
+        .map(|r| {
+            (
+                r.id,
+                IssueRef {
+                    issue_id: r.id,
+                    key: r.key,
+                    summary: r.summary,
+                    project_id: r.project_id,
+                    project_key: r.project_key,
+                    project_name: r.project_name,
+                    project_archived: r.archived,
+                },
+            )
+        })
+        .collect())
 }
 
 /// Its version, locking the row until the end of the transaction.

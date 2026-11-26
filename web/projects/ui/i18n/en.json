@@ -2290,10 +2290,39 @@
       "teams": "Teams",
       "noTeam": "No team",
       "siteOf": "Site {{ name }}",
-      "noSite": "Organization calendar"
+      "noSite": "Organization calendar",
+      "tabs": "Sections of the resource",
+      "capacityTab": "Capacity and calendar",
+      "assignmentsTab": "Assignments"
     },
     "team": "Team",
-    "allTeams": "All teams"
+    "allTeams": "All teams",
+    "assignments": {
+      "title": "Assignments",
+      "loading": "Loading assignments…",
+      "showPast": "Show past assignments",
+      "busyGroup": "Busy",
+      "busyHint": "Time on tickets you do not see (confidential or not granted projects): only the periods and hours show.",
+      "busy": "Busy",
+      "caption": "Assignments on {{ project }}",
+      "columns": {
+        "issue": "Ticket",
+        "periods": "Periods",
+        "load": "Load",
+        "actions": "Actions"
+      },
+      "conflict": "Absence conflict",
+      "editOf": "Edit the assignment on {{ key }}",
+      "deleteOf": "Remove the assignment on {{ key }}",
+      "deleteTitle": "Remove the assignment on {{ key }}?",
+      "deleteMessage": "Its segments and load leave the resource’s days.",
+      "deleteConfirm": "Remove",
+      "saved": "The assignment on {{ key }} was saved.",
+      "deleted": "The assignment on {{ key }} was removed.",
+      "none": "No assignment.",
+      "noneAhead": "No ongoing or upcoming assignment.",
+      "more": "Show more"
+    }
   },
   "workload": {
     "tabs": "Workload sections"
