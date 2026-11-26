@@ -1,0 +1,95 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT i.id, i.key, i.summary, n.id AS project_id, n.key AS \"project_key!\", n.name AS project_name,\n               n.archived_at IS NOT NULL AS \"archived!\"\n        FROM issue i JOIN node n ON n.id = i.project_id\n        WHERE i.id = ANY($1)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "key"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "summary",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "summary"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "project_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "project_key!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "key"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "project_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "node",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "archived!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "e94a13d61f600536f4d22021ce95dba7bc4ffad30da89f33208cd3a525852ed3"
+}
