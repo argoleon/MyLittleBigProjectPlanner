@@ -93,12 +93,17 @@ export const routes: Routes = [
         loadComponent: () => import('./boards/board-page').then((m) => m.BoardPage),
       },
       {
-        // Workload: its tabs (the heatmap comes with L08).
+        // Workload: its tabs, the heatmap first.
         path: 'workload',
         title: 'nav.workload',
         loadComponent: () => import('./workload/workload-page').then((m) => m.WorkloadPage),
         children: [
-          { path: '', pathMatch: 'full', redirectTo: 'resources' },
+          { path: '', pathMatch: 'full', redirectTo: 'heatmap' },
+          {
+            path: 'heatmap',
+            title: 'workload.heatmap.title',
+            loadComponent: () => import('./workload/heatmap-page').then((m) => m.HeatmapPage),
+          },
           {
             path: 'resources',
             title: 'resources.title',

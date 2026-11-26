@@ -7,7 +7,9 @@
  * and the administration lists it among the forced overloads (L08-US03).
  * A leave declared on those hours then shows them to reschedule, on the
  * absence and on the ticket (L08-US04). The resource's Assignments tab
- * lists both stories under their project (L08-US05).
+ * lists both stories under their project (L08-US05), and the heatmap, by
+ * keyboard and in its table view, shows the overloaded week and what is
+ * behind it (L08-US06).
  *
  * Runs with `just compose-e2e` only: deploy/tests/e2e.sh creates the admin
  * and passes E2E_ADMIN_EMAIL and E2E_ADMIN_SECRET.
@@ -148,6 +150,31 @@ test('an overloading assignment is shown day by day, refused, then forced and tr
   await expect(group.locator('.group-load')).toHaveText('8 h');
   await expect(group.locator('.tag.overload')).toHaveCount(2);
   expect(await accessibilityViolations(page), 'resource assignments').toEqual([]);
+
+  // The heatmap, filtered on the project: the resource's week overloads (L08-US06).
+  await page.goto('/workload');
+  await expect(page).toHaveURL(/\/workload\/heatmap$/);
+  await expect(page.locator('ui-heatmap canvas')).toBeVisible();
+  expect(await accessibilityViolations(page), 'heatmap').toEqual([]);
+  await page.getByRole('combobox', { name: 'Portfolio, program or project' }).click();
+  await page.getByRole('option', { name: `Overload ${key}` }).click();
+  await expect(page.locator('.summary')).toContainText('Resources: 1 ·');
+  // The keyboard opens a cell of the drawn heatmap.
+  await page.getByRole('application', { name: 'Resource workload' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('aside.panel h2')).toHaveText(name);
+  await page.getByRole('button', { name: 'Close the details' }).click();
+  // The table view: the overloaded week, then what is behind it.
+  await page.getByRole('radio', { name: 'Table' }).or(page.getByRole('button', { name: 'Table' })).first().click();
+  const resourceRow = page.locator('tr.mat-mdc-row', { hasText: name });
+  const overloaded = resourceRow.locator('button.cell-button', { hasText: 'overloaded' });
+  await expect(overloaded).toHaveCount(1);
+  expect(await accessibilityViolations(page), 'heatmap table').toEqual([]);
+  await overloaded.click();
+  const panel = page.locator('aside.panel');
+  await expect(panel.locator('.issue-key')).toHaveText([`${key}-1`, `${key}-2`]);
+  await expect(panel.locator('.tile.over')).toBeVisible();
+  await expect(panel.locator('.message.forced')).toContainText(`${key}-1`);
 });
 
 test('a leave on planned hours shows them to reschedule on the absence and the ticket', async ({ page }) => {

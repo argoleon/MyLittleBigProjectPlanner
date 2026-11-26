@@ -111,7 +111,7 @@ async function signIn(kit: ReturnType<typeof setup>, role: Session['account']['t
 const isTeams = (url: string, method: string) => url === '/api/v1/teams' && method === 'GET';
 
 describe('WorkloadPage', () => {
-  it('shows Resources, Teams and Calendars as routed tabs', async () => {
+  it('shows the Heatmap, Resources, Teams and Calendars as routed tabs', async () => {
     const kit = setup([
       {
         path: 'workload',
@@ -127,8 +127,8 @@ describe('WorkloadPage', () => {
     await kit.reply(isTeams, { items: [], canManage: false });
     expect(kit.text(kit.root().querySelector('h1'))).toBe('Workload');
     const tabs = Array.from(kit.root().querySelectorAll('a[mat-tab-link]'));
-    expect(tabs.map((tab) => kit.text(tab))).toEqual(['Resources', 'Teams', 'Calendars']);
-    expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual(['false', 'true', 'false']);
+    expect(tabs.map((tab) => kit.text(tab))).toEqual(['Heatmap', 'Resources', 'Teams', 'Calendars']);
+    expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual(['false', 'false', 'true', 'false']);
     expect(await axeViolations(harness.routeNativeElement!.parentElement!)).toEqual([]);
     TestBed.inject(HttpTestingController).verify();
   });

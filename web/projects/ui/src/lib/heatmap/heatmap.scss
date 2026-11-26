@@ -1,0 +1,52 @@
+:host {
+  display: block;
+  position: relative;
+}
+
+// The grid scrolls; the canvas stays over the visible part and is redrawn.
+.scroller {
+  position: relative;
+  height: 100%;
+  min-height: 240px;
+  max-height: 70vh;
+  overflow: auto;
+  border-radius: var(--mat-sys-corner-medium);
+  outline: none;
+
+  &:focus-visible {
+    box-shadow: 0 0 0 2px var(--mat-sys-primary);
+  }
+}
+
+.spacer {
+  pointer-events: none;
+}
+
+// Over the scroller's visible part, under its scrollbars; events go to
+// the scroller.
+.canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  pointer-events: none;
+}
+
+// Fonts the canvas reads from the theme.
+.font-probe {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+
+  &.label {
+    font: var(--mat-sys-label-medium);
+  }
+
+  &.small {
+    font: var(--mat-sys-label-small);
+  }
+
+  &.strong {
+    font: var(--mat-sys-title-small);
+  }
+}

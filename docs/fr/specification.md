@@ -329,7 +329,7 @@ Une affectation relie une ressource à un ticket. Elle se compose d'un ou plusie
 **Vues (MVP)**
 
 - Heatmap ressources × jours, semaines ou mois, en couleur selon le taux d'occupation. Un clic sur une case montre les tickets qui la composent.
-- Filtres par équipe, par projet, ou par nœud de la hiérarchie.
+- Filtres par équipe, par projet, ou par nœud de la hiérarchie. Un filtre par projet ou par nœud garde les ressources qui y ont de la charge sur la période et montre leur charge totale ; le détail d'une case distingue les tickets du filtre.
 - Charge comparée à la capacité, agrégée par équipe, par programme et par portefeuille.
 - Recherche de disponibilité : « qui a 3 jours libres la semaine prochaine dans l'équipe X ? ».
 - Le MVP détecte et signale les surcharges ; les propositions de replanification (nivellement) viennent après. La comparaison prévu / réel aussi.

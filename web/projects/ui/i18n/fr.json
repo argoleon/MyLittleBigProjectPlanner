@@ -2325,7 +2325,81 @@
     }
   },
   "workload": {
-    "tabs": "Rubriques de la charge"
+    "tabs": "Rubriques de la charge",
+    "heatmap": {
+      "tab": "Heatmap",
+      "title": "Charge des ressources",
+      "loading": "Chargement de la charge…",
+      "empty": "Aucune ressource active pour ces filtres.",
+      "scale": "Échelle",
+      "scales": {
+        "day": "Jour",
+        "week": "Semaine",
+        "month": "Mois"
+      },
+      "period": "Période",
+      "previous": "Période précédente",
+      "next": "Période suivante",
+      "today": "Aujourd’hui",
+      "team": "Équipe",
+      "allTeams": "Toutes les équipes",
+      "node": "Portefeuille, programme ou projet",
+      "allNodes": "Toute l’organisation",
+      "nodeTypes": {
+        "portfolio": "Portefeuilles",
+        "program": "Programmes",
+        "project": "Projets"
+      },
+      "options": "Options de la heatmap",
+      "includeProvisional": "Inclure les provisoires",
+      "view": "Affichage",
+      "views": {
+        "heatmap": "Heatmap",
+        "table": "Tableau"
+      },
+      "summary": "Ressources : {{ count }} · du {{ from }} au {{ to }} · Surcharges : {{ overloads }}",
+      "legend": "Légende",
+      "levels": {
+        "low": "Moins de 40 %",
+        "medium": "40 à 70 %",
+        "high": "70 à 95 %",
+        "full": "95 à 100 %",
+        "over": "Surcharge",
+        "hidden": "Dont temps confidentiel",
+        "provisional": "Provisoire",
+        "absent": "Absence"
+      },
+      "instructions": "Flèches pour passer d’une case à l’autre, Début et Fin pour aller au bout de la ligne, Entrée pour voir ce qui compose la charge. La vue Tableau présente les mêmes données.",
+      "resource": "Ressource",
+      "caption": "Charge des ressources par période, en pourcentage de la capacité",
+      "week": "S{{ number }}",
+      "weekSpan": "{{ from }}–{{ to }}",
+      "absent": "Absence",
+      "hidden": "confidentiel",
+      "provisional": "provisoire",
+      "average": "Moyenne",
+      "describe": "{{ percent }}, {{ planned }} planifiées pour {{ available }} disponibles",
+      "describeAbsent": "absence sur toute la période",
+      "describeOff": "aucun jour ouvré",
+      "describeOver": "en surcharge",
+      "describeProvisional": "dont {{ hours }} provisoires",
+      "describeHidden": "dont {{ hours }} sur des tickets que vous ne voyez pas",
+      "describeAverage": "moyenne {{ percent }}"
+    },
+    "cell": {
+      "span": "du {{ from }} au {{ to }}",
+      "close": "Fermer le détail",
+      "loading": "Chargement du détail…",
+      "capacity": "Capacité",
+      "planned": "Planifié",
+      "gap": "Écart",
+      "forced": "Surcharge forcée sur {{ key }} par {{ name }} le {{ date }}.",
+      "busy": "Occupé (confidentiel)",
+      "busyHint": "Temps sur des tickets que vous ne voyez pas.",
+      "percentage": "{{ percent }} de la capacité",
+      "inNode": "Du filtre",
+      "empty": "Rien de planifié sur cette période."
+    }
   },
   "teams": {
     "title": "Équipes",
