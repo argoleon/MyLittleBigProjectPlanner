@@ -16,6 +16,7 @@ pub mod calendars;
 pub mod capacity;
 pub mod comments;
 pub mod configuration;
+pub mod conflicts;
 pub mod dates;
 pub mod devices;
 pub mod erasure;

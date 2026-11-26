@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO workload_conflict (id, tenant_id, assignment_id, resource_id, issue_id, day, minutes)\n        SELECT c.id, app_current_tenant(), c.assignment_id, c.resource_id, c.issue_id, c.day, c.minutes\n        FROM unnest($1::uuid[], $2::uuid[], $3::uuid[], $4::uuid[], $5::date[], $6::integer[])\n             AS c (id, assignment_id, resource_id, issue_id, day, minutes)\n        ON CONFLICT (tenant_id, assignment_id, day) DO UPDATE\n        SET minutes = EXCLUDED.minutes, status = 'open', resolved_at = NULL,\n            opened_at = CASE WHEN workload_conflict.status = 'resolved' THEN now() ELSE workload_conflict.opened_at END\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "UuidArray",
+        "UuidArray",
+        "UuidArray",
+        "DateArray",
+        "Int4Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1536201ca63cafceff064ee8ab108355349630e2e0195c417a422ed19ed88af4"
+}

@@ -4,7 +4,8 @@
 //! capacity, calendars and absences (`crate::day_capacity`).
 //!
 //! - Writing an assignment recomputes its rows in the same transaction
-//!   (`crate::assignments`); deleting it takes them along.
+//!   (`crate::assignments`); deleting it takes them along. Its absence
+//!   conflicts follow (`crate::conflicts`).
 //! - A change of capacity, calendar, absence or default capacity queues a
 //!   [`RECOMPUTE_JOB`] (`crate::outbox::record`): the worker recomputes the
 //!   assignments it may touch. Recomputing replaces an assignment's rows as
@@ -155,7 +156,7 @@ pub async fn run(conn: &mut PgConnection, job: &Recompute) -> Result<usize, sqlx
     .fetch_all(&mut *conn)
     .await?;
     for chunk in ids.chunks(CHUNK) {
-        recompute(conn, chunk).await?;
+        recompute(conn, chunk, None).await?;
     }
     Ok(ids.len())
 }
@@ -227,8 +228,14 @@ pub async fn rows_of(
 }
 
 /// Recomputes the daily load of the assignments `ids` that still exist,
-/// under their row locks; the number of rows written.
-pub async fn recompute(conn: &mut PgConnection, ids: &[Uuid]) -> Result<usize, sqlx::Error> {
+/// under their row locks, and their absence conflicts (`crate::conflicts`),
+/// `actor` making the change (none: the system); the number of rows
+/// written.
+pub async fn recompute(
+    conn: &mut PgConnection,
+    ids: &[Uuid],
+    actor: Option<Uuid>,
+) -> Result<usize, sqlx::Error> {
     // In the order of their ids: two transactions never wait on each other.
     let existing = sqlx::query_scalar!(
         "SELECT id FROM assignment WHERE id = ANY($1) ORDER BY id FOR UPDATE",
@@ -272,6 +279,7 @@ pub async fn recompute(conn: &mut PgConnection, ids: &[Uuid]) -> Result<usize, s
     )
     .execute(&mut *conn)
     .await?;
+    crate::conflicts::sync(conn, &assignments, actor).await?;
     Ok(rows.len())
 }
 

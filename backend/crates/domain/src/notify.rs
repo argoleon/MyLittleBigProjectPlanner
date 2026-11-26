@@ -34,6 +34,8 @@ pub struct Change {
     pub commented: bool,
     /// The people a comment newly mentions (written or edited).
     pub mentioned: BTreeSet<u128>,
+    /// Hours of the ticket newly fall on an absence (L08-US04).
+    pub absence_conflict: bool,
 }
 
 /// The events of `change`, most specific first.
@@ -54,6 +56,9 @@ pub fn events_of(change: &Change) -> Vec<Event> {
     if change.created {
         events.push(Event::Created);
     }
+    if change.absence_conflict {
+        events.push(Event::AbsenceConflict);
+    }
     events
 }
 
@@ -66,6 +71,7 @@ const fn priority(event: Event) -> u8 {
         Event::Created => 2,
         Event::StatusChanged => 3,
         Event::Commented => 4,
+        Event::AbsenceConflict => 5,
     }
 }
 
@@ -101,12 +107,13 @@ pub enum Notice {
 
 impl Notice {
     /// Every notice, in display order: the ticket events, then the others.
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 8] = [
         Self::Ticket(Event::Created),
         Self::Ticket(Event::Assigned),
         Self::Ticket(Event::StatusChanged),
         Self::Ticket(Event::Commented),
         Self::Ticket(Event::Mentioned),
+        Self::Ticket(Event::AbsenceConflict),
         Self::ExportReady,
         Self::BulkDone,
     ];
@@ -155,14 +162,17 @@ impl Default for Preferences {
     /// What a member gets until they choose (mockup 16): everything in the
     /// application; by email, what is addressed to them (mentions,
     /// assignments, new tickets), not status changes nor comments, nor their
-    /// exports (they asked for them, in the application); no digest.
+    /// exports (they asked for them, in the application); absence
+    /// conflicts by email too, work to reschedule; no digest.
     fn default() -> Self {
         let choices = Notice::ALL
             .into_iter()
             .map(|notice| {
                 let email = matches!(
                     notice,
-                    Notice::Ticket(Event::Mentioned | Event::Assigned | Event::Created)
+                    Notice::Ticket(
+                        Event::Mentioned | Event::Assigned | Event::Created | Event::AbsenceConflict
+                    )
                 );
                 (notice, Choice { in_app: true, email })
             })
@@ -269,6 +279,13 @@ mod tests {
             }),
             [Event::Mentioned, Event::Commented]
         );
+        assert_eq!(
+            events_of(&Change {
+                absence_conflict: true,
+                ..Change::default()
+            }),
+            [Event::AbsenceConflict]
+        );
         assert!(events_of(&Change::default()).is_empty());
     }
 
@@ -299,6 +316,10 @@ mod tests {
         assert!(defaults.wants(Event::Mentioned, Channel::Email));
         assert!(defaults.wants(Event::Assigned, Channel::Email));
         assert!(defaults.wants(Event::Created, Channel::Email));
+        assert!(
+            defaults.wants(Event::AbsenceConflict, Channel::Email),
+            "work to reschedule"
+        );
         assert!(!defaults.wants(Event::StatusChanged, Channel::Email));
         assert!(!defaults.wants(Event::Commented, Channel::Email));
         assert!(!defaults.daily_digest);
@@ -415,6 +436,7 @@ mod tests {
                 "status_changed",
                 "commented",
                 "mentioned",
+                "absence_conflict",
                 "export_ready",
                 "bulk_done"
             ]

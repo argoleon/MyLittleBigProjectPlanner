@@ -66,6 +66,7 @@ use crate::teams;
 use crate::tenant::{AppState, PublicTenantTx};
 use crate::transition_rules;
 use crate::workflows;
+use crate::workload_conflicts;
 
 /// OpenAPI tag of the technical endpoints.
 const SYSTEM_TAG: &str = "system";
@@ -251,6 +252,7 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(capacity::update, capacity::delete))
         .routes(routes!(capacity::settings, capacity::update_settings))
         .routes(routes!(forced_overloads::list))
+        .routes(routes!(workload_conflicts::list))
         .routes(routes!(teams::list, teams::create))
         .routes(routes!(teams::read, teams::update, teams::delete))
         .routes(routes!(teams::add_member, teams::remove_member))

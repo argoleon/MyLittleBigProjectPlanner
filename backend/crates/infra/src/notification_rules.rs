@@ -60,7 +60,7 @@ pub async fn list(conn: &mut PgConnection, version: Uuid) -> Result<Vec<Notifica
         r#"
         SELECT event, recipient_kinds, role_ids, group_ids, account_ids, version
         FROM notification_rule WHERE version_id = $1
-        ORDER BY array_position(ARRAY['created', 'assigned', 'status_changed', 'commented', 'mentioned'], event)
+        ORDER BY array_position(ARRAY['created', 'assigned', 'status_changed', 'commented', 'mentioned', 'absence_conflict'], event)
         "#,
         version
     )

@@ -4,6 +4,8 @@
 //! and are recorded as the declarer. Every internal member sees the dates
 //! and kind; the comment is for the person and the managers only.
 
+use std::collections::BTreeMap;
+
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use domain::absences::{Absence, AbsenceKind, manages, validate};
@@ -87,12 +89,36 @@ pub struct AbsenceView {
     /// `null`: the account no longer exists.
     #[schema(required = true)]
     declared_by: Option<DeclarerView>,
+    /// Minutes planned in hours per day or total effort, all tickets
+    /// together, that it leaves no room for (L08-US04): to reschedule.
+    /// Kept up to date by the worker within seconds of a change.
+    #[schema(example = 420)]
+    conflict_minutes: u32,
     #[schema(example = 1)]
     version: i64,
 }
 
+/// The conflict minutes of the days of `absence`, from those of each day.
+fn conflict_minutes(absence: &StoredAbsence, by_day: &BTreeMap<Date, u32>) -> u32 {
+    by_day
+        .range(absence.start..=absence.end)
+        .map(|(_, minutes)| *minutes)
+        .sum()
+}
+
+/// The conflict minutes of `absence` as they stand: the worker updates
+/// them within seconds of a change.
+async fn current_conflicts(
+    tx: &mut TenantTx,
+    resource_id: Uuid,
+    absence: &StoredAbsence,
+) -> Result<u32, Problem> {
+    let by_day = infra::conflicts::minutes_by_day(tx, resource_id, absence.start, absence.end).await?;
+    Ok(conflict_minutes(absence, &by_day))
+}
+
 impl AbsenceView {
-    fn of(absence: StoredAbsence, sees_comment: bool) -> Self {
+    fn of(absence: StoredAbsence, sees_comment: bool, conflict_minutes: u32) -> Self {
         Self {
             id: absence.id,
             kind: absence.kind.into(),
@@ -105,6 +131,7 @@ impl AbsenceView {
                 account_id,
                 display_name: absence.declared_by_name.unwrap_or_default(),
             }),
+            conflict_minutes,
             version: absence.version,
         }
     }
@@ -214,7 +241,8 @@ fn with_etag(mut response: Response, version: i64) -> Response {
     operation_id = "listAbsences",
     summary = "List the absences of a resource",
     description = "Any internal member: the absences meeting `from`–`to` (366 days at most). The \
-                   comment only shows to the person and the managers.",
+                   comment only shows to the person and the managers. Each tells the hours planned \
+                   on its days that it leaves no room for (`conflictMinutes`), all tickets together.",
     params(("id" = Uuid, Path, description = "Id of the resource"), RangeParams),
     responses(
         (status = 200, description = "The absences", body = AbsenceList),
@@ -230,10 +258,20 @@ pub async fn list(
 ) -> Result<ApiJson<AbsenceList>, Problem> {
     range.checked()?;
     let can_manage = rights(&mut tx, id).await?;
-    let items = repo::list(&mut tx, id, range.from, range.to)
-        .await?
+    let absences = repo::list(&mut tx, id, range.from, range.to).await?;
+    let by_day = match (
+        absences.iter().map(|a| a.start).min(),
+        absences.iter().map(|a| a.end).max(),
+    ) {
+        (Some(first), Some(last)) => infra::conflicts::minutes_by_day(&mut tx, id, first, last).await?,
+        _ => BTreeMap::new(),
+    };
+    let items = absences
         .into_iter()
-        .map(|a| AbsenceView::of(a, can_manage))
+        .map(|a| {
+            let minutes = conflict_minutes(&a, &by_day);
+            AbsenceView::of(a, can_manage, minutes)
+        })
         .collect();
     tx.commit().await?;
     Ok(ApiJson(AbsenceList { items, can_manage }))
@@ -286,7 +324,8 @@ pub async fn create(
         .map_err(conflict_problem)?;
     tracing::info!(target: "audit", actor = %actor, resource = %id, absence = %absence.id, "absence declared");
     let (absence_id, version) = (absence.id, absence.version);
-    let view = AbsenceView::of(absence, true);
+    let minutes = current_conflicts(&mut tx, id, &absence).await?;
+    let view = AbsenceView::of(absence, true, minutes);
     let response = idempotency::created(
         &mut tx,
         key.as_deref(),
@@ -339,9 +378,10 @@ pub async fn update(
         .map_err(conflict_problem)?;
     tracing::info!(target: "audit", actor = %actor, resource = %id, absence = %absence_id, "absence changed");
     let version = absence.version;
+    let minutes = current_conflicts(&mut tx, id, &absence).await?;
     tx.commit().await?;
     Ok(with_etag(
-        ApiJson(AbsenceView::of(absence, true)).into_response(),
+        ApiJson(AbsenceView::of(absence, true, minutes)).into_response(),
         version,
     ))
 }

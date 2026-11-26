@@ -37,6 +37,8 @@ pub enum EventView {
     StatusChanged,
     Commented,
     Mentioned,
+    /// Hours of the ticket fall on an absence of their resource.
+    AbsenceConflict,
     ExportReady,
     BulkDone,
 }
@@ -49,6 +51,7 @@ impl From<Notice> for EventView {
             Notice::Ticket(Event::StatusChanged) => Self::StatusChanged,
             Notice::Ticket(Event::Commented) => Self::Commented,
             Notice::Ticket(Event::Mentioned) => Self::Mentioned,
+            Notice::Ticket(Event::AbsenceConflict) => Self::AbsenceConflict,
             Notice::ExportReady => Self::ExportReady,
             Notice::BulkDone => Self::BulkDone,
         }
@@ -63,6 +66,7 @@ impl From<EventView> for Notice {
             EventView::StatusChanged => Self::Ticket(Event::StatusChanged),
             EventView::Commented => Self::Ticket(Event::Commented),
             EventView::Mentioned => Self::Ticket(Event::Mentioned),
+            EventView::AbsenceConflict => Self::Ticket(Event::AbsenceConflict),
             EventView::ExportReady => Self::ExportReady,
             EventView::BulkDone => Self::BulkDone,
         }
@@ -109,9 +113,24 @@ pub struct NotificationView {
     /// The beginning of the comment (`commented`, `mentioned`).
     #[schema(required = true)]
     excerpt: Option<String>,
+    /// The hours to reschedule (`absence_conflict`).
+    #[schema(required = true)]
+    conflict: Option<ConflictRefView>,
     read: bool,
     #[serde(with = "time::serde::rfc3339")]
     created_at: OffsetDateTime,
+}
+
+/// Hours of a ticket an absence leaves no room for.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(as = NotificationConflict)]
+pub struct ConflictRefView {
+    #[schema(example = "Nathan Roux")]
+    resource_name: String,
+    /// Minutes to reschedule, over the days newly in conflict.
+    #[schema(example = 420)]
+    minutes: u32,
 }
 
 /// An export a notification is about.
@@ -286,6 +305,12 @@ fn view(notification: infra::notifications::Notification, locale: &str) -> Notif
             })
             .flatten(),
         excerpt: text("excerpt"),
+        conflict: details.get("conflict").and_then(|c| {
+            Some(ConflictRefView {
+                resource_name: c.get("resourceName")?.as_str()?.to_owned(),
+                minutes: u32::try_from(c.get("minutes")?.as_u64()?).ok()?,
+            })
+        }),
         status,
         actor_name: notification.actor_name,
         read: notification.read_at.is_some(),

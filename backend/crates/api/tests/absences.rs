@@ -99,7 +99,7 @@ async fn a_person_declares_their_own_leave_and_half_day_training() {
         json!({
             "id": leave["id"], "kind": "leave", "start": "2026-12-04", "startsAtNoon": false, "end": "2026-12-04",
             "endsAtNoon": false, "comment": "Family", "declaredBy": {"accountId": me, "displayName": "Test Member"},
-            "version": 1
+            "conflictMinutes": 0, "version": 1
         })
     );
     let friday = minutes(&api, a, &resource, "2026-12-04").await;
