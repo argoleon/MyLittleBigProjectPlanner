@@ -1,0 +1,62 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM load_aggregate_stale s\n        USING resource r\n        WHERE r.id = s.resource_id\n        RETURNING s.resource_id, r.calendar_id, s.period_kind, s.period_start\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "resource_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "load_aggregate_stale",
+            "name": "resource_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "calendar_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "resource",
+            "name": "calendar_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "period_kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "load_aggregate_stale",
+            "name": "period_kind"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "period_start",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "load_aggregate_stale",
+            "name": "period_start"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "5bafb2c0683f6f1d4c860974a35f9905d116209348c13d93369c709e7d17af0f"
+}

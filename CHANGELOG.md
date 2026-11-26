@@ -29,6 +29,11 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
   - The resource page has two tabs: **Capacity and calendar**, and **Assignments**, which lists its assignments by project with their tickets, periods, values and load, provisional ones and those in overload or absence conflict marked; ongoing and upcoming ones first, past ones on demand. Members who assign resources on a project change an assignment there through the **Assign a resource** dialog (with the same overload check) or remove it after confirmation.
   - Time on tickets the member does not see, on a confidential project or one not granted to them, shows as **Busy**: its periods and hours, without ticket nor project.
   - `GET /api/v1/resources/{id}/assignments` (period, pages, `expand=issue`).
+- **Workload heatmap** (#242)
+  - The **Workload** menu opens on a heatmap of the active resources by day, week or month, each cell colored by occupation (under 40%, 40 to 70%, 70 to 95%, 95 to 100%, overload beyond the capacity plus the tolerance), absences and non-working periods shown apart, provisional load and load on tickets the member does not see hatched. Filters by team, and by portfolio, program or project (the resources with load there, their whole load shown); provisional load in or out; a team average row.
+  - A cell, clicked or opened with the keyboard (arrows, Home/End, Page Up/Down, Enter, the focused cell said by screen readers), shows in a side panel the capacity, the planned hours and the gap, the overloads forced there, and the tickets behind the load, those the member does not see as **Busy (confidential)**. A **Table** view gives the same data in an accessible table.
+  - The heatmap is drawn on a canvas, only what is in view: 200 resources over 3 months read in about 150 ms. Weekly and monthly sums are precomputed for a year back and two years ahead, kept up to date by the worker within seconds of a change of load or capacity.
+  - `GET /api/v1/workload/heatmap`, `GET /api/v1/workload/cell`.
 
 ## [0.7.0] - 2026-11-24
 

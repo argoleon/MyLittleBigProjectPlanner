@@ -329,7 +329,7 @@ An assignment links a resource to a ticket. It is made of one or more successive
 **Views (MVP)**
 
 - Heatmap of resources × days, weeks or months, colored by occupation rate. Clicking a cell shows the tickets behind it.
-- Filters by team, by project, or by hierarchy node.
+- Filters by team, by project, or by hierarchy node. A project or node filter keeps the resources with load on it in the period and shows their whole load; a cell's details tell the filter's tickets apart.
 - Load compared with capacity, aggregated by team, program and portfolio.
 - Availability search: "who has 3 free days next week in team X?".
 - The MVP detects and reports overloads; rescheduling suggestions (leveling) come later, as does planned vs. actual comparison.

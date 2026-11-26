@@ -201,8 +201,12 @@ export type { GetWorkloadSettings$Params as GetWorkloadSettings$Params } from '.
 export { getWorkloadSettings as getWorkloadSettings } from './fn/resources/get-workload-settings';
 export type { UpdateWorkloadSettings$Params as UpdateWorkloadSettings$Params } from './fn/resources/update-workload-settings';
 export { updateWorkloadSettings as updateWorkloadSettings } from './fn/resources/update-workload-settings';
+export type { GetWorkloadCell$Params as GetWorkloadCell$Params } from './fn/resources/get-workload-cell';
+export { getWorkloadCell as getWorkloadCell } from './fn/resources/get-workload-cell';
 export type { ListWorkloadConflicts$Params as ListWorkloadConflicts$Params } from './fn/resources/list-workload-conflicts';
 export { listWorkloadConflicts as listWorkloadConflicts } from './fn/resources/list-workload-conflicts';
+export type { GetWorkloadHeatmap$Params as GetWorkloadHeatmap$Params } from './fn/resources/get-workload-heatmap';
+export { getWorkloadHeatmap as getWorkloadHeatmap } from './fn/resources/get-workload-heatmap';
 export type { StreamEvents$Params as StreamEvents$Params } from './fn/events/stream-events';
 export { streamEvents as streamEvents } from './fn/events/stream-events';
 export type { ListMyExports$Params as ListMyExports$Params } from './fn/exports/list-my-exports';

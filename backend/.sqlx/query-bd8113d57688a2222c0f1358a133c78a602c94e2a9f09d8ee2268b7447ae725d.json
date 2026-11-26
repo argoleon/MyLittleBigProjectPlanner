@@ -1,0 +1,49 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT f.issue_id, app_member_name(f.actor_id) AS \"actor_name?\", f.created_at\n        FROM forced_overload f\n        WHERE f.resource_id = $1\n          AND EXISTS (\n              SELECT 1 FROM jsonb_array_elements(f.days) d\n              WHERE (d ->> 'date')::date BETWEEN $2 AND $3\n          )\n        ORDER BY f.created_at DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "issue_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "forced_overload",
+            "name": "issue_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "actor_name?",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "forced_overload",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      false
+    ]
+  },
+  "hash": "bd8113d57688a2222c0f1358a133c78a602c94e2a9f09d8ee2268b7447ae725d"
+}

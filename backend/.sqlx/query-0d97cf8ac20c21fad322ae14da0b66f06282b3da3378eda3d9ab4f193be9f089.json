@@ -1,0 +1,90 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT resource_id, period_start, load_minutes, provisional_minutes, capacity_minutes, scheduled_minutes\n        FROM load_aggregate\n        WHERE resource_id = ANY($1) AND period_kind = $2 AND period_start = ANY($3)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "resource_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "load_aggregate",
+            "name": "resource_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "period_start",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "load_aggregate",
+            "name": "period_start"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "load_minutes",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "load_aggregate",
+            "name": "load_minutes"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "provisional_minutes",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "load_aggregate",
+            "name": "provisional_minutes"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "capacity_minutes",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "load_aggregate",
+            "name": "capacity_minutes"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "scheduled_minutes",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "load_aggregate",
+            "name": "scheduled_minutes"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "Text",
+        "DateArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "0d97cf8ac20c21fad322ae14da0b66f06282b3da3378eda3d9ab4f193be9f089"
+}

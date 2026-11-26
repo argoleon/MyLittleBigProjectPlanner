@@ -2325,7 +2325,81 @@
     }
   },
   "workload": {
-    "tabs": "Workload sections"
+    "tabs": "Workload sections",
+    "heatmap": {
+      "tab": "Heatmap",
+      "title": "Resource workload",
+      "loading": "Loading the workload…",
+      "empty": "No active resource for these filters.",
+      "scale": "Scale",
+      "scales": {
+        "day": "Day",
+        "week": "Week",
+        "month": "Month"
+      },
+      "period": "Period",
+      "previous": "Previous period",
+      "next": "Next period",
+      "today": "Today",
+      "team": "Team",
+      "allTeams": "All teams",
+      "node": "Portfolio, program or project",
+      "allNodes": "The whole organization",
+      "nodeTypes": {
+        "portfolio": "Portfolios",
+        "program": "Programs",
+        "project": "Projects"
+      },
+      "options": "Heatmap options",
+      "includeProvisional": "Include provisional",
+      "view": "View",
+      "views": {
+        "heatmap": "Heatmap",
+        "table": "Table"
+      },
+      "summary": "Resources: {{ count }} · from {{ from }} to {{ to }} · Overloads: {{ overloads }}",
+      "legend": "Legend",
+      "levels": {
+        "low": "Under 40%",
+        "medium": "40 to 70%",
+        "high": "70 to 95%",
+        "full": "95 to 100%",
+        "over": "Overload",
+        "hidden": "Including confidential time",
+        "provisional": "Provisional",
+        "absent": "Absence"
+      },
+      "instructions": "Arrows move between cells, Home and End to the ends of the row, Enter shows what makes up the load. The Table view gives the same data.",
+      "resource": "Resource",
+      "caption": "Workload of the resources by period, in percent of the capacity",
+      "week": "W{{ number }}",
+      "weekSpan": "{{ from }}–{{ to }}",
+      "absent": "Away",
+      "hidden": "confidential",
+      "provisional": "provisional",
+      "average": "Average",
+      "describe": "{{ percent }}, {{ planned }} planned for {{ available }} available",
+      "describeAbsent": "away the whole period",
+      "describeOff": "no working day",
+      "describeOver": "overloaded",
+      "describeProvisional": "including {{ hours }} provisional",
+      "describeHidden": "including {{ hours }} on tickets you do not see",
+      "describeAverage": "average {{ percent }}"
+    },
+    "cell": {
+      "span": "from {{ from }} to {{ to }}",
+      "close": "Close the details",
+      "loading": "Loading the details…",
+      "capacity": "Capacity",
+      "planned": "Planned",
+      "gap": "Gap",
+      "forced": "Overload forced on {{ key }} by {{ name }} on {{ date }}.",
+      "busy": "Busy (confidential)",
+      "busyHint": "Time on tickets you do not see.",
+      "percentage": "{{ percent }} of the capacity",
+      "inNode": "In the filter",
+      "empty": "Nothing planned in this period."
+    }
   },
   "teams": {
     "title": "Teams",

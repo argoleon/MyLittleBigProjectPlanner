@@ -1,0 +1,236 @@
+<div class="toolbar">
+  <mat-button-toggle-group
+    [value]="scale()"
+    (change)="setScale($event.value)"
+    [attr.aria-label]="'workload.heatmap.scale' | transloco"
+    hideSingleSelectionIndicator
+  >
+    <mat-button-toggle value="day">{{ 'workload.heatmap.scales.day' | transloco }}</mat-button-toggle>
+    <mat-button-toggle value="week">{{ 'workload.heatmap.scales.week' | transloco }}</mat-button-toggle>
+    <mat-button-toggle value="month">{{ 'workload.heatmap.scales.month' | transloco }}</mat-button-toggle>
+  </mat-button-toggle-group>
+
+  <div class="period" role="group" [attr.aria-label]="'workload.heatmap.period' | transloco">
+    <button matIconButton type="button" class="previous" [attr.aria-label]="'workload.heatmap.previous' | transloco" (click)="move(-1)">
+      <mat-icon aria-hidden="true">chevron_left</mat-icon>
+    </button>
+    <button matButton type="button" class="today" (click)="today()">{{ 'workload.heatmap.today' | transloco }}</button>
+    <button matIconButton type="button" class="next" [attr.aria-label]="'workload.heatmap.next' | transloco" (click)="move(1)">
+      <mat-icon aria-hidden="true">chevron_right</mat-icon>
+    </button>
+  </div>
+
+  <mat-form-field appearance="outline" class="filter" subscriptSizing="dynamic">
+    <mat-label>{{ 'workload.heatmap.team' | transloco }}</mat-label>
+    <mat-select [value]="teamId()" (selectionChange)="setTeam($event.value)">
+      <mat-option [value]="null">{{ 'workload.heatmap.allTeams' | transloco }}</mat-option>
+      @for (team of teams.value()?.items ?? []; track team.id) {
+        <mat-option [value]="team.id">{{ team.name ?? team.nameTranslations['fr'] }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="filter node" subscriptSizing="dynamic">
+    <mat-label>{{ 'workload.heatmap.node' | transloco }}</mat-label>
+    <mat-select [value]="nodeId()" (selectionChange)="setNode($event.value)">
+      <mat-option [value]="null">{{ 'workload.heatmap.allNodes' | transloco }}</mat-option>
+      @for (group of nodeGroups(); track group.type) {
+        <mat-optgroup [label]="'workload.heatmap.nodeTypes.' + group.type | transloco">
+          @for (node of group.items; track node.id) {
+            <mat-option [value]="node.id">{{ node.name }}</mat-option>
+          }
+        </mat-optgroup>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-chip-listbox [attr.aria-label]="'workload.heatmap.options' | transloco" multiple>
+    <mat-chip-option [selected]="includeProvisional()" (selectionChange)="includeProvisional.set($event.selected)">
+      {{ 'workload.heatmap.includeProvisional' | transloco }}
+    </mat-chip-option>
+  </mat-chip-listbox>
+
+  <mat-button-toggle-group
+    class="view"
+    [value]="view()"
+    (change)="view.set($event.value)"
+    [attr.aria-label]="'workload.heatmap.view' | transloco"
+    hideSingleSelectionIndicator
+  >
+    <mat-button-toggle value="heatmap">{{ 'workload.heatmap.views.heatmap' | transloco }}</mat-button-toggle>
+    <mat-button-toggle value="table">{{ 'workload.heatmap.views.table' | transloco }}</mat-button-toggle>
+  </mat-button-toggle-group>
+</div>
+
+<p class="summary">
+  {{
+    'workload.heatmap.summary'
+      | transloco
+        : {
+            count: (data.value()?.rows?.length ?? 0) + '',
+            from: (range().from | localDate: { day: 'numeric', month: 'short' }),
+            to: (range().to | localDate: { day: 'numeric', month: 'short', year: 'numeric' }),
+            overloads: (model()?.overloads ?? 0) + '',
+          }
+  }}
+</p>
+
+<ul class="legend" [attr.aria-label]="'workload.heatmap.legend' | transloco">
+  <li><span class="swatch low" aria-hidden="true"></span>{{ 'workload.heatmap.levels.low' | transloco }}</li>
+  <li><span class="swatch medium" aria-hidden="true"></span>{{ 'workload.heatmap.levels.medium' | transloco }}</li>
+  <li><span class="swatch high" aria-hidden="true"></span>{{ 'workload.heatmap.levels.high' | transloco }}</li>
+  <li><span class="swatch full" aria-hidden="true"></span>{{ 'workload.heatmap.levels.full' | transloco }}</li>
+  <li><span class="swatch over" aria-hidden="true"></span>{{ 'workload.heatmap.levels.over' | transloco }}</li>
+  <li><span class="swatch hidden" aria-hidden="true"></span>{{ 'workload.heatmap.levels.hidden' | transloco }}</li>
+  <li><span class="swatch provisional" aria-hidden="true"></span>{{ 'workload.heatmap.levels.provisional' | transloco }}</li>
+  <li><span class="swatch absent" aria-hidden="true"></span>{{ 'workload.heatmap.levels.absent' | transloco }}</li>
+</ul>
+
+<div class="layout" [class.with-panel]="selection() !== null">
+  <section class="card grid" [attr.aria-label]="'workload.heatmap.title' | transloco">
+    @if (data.error()) {
+      <ui-error-state [error]="data.error()" [headingLevel]="2" (retry)="data.reload()" />
+    } @else if (!model()) {
+      <mat-progress-bar mode="indeterminate" [attr.aria-label]="'workload.heatmap.loading' | transloco" />
+    } @else if (model(); as model) {
+      @if (model.rows.length === 0) {
+        <p class="empty">{{ 'workload.heatmap.empty' | transloco }}</p>
+      } @else if (view() === 'heatmap') {
+        <ui-heatmap
+          [rows]="model.rows"
+          [columns]="model.columns"
+          [cells]="model.cells"
+          [label]="'workload.heatmap.title' | transloco"
+          [instructions]="'workload.heatmap.instructions' | transloco"
+          [corner]="'workload.heatmap.resource' | transloco"
+          (activate)="open($event)"
+        />
+      } @else {
+        <div class="table-scroll">
+          <table mat-table [dataSource]="tableRows()" class="table">
+            <caption class="cdk-visually-hidden">{{ 'workload.heatmap.caption' | transloco }}</caption>
+            <ng-container matColumnDef="resource" sticky>
+              <th mat-header-cell *matHeaderCellDef scope="col">{{ 'workload.heatmap.resource' | transloco }}</th>
+              <th mat-cell *matCellDef="let item" scope="row" class="resource-cell">
+                <span class="name">{{ item.row.label }}</span>
+                @if (item.row.sublabel) {
+                  <span class="secondary">{{ item.row.sublabel }}</span>
+                }
+              </th>
+            </ng-container>
+            @for (column of model.columns; track $index; let c = $index) {
+              <ng-container [matColumnDef]="'p' + c">
+                <th mat-header-cell *matHeaderCellDef scope="col">
+                  <span class="name">{{ column.label }}</span>
+                  <span class="secondary">{{ column.sublabel }}</span>
+                </th>
+                <td mat-cell *matCellDef="let item" [attr.data-level]="model.cells[item.index][c].level">
+                  @if (model.cells[item.index][c].level === 'summary') {
+                    {{ model.cells[item.index][c].text }}
+                  } @else {
+                    <button type="button" class="cell-button" (click)="open({ row: item.index, column: c })">
+                      <span aria-hidden="true">{{ model.cells[item.index][c].text }}</span>
+                      <span class="cdk-visually-hidden">{{ model.cells[item.index][c].description }}</span>
+                    </button>
+                  }
+                </td>
+              </ng-container>
+            }
+            <tr mat-header-row *matHeaderRowDef="tableColumns(); sticky: true"></tr>
+            <tr mat-row *matRowDef="let item; columns: tableColumns()"></tr>
+          </table>
+        </div>
+      }
+    }
+  </section>
+
+  @if (selection(); as selection) {
+    <aside class="card panel" aria-labelledby="cell-title">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">
+            {{ selection.column?.label }} ·
+            {{
+              'workload.cell.span'
+                | transloco
+                  : {
+                      from: (selection.period.start | localDate: { day: 'numeric', month: 'short' }),
+                      to: (selection.period.end | localDate: { day: 'numeric', month: 'short' }),
+                    }
+            }}
+          </p>
+          <h2 class="panel-title" id="cell-title" tabindex="-1">{{ selection.resource.displayName }}</h2>
+        </div>
+        <button matIconButton type="button" class="close" [attr.aria-label]="'workload.cell.close' | transloco" (click)="close()">
+          <mat-icon aria-hidden="true">close</mat-icon>
+        </button>
+      </div>
+      @if (cell.error()) {
+        <ui-error-state [error]="cell.error()" [headingLevel]="3" (retry)="cell.reload()" />
+      } @else if (!cell.hasValue()) {
+        <mat-progress-bar mode="indeterminate" [attr.aria-label]="'workload.cell.loading' | transloco" />
+      } @else if (cell.value(); as details) {
+        <dl class="tiles">
+          <div class="tile">
+            <dt>{{ 'workload.cell.capacity' | transloco }}</dt>
+            <dd>{{ details.capacityMinutes | duration }}</dd>
+          </div>
+          <div class="tile">
+            <dt>{{ 'workload.cell.planned' | transloco }}</dt>
+            <dd>{{ details.loadMinutes | duration }}</dd>
+          </div>
+          <div class="tile" [class.over]="details.loadMinutes > details.capacityMinutes">
+            <dt>{{ 'workload.cell.gap' | transloco }}</dt>
+            <dd>{{ gapText(details.loadMinutes, details.capacityMinutes) }}</dd>
+          </div>
+        </dl>
+        @for (forced of details.forced; track forced.createdAt) {
+          <p class="message forced" role="note">
+            <mat-icon aria-hidden="true">warning</mat-icon>
+            {{
+              'workload.cell.forced'
+                | transloco
+                  : {
+                      key: forced.issueKey,
+                      name: forced.actorName ?? ('issue.activity.formerMember' | transloco),
+                      date: (forced.createdAt | instant: { dateStyle: 'medium' }),
+                    }
+            }}
+          </p>
+        }
+        <ul class="items">
+          @for (item of details.items; track $index) {
+            <li class="item">
+              <div class="item-head">
+                @if (item.issue; as issue) {
+                  <a class="issue-key" [routerLink]="['/issues', issue.key]">{{ issue.key }}</a>
+                } @else {
+                  <span class="busy">{{ 'workload.cell.busy' | transloco }}</span>
+                }
+                <span class="hours">{{ item.minutes | duration }}</span>
+              </div>
+              @if (item.issue; as issue) {
+                <p class="summary-line">{{ issue.summary }}</p>
+              } @else {
+                <p class="summary-line secondary">{{ 'workload.cell.busyHint' | transloco }}</p>
+              }
+              <div class="tags">
+                @for (segment of item.segments; track $index) {
+                  <span class="tag">{{ segmentText(segment) }}</span>
+                }
+                @if (item.provisional) {
+                  <span class="tag">{{ 'assignments.provisional' | transloco }}</span>
+                }
+                @if (item.inNode) {
+                  <span class="tag node">{{ 'workload.cell.inNode' | transloco }}</span>
+                }
+              </div>
+            </li>
+          } @empty {
+            <li class="empty">{{ 'workload.cell.empty' | transloco }}</li>
+          }
+        </ul>
+      }
+    </aside>
+  }
+</div>

@@ -21719,6 +21719,99 @@
         }
       }
     },
+    "/api/v1/workload/cell": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "What is behind a cell of the heatmap",
+        "description": "Internal members: a resource's capacity and load over a period, the tickets behind it with their hours (those the member does not see as one busy entry, without name), and the overloads forced there.",
+        "operationId": "getWorkloadCell",
+        "parameters": [
+          {
+            "name": "resourceId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "First day of the cell.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Last day, included (a year at most).",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "nodeId",
+            "in": "query",
+            "description": "The node the heatmap is filtered on: tickets of its projects are\nmarked (`inNode`).",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The cell",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeatmapCell"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed` (`to`: `before_start`, `out_of_range`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such resource, or `nodeId` not visible",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/workload/conflicts": {
       "get": {
         "tags": [
@@ -21811,6 +21904,118 @@
           },
           "404": {
             "description": "`projectId`: no such project visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workload/heatmap": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "The workload heatmap",
+        "description": "Internal members: the active resources (of a team, or with load on a node's tickets), by name, and for each day, week or month of the range their load, its provisional part, its part on tickets the member does not see, and their capacity before and after absences.",
+        "operationId": "getWorkloadHeatmap",
+        "parameters": [
+          {
+            "name": "scale",
+            "in": "query",
+            "description": "`week` when left out.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/HeatmapScale"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "First day: its period is the first column.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Last day: its period is the last column.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "teamId",
+            "in": "query",
+            "description": "Only the members of this team.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "nodeId",
+            "in": "query",
+            "description": "Only those with load in the range on tickets of this project, or of\nthe projects below this program or portfolio. Their whole load shows.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "includeProvisional",
+            "in": "query",
+            "description": "Provisional assignments count in the load (`true` when left out).",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The heatmap",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Heatmap"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed` (`to`: `before_start`, `out_of_range` beyond 92 days, 53 weeks or 24 months), or `invalid_query`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`nodeId`: no such node visible to the member",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -25712,6 +25917,347 @@
             "example": "Platform"
           }
         }
+      },
+      "Heatmap": {
+        "type": "object",
+        "description": "The heatmap: columns, then a row per resource, by name.",
+        "required": [
+          "scale",
+          "periods",
+          "rows",
+          "tolerancePercent",
+          "includeProvisional"
+        ],
+        "properties": {
+          "includeProvisional": {
+            "type": "boolean",
+            "description": "Provisional assignments count in `load`."
+          },
+          "periods": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HeatmapPeriod"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HeatmapRow"
+            }
+          },
+          "scale": {
+            "$ref": "#/components/schemas/HeatmapScale"
+          },
+          "tolerancePercent": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The tenant's overload tolerance: a cell overloads beyond the\ncapacity plus this share.",
+            "example": 0,
+            "minimum": 0
+          }
+        }
+      },
+      "HeatmapCell": {
+        "type": "object",
+        "description": "A cell: a resource over a period, and what makes up its load.",
+        "required": [
+          "resource",
+          "from",
+          "to",
+          "capacityMinutes",
+          "scheduledMinutes",
+          "loadMinutes",
+          "provisionalMinutes",
+          "items",
+          "forced"
+        ],
+        "properties": {
+          "capacityMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "forced": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HeatmapForcedOverload"
+            },
+            "description": "On tickets the member sees, newest first."
+          },
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HeatmapCellItem"
+            },
+            "description": "The most loaded first; busy time last."
+          },
+          "loadMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "All of it, provisional included.",
+            "minimum": 0
+          },
+          "provisionalMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "resource": {
+            "$ref": "#/components/schemas/HeatmapResource"
+          },
+          "scheduledMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "HeatmapCellIssue": {
+        "type": "object",
+        "description": "The ticket of a cell item.",
+        "required": [
+          "id",
+          "key",
+          "summary",
+          "project"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string",
+            "example": "PLAT-142"
+          },
+          "project": {
+            "$ref": "#/components/schemas/AssignedProject"
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      },
+      "HeatmapCellItem": {
+        "type": "object",
+        "description": "What a cell's load is made of: a ticket, or busy time on tickets the\nmember does not see.",
+        "required": [
+          "issue",
+          "minutes",
+          "provisional",
+          "segments",
+          "inNode"
+        ],
+        "properties": {
+          "inNode": {
+            "type": "boolean",
+            "description": "A ticket of the node the heatmap is filtered on."
+          },
+          "issue": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/HeatmapCellIssue",
+                "description": "`null` for busy time."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "minutes": {
+            "type": "integer",
+            "format": "int32",
+            "example": 1050,
+            "minimum": 0
+          },
+          "provisional": {
+            "type": "boolean"
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HeatmapCellSegment"
+            },
+            "description": "The segments meeting the period: how the ticket loads it."
+          }
+        }
+      },
+      "HeatmapCellSegment": {
+        "type": "object",
+        "description": "The mode and value of a segment behind a cell.",
+        "required": [
+          "mode",
+          "value"
+        ],
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/AssignmentMode"
+          },
+          "value": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "HeatmapForcedOverload": {
+        "type": "object",
+        "description": "An overload forced on the resource in the period.",
+        "required": [
+          "issueKey",
+          "actorName",
+          "createdAt"
+        ],
+        "properties": {
+          "actorName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`null`: no longer a member."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "issueKey": {
+            "type": "string",
+            "example": "PLAT-148"
+          }
+        }
+      },
+      "HeatmapPeriod": {
+        "type": "object",
+        "description": "A column.",
+        "required": [
+          "start",
+          "end"
+        ],
+        "properties": {
+          "end": {
+            "type": "string",
+            "format": "date",
+            "description": "Last day, included.",
+            "example": "2026-11-22"
+          },
+          "start": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-11-16"
+          }
+        }
+      },
+      "HeatmapResource": {
+        "type": "object",
+        "description": "A resource of the heatmap.",
+        "required": [
+          "id",
+          "kind",
+          "displayName",
+          "linked"
+        ],
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "example": "Camille Martin"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "jobTitle": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ResourceKind"
+          },
+          "linked": {
+            "type": "boolean",
+            "description": "Linked to a member's account."
+          }
+        }
+      },
+      "HeatmapRow": {
+        "type": "object",
+        "description": "A row: one resource, one value per column of each series, in minutes.",
+        "required": [
+          "resource",
+          "load",
+          "provisional",
+          "hidden",
+          "capacity",
+          "scheduled"
+        ],
+        "properties": {
+          "capacity": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "description": "Capacity, absences deducted."
+          },
+          "hidden": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "description": "Its part on tickets the member does not see: busy time."
+          },
+          "load": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "description": "Load planned, provisional included unless left out."
+          },
+          "provisional": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "description": "Its provisional part (0 when provisional assignments are left out)."
+          },
+          "resource": {
+            "$ref": "#/components/schemas/HeatmapResource"
+          },
+          "scheduled": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "description": "Capacity before absences: more than `capacity` when absences take\nsome, 0 on a period with no working day."
+          }
+        }
+      },
+      "HeatmapScale": {
+        "type": "string",
+        "description": "The span of a column.",
+        "enum": [
+          "day",
+          "week",
+          "month"
+        ]
       },
       "HierarchyNode": {
         "type": "object",
