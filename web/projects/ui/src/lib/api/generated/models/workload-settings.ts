@@ -14,6 +14,11 @@ export interface WorkloadSettings {
   defaultCapacityMinutes: Array<number>;
 
   /**
+   * Provisional assignments count in the overload check (L08-US03).
+   */
+  overloadCountsProvisional: boolean;
+
+  /**
    * `blocking`: an overloading assignment is refused; `warning`: it is
    * accepted and flagged (L08).
    */

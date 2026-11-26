@@ -9,6 +9,8 @@ export type { DisableMfa$Params as DisableMfa$Params } from './fn/account/disabl
 export { disableMfa as disableMfa } from './fn/account/disable-mfa';
 export type { SetUpMfa$Params as SetUpMfa$Params } from './fn/account/set-up-mfa';
 export { setUpMfa as setUpMfa } from './fn/account/set-up-mfa';
+export type { PreviewAssignment$Params as PreviewAssignment$Params } from './fn/issues/preview-assignment';
+export { previewAssignment as previewAssignment } from './fn/issues/preview-assignment';
 export type { GetAssignment$Params as GetAssignment$Params } from './fn/issues/get-assignment';
 export { getAssignment as getAssignment } from './fn/issues/get-assignment';
 export type { UpdateAssignment$Params as UpdateAssignment$Params } from './fn/issues/update-assignment';
@@ -191,6 +193,8 @@ export type { AddTeamMember$Params as AddTeamMember$Params } from './fn/resource
 export { addTeamMember as addTeamMember } from './fn/resources/add-team-member';
 export type { RemoveTeamMember$Params as RemoveTeamMember$Params } from './fn/resources/remove-team-member';
 export { removeTeamMember as removeTeamMember } from './fn/resources/remove-team-member';
+export type { ListForcedOverloads$Params as ListForcedOverloads$Params } from './fn/resources/list-forced-overloads';
+export { listForcedOverloads as listForcedOverloads } from './fn/resources/list-forced-overloads';
 export type { GetWorkloadSettings$Params as GetWorkloadSettings$Params } from './fn/resources/get-workload-settings';
 export { getWorkloadSettings as getWorkloadSettings } from './fn/resources/get-workload-settings';
 export type { UpdateWorkloadSettings$Params as UpdateWorkloadSettings$Params } from './fn/resources/update-workload-settings';

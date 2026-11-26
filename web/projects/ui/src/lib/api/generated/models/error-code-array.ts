@@ -60,6 +60,7 @@ export const ERROR_CODE: ErrorCode[] = [
   'assignment.resource_taken',
   'assignment.segments_overlap',
   'assignment.outside_issue_dates',
+  'workload.overload',
   'calendar.tenant',
   'calendar.name_taken',
   'board.name_taken',

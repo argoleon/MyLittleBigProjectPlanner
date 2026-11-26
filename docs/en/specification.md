@@ -297,7 +297,7 @@ An assignment links a resource to a ticket. It is made of one or more successive
 - One assignment per resource and ticket: a new period is a new segment.
 - A working day is a day the calendar and the capacity give the resource hours, absences aside. Total effort is spread evenly over these days, the minutes left over going to the first days; hours falling on an absence stay there and become a conflict.
 - Several resources can be assigned to the same ticket, each with its own independent assignment. The ticket's load is the sum of its assignments.
-- An assignment can be marked "provisional": hatched in the heatmap, and counted or not in the overload check depending on a tenant setting.
+- An assignment can be marked "provisional": hatched in the heatmap, and counted or not in the overload check depending on a tenant setting (counted by default).
 - To book someone on a project without a specific task, create a "Project activity" ticket.
 - After the MVP: distribution profiles (front-loaded, custom), MS Project modes (fixed units, fixed work, fixed duration), skills, resource request workflow.
 
@@ -310,8 +310,10 @@ An assignment links a resource to a ticket. It is made of one or more successive
 **Overload check**
 
 - When an assignment is written, the system compares the resulting load of each day with capacity plus tolerance.
-- Blocking mode (default): the assignment is rejected and the message lists the conflicting days. Roles with the "Force overload" permission can override it; this is logged.
+- A day is in conflict when the assignment adds load to it and the total exceeds the capacity (absences deducted) plus the tolerance: changing an assignment never trips over a day it does not add to.
+- Blocking mode (default): the assignment is rejected and the message lists the conflicting days. Roles with the "Force overload" permission can override it; this is logged in the ticket's history and in a list of forced overloads that the tenant admin reads.
 - Warning mode (tenant choice): the assignment is accepted and the overload is flagged.
+- While an assignment is being edited, a preview shows, for each day, the existing load, the assignment's and the total, overloaded days highlighted.
 - The check runs in a transaction, with a lock per resource: two project managers assigning the same person at the same time cannot exceed that person's capacity between them.
 - The future load of recurring tasks is included (section 9).
 

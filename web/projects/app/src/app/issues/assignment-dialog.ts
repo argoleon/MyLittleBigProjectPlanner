@@ -1,5 +1,5 @@
 import { Component, computed, inject, resource, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormArray, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,15 +10,20 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { TranslocoPipe } from '@jsverse/transloco';
-import { debounceTime, filter, map } from 'rxjs';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { debounceTime, filter, map, merge } from 'rxjs';
 import {
   Api,
   Assignment,
   AssignmentMode,
+  AssignmentPreviewFields,
   AssignmentSegmentFields,
+  DurationPipe,
   Issue,
   LocalDatePipe,
+  LocaleService,
+  OverloadDay,
   Resource,
   createIssueAssignment,
   errorTranslationKey,
@@ -27,11 +32,13 @@ import {
   isApiProblem,
   listResources,
   parseHours,
+  previewAssignment,
   toLocalDate,
   updateAssignment,
 } from 'ui';
 
 import { hoursText } from '../capacity/week-hours';
+import { overloadDaysText } from './overload-text';
 
 /** Modes of a segment, in the order offered. */
 export const MODES: readonly AssignmentMode[] = ['percentage', 'hours_per_day', 'total_effort'];
@@ -41,6 +48,9 @@ export const MAX_EFFORT_MINUTES = 9_999 * 60;
 
 /** Most segments of an assignment. */
 export const MAX_SEGMENTS = 50;
+
+/** Quiet time after a change before the load preview is asked for, in ms. */
+export const PREVIEW_DEBOUNCE_MS = 400;
 
 /** What the dialog edits: a new assignment on a ticket, or this one. */
 export interface AssignmentDialogData {
@@ -105,13 +115,25 @@ export function controlOf(field: string, segments: FormArray<SegmentForm>, resou
 /** Resources offered at once in the search. */
 const CHOICES = 20;
 
+/** Why the last save was refused for overload. */
+interface Refusal {
+  readonly days: readonly OverloadDay[];
+  readonly forceable: boolean;
+}
+
 /**
  * Assigns a resource to a ticket, or changes an assignment (mockup 21,
  * L08-US01): the resource, found by name or job title, then one or more
  * segments, each with its period, its mode (percentage of the day's
  * capacity, hours per working day, or total effort over the period) and
  * its value. Field errors of the API land on the fields they name.
- * Closes with the saved assignment.
+ *
+ * While it is edited, a preview (L08-US03) shows for each day the
+ * resource's existing load, this assignment's and the total, overloaded
+ * days marked in text and color. An overload in blocking mode keeps it
+ * from being saved, unless the member may force it ("Force overload",
+ * traced); in warning mode it is saved and the days flagged. Closes with
+ * the saved assignment.
  */
 @Component({
   selector: 'app-assignment-dialog',
@@ -125,8 +147,10 @@ const CHOICES = 20;
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    MatSlideToggleModule,
     ReactiveFormsModule,
     TranslocoPipe,
+    DurationPipe,
   ],
   providers: [provideNativeDateAdapter()],
   templateUrl: './assignment-dialog.html',
@@ -136,11 +160,14 @@ export class AssignmentDialog {
   protected readonly data = inject<AssignmentDialogData>(MAT_DIALOG_DATA);
   private readonly api = inject(Api);
   private readonly dialogRef = inject<MatDialogRef<AssignmentDialog, Assignment>>(MatDialogRef);
+  private readonly locale = inject(LocaleService);
+  private readonly transloco = inject(TranslocoService);
   private readonly idempotencyKey = crypto.randomUUID();
   protected readonly modes = MODES;
   protected readonly maxSegments = MAX_SEGMENTS;
 
   protected readonly resourceInput = new FormControl<string | Resource>('', { nonNullable: true });
+  protected readonly provisional = new FormControl(this.data.assignment?.provisional ?? false, { nonNullable: true });
   protected readonly segments = new FormArray<SegmentForm>(
     this.data.assignment
       ? this.data.assignment.segments.map((s) => segmentForm(s.start, s.end, s.mode, valueText(s.mode, s.value)))
@@ -163,6 +190,41 @@ export class AssignmentDialog {
   protected readonly chosen = signal<Resource | null>(null);
   protected readonly saving = signal(false);
   protected readonly errorKey = signal<string | null>(null);
+  /** The last save refused for overload; any change clears it. */
+  protected readonly refusal = signal<Refusal | null>(null);
+
+  /** What the preview is asked for, once the form is quiet; none while incomplete. */
+  private readonly previewFields = toSignal(
+    merge(this.segments.valueChanges, this.provisional.valueChanges, toObservable(this.chosen)).pipe(
+      debounceTime(PREVIEW_DEBOUNCE_MS),
+      map(() => this.previewBody()),
+    ),
+    { initialValue: this.previewBody(), equal: (a, b) => JSON.stringify(a) === JSON.stringify(b) },
+  );
+  protected readonly preview = resource({
+    params: () => this.previewFields() ?? undefined,
+    loader: ({ params }) => this.api.invoke(previewAssignment, { body: params }),
+  });
+  /** The name of the resource previewed. */
+  protected readonly resourceName = computed(() => this.data.assignment?.resource.displayName ?? this.chosen()?.displayName ?? '');
+  /** The overload to tell: the save refused, else the preview's. */
+  protected readonly overload = computed<{ days: readonly OverloadDay[]; blocked: boolean; forceable: boolean } | null>(() => {
+    const refusal = this.refusal();
+    if (refusal) return { days: refusal.days, blocked: true, forceable: refusal.forceable };
+    if (!this.preview.hasValue()) return null;
+    const preview = this.preview.value();
+    return preview.overloads.length > 0 ? { days: preview.overloads, blocked: preview.blocked, forceable: preview.forceable } : null;
+  });
+  protected readonly overloadText = computed(() => {
+    const overload = this.overload();
+    if (!overload) return '';
+    return overloadDaysText(overload.days, this.locale.formattingLocale(), (key, params) => this.transloco.translate(key, params));
+  });
+
+  constructor() {
+    // A change answers the refusal: the preview tells again.
+    merge(this.segments.valueChanges, this.provisional.valueChanges).subscribe(() => this.refusal.set(null));
+  }
 
   protected readonly nameOf = (value: string | Resource | null): string =>
     typeof value === 'string' ? value : (value?.displayName ?? '');
@@ -175,6 +237,7 @@ export class AssignmentDialog {
   /** Typing again drops the resource chosen. */
   protected typed(): void {
     this.chosen.set(null);
+    this.refusal.set(null);
   }
 
   /** A new segment, from the day after the last one, in its mode. */
@@ -195,7 +258,27 @@ export class AssignmentDialog {
   /** A plain form: its submission stays in the page. */
   protected submit(event: Event): void {
     event.preventDefault();
-    void this.save();
+    void this.save(false);
+  }
+
+  /** Saves beyond capacity: members with "Force overload" only; traced. */
+  protected force(): void {
+    void this.save(true);
+  }
+
+  /** The preview's request; `null` while the resource or a segment is missing. */
+  private previewBody(): AssignmentPreviewFields | null {
+    const existing = this.data.assignment;
+    const resourceId = existing?.resource.id ?? this.chosen()?.id;
+    const segments = this.body();
+    if (!resourceId || !segments || segments.length === 0) return null;
+    return {
+      issueId: this.data.issue.id,
+      resourceId,
+      assignmentId: existing?.id,
+      provisional: this.provisional.value,
+      segments,
+    };
   }
 
   private body(): AssignmentSegmentFields[] | null {
@@ -209,7 +292,7 @@ export class AssignmentDialog {
     return segments;
   }
 
-  private async save(): Promise<void> {
+  private async save(force: boolean): Promise<void> {
     const existing = this.data.assignment;
     const chosen = this.chosen();
     if (!existing && !chosen) {
@@ -223,17 +306,19 @@ export class AssignmentDialog {
     }
     this.saving.set(true);
     this.errorKey.set(null);
+    this.refusal.set(null);
+    const provisional = this.provisional.value;
     try {
       const saved = existing
         ? await this.api.invoke(updateAssignment, {
             id: existing.id,
             'If-Match': `"${existing.version}"`,
-            body: { provisional: existing.provisional, segments },
+            body: { provisional, segments, force },
           })
         : await this.api.invoke(createIssueAssignment, {
             idOrKey: this.data.issue.id,
             'Idempotency-Key': this.idempotencyKey,
-            body: { resourceId: chosen?.id ?? '', segments },
+            body: { resourceId: chosen?.id ?? '', provisional, segments, force },
           });
       this.dialogRef.close(saved);
     } catch (error) {
@@ -246,6 +331,11 @@ export class AssignmentDialog {
   /** Puts field errors on their fields; the key to show above the form, if any. */
   private placeErrors(error: unknown): string | null {
     if (!isApiProblem(error)) return errorTranslationKey('unknown');
+    // Only an overload refusal carries its days.
+    if (error.overload) {
+      this.refusal.set({ days: error.overload.days, forceable: error.overload.forceable });
+      return null;
+    }
     let left = error.fieldErrors.length === 0 || error.code !== 'validation_failed';
     for (const fieldError of error.fieldErrors) {
       const control = controlOf(fieldError.field, this.segments, this.resourceInput);

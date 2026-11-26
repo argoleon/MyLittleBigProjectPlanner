@@ -3,6 +3,7 @@
 
 import { AssignedResource } from '../models/assigned-resource';
 import { AssignmentSegment } from '../models/assignment-segment';
+import { OverloadDay } from '../models/overload-day';
 
 /**
  * An assignment of a resource to a ticket.
@@ -20,6 +21,13 @@ export interface Assignment {
    * Some segments fall outside the ticket's dates, changed since.
    */
   outsideIssueDates: boolean;
+
+  /**
+   * The days it loads while its resource is over capacity plus
+   * tolerance (provisional assignments counted by the tenant's
+   * setting), by date: empty when none.
+   */
+  overloads: Array<OverloadDay>;
   provisional: boolean;
   resource: AssignedResource;
   segments: Array<AssignmentSegment>;

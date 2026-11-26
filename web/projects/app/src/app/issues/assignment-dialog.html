@@ -110,11 +110,93 @@
       <mat-icon aria-hidden="true">add</mat-icon>
       {{ 'assignments.dialog.addSegment' | transloco }}
     </button>
+
+    <div class="provisional">
+      <mat-slide-toggle [formControl]="provisional">{{ 'assignments.dialog.provisional' | transloco }}</mat-slide-toggle>
+      <p class="provisional-hint">{{ 'assignments.dialog.provisionalHint' | transloco }}</p>
+    </div>
+
+    @if (preview.hasValue() && preview.value().days.length > 0) {
+      <section class="preview" aria-labelledby="preview-title">
+        <h3 class="preview-title" id="preview-title">{{ 'assignments.preview.title' | transloco: { name: resourceName() } }}</h3>
+        <div class="preview-scroll" tabindex="0" role="region" aria-labelledby="preview-title">
+          <table class="preview-table">
+            <caption class="cdk-visually-hidden">{{ 'assignments.preview.caption' | transloco: { name: resourceName() } }}</caption>
+            <thead>
+              <tr>
+                <td></td>
+                @for (day of preview.value().days; track day.date) {
+                  <th scope="col">{{ day.date | localDate: { weekday: 'short', day: 'numeric' } }}</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">{{ 'assignments.preview.capacity' | transloco }}</th>
+                @for (day of preview.value().days; track day.date) {
+                  <td class="capacity">{{ day.capacityMinutes | duration }}</td>
+                }
+              </tr>
+              <tr>
+                <th scope="row">{{ 'assignments.preview.existing' | transloco }}</th>
+                @for (day of preview.value().days; track day.date) {
+                  <td class="existing">{{ day.existingMinutes | duration }}</td>
+                }
+              </tr>
+              <tr>
+                <th scope="row">{{ 'assignments.preview.assignment' | transloco }}</th>
+                @for (day of preview.value().days; track day.date) {
+                  <td class="assignment">{{ day.assignmentMinutes | duration }}</td>
+                }
+              </tr>
+              <tr>
+                <th scope="row">{{ 'assignments.preview.total' | transloco }}</th>
+                @for (day of preview.value().days; track day.date) {
+                  <td class="total" [class.over]="day.overloaded">
+                    {{ day.totalMinutes | duration }}
+                    @if (day.overloaded) {
+                      <mat-icon class="over-icon" aria-hidden="true">warning</mat-icon>
+                      <span class="cdk-visually-hidden">{{ 'assignments.preview.over' | transloco }}</span>
+                    }
+                  </td>
+                }
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+
+    @if (overload(); as overload) {
+      <p
+        class="message overload"
+        [class.error]="overload.blocked"
+        [class.warning]="!overload.blocked"
+        [attr.role]="overload.blocked ? 'alert' : 'status'"
+      >
+        <mat-icon aria-hidden="true">{{ overload.blocked ? 'block' : 'warning' }}</mat-icon>
+        <span>
+          {{
+            (overload.blocked ? (overload.forceable ? 'assignments.overload.blockedForceable' : 'assignments.overload.blocked') : 'assignments.overload.warning')
+              | transloco: { days: overloadText() }
+          }}
+        </span>
+      </p>
+    }
   </mat-dialog-content>
   <mat-dialog-actions align="end">
     <button matButton type="button" mat-dialog-close>{{ 'dialog.cancel' | transloco }}</button>
-    <button matButton="filled" type="submit" [disabled]="saving()">
+    @if (overload()?.blocked && overload()?.forceable) {
+      <button matButton="outlined" type="button" class="force" [disabled]="saving()" (click)="force()">
+        <mat-icon aria-hidden="true">warning</mat-icon>
+        {{ 'assignments.overload.force' | transloco }}
+      </button>
+    }
+    <button matButton="filled" type="submit" [disabled]="saving() || overload()?.blocked">
       {{ (data.assignment ? 'assignments.dialog.save' : 'assignments.dialog.create') | transloco }}
     </button>
   </mat-dialog-actions>
+  @if (overload()?.blocked && overload()?.forceable) {
+    <p class="force-note">{{ 'assignments.overload.forceNote' | transloco }}</p>
+  }
 </form>

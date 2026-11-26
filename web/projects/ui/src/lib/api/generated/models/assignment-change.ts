@@ -7,6 +7,11 @@ import { AssignmentSegmentFields } from '../models/assignment-segment-fields';
  * The new state of an assignment: its resource stays.
  */
 export interface AssignmentChange {
+
+  /**
+   * As for a creation.
+   */
+  force?: boolean;
   provisional?: boolean;
   segments: Array<AssignmentSegmentFields>;
 }

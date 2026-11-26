@@ -73,6 +73,18 @@ describe('ApiProblem.fromHttpError', () => {
     });
   });
 
+  it('keeps the days of an overload and whether it may be forced', () => {
+    const overload = {
+      days: [{ date: '2026-11-18', plannedMinutes: 480, availableMinutes: 420, limitMinutes: 420 }],
+      forceable: true,
+    };
+    const problem = ApiProblem.fromHttpError(httpError(409, { status: 409, code: 'workload.overload', overload }));
+    expect(problem.code).toBe('workload.overload');
+    expect(problem.overload).toEqual(overload);
+    expect(ApiProblem.fromHttpError(httpError(409, { status: 409, code: 'workload.overload', overload: { days: 3 } })).overload).toBeNull();
+    expect(ApiProblem.fromHttpError(httpError(404, { status: 404, code: 'not_found' })).overload).toBeNull();
+  });
+
   it('keeps where and why a query of the language was refused', () => {
     const query = { reason: 'syntax', position: 9, length: 0, expected: ['a value'], found: null };
     const problem = ApiProblem.fromHttpError(

@@ -297,7 +297,7 @@ Une affectation relie une ressource à un ticket. Elle se compose d'un ou plusie
 - Une seule affectation par ressource et par ticket : une nouvelle période est un nouveau segment.
 - Un jour ouvré est un jour où le calendrier et la capacité donnent des heures à la ressource, absences mises à part. L'effort total est réparti à parts égales sur ces jours, les minutes restantes allant aux premiers jours ; les heures qui tombent sur une absence y restent et deviennent un conflit.
 - Plusieurs ressources peuvent être affectées au même ticket, chacune avec son affectation indépendante. La charge du ticket est la somme des affectations.
-- Une affectation peut être marquée « provisoire » : hachurée dans la heatmap, et prise en compte ou non dans le contrôle de dépassement selon un réglage du tenant.
+- Une affectation peut être marquée « provisoire » : hachurée dans la heatmap, et prise en compte ou non dans le contrôle de dépassement selon un réglage du tenant (prise en compte par défaut).
 - Pour réserver quelqu'un sur un projet sans tâche précise, on crée un ticket « Activité projet ».
 - Après le MVP : profils de répartition (concentrée au début, personnalisée), modes MS Project (unités fixes, travail fixe, durée fixe), compétences, circuit de demande de ressource.
 
@@ -310,8 +310,10 @@ Une affectation relie une ressource à un ticket. Elle se compose d'un ou plusie
 **Contrôle de dépassement**
 
 - À l'écriture d'une affectation, le système compare la charge résultante de chaque jour à la capacité plus la tolérance.
-- Mode bloquant (par défaut) : l'affectation est refusée et le message liste les jours en conflit. Les rôles disposant de la permission « Forcer la surcharge » peuvent passer outre ; c'est tracé.
+- Un jour est en conflit quand l'affectation y ajoute de la charge et que le total dépasse la capacité (absences déduites) plus la tolérance : modifier une affectation ne bute jamais sur un jour auquel elle n'ajoute rien.
+- Mode bloquant (par défaut) : l'affectation est refusée et le message liste les jours en conflit. Les rôles disposant de la permission « Forcer la surcharge » peuvent passer outre ; c'est tracé dans l'historique du ticket et dans une liste des surcharges forcées que l'admin du tenant consulte.
 - Mode alerte (au choix du tenant) : l'affectation est acceptée et la surcharge signalée.
+- Pendant la saisie d'une affectation, un aperçu montre pour chaque jour la charge existante, celle de l'affectation et le total, les jours en surcharge mis en évidence.
 - La vérification se fait en transaction, avec un verrou par ressource : deux chefs de projet qui affectent la même personne au même moment ne peuvent pas dépasser sa capacité à eux deux.
 - La charge future des tâches récurrentes est incluse (section 9).
 

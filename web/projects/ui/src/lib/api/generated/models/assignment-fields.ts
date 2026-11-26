@@ -9,6 +9,13 @@ import { AssignmentSegmentFields } from '../models/assignment-segment-fields';
 export interface AssignmentFields {
 
   /**
+   * Writes it even beyond the resource's capacity plus tolerance, in
+   * blocking mode: members with `force_overload` on its project (tenant
+   * admins always). Traced.
+   */
+  force?: boolean;
+
+  /**
    * `false` by default.
    */
   provisional?: boolean;

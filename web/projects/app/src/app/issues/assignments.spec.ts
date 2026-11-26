@@ -4,17 +4,20 @@
  * the HTTP level and the real translations (integration): the blocks per
  * resource and the planned total, assigning with several segments in
  * different modes, changing and removing, API errors on their fields,
- * read-only members, accessibility.
+ * read-only members, accessibility; and the overload check (L08-US03):
+ * the load preview with overloaded days marked, debounced, the blocking
+ * message and the "Force overload" button for those allowed, warning
+ * mode, and the overload flagged on the ticket.
  */
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { FormArray, FormControl, FormGroup } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
-import { Assignment, AssignmentList, AssignmentMode, Issue, Resource, provideApi, provideMaterialDefaults } from 'ui';
+import { Assignment, AssignmentList, AssignmentMode, AssignmentPreview, Issue, Resource, provideApi, provideMaterialDefaults } from 'ui';
 import { axeViolations, provideI18nTesting } from 'ui/testing';
 
-import { controlOf, segmentValue, valueText } from './assignment-dialog';
+import { PREVIEW_DEBOUNCE_MS, controlOf, segmentValue, valueText } from './assignment-dialog';
 import { IssueAssignments, planSpan } from './issue-assignments';
 
 const ISSUE = {
@@ -36,6 +39,7 @@ const NATHAN: Assignment = {
   ],
   loadMinutes: 1830,
   outsideIssueDates: false,
+  overloads: [],
   version: 2,
 };
 const DEV: Assignment = {
@@ -46,10 +50,37 @@ const DEV: Assignment = {
   segments: [{ start: '2026-11-16', end: '2026-11-27', mode: 'total_effort', value: 2400, loadMinutes: 2400, workingDays: 10 }],
   loadMinutes: 2400,
   outsideIssueDates: true,
+  overloads: [],
   version: 1,
 };
 const CAMILLE = { id: 'r3', kind: 'person', displayName: 'Camille Martin', jobTitle: 'Back-end developer', active: true, teams: [] } as unknown as Resource;
 const PATH = `/api/v1/issues/${ISSUE.id}/assignments`;
+const PREVIEW = '/api/v1/assignments/preview';
+const OVER = { date: '2026-11-18', plannedMinutes: 480, availableMinutes: 420, limitMinutes: 420 };
+
+/** A preview of Nathan's week: 4 h existing on the 18th, 4 h/day added. */
+function preview(overrides: Partial<AssignmentPreview> = {}): AssignmentPreview {
+  const day = (date: string, existing: number, overloaded = false) => ({
+    date,
+    capacityMinutes: 420,
+    limitMinutes: 420,
+    existingMinutes: existing,
+    assignmentMinutes: 240,
+    totalMinutes: existing + 240,
+    overloaded,
+  });
+  return {
+    days: [day('2026-11-16', 120), day('2026-11-17', 180), day('2026-11-18', 240, true), day('2026-11-19', 180), day('2026-11-20', 150)],
+    overloads: [OVER],
+    mode: 'blocking',
+    tolerancePercent: 0,
+    countsProvisional: true,
+    blocked: true,
+    forceable: true,
+    ...overrides,
+  };
+}
+const QUIET = preview({ overloads: [], blocked: false, days: [] });
 
 function problem(status: number, code: string, errors: object[] = []) {
   return { type: `urn:mlbpp:problem:${code}`, title: code, status, code, errors };
@@ -137,7 +168,16 @@ describe('IssueAssignments', () => {
       await new Promise((resolve) => setTimeout(resolve, 200));
       await settle();
     };
-    return { http, settle, reply, root, text, click, type, dialog, closed };
+    /** Answers every preview asked for once the form is quiet. */
+    const previews = async (body: AssignmentPreview = QUIET): Promise<TestRequest[]> => {
+      await new Promise((resolve) => setTimeout(resolve, PREVIEW_DEBOUNCE_MS + 100));
+      await settle();
+      const requests = http.match((r) => r.urlWithParams === PREVIEW && r.method === 'POST');
+      requests.forEach((request) => request.flush(body));
+      await settle();
+      return requests;
+    };
+    return { http, settle, reply, root, text, click, type, dialog, closed, previews };
   }
 
   const isList = (url: string, method: string) => url === PATH && method === 'GET';
@@ -189,7 +229,7 @@ describe('IssueAssignments', () => {
   });
 
   it('assigns a resource with two segments in different modes', async () => {
-    const { host, root, click, type, reply, dialog, closed, settle, text } = await open({ items: [], loadMinutes: 0, canAssign: true });
+    const { host, root, click, type, reply, dialog, closed, settle, text, previews } = await open({ items: [], loadMinutes: 0, canAssign: true });
     await click(host.querySelector('#assignment-add'));
     await reply((url) => url.startsWith('/api/v1/resources?') && url.includes('active=true'), { items: [CAMILLE], nextCursor: null, canManage: false });
     expect(text(dialog().querySelector('h2'))).toBe('Assign a resource');
@@ -230,12 +270,16 @@ describe('IssueAssignments', () => {
     expect(segments().length).toBe(3);
     await click(segments()[2].querySelector('button.remove'));
     expect(segments().length).toBe(2);
+    const asked = await previews();
+    expect(asked.at(-1)?.request.body).toMatchObject({ issueId: ISSUE.id, resourceId: CAMILLE.id, provisional: false });
     expect(await axeViolations(dialog())).toEqual([]);
 
     await click(dialog().querySelector('button[type="submit"]'));
     const created = await reply((url, method) => url === PATH && method === 'POST', { ...NATHAN, resource: { ...NATHAN.resource, displayName: 'Camille Martin' } }, 201);
     expect(created.request.body).toEqual({
       resourceId: CAMILLE.id,
+      provisional: false,
+      force: false,
       segments: [
         { start: '2026-11-16', end: '2026-11-20', mode: 'hours_per_day', value: 240 },
         { start: '2026-11-21', end: '2026-11-27', mode: 'percentage', value: 30 },
@@ -248,8 +292,9 @@ describe('IssueAssignments', () => {
   });
 
   it('shows API errors on the fields they name, and above the form', async () => {
-    const { host, http, click, type, reply, dialog, text, closed } = await open({ items: [NATHAN], loadMinutes: 1830, canAssign: true });
+    const { host, http, click, type, reply, dialog, text, closed, previews } = await open({ items: [NATHAN], loadMinutes: 1830, canAssign: true });
     await click(host.querySelector(`#assignment-edit-${NATHAN.id}`));
+    await previews();
     expect(text(dialog().querySelector('h2'))).toBe('Edit the assignment');
     expect(text(dialog().querySelector('.resource-fixed span:last-child'))).toBe('Nathan Roux');
     const values = () => Array.from(dialog().querySelectorAll<HTMLInputElement>('input[formcontrolname="value"]')).map((input) => input.value);
@@ -269,6 +314,7 @@ describe('IssueAssignments', () => {
     await click(dialog().querySelector('button[type="submit"]'));
     expect(http.match(() => true).length).toBe(0);
     await type(dialog().querySelectorAll('li.segment')[1].querySelector('input[matEndDate]') ?? null, '11/26/2026');
+    await previews();
 
     await click(dialog().querySelector('button[type="submit"]'));
     await reply(
@@ -293,6 +339,122 @@ describe('IssueAssignments', () => {
     expect(deleted.request.headers.get('If-Match')).toBe('"2"');
     await reply(isList, { items: [], loadMinutes: 0, canAssign: true });
     expect(text(host.querySelector('[role="status"]'))).toBe('Nathan Roux was removed from the ticket.');
+  });
+
+  it('previews the load per day, blocks an overload and forces it for those allowed', async () => {
+    const { host, click, reply, dialog, text, closed, previews, settle } = await open({ items: [NATHAN], loadMinutes: 1830, canAssign: true });
+    await click(host.querySelector(`#assignment-edit-${NATHAN.id}`));
+    const [asked] = await previews(preview());
+    expect(asked.request.body).toEqual({
+      issueId: ISSUE.id,
+      resourceId: NATHAN.resource.id,
+      assignmentId: NATHAN.id,
+      provisional: false,
+      segments: [
+        { start: '2026-11-16', end: '2026-11-20', mode: 'hours_per_day', value: 240 },
+        { start: '2026-11-23', end: '2026-11-27', mode: 'percentage', value: 30 },
+      ],
+    });
+    expect(text(dialog().querySelector('#preview-title'))).toBe('Load preview of Nathan Roux');
+    const rows = Array.from(dialog().querySelectorAll('.preview-table tbody tr'));
+    expect(rows.map((row) => text(row.querySelector('th')))).toEqual(['Capacity', 'Existing load', 'This assignment', 'Total']);
+    const totals = Array.from(rows[3].querySelectorAll('td'));
+    expect(totals.map((cell) => text(cell))).toEqual(['6 h', '7 h', '8 h warningoverloaded', '7 h', '6 h 30 min']);
+    // Overloaded in text, not only in color.
+    expect(totals.map((cell) => cell.classList.contains('over'))).toEqual([false, false, true, false, false]);
+    expect(text(totals[2].querySelector('.cdk-visually-hidden'))).toBe('overloaded');
+    expect(text(dialog().querySelector('.message.overload[role="alert"]'))).toBe(
+      'block Capacity exceeded — Wed, Nov 18: 8 h planned for 7 h available (+1 h). The assignment cannot be saved as it is: reduce its segments or force the overload.',
+    );
+    const save = dialog().querySelector<HTMLButtonElement>('button[type="submit"]');
+    expect(save?.disabled).toBe(true);
+    expect(text(dialog().querySelector('.force-note'))).toContain('reserved for roles with this permission');
+    expect(await axeViolations(dialog())).toEqual([]);
+
+    await click(dialog().querySelector('button.force'));
+    const forced = await reply((url, method) => url === `/api/v1/assignments/${NATHAN.id}` && method === 'PUT', { ...NATHAN, overloads: [OVER], version: 3 });
+    expect(forced.request.body).toMatchObject({ force: true, provisional: false });
+    await closed();
+    await reply(isList, { items: [{ ...NATHAN, overloads: [OVER] }], loadMinutes: 1830, canAssign: true });
+    await settle();
+  });
+
+  it('refuses an overload without the permission to force it, until a segment changes', async () => {
+    const { host, http, click, type, reply, dialog, text, closed, previews } = await open({ items: [NATHAN], loadMinutes: 1830, canAssign: true });
+    await click(host.querySelector(`#assignment-edit-${NATHAN.id}`));
+    await previews();
+    // The provisional switch is sent with the assignment.
+    await click(dialog().querySelector('mat-slide-toggle button'));
+    const [asked] = await previews();
+    expect(asked.request.body).toMatchObject({ provisional: true });
+
+    await click(dialog().querySelector('button[type="submit"]'));
+    const refused = await reply(
+      (url, method) => url === `/api/v1/assignments/${NATHAN.id}` && method === 'PUT',
+      { ...problem(409, 'workload.overload'), overload: { days: [OVER, { ...OVER, date: '2026-11-19' }], forceable: false } },
+      409,
+    );
+    expect(refused.request.body).toMatchObject({ provisional: true, force: false });
+    expect(text(dialog().querySelector('[role="alert"]'))).toBe(
+      'block Capacity exceeded — Wed, Nov 18: 8 h planned for 7 h available (+1 h); Thu, Nov 19: 8 h planned for 7 h available (+1 h). The assignment cannot be saved as it is: reduce its segments.',
+    );
+    expect(dialog().querySelector('button.force')).toBeNull();
+    expect(dialog().querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
+
+    // A change answers it: saving is possible again once previewed.
+    await type(dialog().querySelector('li.segment input[formcontrolname="value"]'), '3');
+    expect(dialog().querySelector('[role="alert"]')).toBeNull();
+    expect(dialog().querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(false);
+    await previews();
+    expect(http.match(() => true).length).toBe(0);
+    TestBed.inject(MatDialog).closeAll();
+    await closed();
+  });
+
+  it('asks for the preview once the form is quiet', async () => {
+    const { host, http, click, type, dialog, closed, previews, settle } = await open({ items: [NATHAN], loadMinutes: 1830, canAssign: true });
+    await click(host.querySelector(`#assignment-edit-${NATHAN.id}`));
+    await previews();
+    const value = () => dialog().querySelector('li.segment input[formcontrolname="value"]');
+    await type(value(), '5');
+    await type(value(), '6');
+    await type(value(), '7');
+    await new Promise((resolve) => setTimeout(resolve, PREVIEW_DEBOUNCE_MS / 2));
+    await settle();
+    expect(http.match((r) => r.urlWithParams === PREVIEW).length).toBe(0);
+    const asked = await previews();
+    expect(asked.length).toBe(1);
+    expect(asked[0].request.body).toMatchObject({ segments: [{ value: 420 }, { value: 30 }] });
+    // An incomplete segment asks for nothing.
+    await type(value(), '');
+    expect((await previews()).length).toBe(0);
+    TestBed.inject(MatDialog).closeAll();
+    await closed();
+  });
+
+  it('warns of an overload in warning mode and saves it', async () => {
+    const { host, click, reply, dialog, text, closed, previews } = await open({ items: [NATHAN], loadMinutes: 1830, canAssign: true });
+    await click(host.querySelector(`#assignment-edit-${NATHAN.id}`));
+    await previews(preview({ mode: 'warning', blocked: false }));
+    expect(text(dialog().querySelector('.message.overload[role="status"]'))).toBe(
+      'warning Capacity exceeded — Wed, Nov 18: 8 h planned for 7 h available (+1 h). The assignment will be saved and the overload flagged.',
+    );
+    expect(dialog().querySelector('button.force')).toBeNull();
+    expect(dialog().querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(false);
+    expect(await axeViolations(dialog())).toEqual([]);
+    await click(dialog().querySelector('button[type="submit"]'));
+    await reply((url, method) => url === `/api/v1/assignments/${NATHAN.id}` && method === 'PUT', { ...NATHAN, overloads: [OVER], version: 3 });
+    await closed();
+    await reply(isList, { items: [{ ...NATHAN, overloads: [OVER] }], loadMinutes: 1830, canAssign: true });
+  });
+
+  it('flags an assignment taking part in an overload', async () => {
+    const { host, text, fixture } = await open({ items: [{ ...NATHAN, overloads: [OVER] }, DEV], loadMinutes: 4230, canAssign: true });
+    const blocks = Array.from(host.querySelectorAll('article.assignment'));
+    expect(Array.from(blocks[0].querySelectorAll('.secondary .tag')).map((tag) => text(tag))).toEqual(['warning Overload']);
+    expect(text(blocks[0].querySelector('[role="note"]'))).toBe('warning Resource overloaded: Wed, Nov 18: 8 h planned for 7 h available (+1 h).');
+    expect(blocks[1].querySelector('.tag.overload')).toBeNull();
+    expect(await axeViolations(fixture.nativeElement)).toEqual([]);
   });
 
   it('reads the assignments again when the ticket changed elsewhere', async () => {
