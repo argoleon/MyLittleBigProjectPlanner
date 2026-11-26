@@ -1470,7 +1470,8 @@
         "assigned": "Ticket assigned",
         "status_changed": "Status changed",
         "commented": "Comment added",
-        "mentioned": "Someone mentioned"
+        "mentioned": "Someone mentioned",
+        "absence_conflict": "Absence conflict"
       },
       "kinds": {
         "reporter": "Reporter",
@@ -1773,7 +1774,8 @@
       "commented": "Comments",
       "created": "New tickets",
       "export_ready": "Exports",
-      "bulk_done": "Bulk actions"
+      "bulk_done": "Bulk actions",
+      "absence_conflict": "Absence conflicts"
     },
     "empty": "No notification.",
     "more": "Show older notifications",
@@ -1792,7 +1794,8 @@
       "commented": "{{ actor }} commented on {{ key }}",
       "created": "{{ actor }} created {{ key }}",
       "export_ready": "Your export {{ file }} is ready",
-      "bulk_done": "Your bulk {{ action }} is done"
+      "bulk_done": "Your bulk {{ action }} is done",
+      "absence_conflict": "{{ hours }} to reschedule on {{ key }} (absence of {{ resource }})"
     },
     "preferences": {
       "title": "Notification preferences",
@@ -1809,7 +1812,8 @@
         "commented": "New comment",
         "mentioned": "Mentions",
         "export_ready": "Export ready",
-        "bulk_done": "Bulk action done"
+        "bulk_done": "Bulk action done",
+        "absence_conflict": "Absence conflict"
       },
       "digest": "Daily email digest",
       "digestHint": "Each working day at 8:00, instead of one email per event."
@@ -2535,7 +2539,8 @@
       "commentHint": "Only the person and the managers read it.",
       "create": "Declare",
       "save": "Save"
-    }
+    },
+    "conflict": "{{ hours }} in conflict"
   },
   "assignments": {
     "title": "Assignments",
@@ -2629,6 +2634,10 @@
       "assignment": "This assignment",
       "total": "Total",
       "over": "overloaded"
+    },
+    "conflicts": {
+      "title": "{{ hours }} to reschedule: the resource is away",
+      "day": "{{ date }}: {{ hours }}"
     }
   }
 }

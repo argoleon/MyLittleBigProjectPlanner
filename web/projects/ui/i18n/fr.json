@@ -1470,7 +1470,8 @@
         "assigned": "Ticket assigné",
         "status_changed": "Statut modifié",
         "commented": "Commentaire ajouté",
-        "mentioned": "Mention d’une personne"
+        "mentioned": "Mention d’une personne",
+        "absence_conflict": "Conflit d’absence"
       },
       "kinds": {
         "reporter": "Rapporteur",
@@ -1773,7 +1774,8 @@
       "commented": "Commentaires",
       "created": "Nouveaux tickets",
       "export_ready": "Exports",
-      "bulk_done": "Actions groupées"
+      "bulk_done": "Actions groupées",
+      "absence_conflict": "Conflits d’absence"
     },
     "empty": "Aucune notification.",
     "more": "Voir les notifications plus anciennes",
@@ -1792,7 +1794,8 @@
       "commented": "{{ actor }} a commenté {{ key }}",
       "created": "{{ actor }} a créé {{ key }}",
       "export_ready": "Votre export {{ file }} est prêt",
-      "bulk_done": "Votre {{ action }} groupé est terminé"
+      "bulk_done": "Votre {{ action }} groupé est terminé",
+      "absence_conflict": "{{ hours }} à replanifier sur {{ key }} (absence de {{ resource }})"
     },
     "preferences": {
       "title": "Préférences de notification",
@@ -1809,7 +1812,8 @@
         "commented": "Nouveau commentaire",
         "mentioned": "Mentions",
         "export_ready": "Export prêt",
-        "bulk_done": "Action groupée terminée"
+        "bulk_done": "Action groupée terminée",
+        "absence_conflict": "Conflit d’absence"
       },
       "digest": "Résumé quotidien par email",
       "digestHint": "Chaque jour ouvré à 8 h, au lieu d’un email par événement."
@@ -2535,7 +2539,8 @@
       "commentHint": "Seuls la personne et les gestionnaires le lisent.",
       "create": "Déclarer",
       "save": "Enregistrer"
-    }
+    },
+    "conflict": "{{ hours }} en conflit"
   },
   "assignments": {
     "title": "Affectations",
@@ -2629,6 +2634,10 @@
       "assignment": "Cette affectation",
       "total": "Total",
       "over": "en surcharge"
+    },
+    "conflicts": {
+      "title": "{{ hours }} à replanifier : la ressource est absente",
+      "day": "{{ date }} : {{ hours }}"
     }
   }
 }

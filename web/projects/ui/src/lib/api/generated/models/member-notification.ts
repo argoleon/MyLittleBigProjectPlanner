@@ -3,6 +3,7 @@
 
 import { MemberNotificationEvent } from '../models/member-notification-event';
 import { NotificationBulk } from '../models/notification-bulk';
+import { NotificationConflict } from '../models/notification-conflict';
 import { NotificationExport } from '../models/notification-export';
 import { NotificationTenant } from '../models/notification-tenant';
 
@@ -16,6 +17,7 @@ export interface MemberNotification {
    */
   actorName: (string | null);
   bulk: (NotificationBulk | null);
+  conflict: (NotificationConflict | null);
   createdAt: string;
   event: MemberNotificationEvent;
 

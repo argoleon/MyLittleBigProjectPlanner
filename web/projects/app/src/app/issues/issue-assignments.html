@@ -89,6 +89,24 @@
             {{ 'assignments.overload.flagged' | transloco: { days: overloadText(assignment) } }}
           </p>
         }
+        @if (assignment.conflicts.length > 0) {
+          <div class="message warning conflicts" role="note">
+            <mat-icon aria-hidden="true">event_busy</mat-icon>
+            <div>
+              <p class="conflicts-title">{{ 'assignments.conflicts.title' | transloco: { hours: (conflictMinutes(assignment) | duration) } }}</p>
+              <ul class="conflicts-days">
+                @for (conflict of assignment.conflicts; track conflict.date) {
+                  <li>
+                    {{
+                      'assignments.conflicts.day'
+                        | transloco: { date: (conflict.date | localDate: { weekday: 'short', day: 'numeric', month: 'short' }), hours: (conflict.minutes | duration) }
+                    }}
+                  </li>
+                }
+              </ul>
+            </div>
+          </div>
+        }
         @if (assignment.outsideIssueDates) {
           <p class="message warning" role="note">
             <mat-icon aria-hidden="true">event_busy</mat-icon>

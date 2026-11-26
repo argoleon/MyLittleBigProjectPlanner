@@ -99,6 +99,11 @@ export class IssueAssignments {
     }
   }
 
+  /** The minutes of an assignment an absence leaves no room for. */
+  protected conflictMinutes(assignment: Assignment): number {
+    return assignment.conflicts.reduce((sum, conflict) => sum + conflict.minutes, 0);
+  }
+
   /** The days an assignment overloads, in words. */
   protected overloadText(assignment: Assignment): string {
     return overloadDaysText(assignment.overloads, this.locale.formattingLocale(), (key, params) => this.transloco.translate(key, params));

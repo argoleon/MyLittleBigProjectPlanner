@@ -123,3 +123,18 @@
     text-align: end;
   }
 }
+
+// Hours an absence leaves no room for, to reschedule (L08-US04).
+.message.conflicts {
+  align-items: flex-start;
+}
+
+.conflicts-title {
+  margin: 0;
+}
+
+.conflicts-days {
+  margin: var(--app-space-1) 0 0;
+  padding-inline-start: var(--app-space-4);
+  font: var(--mat-sys-body-small);
+}

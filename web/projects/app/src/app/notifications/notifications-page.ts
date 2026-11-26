@@ -10,6 +10,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
 import {
   Api,
   AuthService,
+  DurationPipe,
   ErrorState,
   InstantPipe,
   MemberNotification,
@@ -30,7 +31,16 @@ import { NotificationCenter } from './notification-center';
 export const NOTIFICATION_PAGE = 30;
 
 /** The kinds of notification a member filters on. */
-export const KINDS: readonly MemberNotificationEvent[] = ['mentioned', 'assigned', 'status_changed', 'commented', 'created', 'export_ready', 'bulk_done'];
+export const KINDS: readonly MemberNotificationEvent[] = [
+  'mentioned',
+  'assigned',
+  'status_changed',
+  'commented',
+  'created',
+  'absence_conflict',
+  'export_ready',
+  'bulk_done',
+];
 
 const ICONS: Record<MemberNotificationEvent, string> = {
   mentioned: 'alternate_email',
@@ -38,6 +48,7 @@ const ICONS: Record<MemberNotificationEvent, string> = {
   status_changed: 'swap_horiz',
   commented: 'chat',
   created: 'add_task',
+  absence_conflict: 'event_busy',
   export_ready: 'download',
   bulk_done: 'library_add_check',
 };
@@ -62,6 +73,7 @@ export function periodOf(createdAt: string, now: Date): 'today' | 'week' | 'earl
 @Component({
   selector: 'app-notifications-page',
   imports: [
+    DurationPipe,
     ErrorState,
     InstantPipe,
     MatButtonModule,
