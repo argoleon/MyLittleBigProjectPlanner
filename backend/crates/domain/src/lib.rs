@@ -36,6 +36,7 @@ pub mod migration;
 pub mod notifications;
 pub mod notify;
 pub mod oidc;
+pub mod overload;
 pub mod permissions;
 pub mod query;
 pub mod reference_item;

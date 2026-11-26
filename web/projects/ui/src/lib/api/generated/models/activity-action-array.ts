@@ -16,5 +16,6 @@ export const ACTIVITY_ACTION: ActivityAction[] = [
   'comment_updated',
   'comment_deleted',
   'attachment_added',
-  'attachment_removed'
+  'attachment_removed',
+  'overload_forced'
 ];

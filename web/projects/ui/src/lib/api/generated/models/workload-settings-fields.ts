@@ -13,6 +13,12 @@ export interface WorkloadSettingsFields {
   defaultCapacityMinutes: Array<number>;
 
   /**
+   * Whether provisional assignments count in the overload check; left
+   * out: unchanged.
+   */
+  overloadCountsProvisional?: (boolean | null);
+
+  /**
    * `blocking` or `warning`.
    */
   overloadMode: string;

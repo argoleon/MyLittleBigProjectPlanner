@@ -51,6 +51,12 @@
               @if (assignment.provisional) {
                 <span class="tag provisional">{{ 'assignments.provisional' | transloco }}</span>
               }
+              @if (assignment.overloads.length > 0) {
+                <span class="tag overload">
+                  <mat-icon aria-hidden="true">warning</mat-icon>
+                  {{ 'assignments.overload.badge' | transloco }}
+                </span>
+              }
               @if (assignment.resource.jobTitle) {
                 <span>{{ assignment.resource.jobTitle }}</span>
               }
@@ -77,6 +83,12 @@
             </button>
           }
         </div>
+        @if (assignment.overloads.length > 0) {
+          <p class="message warning" role="note">
+            <mat-icon aria-hidden="true">warning</mat-icon>
+            {{ 'assignments.overload.flagged' | transloco: { days: overloadText(assignment) } }}
+          </p>
+        }
         @if (assignment.outsideIssueDates) {
           <p class="message warning" role="note">
             <mat-icon aria-hidden="true">event_busy</mat-icon>

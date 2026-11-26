@@ -67,6 +67,8 @@ pub enum ActionView {
     CommentDeleted,
     AttachmentAdded,
     AttachmentRemoved,
+    /// An assignment forced beyond capacity: `new` names the resource.
+    OverloadForced,
 }
 
 impl From<Action> for ActionView {
@@ -82,6 +84,7 @@ impl From<Action> for ActionView {
             Action::CommentDeleted => Self::CommentDeleted,
             Action::AttachmentAdded => Self::AttachmentAdded,
             Action::AttachmentRemoved => Self::AttachmentRemoved,
+            Action::OverloadForced => Self::OverloadForced,
         }
     }
 }
@@ -376,6 +379,14 @@ impl Reading<'_> {
                 };
                 old = name(entry.old.as_ref());
                 new = name(entry.new.as_ref());
+            }
+            Action::OverloadForced => {
+                new = entry
+                    .new
+                    .as_ref()
+                    .and_then(|j| j.get("resourceName"))
+                    .and_then(plain)
+                    .map(|name| ValueView::text(ValueKind::Text, Some(name)));
             }
             Action::Created | Action::CommentCreated | Action::CommentUpdated | Action::CommentDeleted => {}
         }

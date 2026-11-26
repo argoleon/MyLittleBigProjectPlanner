@@ -166,7 +166,8 @@
       "members": "Members",
       "groups": "Groups",
       "roles": "Roles",
-      "configurations": "Project configurations"
+      "configurations": "Project configurations",
+      "forcedOverloads": "Forced overloads"
     },
     "auth": {
       "policyTitle": "Authentication policy",
@@ -353,7 +354,27 @@
         "warning": "The assignment is accepted, and the overloaded days are flagged."
       },
       "save": "Save",
-      "saved": "The workload settings were saved."
+      "saved": "The workload settings were saved.",
+      "countsProvisional": "Count provisional assignments in the overload check",
+      "countsProvisionalHint": "Off, a provisional assignment never blocks anyone and is never blocked."
+    },
+    "forcedOverloads": {
+      "intro": "Every assignment saved beyond a resource’s capacity plus tolerance by a member allowed to force overloads. It is also in the ticket’s history.",
+      "loading": "Loading forced overloads…",
+      "empty": "No forced overload",
+      "emptyHint": "Assignments forced beyond capacity will show here.",
+      "caption": "Forced overloads, newest first",
+      "columns": {
+        "when": "Date",
+        "issue": "Ticket",
+        "resource": "Resource",
+        "actor": "Forced by",
+        "days": "Overloaded days"
+      },
+      "issueGone": "Deleted ticket",
+      "resourceGone": "Deleted resource",
+      "actorGone": "A former member",
+      "more": "Show more"
     }
   },
   "errors": {
@@ -591,6 +612,9 @@
       "resource_taken": "This resource is already assigned to the ticket: add a segment to its assignment.",
       "segments_overlap": "Two segments of the assignment take a same day.",
       "outside_issue_dates": "Segments must stay within the ticket’s dates."
+    },
+    "workload": {
+      "overload": "The assignment exceeds the resource’s capacity."
     }
   },
   "dialog": {
@@ -1698,7 +1722,8 @@
         "no": "no"
       },
       "attached": "attached {{ name }}",
-      "fileRemoved": "removed the file {{ name }}"
+      "fileRemoved": "removed the file {{ name }}",
+      "overloadForced": "forced an overload of {{ name }}"
     },
     "attachments": {
       "title": "Attachments ({{ count }})",
@@ -2579,7 +2604,31 @@
         "percentage": "A percentage from 1 to 100.",
         "hours_per_day": "Hours of a day, such as 4, 3.5 or 3:30.",
         "total_effort": "Hours, such as 40 or 12:30."
-      }
+      },
+      "provisional": "Provisional assignment",
+      "provisionalHint": "Hatched in the heatmap; counted in the overload check or not, by the organization’s setting."
+    },
+    "overload": {
+      "badge": "Overload",
+      "flagged": "Resource overloaded: {{ days }}.",
+      "day": "{{ date }}: {{ planned }} planned for {{ available }} available (+{{ over }})",
+      "moreOne": "and 1 more day",
+      "moreMany": "and {{ count }} more days",
+      "separator": "; ",
+      "blocked": "Capacity exceeded — {{ days }}. The assignment cannot be saved as it is: reduce its segments.",
+      "blockedForceable": "Capacity exceeded — {{ days }}. The assignment cannot be saved as it is: reduce its segments or force the overload.",
+      "warning": "Capacity exceeded — {{ days }}. The assignment will be saved and the overload flagged.",
+      "force": "Force overload",
+      "forceNote": "“Force overload” is reserved for roles with this permission. The action is traced."
+    },
+    "preview": {
+      "title": "Load preview of {{ name }}",
+      "caption": "Daily load of {{ name }}: capacity, existing load, this assignment and total",
+      "capacity": "Capacity",
+      "existing": "Existing load",
+      "assignment": "This assignment",
+      "total": "Total",
+      "over": "overloaded"
     }
   }
 }

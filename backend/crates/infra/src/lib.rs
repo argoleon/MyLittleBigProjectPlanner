@@ -51,6 +51,7 @@ pub mod notifications;
 pub mod oidc;
 pub mod oidc_providers;
 pub mod outbox;
+pub mod overload;
 pub mod pagination;
 pub mod permissions;
 pub mod platform;

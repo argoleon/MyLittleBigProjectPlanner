@@ -258,6 +258,11 @@ export const routes: Routes = [
             loadComponent: () => import('./admin/workload-settings').then((m) => m.WorkloadSettingsTab),
           },
           {
+            path: 'forced-overloads',
+            title: 'admin.tabs.forcedOverloads',
+            loadComponent: () => import('./admin/forced-overloads-tab').then((m) => m.ForcedOverloadsTab),
+          },
+          {
             path: 'configurations',
             title: 'admin.tabs.configurations',
             loadComponent: () => import('./configuration/configurations-tab').then((m) => m.ConfigurationsTab),

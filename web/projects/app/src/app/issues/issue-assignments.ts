@@ -25,6 +25,7 @@ import {
 } from 'ui';
 
 import { AssignmentDialog, AssignmentDialogData } from './assignment-dialog';
+import { overloadDaysText } from './overload-text';
 
 /** The first and last days of `assignments`; null when none has a segment. */
 export function planSpan(assignments: readonly Assignment[]): { from: string; to: string } | null {
@@ -40,6 +41,8 @@ export function planSpan(assignments: readonly Assignment[]): { from: string; to
  * resource with its segments — period, mode, value and load — and the
  * ticket's planned total, the sum of its assignments. Those who assign
  * resources add, change and remove them through the dialog of mockup 21.
+ * An assignment taking part in an overload of its resource is flagged with
+ * its days (L08-US03).
  */
 @Component({
   selector: 'app-issue-assignments',
@@ -94,6 +97,11 @@ export class IssueAssignments {
           days: formatNumber(segment.workingDays, locale),
         });
     }
+  }
+
+  /** The days an assignment overloads, in words. */
+  protected overloadText(assignment: Assignment): string {
+    return overloadDaysText(assignment.overloads, this.locale.formattingLocale(), (key, params) => this.transloco.translate(key, params));
   }
 
   protected add(): void {

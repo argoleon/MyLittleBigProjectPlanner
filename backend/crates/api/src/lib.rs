@@ -21,6 +21,7 @@ pub mod etag;
 pub mod events;
 pub mod extract;
 pub mod fields;
+pub mod forced_overloads;
 pub mod gdpr;
 pub mod grants;
 pub mod groups;

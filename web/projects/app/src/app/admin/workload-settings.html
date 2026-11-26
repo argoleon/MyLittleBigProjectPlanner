@@ -36,6 +36,10 @@
         </mat-button-toggle-group>
         <p class="choice-hint">{{ 'admin.workload.modeHints.' + form.controls.mode.value | transloco }}</p>
       </div>
+      <div class="choice">
+        <mat-slide-toggle formControlName="countsProvisional">{{ 'admin.workload.countsProvisional' | transloco }}</mat-slide-toggle>
+        <p class="choice-hint">{{ 'admin.workload.countsProvisionalHint' | transloco }}</p>
+      </div>
     </section>
 
     <div class="actions">

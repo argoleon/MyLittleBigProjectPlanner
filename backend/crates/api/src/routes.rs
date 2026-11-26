@@ -29,6 +29,7 @@ use crate::config_fields;
 use crate::configs;
 use crate::day_capacity;
 use crate::events;
+use crate::forced_overloads;
 use crate::gdpr;
 use crate::grants;
 use crate::groups;
@@ -240,6 +241,7 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(calendars::resource_days))
         .routes(routes!(day_capacity::list))
         .routes(routes!(assignments::list, assignments::create))
+        .routes(routes!(assignments::preview))
         .routes(routes!(
             assignments::read,
             assignments::update,
@@ -248,6 +250,7 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(capacity::list, capacity::create))
         .routes(routes!(capacity::update, capacity::delete))
         .routes(routes!(capacity::settings, capacity::update_settings))
+        .routes(routes!(forced_overloads::list))
         .routes(routes!(teams::list, teams::create))
         .routes(routes!(teams::read, teams::update, teams::delete))
         .routes(routes!(teams::add_member, teams::remove_member))

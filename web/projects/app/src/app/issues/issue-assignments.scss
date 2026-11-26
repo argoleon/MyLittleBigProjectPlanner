@@ -71,6 +71,20 @@
   font: var(--mat-sys-label-small);
 }
 
+.tag.overload {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--app-space-1);
+  background: var(--app-load-over);
+  color: var(--app-load-over-on);
+
+  mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+}
+
 .load {
   font: var(--mat-sys-title-medium);
 }

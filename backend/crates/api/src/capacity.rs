@@ -144,6 +144,9 @@ pub struct SettingsView {
     /// accepted and flagged (L08).
     #[schema(example = "blocking")]
     overload_mode: String,
+    /// Provisional assignments count in the overload check (L08-US03).
+    #[schema(example = true)]
+    overload_counts_provisional: bool,
     /// Version of the tenant, for `If-Match`.
     #[schema(example = 3)]
     version: i64,
@@ -155,6 +158,7 @@ impl From<WorkloadSettings> for SettingsView {
             default_capacity_minutes: settings.default_capacity.0.to_vec(),
             overload_tolerance_percent: settings.overload_tolerance_percent,
             overload_mode: settings.overload_mode,
+            overload_counts_provisional: settings.overload_counts_provisional,
             version: settings.version,
         }
     }
@@ -166,7 +170,8 @@ impl From<WorkloadSettings> for SettingsView {
 #[schema(as = WorkloadSettingsFields, example = json!({
     "defaultCapacityMinutes": [420, 420, 420, 420, 420, 0, 0],
     "overloadTolerancePercent": 10,
-    "overloadMode": "blocking"
+    "overloadMode": "blocking",
+    "overloadCountsProvisional": true
 }))]
 pub struct SettingsBody {
     /// Seven values, Monday first, from 0 to 1,440 minutes.
@@ -175,6 +180,10 @@ pub struct SettingsBody {
     overload_tolerance_percent: i64,
     /// `blocking` or `warning`.
     overload_mode: String,
+    /// Whether provisional assignments count in the overload check; left
+    /// out: unchanged.
+    #[serde(default)]
+    overload_counts_provisional: Option<bool>,
 }
 
 fn conflict_problem(conflict: WriteConflict) -> Problem {
@@ -399,7 +408,8 @@ pub async fn delete(
     tag = TAG,
     operation_id = "getWorkloadSettings",
     summary = "Read the workload settings of the tenant",
-    description = "Tenant admins only: default capacity, overload tolerance and mode.",
+    description = "Tenant admins only: default capacity, overload tolerance and mode, and whether \
+                   provisional assignments count in the overload check.",
     responses(
         (status = 200, description = "The settings", body = SettingsView, headers(
             ("ETag" = String, description = "Version of the tenant"),
@@ -458,6 +468,12 @@ pub async fn update_settings(
         overload_mode: body.overload_mode.clone(),
     };
     validate_workload_settings(&input).map_err(Problem::validation)?;
+    let counts_provisional = match body.overload_counts_provisional {
+        Some(counts) => counts,
+        None => repo::workload_settings(&mut tx)
+            .await?
+            .is_none_or(|current| current.overload_counts_provisional),
+    };
     let minutes: Vec<i32> = input
         .default_capacity_minutes
         .iter()
@@ -469,6 +485,7 @@ pub async fn update_settings(
         })?,
         overload_tolerance_percent: i16::try_from(input.overload_tolerance_percent).unwrap_or(0),
         overload_mode: input.overload_mode,
+        overload_counts_provisional: counts_provisional,
         version: 0,
     };
     let actor = tx.account_id();
@@ -476,7 +493,8 @@ pub async fn update_settings(
         .await?
         .ok_or_else(|| Problem::new(ErrorCode::PreconditionFailed))?;
     tracing::info!(target: "audit", actor = %actor, tolerance = updated.overload_tolerance_percent,
-                   mode = %updated.overload_mode, "workload settings changed");
+                   mode = %updated.overload_mode, provisional = updated.overload_counts_provisional,
+                   "workload settings changed");
     let version = updated.version;
     tx.commit().await?;
     Ok(with_etag(

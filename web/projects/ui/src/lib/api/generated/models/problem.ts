@@ -3,6 +3,7 @@
 
 import { ErrorCode } from '../models/error-code';
 import { FieldError } from '../models/field-error';
+import { OverloadProblem } from '../models/overload-problem';
 import { QueryProblem } from '../models/query-problem';
 
 /**
@@ -20,6 +21,7 @@ export interface Problem {
    * Invalid fields, for `validation_failed` and similar codes.
    */
   errors?: Array<FieldError>;
+  overload?: (OverloadProblem | null);
   query?: (QueryProblem | null);
 
   /**

@@ -1,0 +1,50 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT overload_tolerance_percent, overload_mode, overload_counts_provisional\n        FROM tenant WHERE id = app_current_tenant()\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "overload_tolerance_percent",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "tenant",
+            "name": "overload_tolerance_percent"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "overload_mode",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "tenant",
+            "name": "overload_mode"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "overload_counts_provisional",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "tenant",
+            "name": "overload_counts_provisional"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "f783d3de62a471a9bb706354d97dc48deec957792ef2e5a173a901d9c0323603"
+}

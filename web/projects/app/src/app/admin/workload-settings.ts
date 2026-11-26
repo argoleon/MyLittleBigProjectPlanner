@@ -5,6 +5,7 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { TranslocoPipe } from '@jsverse/transloco';
 import {
   Api,
@@ -25,7 +26,9 @@ export type OverloadMode = 'blocking' | 'warning';
 /**
  * "Workload" tab of the administration (specification §8, L07-US03): the
  * organization's default capacity, which applies to every resource without
- * a capacity period, its overload tolerance and mode. Tenant admins only.
+ * a capacity period, its overload tolerance and mode, and whether
+ * provisional assignments count in the overload check (L08-US03). Tenant
+ * admins only.
  */
 @Component({
   selector: 'app-workload-settings',
@@ -36,6 +39,7 @@ export type OverloadMode = 'blocking' | 'warning';
     MatFormFieldModule,
     MatInputModule,
     MatProgressBarModule,
+    MatSlideToggleModule,
     ReactiveFormsModule,
     TranslocoPipe,
     WeekHours,
@@ -51,6 +55,7 @@ export class WorkloadSettingsTab {
     week: weekHoursForm([420, 420, 420, 420, 420, 0, 0]),
     tolerance: new FormControl(0, { nonNullable: true, validators: [Validators.required, Validators.min(0), Validators.max(100)] }),
     mode: new FormControl<OverloadMode>('blocking', { nonNullable: true }),
+    countsProvisional: new FormControl(true, { nonNullable: true }),
   });
   /** The version the form was filled from. */
   private readonly version = signal(0);
@@ -68,6 +73,7 @@ export class WorkloadSettingsTab {
     this.form.controls.week.controls.forEach((control, day) => control.setValue(hoursText(settings.defaultCapacityMinutes[day] ?? 0)));
     this.form.controls.tolerance.setValue(settings.overloadTolerancePercent);
     this.form.controls.mode.setValue(settings.overloadMode as OverloadMode);
+    this.form.controls.countsProvisional.setValue(settings.overloadCountsProvisional);
     this.form.markAsPristine();
   }
 
@@ -78,7 +84,7 @@ export class WorkloadSettingsTab {
     }
     this.saving.set(true);
     this.notice.set(null);
-    const { tolerance, mode } = this.form.getRawValue();
+    const { tolerance, mode, countsProvisional } = this.form.getRawValue();
     try {
       const saved = await this.api.invoke(updateWorkloadSettings, {
         'If-Match': `"${this.version()}"`,
@@ -86,6 +92,7 @@ export class WorkloadSettingsTab {
           defaultCapacityMinutes: weekHoursValue(this.form.controls.week),
           overloadTolerancePercent: tolerance,
           overloadMode: mode,
+          overloadCountsProvisional: countsProvisional,
         },
       });
       this.fill(saved);

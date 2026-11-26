@@ -14,6 +14,12 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
 - **Daily load** (#225)
   - The load of each resource is kept day by day: one row per assignment and day, recomputed in the same transaction when an assignment is written, and by the worker within seconds when a capacity period, a calendar exception or holiday set, an absence or the default capacity changes (job `workload.recompute`, for the resources and days concerned). Deleting an assignment, or its ticket, removes its rows. The overload check and the heatmap read it.
   - The table is partitioned by month; the worker creates the partitions of the year before and the two years after, and a write creates the ones it needs.
+- **Overload check** (#229)
+  - Every assignment write compares the resulting load of each day with the resource's capacity (public holidays, closures and absences deducted) plus the organization's tolerance, under a lock per resource: two project managers assigning the same person at the same time never exceed their capacity together. A day is in conflict when the assignment adds load to it.
+  - Blocking mode (the default) refuses the assignment with `workload.overload`, listing each day with the hours planned and available. Members with **Force overload** on the project (organization admins always) force it with `force: true`; the write is traced in the ticket's history (**forced an overload of…**) and in **Administration › Forced overloads**. Warning mode saves it; either way the ticket's **Assignments** card flags the resources taking part in an overload, with their days.
+  - The **Assign a resource** dialog previews, for each day, the existing load, this assignment's and the total, overloaded days marked in text and color, with the blocking message and the **Force overload** button for those allowed. It now also has the **Provisional assignment** switch.
+  - A new workload setting tells whether provisional assignments count in the check (they do by default).
+  - `POST /api/v1/assignments/preview`, `GET /api/v1/tenant/forced-overloads`; assignments carry their `overloads`; the workload settings gain `overloadCountsProvisional`.
 
 ## [0.7.0] - 2026-11-24
 

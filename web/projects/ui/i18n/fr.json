@@ -166,7 +166,8 @@
       "members": "Membres",
       "groups": "Groupes",
       "roles": "Rôles",
-      "configurations": "Configurations de projet"
+      "configurations": "Configurations de projet",
+      "forcedOverloads": "Surcharges forcées"
     },
     "auth": {
       "policyTitle": "Politique d’authentification",
@@ -353,7 +354,27 @@
         "warning": "L’affectation est acceptée et les jours en surcharge sont signalés."
       },
       "save": "Enregistrer",
-      "saved": "Les réglages de charge ont été enregistrés."
+      "saved": "Les réglages de charge ont été enregistrés.",
+      "countsProvisional": "Compter les affectations provisoires dans le contrôle de surcharge",
+      "countsProvisionalHint": "Désactivé, une affectation provisoire ne bloque personne et n’est jamais bloquée."
+    },
+    "forcedOverloads": {
+      "intro": "Chaque affectation enregistrée au-delà de la capacité et de la tolérance d’une ressource par un membre autorisé à forcer la surcharge. Elle figure aussi dans l’historique du ticket.",
+      "loading": "Chargement des surcharges forcées…",
+      "empty": "Aucune surcharge forcée",
+      "emptyHint": "Les affectations forcées au-delà de la capacité apparaîtront ici.",
+      "caption": "Surcharges forcées, des plus récentes aux plus anciennes",
+      "columns": {
+        "when": "Date",
+        "issue": "Ticket",
+        "resource": "Ressource",
+        "actor": "Forcée par",
+        "days": "Jours en surcharge"
+      },
+      "issueGone": "Ticket supprimé",
+      "resourceGone": "Ressource supprimée",
+      "actorGone": "Un ancien membre",
+      "more": "Afficher plus"
     }
   },
   "errors": {
@@ -591,6 +612,9 @@
       "resource_taken": "Cette ressource est déjà affectée au ticket : ajoutez un segment à son affectation.",
       "segments_overlap": "Deux segments de l’affectation prennent un même jour.",
       "outside_issue_dates": "Les segments doivent rester dans les dates du ticket."
+    },
+    "workload": {
+      "overload": "L’affectation dépasse la capacité de la ressource."
     }
   },
   "dialog": {
@@ -1698,7 +1722,8 @@
         "no": "non"
       },
       "attached": "a joint {{ name }}",
-      "fileRemoved": "a retiré le fichier {{ name }}"
+      "fileRemoved": "a retiré le fichier {{ name }}",
+      "overloadForced": "a forcé une surcharge de {{ name }}"
     },
     "attachments": {
       "title": "Pièces jointes ({{ count }})",
@@ -2579,7 +2604,31 @@
         "percentage": "Un pourcentage de 1 à 100.",
         "hours_per_day": "Des heures d’une journée, comme 4, 3,5 ou 3:30.",
         "total_effort": "Des heures, comme 40 ou 12:30."
-      }
+      },
+      "provisional": "Affectation provisoire",
+      "provisionalHint": "Hachurée dans la heatmap ; selon le réglage de l’organisation, comptée ou non dans le contrôle de surcharge."
+    },
+    "overload": {
+      "badge": "Surcharge",
+      "flagged": "Ressource en surcharge : {{ days }}.",
+      "day": "{{ date }} : {{ planned }} planifiées pour {{ available }} disponibles (+{{ over }})",
+      "moreOne": "et 1 autre jour",
+      "moreMany": "et {{ count }} autres jours",
+      "separator": " ; ",
+      "blocked": "Capacité dépassée — {{ days }}. L’affectation ne peut pas être enregistrée telle quelle : réduisez ses segments.",
+      "blockedForceable": "Capacité dépassée — {{ days }}. L’affectation ne peut pas être enregistrée telle quelle : réduisez ses segments ou forcez la surcharge.",
+      "warning": "Capacité dépassée — {{ days }}. L’affectation sera enregistrée et la surcharge signalée.",
+      "force": "Forcer la surcharge",
+      "forceNote": "« Forcer la surcharge » est réservé aux rôles disposant de cette permission. L’action est tracée."
+    },
+    "preview": {
+      "title": "Aperçu de la charge de {{ name }}",
+      "caption": "Charge de {{ name }} par jour : capacité, charge existante, cette affectation et total",
+      "capacity": "Capacité",
+      "existing": "Charge existante",
+      "assignment": "Cette affectation",
+      "total": "Total",
+      "over": "en surcharge"
     }
   }
 }
