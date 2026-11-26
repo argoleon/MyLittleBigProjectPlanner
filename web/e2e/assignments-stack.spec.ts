@@ -106,7 +106,7 @@ test('an overloading assignment is shown day by day, refused, then forced and tr
   await card.getByRole('button', { name: 'Add a resource' }).click();
   const dialog = page.getByRole('dialog');
   await opened(dialog);
-  await dialog.getByLabel('Resource').fill(name);
+  await dialog.getByRole('combobox', { name: 'Resource' }).fill(name);
   await page.getByRole('option', { name }).click();
   await dialog.getByLabel('Start of period 1').fill(typed(wednesday));
   await dialog.getByLabel('End of period 1').fill(typed(wednesday));
