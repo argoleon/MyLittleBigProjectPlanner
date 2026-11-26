@@ -15955,7 +15955,7 @@
           "resources"
         ],
         "summary": "List the absences of a resource",
-        "description": "Any internal member: the absences meeting `from`–`to` (366 days at most). The comment only shows to the person and the managers.",
+        "description": "Any internal member: the absences meeting `from`–`to` (366 days at most). The comment only shows to the person and the managers. Each tells the hours planned on its days that it leaves no room for (`conflictMinutes`), all tickets together.",
         "operationId": "listAbsences",
         "parameters": [
           {
@@ -21605,6 +21605,109 @@
           }
         }
       }
+    },
+    "/api/v1/workload/conflicts": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "List the absence conflicts",
+        "description": "The conflicts of the tickets the member sees, newest first: per assignment and day, the hours planned in hours per day or total effort that an absence of the resource leaves no room for. Opened when an absence or a segment puts them there, resolved when no longer.",
+        "operationId": "listWorkloadConflicts",
+        "parameters": [
+          {
+            "name": "resourceId",
+            "in": "query",
+            "description": "Only this resource's.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "query",
+            "description": "Only those of this project's tickets.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Only those in this state; both when left out.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/WorkloadConflictStatus"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, from 1 to 200 (default 50).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "`nextCursor` of the previous page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of conflicts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkloadConflictPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid `limit`, `cursor` or `status`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`projectId`: no such project visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -21620,6 +21723,7 @@
           "end",
           "endsAtNoon",
           "declaredBy",
+          "conflictMinutes",
           "version"
         ],
         "properties": {
@@ -21629,6 +21733,13 @@
               "null"
             ],
             "description": "For the person and the managers only; absent for others."
+          },
+          "conflictMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Minutes planned in hours per day or total effort, all tickets\ntogether, that it leaves no room for (L08-US04): to reschedule.\nKept up to date by the worker within seconds of a change.",
+            "example": 420,
+            "minimum": 0
           },
           "declaredBy": {
             "oneOf": [
@@ -22219,9 +22330,17 @@
           "loadMinutes",
           "outsideIssueDates",
           "overloads",
+          "conflicts",
           "version"
         ],
         "properties": {
+          "conflicts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssignmentConflict"
+            },
+            "description": "The days an absence of the resource leaves no room for its hours\n(hours per day or total effort), by date: to reschedule (L08-US04)."
+          },
           "id": {
             "type": "string",
             "format": "uuid"
@@ -22289,6 +22408,28 @@
           }
         },
         "additionalProperties": false
+      },
+      "AssignmentConflict": {
+        "type": "object",
+        "description": "Hours of an assignment an absence leaves no room for, on a day.",
+        "required": [
+          "date",
+          "minutes"
+        ],
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-11-18"
+          },
+          "minutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Minutes to reschedule.",
+            "example": 420,
+            "minimum": 0
+          }
+        }
       },
       "AssignmentFields": {
         "type": "object",
@@ -27465,6 +27606,7 @@
           "actorName",
           "status",
           "excerpt",
+          "conflict",
           "read",
           "createdAt"
         ],
@@ -27481,6 +27623,17 @@
               {
                 "$ref": "#/components/schemas/NotificationBulk",
                 "description": "The bulk action done (`bulk_done`)."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "conflict": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/NotificationConflict",
+                "description": "The hours to reschedule (`absence_conflict`)."
               },
               {
                 "type": "null"
@@ -27561,6 +27714,7 @@
           "status_changed",
           "commented",
           "mentioned",
+          "absence_conflict",
           "export_ready",
           "bulk_done"
         ]
@@ -29335,6 +29489,27 @@
         },
         "additionalProperties": false
       },
+      "NotificationConflict": {
+        "type": "object",
+        "description": "Hours of a ticket an absence leaves no room for.",
+        "required": [
+          "resourceName",
+          "minutes"
+        ],
+        "properties": {
+          "minutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Minutes to reschedule, over the days newly in conflict.",
+            "example": 420,
+            "minimum": 0
+          },
+          "resourceName": {
+            "type": "string",
+            "example": "Nathan Roux"
+          }
+        }
+      },
       "NotificationEvent": {
         "type": "string",
         "description": "A ticket event that notifies.",
@@ -29343,7 +29518,8 @@
           "assigned",
           "status_changed",
           "commented",
-          "mentioned"
+          "mentioned",
+          "absence_conflict"
         ]
       },
       "NotificationExport": {
@@ -32885,6 +33061,140 @@
           },
           "toId": "01933b2e-7c4a-7b9e-8f3d-2a6c5e1f0b9a"
         }
+      },
+      "WorkloadConflict": {
+        "type": "object",
+        "description": "Hours of an assignment an absence leaves no room for, on a day.",
+        "required": [
+          "id",
+          "assignmentId",
+          "issue",
+          "resource",
+          "day",
+          "minutes",
+          "status",
+          "openedAt",
+          "resolvedAt"
+        ],
+        "properties": {
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "day": {
+            "type": "string",
+            "format": "date",
+            "description": "A local date of the resource.",
+            "example": "2026-11-18"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "issue": {
+            "$ref": "#/components/schemas/WorkloadConflictIssue"
+          },
+          "minutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Minutes to reschedule; the last value once resolved.",
+            "example": 420,
+            "minimum": 0
+          },
+          "openedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolvedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "resource": {
+            "$ref": "#/components/schemas/WorkloadConflictResource"
+          },
+          "status": {
+            "$ref": "#/components/schemas/WorkloadConflictStatus"
+          }
+        }
+      },
+      "WorkloadConflictIssue": {
+        "type": "object",
+        "description": "The ticket of a conflict.",
+        "required": [
+          "id",
+          "key",
+          "summary",
+          "projectId"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string",
+            "example": "PROJ-42"
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      },
+      "WorkloadConflictPage": {
+        "type": "object",
+        "description": "A page of conflicts.",
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkloadConflict"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cursor of the next (older) page, `null` on the last page."
+          }
+        }
+      },
+      "WorkloadConflictResource": {
+        "type": "object",
+        "description": "The resource of a conflict.",
+        "required": [
+          "id",
+          "displayName"
+        ],
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "example": "Nathan Roux"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "WorkloadConflictStatus": {
+        "type": "string",
+        "description": "Whether a conflict still stands.",
+        "enum": [
+          "open",
+          "resolved"
+        ]
       },
       "WorkloadSettings": {
         "type": "object",

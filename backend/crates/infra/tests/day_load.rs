@@ -361,7 +361,7 @@ async fn recomputing_gives_the_same_rows_and_another_tenant_sees_none() {
         .unwrap(),
         0
     );
-    assert_eq!(day_load::recompute(&mut tx, &[id]).await.unwrap(), 0);
+    assert_eq!(day_load::recompute(&mut tx, &[id], None).await.unwrap(), 0);
     tx.commit().await.unwrap();
     assert_eq!(load(&db, a, nathan).await, before);
     // Nor can it write a row for alpha.

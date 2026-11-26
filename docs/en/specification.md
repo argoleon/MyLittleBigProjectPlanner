@@ -323,7 +323,8 @@ An assignment links a resource to a ticket. It is made of one or more successive
 - An absence runs from a first to a last day included; it may start or end at noon. A half day removes half of that day's capacity. Absences of a resource never overlap, half day by half day. Kinds: leave, training, other (no "sick leave" kind: health data).
 - The person linked to the resource enters their own; the tenant admin and resource managers enter anyone's. Every internal member sees the dates and kind; the comment is for the person and the managers only, and goes when the person is erased.
 - Percentage assignment: the load drops to 0 on the absence day, automatically.
-- Hours-per-day or total-effort assignment: hours falling on the absence become a conflict, reported to the project manager ("7 h to reschedule on PROJ-42"). Nothing is shifted automatically.
+- Hours-per-day or total-effort assignment: hours falling on the absence become a conflict, reported to the project manager ("7 h to reschedule on PROJ-42"). Nothing is shifted automatically. On a half day off, only the hours beyond the capacity left are in conflict. The conflict resolves itself when the segment or the absence changes; it shows on the absence and on the ticket's assignment.
+- The project manager is told through the "Absence conflict" notification event of the project's rules: by default the ticket's assignee and the holders of the Project manager role.
 
 **Views (MVP)**
 

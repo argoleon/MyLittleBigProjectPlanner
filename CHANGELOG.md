@@ -20,6 +20,11 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
   - The **Assign a resource** dialog previews, for each day, the existing load, this assignment's and the total, overloaded days marked in text and color, with the blocking message and the **Force overload** button for those allowed. It now also has the **Provisional assignment** switch.
   - A new workload setting tells whether provisional assignments count in the check (they do by default).
   - `POST /api/v1/assignments/preview`, `GET /api/v1/tenant/forced-overloads`; assignments carry their `overloads`; the workload settings gain `overloadCountsProvisional`.
+- **Absence conflicts** (#234)
+  - Hours planned in hours per day or total effort that an absence leaves no room for are a conflict, per assignment and day: all the hours of a day off, only those beyond the capacity left on a half day; percentages never conflict. Conflicts follow the daily load: opened when an absence or a segment puts hours there, resolved by themselves when no longer, reopened if they come back.
+  - A new notification event, **Absence conflict**, in the rules of every project configuration: by default the ticket's assignee and the Project manager role ("7 h to reschedule on PROJ-42 (absence of Nathan Roux)"), in the application and by email unless the member chooses otherwise. Only days still to come are told.
+  - The resource page shows the hours in conflict on each absence; the ticket's **Assignments** card lists the days and hours to reschedule.
+  - `GET /api/v1/workload/conflicts` (by resource, project and status; the tickets the member sees); assignments carry their open `conflicts`, absences their `conflictMinutes`; notifications gain `absence_conflict` and its `conflict`.
 
 ## [0.7.0] - 2026-11-24
 

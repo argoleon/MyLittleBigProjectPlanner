@@ -56,11 +56,23 @@ async fn every_configuration_starts_with_the_default_rules() {
         for (stored, expected) in rules.iter().zip(DEFAULT_RULES) {
             assert_eq!(stored.event, expected.event);
             assert_eq!(stored.rule.kinds, expected.kinds);
-            assert!(
-                stored.rule.roles.is_empty()
-                    && stored.rule.groups.is_empty()
-                    && stored.rule.accounts.is_empty()
+            // Default roles by label: the tenant's Project manager role.
+            assert_eq!(
+                stored.rule.roles.len(),
+                expected.roles.len(),
+                "{:?}",
+                expected.event
             );
+            for (role, label) in stored.rule.roles.iter().zip(expected.roles) {
+                let found: String =
+                    infra::sqlx::query_scalar("SELECT label ->> 'en' FROM role WHERE id = $1")
+                        .bind(Uuid::from_u128(*role))
+                        .fetch_one(&mut *tx)
+                        .await
+                        .unwrap();
+                assert_eq!(found, *label);
+            }
+            assert!(stored.rule.groups.is_empty() && stored.rule.accounts.is_empty());
         }
     }
 }

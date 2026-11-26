@@ -237,7 +237,7 @@ pub async fn insert(
     if let Err(conflict) = write_segments(conn, id, &input.segments).await? {
         return Ok(Err(conflict));
     }
-    crate::day_load::recompute(conn, &[id]).await?;
+    crate::day_load::recompute(conn, &[id], actor).await?;
     changed(conn, id, issue_id, resource_id, &input.segments, &[], actor).await?;
     Ok(find(conn, id).await?.ok_or(WriteConflict::NotFound))
 }
@@ -273,7 +273,7 @@ pub async fn update(
     if let Err(conflict) = write_segments(conn, id, &input.segments).await? {
         return Ok(Err(conflict));
     }
-    crate::day_load::recompute(conn, &[id]).await?;
+    crate::day_load::recompute(conn, &[id], actor).await?;
     changed(
         conn,
         id,

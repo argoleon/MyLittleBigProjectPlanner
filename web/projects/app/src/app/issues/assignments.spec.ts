@@ -40,6 +40,7 @@ const NATHAN: Assignment = {
   loadMinutes: 1830,
   outsideIssueDates: false,
   overloads: [],
+  conflicts: [],
   version: 2,
 };
 const DEV: Assignment = {
@@ -51,6 +52,7 @@ const DEV: Assignment = {
   loadMinutes: 2400,
   outsideIssueDates: true,
   overloads: [],
+  conflicts: [],
   version: 1,
 };
 const CAMILLE = { id: 'r3', kind: 'person', displayName: 'Camille Martin', jobTitle: 'Back-end developer', active: true, teams: [] } as unknown as Resource;
@@ -446,6 +448,21 @@ describe('IssueAssignments', () => {
     await reply((url, method) => url === `/api/v1/assignments/${NATHAN.id}` && method === 'PUT', { ...NATHAN, overloads: [OVER], version: 3 });
     await closed();
     await reply(isList, { items: [{ ...NATHAN, overloads: [OVER] }], loadMinutes: 1830, canAssign: true });
+  });
+
+  it('lists the hours an absence leaves no room for, to reschedule', async () => {
+    const conflicts = [
+      { date: '2026-11-18', minutes: 240 },
+      { date: '2026-11-19', minutes: 30 },
+    ];
+    const { host, text, fixture } = await open({ items: [{ ...NATHAN, conflicts }, DEV], loadMinutes: 4230, canAssign: true });
+    const blocks = Array.from(host.querySelectorAll('article.assignment'));
+    const note = blocks[0].querySelector('.conflicts');
+    expect(text(note?.querySelector('.conflicts-title'))).toBe('4 h 30 min to reschedule: the resource is away');
+    expect(Array.from(note?.querySelectorAll('li') ?? []).map((li) => text(li))).toEqual(['Wed, Nov 18: 4 h', 'Thu, Nov 19: 0 h 30 min']);
+    expect(note?.getAttribute('role')).toBe('note');
+    expect(blocks[1].querySelector('.conflicts')).toBeNull();
+    expect(await axeViolations(fixture.nativeElement)).toEqual([]);
   });
 
   it('flags an assignment taking part in an overload', async () => {

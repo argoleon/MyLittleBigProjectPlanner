@@ -190,8 +190,23 @@ pub struct AssignmentView {
     /// tolerance (provisional assignments counted by the tenant's
     /// setting), by date: empty when none.
     overloads: Vec<OverloadDay>,
+    /// The days an absence of the resource leaves no room for its hours
+    /// (hours per day or total effort), by date: to reschedule (L08-US04).
+    conflicts: Vec<ConflictDayView>,
     #[schema(example = 1)]
     version: i64,
+}
+
+/// Hours of an assignment an absence leaves no room for, on a day.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(as = AssignmentConflict)]
+pub struct ConflictDayView {
+    #[schema(value_type = String, format = Date, example = "2026-11-18")]
+    date: Date,
+    /// Minutes to reschedule.
+    #[schema(example = 420)]
+    minutes: u32,
 }
 
 /// The assignments of a ticket.
@@ -323,8 +338,20 @@ fn view(
     assignment: Assignment,
     loads: &HashMap<Uuid, Vec<(u32, u32)>>,
     flagged: &HashMap<Uuid, Vec<Overload>>,
+    conflicts: &HashMap<Uuid, Vec<infra::conflicts::ConflictDay>>,
     issue: &Issue,
 ) -> AssignmentView {
+    let conflicts = conflicts
+        .get(&assignment.id)
+        .map(|days| {
+            days.iter()
+                .map(|d| ConflictDayView {
+                    date: d.day,
+                    minutes: d.minutes,
+                })
+                .collect()
+        })
+        .unwrap_or_default();
     let per_segment = loads.get(&assignment.id).cloned().unwrap_or_default();
     let overloads = flagged
         .get(&assignment.id)
@@ -368,6 +395,7 @@ fn view(
         segments,
         outside_issue_dates: outside,
         overloads,
+        conflicts,
         version: assignment.version,
     }
 }
@@ -380,7 +408,8 @@ async fn one_view(
     let loads = loads(tx, &[&assignment]).await?;
     let policy = checks::policy(tx).await?;
     let flagged = checks::flagged(tx, &policy, &[&assignment]).await?;
-    Ok(view(assignment, &loads, &flagged, issue))
+    let conflicts = infra::conflicts::open_of(tx, &[assignment.id]).await?;
+    Ok(view(assignment, &loads, &flagged, &conflicts, issue))
 }
 
 /// Whether the member acting assigns resources on `project`.
@@ -564,10 +593,12 @@ pub async fn list(
     let loads = loads(&mut tx, &all).await?;
     let policy = checks::policy(&mut tx).await?;
     let flagged = checks::flagged(&mut tx, &policy, &all).await?;
+    let ids: Vec<Uuid> = assignments.iter().map(|a| a.id).collect();
+    let conflicts = infra::conflicts::open_of(&mut tx, &ids).await?;
     tx.commit().await?;
     let items: Vec<AssignmentView> = assignments
         .into_iter()
-        .map(|a| view(a, &loads, &flagged, &issue))
+        .map(|a| view(a, &loads, &flagged, &conflicts, &issue))
         .collect();
     Ok(ApiJson(AssignmentList {
         load_minutes: items.iter().map(|a| a.load_minutes).sum(),

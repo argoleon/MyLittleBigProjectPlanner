@@ -60,6 +60,7 @@ const RULES: NotificationRuleList = {
     rule('status_changed'),
     rule('commented', { recipientKinds: ['watchers', 'mentioned'], groupIds: ['g1'], accountIds: ['m1'] }),
     rule('mentioned', { recipientKinds: ['mentioned'] }),
+    rule('absence_conflict', { recipientKinds: ['assignee'], roleIds: ['r1'] }),
   ],
   references: REFERENCES,
 };
@@ -76,6 +77,7 @@ describe('the recipients of an event', () => {
     expect(kindsFor('created')).toEqual(['reporter', 'assignee', 'watchers']);
     expect(kindsFor('commented')).toEqual(['reporter', 'assignee', 'watchers', 'mentioned']);
     expect(kindsFor('mentioned')).toContain('mentioned');
+    expect(kindsFor('absence_conflict')).toEqual(['reporter', 'assignee', 'watchers']);
   });
 
   it('show the people of the ticket, then roles, groups and members by name', () => {
@@ -153,11 +155,13 @@ describe('NotificationsTab', () => {
 
   it('lists whom each event notifies', async () => {
     const { tab, texts } = await openNotifications();
-    expect(texts('td.event')).toEqual(['Ticket created', 'Ticket assigned', 'Status changed', 'Comment added', 'Someone mentioned']);
+    expect(texts('td.event')).toEqual(['Ticket created', 'Ticket assigned', 'Status changed', 'Comment added', 'Someone mentioned', 'Absence conflict']);
     const rows = Array.from(tab().querySelectorAll('tr[mat-row]'));
     expect(texts('.chip', rows[0])).toEqual(['Reporter', 'badge Project manager', 'badge Deleted']);
     expect(texts('.none', rows[2])).toEqual(['Nobody']);
     expect(texts('.chip', rows[3])).toEqual(['Watchers', 'People mentioned', 'groups Quality', 'person Bob Martin']);
+    // Absence conflicts (L08-US04): the assignee and the project managers.
+    expect(texts('.chip', rows[5])).toEqual(['Assignee', 'badge Project manager']);
     expect(await axeViolations(tab())).toEqual([]);
   });
 

@@ -21,15 +21,19 @@ pub enum Event {
     StatusChanged,
     Commented,
     Mentioned,
+    /// Hours planned in hours per day or total effort fall on an absence of
+    /// their resource (L08-US04): to reschedule.
+    AbsenceConflict,
 }
 
 impl Event {
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 6] = [
         Self::Created,
         Self::Assigned,
         Self::StatusChanged,
         Self::Commented,
         Self::Mentioned,
+        Self::AbsenceConflict,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -39,6 +43,7 @@ impl Event {
             Self::StatusChanged => "status_changed",
             Self::Commented => "commented",
             Self::Mentioned => "mentioned",
+            Self::AbsenceConflict => "absence_conflict",
         }
     }
 
@@ -54,6 +59,7 @@ impl Event {
             Self::StatusChanged => 3,
             Self::Commented => 4,
             Self::Mentioned => 5,
+            Self::AbsenceConflict => 6,
         }
     }
 
@@ -199,11 +205,17 @@ pub fn resolve(
 pub struct DefaultRule {
     pub event: Event,
     pub kinds: &'static [RecipientKind],
+    /// Default roles of the tenant, by English label, whose holders it
+    /// notifies too (a role renamed or deleted since is left out).
+    pub roles: &'static [&'static str],
 }
+
+/// The English label of the default role managing projects.
+pub const PROJECT_MANAGER_ROLE: &str = "Project manager";
 
 /// The default rules (`app_seed_default_notifications`; an integration
 /// test keeps both in step), as Jira's default scheme.
-pub const DEFAULT_RULES: [DefaultRule; 5] = [
+pub const DEFAULT_RULES: [DefaultRule; 6] = [
     DefaultRule {
         event: Event::Created,
         kinds: &[
@@ -211,10 +223,12 @@ pub const DEFAULT_RULES: [DefaultRule; 5] = [
             RecipientKind::Assignee,
             RecipientKind::Watchers,
         ],
+        roles: &[],
     },
     DefaultRule {
         event: Event::Assigned,
         kinds: &[RecipientKind::Assignee],
+        roles: &[],
     },
     DefaultRule {
         event: Event::StatusChanged,
@@ -223,6 +237,7 @@ pub const DEFAULT_RULES: [DefaultRule; 5] = [
             RecipientKind::Assignee,
             RecipientKind::Watchers,
         ],
+        roles: &[],
     },
     DefaultRule {
         event: Event::Commented,
@@ -231,10 +246,18 @@ pub const DEFAULT_RULES: [DefaultRule; 5] = [
             RecipientKind::Assignee,
             RecipientKind::Watchers,
         ],
+        roles: &[],
     },
     DefaultRule {
         event: Event::Mentioned,
         kinds: &[RecipientKind::Mentioned],
+        roles: &[],
+    },
+    // Who plans the work reschedules it (L08-US04).
+    DefaultRule {
+        event: Event::AbsenceConflict,
+        kinds: &[RecipientKind::Assignee],
+        roles: &[PROJECT_MANAGER_ROLE],
     },
 ];
 
@@ -407,5 +430,8 @@ mod tests {
             );
             assert!(!as_rule.is_off());
         }
+        let conflict = DEFAULT_RULES.iter().find(|r| r.event == Event::AbsenceConflict);
+        assert_eq!(conflict.map(|r| r.roles), Some(&[PROJECT_MANAGER_ROLE][..]));
+        assert!(!Event::AbsenceConflict.has_mentions());
     }
 }

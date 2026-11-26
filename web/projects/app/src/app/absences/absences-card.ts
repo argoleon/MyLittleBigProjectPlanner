@@ -9,6 +9,7 @@ import {
   Api,
   ConfirmDialog,
   ConfirmDialogData,
+  DurationPipe,
   ErrorState,
   LocalDatePipe,
   deleteAbsence,
@@ -47,10 +48,12 @@ export function absenceWindow(today: Date): { from: string; to: string } {
  * The absences of a resource (mockup 20, L07-US05), from a month ago to a
  * year ahead: dates, half days, kind, who declared them, and the comment
  * for the person and the managers. They declare, change and delete them.
+ * An absence on hours planned in hours per day or total effort shows the
+ * hours in conflict, to reschedule (L08-US04).
  */
 @Component({
   selector: 'app-absences-card',
-  imports: [ErrorState, LocalDatePipe, MatButtonModule, MatIconModule, MatProgressBarModule, TranslocoPipe],
+  imports: [DurationPipe, ErrorState, LocalDatePipe, MatButtonModule, MatIconModule, MatProgressBarModule, TranslocoPipe],
   templateUrl: './absences-card.html',
   styleUrl: './absences-card.scss',
 })

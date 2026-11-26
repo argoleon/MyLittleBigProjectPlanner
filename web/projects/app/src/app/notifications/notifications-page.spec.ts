@@ -37,6 +37,7 @@ const notification = (id: string, rest: Partial<MemberNotification>): MemberNoti
   excerpt: null,
   export: null,
   bulk: null,
+  conflict: null,
   read: false,
   createdAt: hoursAgo(0.1),
   ...rest,
@@ -62,6 +63,15 @@ const BULK_DONE = notification('n5', {
   bulk: { id: 'b1', kind: 'transition', total: 250, changed: 240, unchanged: 4, refused: 6 },
 });
 
+/** Hours of a ticket an absence leaves no room for (L08-US04). */
+const CONFLICT = notification('n6', {
+  event: 'absence_conflict',
+  issueKey: 'PROJ-42',
+  issueSummary: 'Account migration scripts',
+  actorName: null,
+  conflict: { resourceName: 'Nathan Roux', minutes: 420 },
+});
+
 const ITEMS: MemberNotification[] = [
   notification('n1', { excerpt: '@Lucas can you check?' }),
   notification('n2', { tenant: SERVICES, event: 'assigned', issueKey: 'SUP-1042', issueSummary: 'Mail access' }),
@@ -75,6 +85,7 @@ const PREFERENCES: NotificationPreferences = {
     { event: 'status_changed', inApp: true, email: false },
     { event: 'commented', inApp: true, email: false },
     { event: 'mentioned', inApp: true, email: true },
+    { event: 'absence_conflict', inApp: true, email: true },
     { event: 'export_ready', inApp: true, email: false },
     { event: 'bulk_done', inApp: true, email: true },
   ],
@@ -196,6 +207,18 @@ describe('the notifications page', () => {
     await settle();
     expect(navigate).toHaveBeenCalledWith(['/exports', 'e1']);
     expect(root.querySelector<HTMLInputElement>('input[aria-label="Export ready by email"]')?.checked).toBe(false);
+  });
+
+  it('shows the hours to reschedule of an absence conflict, and opens the ticket', async () => {
+    const { root, click, reply, settle, texts } = await open([CONFLICT]);
+    expect(texts('.item .what')).toEqual(['7 h to reschedule on PROJ-42 (absence of Nathan Roux) (unread)']);
+    expect(root.querySelector('.item mat-icon')?.textContent).toBe('event_busy');
+    expect(root.querySelector<HTMLInputElement>('input[aria-label="Absence conflict by email"]')?.checked).toBe(true);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    await click(root.querySelector('.item'));
+    await reply((url, method) => url === '/api/v1/me/notifications/read' && method === 'POST', { total: 0, byTenant: [] });
+    await settle();
+    expect(navigate).toHaveBeenCalledWith(['/issues', 'PROJ-42']);
   });
 
   it('shows a bulk action done, and opens its report', async () => {

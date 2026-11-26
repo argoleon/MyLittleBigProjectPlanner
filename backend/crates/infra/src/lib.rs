@@ -18,6 +18,7 @@ pub mod comments;
 pub mod config;
 pub mod config_migrations;
 pub mod configs;
+pub mod conflicts;
 pub mod credentials;
 pub mod crypto;
 pub mod day_capacity;

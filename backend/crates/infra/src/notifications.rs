@@ -111,6 +111,10 @@ pub fn change_of(kind: &str, payload: &serde_json::Value) -> Option<Change> {
             mentioned: ids_in(payload, "addedMentions"),
             ..Change::default()
         },
+        crate::conflicts::CONFLICTS_OPENED => Change {
+            absence_conflict: true,
+            ..Change::default()
+        },
         _ => return None,
     };
     Some(change)
@@ -337,6 +341,7 @@ pub async fn dispatch(
     if pending.kind.starts_with("issue.")
         || pending.kind.starts_with("comment.")
         || pending.kind.starts_with("attachment.")
+        || pending.kind == crate::conflicts::CONFLICTS_OPENED
     {
         for id in issues_of(&pending.kind, pending.aggregate_id, &pending.payload) {
             if let Some(issue) = crate::issues::find(conn, id).await? {
@@ -498,6 +503,13 @@ async fn notify(
         .map(excerpt)
         .filter(|text| !text.is_empty());
     let link = link_of(&tenant.slug, &format!("issues/{}", issue.key));
+    // The hours to reschedule (`absence_conflict`).
+    let conflict = pending
+        .payload
+        .get("conflict")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
+    let conflict_line: Option<crate::email::ConflictLine> = serde_json::from_value(conflict.clone()).ok();
 
     let mut dispatched = Dispatched::default();
     for recipient in recipients {
@@ -513,6 +525,7 @@ async fn notify(
             "summary": issue.summary,
             "status": status,
             "excerpt": excerpt,
+            "conflict": conflict,
         });
         let emails_now = preferences.emails_now(event);
         sqlx::query!(
@@ -552,6 +565,7 @@ async fn notify(
                         summary: issue.summary.clone(),
                         status: status.clone(),
                         excerpt: excerpt.clone(),
+                        conflict: conflict_line.clone(),
                     },
                     link: link.clone(),
                 },
@@ -740,7 +754,9 @@ async fn notify_bulk(
 
 impl Pending {
     fn aggregate_type_is_not_issue(&self) -> bool {
-        !(self.kind.starts_with("issue.") || self.kind.starts_with("comment."))
+        !(self.kind.starts_with("issue.")
+            || self.kind.starts_with("comment.")
+            || self.kind == crate::conflicts::CONFLICTS_OPENED)
     }
 }
 
@@ -977,6 +993,10 @@ pub fn line_of(waiting: &Waiting) -> NotificationLine {
             .get("excerpt")
             .and_then(serde_json::Value::as_str)
             .map(str::to_owned),
+        conflict: waiting
+            .details
+            .get("conflict")
+            .and_then(|c| serde_json::from_value(c.clone()).ok()),
     }
 }
 

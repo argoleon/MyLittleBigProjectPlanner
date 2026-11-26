@@ -1,7 +1,7 @@
 import { NamedRef, NotificationEvent, NotificationRecipientKind, NotificationRule, TransitionRuleReferences, Translations } from 'ui';
 
 /** The events, in their order. */
-export const EVENTS: readonly NotificationEvent[] = ['created', 'assigned', 'status_changed', 'commented', 'mentioned'];
+export const EVENTS: readonly NotificationEvent[] = ['created', 'assigned', 'status_changed', 'commented', 'mentioned', 'absence_conflict'];
 
 /** The people of the ticket a rule may notify. */
 export const RECIPIENT_KINDS: readonly NotificationRecipientKind[] = ['reporter', 'assignee', 'watchers', 'mentioned'];

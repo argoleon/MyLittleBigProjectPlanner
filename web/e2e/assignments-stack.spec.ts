@@ -4,7 +4,9 @@
  * assigns it 4 h more on another ticket from the ticket's page. The
  * dialog's preview shows 8 h for 7 h on that day and the assignment is
  * refused as it is; the admin forces it, the ticket flags the overload,
- * and the administration lists it among the forced overloads.
+ * and the administration lists it among the forced overloads (L08-US03).
+ * A leave declared on those hours then shows them to reschedule, on the
+ * absence and on the ticket (L08-US04).
  *
  * Runs with `just compose-e2e` only: deploy/tests/e2e.sh creates the admin
  * and passes E2E_ADMIN_EMAIL and E2E_ADMIN_SECRET.
@@ -47,10 +49,10 @@ async function opened(dialog: Locator): Promise<void> {
 /**
  * Through the API, as the admin signed in on `page`: blocking mode without
  * tolerance, the project `key` with two stories, a resource `name` and 4 h
- * of it on `day` through the second story.
+ * of it on `day` through the second story; the resource's id.
  */
-async function seed(page: Page, key: string, name: string, day: string): Promise<void> {
-  await page.evaluate(
+async function seed(page: Page, key: string, name: string, day: string): Promise<string> {
+  return page.evaluate(
     async ({ key, name, day }) => {
       const session = (await (await fetch('/api/v1/auth/session')).json()) as { csrfToken: string };
       const headers = { 'content-type': 'application/json', 'x-csrf-token': session.csrfToken };
@@ -79,6 +81,7 @@ async function seed(page: Page, key: string, name: string, day: string): Promise
         resourceId: resource.id,
         segments: [{ start: day, end: day, mode: 'hours_per_day', value: 240 }],
       });
+      return resource.id;
     },
     { key, name, day },
   );
@@ -134,4 +137,48 @@ test('an overloading assignment is shown day by day, refused, then forced and tr
   await expect(row).toContainText(name);
   await expect(row).toContainText('8 h planned for 7 h available (+1 h)');
   expect(await accessibilityViolations(page), 'forced overloads').toEqual([]);
+});
+
+test('a leave on planned hours shows them to reschedule on the absence and the ticket', async ({ page }) => {
+  test.setTimeout(120_000);
+  const stamp = Date.now();
+  const key = `CF${String(stamp).slice(-6)}`;
+  const name = `E2E Conflict ${stamp}`;
+  const wednesday = plainWednesday();
+  const day = new Date(wednesday).toISOString().slice(0, 10);
+
+  await page.context().addInitScript(() => localStorage.setItem('mlbpp.language', 'en'));
+  await page.goto('/sign-in');
+  await page.getByLabel('Email').fill(adminEmail!);
+  await page.getByLabel('Password').fill(adminSecret!);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Home');
+  const resource = await seed(page, key, name, day);
+
+  // A day of leave on the 4 h planned through the second story.
+  await page.goto(`/workload/resources/${resource}`);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(name);
+  await page.getByRole('button', { name: 'Declare an absence' }).first().click();
+  const dialog = page.getByRole('dialog');
+  await opened(dialog);
+  await dialog.getByRole('combobox', { name: 'Kind' }).click();
+  await page.getByRole('option', { name: 'Leave' }).click();
+  await dialog.getByLabel('First day').fill(typed(wednesday));
+  await dialog.getByRole('button', { name: 'Declare' }).click();
+  const absences = page.locator('app-absences-card');
+  await expect(absences.getByRole('status')).toHaveText('The absence was declared.');
+
+  // The worker finds the conflict within seconds.
+  await expect(async () => {
+    await page.reload();
+    await expect(page.locator('app-absences-card .conflict')).toHaveText('event_busy 4 h in conflict', { timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
+  expect(await accessibilityViolations(page), 'resource page with a conflict').toEqual([]);
+
+  // On the ticket: the day and its hours.
+  await page.goto(`/issues/${key}-2`);
+  const block = page.locator('app-issue-assignments article.assignment', { hasText: name });
+  await expect(block.locator('.conflicts-title')).toHaveText('4 h to reschedule: the resource is away');
+  await expect(block.locator('.conflicts-days li')).toHaveCount(1);
+  await expect(block.locator('.conflicts-days li')).toContainText(': 4 h');
 });
