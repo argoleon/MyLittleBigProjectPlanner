@@ -64,6 +64,14 @@ fn monday_ahead() -> Date {
     monday
 }
 
+/// The planned load of `project` in the hierarchy's aggregates (L08-US07).
+async fn planned(db: &TestDb, project: Uuid) -> u64 {
+    let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
+    let found = infra::aggregates::find(&mut tx, &[project]).await.unwrap();
+    tx.commit().await.unwrap();
+    found.get(&project).map_or(0, |a| a.figures.planned_minutes)
+}
+
 async fn week(db: &TestDb, resource: Uuid, monday: Date) -> Option<Sums> {
     let mut tx = begin_tenant_tx(&db.app_pool, db.tenant_a.id).await.unwrap();
     let found = load_aggregates::stored(&mut tx, &[resource], "week", &[monday])
@@ -167,6 +175,8 @@ async fn the_worker_keeps_the_weekly_load_in_step_with_assignments_and_absences(
             scheduled: 2100,
         })
     );
+    // AC4: the project's aggregate follows within seconds (L08-US07).
+    assert_eq!(planned(&db, project).await, 1050);
 
     // A day of leave: 50% of the days left, the capacity a day less.
     let mut tx = begin_tenant_tx(&db.app_pool, a.id).await.unwrap();
@@ -198,6 +208,7 @@ async fn the_worker_keeps_the_weekly_load_in_step_with_assignments_and_absences(
             scheduled: 2100,
         })
     );
+    assert_eq!(planned(&db, project).await, 840);
     let mut tx = begin_tenant_tx(&db.app_pool, a.id).await.unwrap();
     let left: i64 = infra::sqlx::query_scalar("SELECT count(*) FROM load_aggregate_stale")
         .fetch_one(&mut *tx)

@@ -137,7 +137,7 @@ pub struct HeatmapView {
     include_provisional: bool,
 }
 
-fn checked_range(from: Date, to: Date, scale: Scale) -> Result<Vec<Period>, Problem> {
+pub(crate) fn checked_range(from: Date, to: Date, scale: Scale) -> Result<Vec<Period>, Problem> {
     if to < from {
         return Err(Problem::validation(vec![FieldError::new("to", "before_start")]));
     }
@@ -164,7 +164,7 @@ fn resource_view(resource: &HeatmapResource) -> ResourceRefView {
 /// The sums of `resources` over `columns`: stored ones for weeks and
 /// months, the others computed (and those of the horizon marked, for the
 /// worker to store).
-async fn sums_of(
+pub(crate) async fn sums_of(
     tx: &mut TenantTx,
     resources: &[HeatmapResource],
     scale: Scale,

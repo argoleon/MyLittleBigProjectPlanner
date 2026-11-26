@@ -101,7 +101,7 @@ pub async fn set_figures(
 }
 
 /// The links and projects of the tenant.
-async fn hierarchy(conn: &mut PgConnection) -> Result<Hierarchy, sqlx::Error> {
+pub async fn hierarchy(conn: &mut PgConnection) -> Result<Hierarchy, sqlx::Error> {
     let links: Vec<Link> = sqlx::query!("SELECT parent_id, child_id, weight_percent FROM node_edge")
         .fetch_all(&mut *conn)
         .await?

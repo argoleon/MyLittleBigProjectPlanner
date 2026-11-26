@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO project_figure (tenant_id, node_id, planned_minutes, capacity_minutes)\n        SELECT app_current_tenant(), n.id,\n               coalesce((SELECT sum(p.load_minutes) FROM load_aggregate_project p\n                         WHERE p.project_id = n.id AND p.period_kind = 'month'), 0),\n               coalesce((SELECT sum(p.capacity_minutes) FROM load_aggregate_project p\n                         WHERE p.project_id = n.id AND p.period_kind = 'month'), 0)\n        FROM node n\n        WHERE n.id = ANY($1) AND n.node_type = 'project'\n        ON CONFLICT (tenant_id, node_id) DO UPDATE\n        SET planned_minutes = EXCLUDED.planned_minutes, capacity_minutes = EXCLUDED.capacity_minutes\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "78fad3f3e523e678fd7584e8422c06f0304dc678cb1e885e8ee12615f823c1b2"
+}

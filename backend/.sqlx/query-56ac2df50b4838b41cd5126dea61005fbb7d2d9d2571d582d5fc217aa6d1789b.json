@@ -1,0 +1,68 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT l.resource_id, i.project_id, l.day, sum(l.minutes)::integer AS \"load!\",\n               coalesce(sum(l.minutes) FILTER (WHERE l.provisional), 0)::integer AS \"provisional!\"\n        FROM resource_day_load l\n        JOIN issue i ON i.id = l.issue_id\n        WHERE l.resource_id = ANY($1) AND l.day BETWEEN $2 AND $3\n        GROUP BY l.resource_id, i.project_id, l.day\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "resource_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "resource_day_load",
+            "name": "resource_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "project_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "day",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "resource_day_load",
+            "name": "day"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "load!",
+        "type_info": "Int4",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "provisional!",
+        "type_info": "Int4",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "56ac2df50b4838b41cd5126dea61005fbb7d2d9d2571d582d5fc217aa6d1789b"
+}

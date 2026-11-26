@@ -141,6 +141,8 @@ export type { GetCalendarYear$Params as GetCalendarYear$Params } from './fn/reso
 export { getCalendarYear as getCalendarYear } from './fn/resources/get-calendar-year';
 export type { ListCapacity$Params as ListCapacity$Params } from './fn/resources/list-capacity';
 export { listCapacity as listCapacity } from './fn/resources/list-capacity';
+export type { GetNodeWorkload$Params as GetNodeWorkload$Params } from './fn/resources/get-node-workload';
+export { getNodeWorkload as getNodeWorkload } from './fn/resources/get-node-workload';
 export type { ListResources$Params as ListResources$Params } from './fn/resources/list-resources';
 export { listResources as listResources } from './fn/resources/list-resources';
 export type { CreateResource$Params as CreateResource$Params } from './fn/resources/create-resource';
@@ -195,6 +197,8 @@ export type { AddTeamMember$Params as AddTeamMember$Params } from './fn/resource
 export { addTeamMember as addTeamMember } from './fn/resources/add-team-member';
 export type { RemoveTeamMember$Params as RemoveTeamMember$Params } from './fn/resources/remove-team-member';
 export { removeTeamMember as removeTeamMember } from './fn/resources/remove-team-member';
+export type { GetTeamWorkload$Params as GetTeamWorkload$Params } from './fn/resources/get-team-workload';
+export { getTeamWorkload as getTeamWorkload } from './fn/resources/get-team-workload';
 export type { ListForcedOverloads$Params as ListForcedOverloads$Params } from './fn/resources/list-forced-overloads';
 export { listForcedOverloads as listForcedOverloads } from './fn/resources/list-forced-overloads';
 export type { GetWorkloadSettings$Params as GetWorkloadSettings$Params } from './fn/resources/get-workload-settings';
