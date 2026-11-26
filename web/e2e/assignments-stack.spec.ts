@@ -141,7 +141,7 @@ test('an overloading assignment is shown day by day, refused, then forced and tr
 
   // The resource's Assignments tab: both stories, under their project (L08-US05).
   await page.goto(`/workload/resources/${resource}`);
-  await page.getByRole('link', { name: 'Assignments' }).click();
+  await page.getByRole('tab', { name: 'Assignments' }).click();
   const tab = page.locator('app-resource-assignments');
   const group = tab.locator('section.group', { hasText: `Overload ${key}` });
   await expect(group.locator('.key')).toHaveText([`${key}-1`, `${key}-2`]);
