@@ -428,6 +428,25 @@ describe('ResourcePage', () => {
     expect(text(root().querySelector('.details .teams'))).toBe('No team');
   });
 
+  it('opens on the capacity tab, and lists the assignments on the other one', async () => {
+    const { root, text, reply, fixture, settle, http } = await open('member', { body: CAMILLE });
+    const tabs = () => Array.from(root().querySelectorAll('a[mat-tab-link]'));
+    expect(tabs().map((tab) => text(tab))).toEqual(['Capacity and calendar', 'Assignments']);
+    expect(tabs().map((tab) => tab.getAttribute('aria-selected'))).toEqual(['true', 'false']);
+    expect(root().querySelector('app-capacity-card')).not.toBeNull();
+    expect(tabs()[1].getAttribute('href')).toBe('/?tab=assignments');
+
+    fixture.componentRef.setInput('tab', 'assignments');
+    await settle();
+    expect(tabs().map((tab) => tab.getAttribute('aria-selected'))).toEqual(['false', 'true']);
+    expect(root().querySelector('app-capacity-card')).toBeNull();
+    // The capacity cards' requests, left unanswered, are not this tab's.
+    http.match((r) => !r.urlWithParams.includes('/assignments')).forEach((r) => r.flush(null, { status: 404, statusText: 'Not found' }));
+    const list = await reply((url) => url.startsWith(`/api/v1/resources/${CAMILLE.id}/assignments?`), { items: [], nextCursor: null });
+    expect(list.request.params.get('expand')).toBe('issue');
+    expect(text(root().querySelector('app-resource-assignments .empty'))).toBe('No ongoing or upcoming assignment.');
+  });
+
   it('tells when the resource cannot be found', async () => {
     const { root } = await open('member', { body: problem(404, 'not_found'), status: 404 });
     expect(root().querySelector('ui-error-state')).not.toBeNull();

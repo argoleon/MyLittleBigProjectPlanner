@@ -6,7 +6,8 @@
  * refused as it is; the admin forces it, the ticket flags the overload,
  * and the administration lists it among the forced overloads (L08-US03).
  * A leave declared on those hours then shows them to reschedule, on the
- * absence and on the ticket (L08-US04).
+ * absence and on the ticket (L08-US04). The resource's Assignments tab
+ * lists both stories under their project (L08-US05).
  *
  * Runs with `just compose-e2e` only: deploy/tests/e2e.sh creates the admin
  * and passes E2E_ADMIN_EMAIL and E2E_ADMIN_SECRET.
@@ -101,7 +102,7 @@ test('an overloading assignment is shown day by day, refused, then forced and tr
   await page.getByLabel('Password').fill(adminSecret!);
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Home');
-  await seed(page, key, name, day);
+  const resource = await seed(page, key, name, day);
 
   // 4 h more on that Wednesday, from the first story's page.
   await page.goto(`/issues/${key}-1`);
@@ -137,6 +138,16 @@ test('an overloading assignment is shown day by day, refused, then forced and tr
   await expect(row).toContainText(name);
   await expect(row).toContainText('8 h planned for 7 h available (+1 h)');
   expect(await accessibilityViolations(page), 'forced overloads').toEqual([]);
+
+  // The resource's Assignments tab: both stories, under their project (L08-US05).
+  await page.goto(`/workload/resources/${resource}`);
+  await page.getByRole('link', { name: 'Assignments' }).click();
+  const tab = page.locator('app-resource-assignments');
+  const group = tab.locator('section.group', { hasText: `Overload ${key}` });
+  await expect(group.locator('.key')).toHaveText([`${key}-1`, `${key}-2`]);
+  await expect(group.locator('.group-load')).toHaveText('8 h');
+  await expect(group.locator('.tag.overload')).toHaveCount(2);
+  expect(await accessibilityViolations(page), 'resource assignments').toEqual([]);
 });
 
 test('a leave on planned hours shows them to reschedule on the absence and the ticket', async ({ page }) => {

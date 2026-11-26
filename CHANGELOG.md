@@ -25,6 +25,10 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
   - A new notification event, **Absence conflict**, in the rules of every project configuration: by default the ticket's assignee and the Project manager role ("7 h to reschedule on PROJ-42 (absence of Nathan Roux)"), in the application and by email unless the member chooses otherwise. Only days still to come are told.
   - The resource page shows the hours in conflict on each absence; the ticket's **Assignments** card lists the days and hours to reschedule.
   - `GET /api/v1/workload/conflicts` (by resource, project and status; the tickets the member sees); assignments carry their open `conflicts`, absences their `conflictMinutes`; notifications gain `absence_conflict` and its `conflict`.
+- **Assignments of a resource** (#239)
+  - The resource page has two tabs: **Capacity and calendar**, and **Assignments**, which lists its assignments by project with their tickets, periods, values and load, provisional ones and those in overload or absence conflict marked; ongoing and upcoming ones first, past ones on demand. Members who assign resources on a project change an assignment there through the **Assign a resource** dialog (with the same overload check) or remove it after confirmation.
+  - Time on tickets the member does not see, on a confidential project or one not granted to them, shows as **Busy**: its periods and hours, without ticket nor project.
+  - `GET /api/v1/resources/{id}/assignments` (period, pages, `expand=issue`).
 
 ## [0.7.0] - 2026-11-24
 

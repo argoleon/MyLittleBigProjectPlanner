@@ -93,3 +93,11 @@
   flex-wrap: wrap;
   gap: var(--app-space-2);
 }
+
+.tabs {
+  margin-bottom: var(--app-space-4);
+}
+
+.panel {
+  display: block;
+}

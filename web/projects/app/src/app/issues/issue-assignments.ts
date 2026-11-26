@@ -18,14 +18,13 @@ import {
   LocaleService,
   deleteAssignment,
   errorTranslationKey,
-  formatDuration,
-  formatNumber,
   isApiProblem,
   listIssueAssignments,
 } from 'ui';
 
 import { AssignmentDialog, AssignmentDialogData } from './assignment-dialog';
 import { overloadDaysText } from './overload-text';
+import { segmentValueText } from './segment-text';
 
 /** The first and last days of `assignments`; null when none has a segment. */
 export function planSpan(assignments: readonly Assignment[]): { from: string; to: string } | null {
@@ -85,18 +84,7 @@ export class IssueAssignments {
 
   /** What a segment's value reads: `50 %`, `4 h/day`, `40 h over 19 working days`. */
   protected valueText(segment: AssignmentSegment): string {
-    const locale = this.locale.formattingLocale();
-    switch (segment.mode) {
-      case 'percentage':
-        return formatNumber(segment.value / 100, locale, { style: 'percent' });
-      case 'hours_per_day':
-        return this.transloco.translate('assignments.perDay', { hours: formatDuration(segment.value, locale) });
-      case 'total_effort':
-        return this.transloco.translate('assignments.over', {
-          hours: formatDuration(segment.value, locale),
-          days: formatNumber(segment.workingDays, locale),
-        });
-    }
+    return segmentValueText(segment, this.locale.formattingLocale(), (key, params) => this.transloco.translate(key, params));
   }
 
   /** The minutes of an assignment an absence leaves no room for. */

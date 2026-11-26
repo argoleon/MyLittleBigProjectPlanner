@@ -2290,10 +2290,39 @@
       "teams": "Équipes",
       "noTeam": "Aucune équipe",
       "siteOf": "Site {{ name }}",
-      "noSite": "Calendrier de l’organisation"
+      "noSite": "Calendrier de l’organisation",
+      "tabs": "Rubriques de la ressource",
+      "capacityTab": "Capacité et calendrier",
+      "assignmentsTab": "Affectations"
     },
     "team": "Équipe",
-    "allTeams": "Toutes les équipes"
+    "allTeams": "Toutes les équipes",
+    "assignments": {
+      "title": "Affectations",
+      "loading": "Chargement des affectations…",
+      "showPast": "Afficher les affectations passées",
+      "busyGroup": "Occupé",
+      "busyHint": "Temps sur des tickets que vous ne voyez pas (projets confidentiels ou non accessibles) : seules les périodes et les heures s’affichent.",
+      "busy": "Occupé",
+      "caption": "Affectations sur {{ project }}",
+      "columns": {
+        "issue": "Ticket",
+        "periods": "Périodes",
+        "load": "Charge",
+        "actions": "Actions"
+      },
+      "conflict": "Conflit d’absence",
+      "editOf": "Modifier l’affectation sur {{ key }}",
+      "deleteOf": "Retirer l’affectation sur {{ key }}",
+      "deleteTitle": "Retirer l’affectation sur {{ key }} ?",
+      "deleteMessage": "Ses segments et sa charge disparaissent des jours de la ressource.",
+      "deleteConfirm": "Retirer",
+      "saved": "L’affectation sur {{ key }} a été enregistrée.",
+      "deleted": "L’affectation sur {{ key }} a été retirée.",
+      "none": "Aucune affectation.",
+      "noneAhead": "Aucune affectation en cours ni à venir.",
+      "more": "Afficher plus"
+    }
   },
   "workload": {
     "tabs": "Rubriques de la charge"
