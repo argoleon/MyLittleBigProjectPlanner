@@ -1,8 +1,10 @@
 //! SQL of assignments (L08-US01): one per resource and ticket, with its
 //! segments. Row-level security scopes every query to the current tenant.
 //!
-//! Every change is recorded in the outbox (`assignment.changed`, with the
-//! days it touches) for the daily load (L08-US02).
+//! Every write recomputes the assignment's daily load in the same
+//! transaction (`crate::day_load`, L08-US02); deleting it takes its load
+//! rows along. Every change is recorded in the outbox (`assignment.changed`,
+//! with the days it touches).
 
 use std::collections::HashMap;
 
@@ -102,7 +104,7 @@ struct Row {
 async fn rows(
     conn: &mut PgConnection,
     issue_id: Option<Uuid>,
-    id: Option<Uuid>,
+    ids: Option<&[Uuid]>,
 ) -> Result<Vec<Row>, sqlx::Error> {
     sqlx::query_as!(
         Row,
@@ -113,11 +115,11 @@ async fn rows(
                a.provisional, a.version
         FROM assignment a
         JOIN resource r ON r.id = a.resource_id
-        WHERE ($1::uuid IS NULL OR a.issue_id = $1) AND ($2::uuid IS NULL OR a.id = $2)
+        WHERE ($1::uuid IS NULL OR a.issue_id = $1) AND ($2::uuid[] IS NULL OR a.id = ANY($2))
         ORDER BY lower(coalesce(app_member_name(r.account_id), r.display_name)), a.id
         "#,
         issue_id,
-        id
+        ids
     )
     .fetch_all(conn)
     .await
@@ -178,8 +180,13 @@ pub async fn of_issue(conn: &mut PgConnection, issue_id: Uuid) -> Result<Vec<Ass
 
 /// The assignment `id`.
 pub async fn find(conn: &mut PgConnection, id: Uuid) -> Result<Option<Assignment>, sqlx::Error> {
-    let rows = rows(conn, None, Some(id)).await?;
-    Ok(with_segments(conn, rows).await?.pop())
+    Ok(find_many(conn, &[id]).await?.pop())
+}
+
+/// The assignments `ids` that exist.
+pub async fn find_many(conn: &mut PgConnection, ids: &[Uuid]) -> Result<Vec<Assignment>, sqlx::Error> {
+    let rows = rows(conn, None, Some(ids)).await?;
+    with_segments(conn, rows).await
 }
 
 /// Its version, locking the row until the end of the transaction.
@@ -230,6 +237,7 @@ pub async fn insert(
     if let Err(conflict) = write_segments(conn, id, &input.segments).await? {
         return Ok(Err(conflict));
     }
+    crate::day_load::recompute(conn, &[id]).await?;
     changed(conn, id, issue_id, resource_id, &input.segments, &[], actor).await?;
     Ok(find(conn, id).await?.ok_or(WriteConflict::NotFound))
 }
@@ -265,6 +273,7 @@ pub async fn update(
     if let Err(conflict) = write_segments(conn, id, &input.segments).await? {
         return Ok(Err(conflict));
     }
+    crate::day_load::recompute(conn, &[id]).await?;
     changed(
         conn,
         id,

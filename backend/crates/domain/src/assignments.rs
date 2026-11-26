@@ -189,6 +189,26 @@ pub fn load(segment: &Segment, calendar: &ResourceCalendar<'_>) -> Vec<(Date, u3
     days.into_iter().map(|d| d.date).zip(minutes).collect()
 }
 
+/// The daily load of an assignment on `calendar` (L08-US02): each day its
+/// segments load, by date, days of 0 left out. Segments never overlap; a
+/// day two of them would share gets their sum.
+pub fn assignment_load(segments: &[Segment], calendar: &ResourceCalendar<'_>) -> Vec<(Date, u32)> {
+    let mut days: Vec<(Date, u32)> = segments
+        .iter()
+        .flat_map(|segment| load(segment, calendar))
+        .filter(|(_, minutes)| *minutes > 0)
+        .collect();
+    days.sort_by_key(|(date, _)| *date);
+    days.dedup_by(|later, kept| {
+        let same = later.0 == kept.0;
+        if same {
+            kept.1 += later.1;
+        }
+        same
+    });
+    days
+}
+
 /// Whether a total-effort segment has no working day to go on: its
 /// effort cannot be placed (field `segments.{i}.start`, `no_working_day`).
 pub fn unplaceable(segments: &[Segment], calendar: &ResourceCalendar<'_>) -> Vec<FieldError> {
@@ -349,6 +369,47 @@ mod tests {
                 [300, 300, 300, 300, 300, 0, 0]
             );
         }
+    }
+
+    #[test]
+    fn the_daily_load_of_an_assignment_keeps_the_days_it_loads_by_date() {
+        let calendar = calendar(&[], SHORT_FRIDAY, &[]);
+        // Given out of order: the week after at 50%, then 4 h/day over a
+        // week with a weekend; Christmas (Friday 25 December 2026) at 50%.
+        let segments = [
+            segment("2026-12-21", "2026-12-25", Mode::Percentage, 50),
+            segment("2026-12-14", "2026-12-20", Mode::HoursPerDay, 240),
+        ];
+        let rows = assignment_load(&segments, &calendar);
+        let shown: Vec<(String, u32)> = rows.iter().map(|(d, m)| (d.to_string(), *m)).collect();
+        assert_eq!(
+            shown,
+            [
+                ("2026-12-14".to_owned(), 240),
+                ("2026-12-15".to_owned(), 240),
+                ("2026-12-16".to_owned(), 240),
+                ("2026-12-17".to_owned(), 240),
+                ("2026-12-18".to_owned(), 240),
+                ("2026-12-21".to_owned(), 210),
+                ("2026-12-22".to_owned(), 210),
+                ("2026-12-23".to_owned(), 210),
+                ("2026-12-24".to_owned(), 210),
+            ],
+            "no row for the weekend nor for Christmas"
+        );
+        // Days two segments would share are summed.
+        let overlapping = [
+            segment("2026-12-14", "2026-12-14", Mode::HoursPerDay, 60),
+            segment("2026-12-14", "2026-12-15", Mode::HoursPerDay, 30),
+        ];
+        assert_eq!(
+            assignment_load(&overlapping, &calendar)
+                .iter()
+                .map(|(_, m)| *m)
+                .collect::<Vec<_>>(),
+            [90, 30]
+        );
+        assert!(assignment_load(&[], &calendar).is_empty());
     }
 
     #[test]

@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT DISTINCT a.id AS \"id!\"\n        FROM assignment a\n        JOIN resource r ON r.id = a.resource_id\n        JOIN assignment_segment s ON s.assignment_id = a.id\n        WHERE ($1::uuid[] IS NULL OR a.resource_id = ANY($1))\n          AND ($2::uuid IS NULL OR r.calendar_id = $2)\n          AND ($3::date IS NULL OR s.end_date >= $3)\n          AND ($4::date IS NULL OR s.start_date < $4)\n        ORDER BY 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "assignment",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "Uuid",
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "04e8ead666b79830e86b557e552d49d918fc39a0ae3851183e1c12fe76dba9be"
+}
