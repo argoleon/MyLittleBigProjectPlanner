@@ -246,7 +246,11 @@ export class HeatmapGrid implements AfterViewInit {
       this.schedule();
     };
     scheme?.addEventListener?.('change', repaint);
+    // …or by the application's theme setting.
+    const theme = typeof MutationObserver === 'undefined' ? null : new MutationObserver(repaint);
+    theme?.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     this.destroyRef.onDestroy(() => {
+      theme?.disconnect();
       observer?.disconnect();
       scheme?.removeEventListener?.('change', repaint);
       cancelAnimationFrame(this.frame);
@@ -325,8 +329,13 @@ export class HeatmapGrid implements AfterViewInit {
   }
 
   private readPalette(): Palette {
-    const style = getComputedStyle(this.host.nativeElement);
-    const token = (name: string) => style.getPropertyValue(name).trim();
+    // A token may be `light-dark(…)` or another variable, which a canvas
+    // cannot read: the computed color of a probe resolves it to `rgb(…)`.
+    const probe = this.fontLabel().nativeElement;
+    const token = (name: string) => {
+      probe.style.color = `var(${name})`;
+      return getComputedStyle(probe).color;
+    };
     const pair = (fill: string, text: string) => ({ fill: token(fill), text: token(text) });
     const font = (probe: ElementRef<HTMLElement>) => getComputedStyle(probe.nativeElement).font;
     return {

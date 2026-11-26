@@ -19,6 +19,11 @@
 
 .filter {
   width: 220px;
+
+  // Its label reads in full.
+  &.node {
+    width: 300px;
+  }
 }
 
 .view {

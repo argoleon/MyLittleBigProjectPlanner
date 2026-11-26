@@ -30,7 +30,7 @@
     </mat-select>
   </mat-form-field>
 
-  <mat-form-field appearance="outline" class="filter" subscriptSizing="dynamic">
+  <mat-form-field appearance="outline" class="filter node" subscriptSizing="dynamic">
     <mat-label>{{ 'workload.heatmap.node' | transloco }}</mat-label>
     <mat-select [value]="nodeId()" (selectionChange)="setNode($event.value)">
       <mat-option [value]="null">{{ 'workload.heatmap.allNodes' | transloco }}</mat-option>

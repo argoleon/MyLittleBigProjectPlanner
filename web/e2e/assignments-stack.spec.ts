@@ -156,7 +156,8 @@ test('an overloading assignment is shown day by day, refused, then forced and tr
   await expect(page).toHaveURL(/\/workload\/heatmap$/);
   await expect(page.locator('ui-heatmap canvas')).toBeVisible();
   expect(await accessibilityViolations(page), 'heatmap').toEqual([]);
-  await page.getByRole('combobox', { name: 'Portfolio, program or project' }).click();
+  // Its label, not floated while empty, lies over the select: click the field.
+  await page.locator('mat-form-field', { has: page.getByRole('combobox', { name: 'Portfolio, program or project' }) }).click();
   await page.getByRole('option', { name: `Overload ${key}` }).click();
   await expect(page.locator('.summary')).toContainText('Resources: 1 ·');
   // The keyboard opens a cell of the drawn heatmap.
