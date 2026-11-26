@@ -897,11 +897,11 @@ pub struct ResourceListParams {
 #[serde(rename_all = "camelCase")]
 #[schema(as = AssignedProject)]
 pub struct ProjectRefView {
-    id: Uuid,
+    pub(crate) id: Uuid,
     #[schema(example = "PLAT")]
-    key: String,
+    pub(crate) key: String,
     #[schema(example = "Identity platform")]
-    name: String,
+    pub(crate) name: String,
 }
 
 /// The ticket of an assignment (`expand=issue`).

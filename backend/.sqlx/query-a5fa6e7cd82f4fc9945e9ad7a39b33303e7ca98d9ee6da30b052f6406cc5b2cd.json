@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT c.descendant_id AS \"id!\" FROM node_closure c\n        JOIN node n ON n.id = c.descendant_id\n        WHERE c.ancestor_id = $1 AND n.node_type = 'project'\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "node_closure",
+            "name": "descendant_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a5fa6e7cd82f4fc9945e9ad7a39b33303e7ca98d9ee6da30b052f6406cc5b2cd"
+}

@@ -1,0 +1,81 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT r.id, r.kind, coalesce(app_member_name(r.account_id), r.display_name) AS \"display_name!\",\n               r.job_title, r.account_id IS NOT NULL AS \"linked!\", r.calendar_id\n        FROM resource r\n        WHERE r.active\n          AND ($1::uuid IS NULL OR EXISTS (\n                  SELECT 1 FROM team_member tm WHERE tm.team_id = $1 AND tm.resource_id = r.id))\n          AND ($2::uuid IS NULL OR EXISTS (\n                  SELECT 1 FROM resource_day_load l\n                  JOIN issue i ON i.id = l.issue_id\n                  JOIN node_closure c ON c.descendant_id = i.project_id AND c.ancestor_id = $2\n                  WHERE l.resource_id = r.id AND l.day BETWEEN $3 AND $4))\n        ORDER BY lower(coalesce(app_member_name(r.account_id), r.display_name)), r.id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "resource",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "resource",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "display_name!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "job_title",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "resource",
+            "name": "job_title"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "linked!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "calendar_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "resource",
+            "name": "calendar_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      true,
+      null,
+      true
+    ]
+  },
+  "hash": "c015152f325a08d4d4c623bdc4e8893182c157a56c807ceabce7d8d4f6accc57"
+}

@@ -52,6 +52,7 @@ pub mod text_search;
 pub mod transitions;
 pub mod validation;
 pub mod workflows;
+pub mod workload;
 
 /// Name of the product, shared by every service.
 pub const PRODUCT_NAME: &str = "My Little Big Project Planner";

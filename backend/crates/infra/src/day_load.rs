@@ -13,7 +13,8 @@
 //!   assignment, end with the rows a single run gives.
 //!
 //! The table is partitioned by month of the day; the partitions a write
-//! needs are created first (`app_ensure_load_partitions`).
+//! needs are created first (`app_ensure_load_partitions`). Every change
+//! marks the weeks and months it touches (`crate::load_aggregates`).
 
 use std::collections::HashMap;
 
@@ -158,6 +159,20 @@ pub async fn run(conn: &mut PgConnection, job: &Recompute) -> Result<usize, sqlx
     for chunk in ids.chunks(CHUNK) {
         recompute(conn, chunk, None).await?;
     }
+    // The capacity changed too, for resources with no load as well: their
+    // weeks and months follow.
+    let touched = sqlx::query_scalar!(
+        r#"
+        SELECT id FROM resource
+        WHERE ($1::uuid[] IS NULL OR id = ANY($1)) AND ($2::uuid IS NULL OR calendar_id = $2)
+        "#,
+        resources.as_deref(),
+        calendar
+    )
+    .fetch_all(&mut *conn)
+    .await?;
+    let last = until.and_then(Date::previous_day);
+    crate::load_aggregates::mark_stale(conn, &touched, from, last).await?;
     Ok(ids.len())
 }
 
@@ -245,6 +260,29 @@ pub async fn recompute(
     .await?;
     let assignments = crate::assignments::find_many(conn, &existing).await?;
     let rows = rows_of(conn, &assignments).await?;
+    // The days each resource had and has loaded: their weeks and months
+    // change (`crate::load_aggregates`).
+    let mut spans: HashMap<Uuid, (Date, Date)> = HashMap::new();
+    let before = sqlx::query!(
+        r#"
+        SELECT resource_id, min(day) AS "first!", max(day) AS "last!"
+        FROM resource_day_load WHERE assignment_id = ANY($1)
+        GROUP BY resource_id
+        "#,
+        &existing
+    )
+    .fetch_all(&mut *conn)
+    .await?;
+    let widen = |spans: &mut HashMap<Uuid, (Date, Date)>, resource: Uuid, first: Date, last: Date| {
+        let span = spans.entry(resource).or_insert((first, last));
+        *span = (span.0.min(first), span.1.max(last));
+    };
+    for row in before {
+        widen(&mut spans, row.resource_id, row.first, row.last);
+    }
+    for row in &rows {
+        widen(&mut spans, row.resource_id, row.day, row.day);
+    }
     sqlx::query!(
         "DELETE FROM resource_day_load WHERE assignment_id = ANY($1)",
         &existing
@@ -280,6 +318,9 @@ pub async fn recompute(
     .execute(&mut *conn)
     .await?;
     crate::conflicts::sync(conn, &assignments, actor).await?;
+    for (resource, (first, last)) in spans {
+        crate::load_aggregates::mark_stale(conn, &[resource], Some(first), Some(last)).await?;
+    }
     Ok(rows.len())
 }
 
