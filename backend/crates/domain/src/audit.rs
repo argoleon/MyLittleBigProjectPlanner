@@ -62,10 +62,13 @@ pub enum Action {
     /// A file was attached (new value) or removed (old one).
     AttachmentAdded,
     AttachmentRemoved,
+    /// An assignment was written beyond capacity in blocking mode, forced
+    /// by a member allowed to (new value: the resource and the days).
+    OverloadForced,
 }
 
 impl Action {
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 11] = [
         Self::Created,
         Self::Updated,
         Self::Moved,
@@ -76,6 +79,7 @@ impl Action {
         Self::CommentDeleted,
         Self::AttachmentAdded,
         Self::AttachmentRemoved,
+        Self::OverloadForced,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -90,6 +94,7 @@ impl Action {
             Self::CommentDeleted => "comment_deleted",
             Self::AttachmentAdded => "attachment_added",
             Self::AttachmentRemoved => "attachment_removed",
+            Self::OverloadForced => "overload_forced",
         }
     }
 

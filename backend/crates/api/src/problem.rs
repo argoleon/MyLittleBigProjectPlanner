@@ -92,6 +92,8 @@ pub enum ErrorCode {
     AssignmentResourceTaken,
     AssignmentSegmentsOverlap,
     AssignmentOutsideIssueDates,
+    /// The assignment takes a resource beyond its capacity plus tolerance.
+    WorkloadOverload,
     CalendarTenant,
     CalendarNameTaken,
     BoardNameTaken,
@@ -149,7 +151,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 105] = [
+    pub const ALL: [Self; 106] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -203,6 +205,7 @@ impl ErrorCode {
         Self::AssignmentResourceTaken,
         Self::AssignmentSegmentsOverlap,
         Self::AssignmentOutsideIssueDates,
+        Self::WorkloadOverload,
         Self::CalendarTenant,
         Self::CalendarNameTaken,
         Self::BoardNameTaken,
@@ -312,6 +315,7 @@ impl ErrorCode {
             Self::AssignmentResourceTaken => "assignment.resource_taken",
             Self::AssignmentSegmentsOverlap => "assignment.segments_overlap",
             Self::AssignmentOutsideIssueDates => "assignment.outside_issue_dates",
+            Self::WorkloadOverload => "workload.overload",
             Self::CalendarTenant => "calendar.tenant",
             Self::CalendarNameTaken => "calendar.name_taken",
             Self::BoardNameTaken => "board.name_taken",
@@ -419,6 +423,7 @@ impl ErrorCode {
             | Self::AssignmentResourceTaken
             | Self::AssignmentSegmentsOverlap
             | Self::AssignmentOutsideIssueDates
+            | Self::WorkloadOverload
             | Self::CalendarTenant
             | Self::CalendarNameTaken
             | Self::BoardNameTaken
@@ -532,6 +537,7 @@ impl ErrorCode {
             Self::AssignmentResourceTaken => "The resource is already assigned to this ticket",
             Self::AssignmentSegmentsOverlap => "Two segments of the assignment take a same day",
             Self::AssignmentOutsideIssueDates => "Segments must stay within the ticket's dates",
+            Self::WorkloadOverload => "The assignment exceeds the resource's capacity",
             Self::CalendarTenant => "The tenant calendar is never deleted and keeps a holiday set",
             Self::CalendarNameTaken => "Another calendar already has this name",
             Self::BoardNameTaken => "This node already has a board with this name",
@@ -633,6 +639,38 @@ pub struct Problem {
     pub retry_after: Option<std::time::Duration>,
     /// Where and why a query of the language was refused, for `query.invalid`.
     pub query: Option<Box<QueryProblem>>,
+    /// The days overloaded, for `workload.overload`.
+    pub overload: Option<Box<OverloadProblem>>,
+}
+
+/// A day over the limit of a resource (L08-US03).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(as = OverloadDay)]
+pub struct OverloadDay {
+    /// A local date of the resource.
+    #[schema(value_type = String, format = Date, example = "2026-11-18")]
+    pub date: time::Date,
+    /// Minutes planned that day: the other assignments and this one.
+    #[schema(example = 480)]
+    pub planned_minutes: u32,
+    /// Minutes of capacity that day, absences deducted.
+    #[schema(example = 420)]
+    pub available_minutes: u32,
+    /// Minutes allowed: the capacity plus the tenant's tolerance.
+    #[schema(example = 420)]
+    pub limit_minutes: u32,
+}
+
+/// Why an assignment was refused (`workload.overload`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(as = OverloadProblem)]
+pub struct OverloadProblem {
+    /// The days overloaded, by date.
+    pub days: Vec<OverloadDay>,
+    /// The member may force it (`force: true`): "Force overload" permission.
+    pub forceable: bool,
 }
 
 /// Where and why a query of the language was refused (`query.invalid`).
@@ -681,6 +719,7 @@ impl Problem {
             errors: Vec::new(),
             retry_after: None,
             query: None,
+            overload: None,
         }
     }
 
@@ -689,6 +728,14 @@ impl Problem {
         Self {
             query: Some(Box::new(query)),
             ..Self::new(ErrorCode::QueryInvalid).with_detail(detail)
+        }
+    }
+
+    /// `workload.overload`, listing the days.
+    pub fn overload(overload: OverloadProblem, detail: impl Into<String>) -> Self {
+        Self {
+            overload: Some(Box::new(overload)),
+            ..Self::new(ErrorCode::WorkloadOverload).with_detail(detail)
         }
     }
 
@@ -831,6 +878,9 @@ pub struct ProblemBody<'a> {
     /// For `query.invalid`: where and why.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub query: Option<&'a QueryProblem>,
+    /// For `workload.overload`: the days and whether the member may force it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub overload: Option<&'a OverloadProblem>,
 }
 
 /// One invalid field of a request.
@@ -865,6 +915,7 @@ impl IntoResponse for Problem {
                 })
                 .collect(),
             query: self.query.as_deref(),
+            overload: self.overload.as_deref(),
         };
         let mut response = (code.status(), axum::Json(body)).into_response();
         response
@@ -914,7 +965,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 98] = [
+        let expected: [(ErrorCode, u16); 99] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -1013,6 +1064,7 @@ mod tests {
             (ErrorCode::AssignmentResourceTaken, 409),
             (ErrorCode::AssignmentSegmentsOverlap, 409),
             (ErrorCode::AssignmentOutsideIssueDates, 409),
+            (ErrorCode::WorkloadOverload, 409),
         ];
         for (code, status) in expected {
             assert_eq!(code.status().as_u16(), status, "{}", code.as_str());

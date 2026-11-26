@@ -1,0 +1,152 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT f.id, f.assignment_id, f.issue_id, i.key AS \"issue_key?\", i.summary AS \"issue_summary?\",\n               f.resource_id, coalesce(app_member_name(r.account_id), r.display_name) AS \"resource_name?\",\n               f.actor_id, app_member_name(f.actor_id) AS \"actor_name?\", f.origin, f.days, f.created_at\n        FROM forced_overload f\n        LEFT JOIN issue i ON i.id = f.issue_id\n        LEFT JOIN resource r ON r.id = f.resource_id\n        WHERE ($1::timestamptz IS NULL OR (f.created_at, f.id) < ($1, $2))\n        ORDER BY f.created_at DESC, f.id DESC\n        LIMIT $3\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "forced_overload",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "assignment_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "forced_overload",
+            "name": "assignment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "issue_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "forced_overload",
+            "name": "issue_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "issue_key?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "key"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "issue_summary?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "summary"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "resource_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "forced_overload",
+            "name": "resource_id"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "resource_name?",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "actor_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "forced_overload",
+            "name": "actor_id"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "actor_name?",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 9,
+        "name": "origin",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "forced_overload",
+            "name": "origin"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "days",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "forced_overload",
+            "name": "days"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "forced_overload",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      null,
+      false,
+      null,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "7f573ff185d36013200df6ac36ce3a859d3ff5d976941861d3d4aea1908b2115"
+}

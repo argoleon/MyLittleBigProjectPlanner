@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT default_capacity_minutes AS \"default_capacity_minutes!\", overload_tolerance_percent AS \"overload_tolerance_percent!\",\n               overload_mode AS \"overload_mode!\", version AS \"version!\"\n        FROM app_update_workload_settings($1, $2, $3, $4, $5)\n        ",
+  "query": "\n        SELECT default_capacity_minutes AS \"default_capacity_minutes!\", overload_tolerance_percent AS \"overload_tolerance_percent!\",\n               overload_mode AS \"overload_mode!\",\n               overload_counts_provisional AS \"overload_counts_provisional!\", version AS \"version!\"\n        FROM app_update_workload_settings($1, $2, $3, $4, $5, $6)\n        ",
   "describe": {
     "columns": [
       {
@@ -23,6 +23,12 @@
       },
       {
         "ordinal": 3,
+        "name": "overload_counts_provisional!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
         "name": "version!",
         "type_info": "Int8",
         "origin": "Expression"
@@ -34,15 +40,17 @@
         "Int8Array",
         "Int4Array",
         "Int2",
-        "Text"
+        "Text",
+        "Bool"
       ]
     },
     "nullable": [
       null,
       null,
       null,
+      null,
       null
     ]
   },
-  "hash": "293d1b4aa9568803a9420d157e04473a5cb6151f143e6ae5207dd19e0d0d337c"
+  "hash": "6895b777e36b1304bf77f722ddf815ce58c4299c31a5c3457d9a84e6a0a6a3b9"
 }

@@ -8,6 +8,15 @@
 //! (tenant admins always) write them, unless the project is archived.
 //! Segments never overlap and stay within the ticket's dates, when it has
 //! them. Every change writes `assignment.changed` to the event outbox.
+//!
+//! Every write is checked for overload (L08-US03, `domain::overload`): under
+//! its resource's lock, the resulting load of each day is compared with the
+//! capacity plus the tenant's tolerance. In blocking mode an overload is
+//! refused (`workload.overload`, listing the days) unless the author, with
+//! `force_overload`, forces it: the write is then traced in the ticket's
+//! history and in the forced overloads. In warning mode it is written and
+//! the assignment flags its days (`overloads`), as it does on every read.
+//! `POST /assignments/preview` computes the same without writing.
 
 use std::collections::HashMap;
 
@@ -15,12 +24,15 @@ use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use domain::assignments::{self as rules, Mode, Segment, SegmentError};
+use domain::overload::{self as overload_rules, Outcome, Overload, Policy};
 use domain::permissions::Permission;
+use domain::tenant::OverloadMode;
 use domain::validation::FieldError;
 use infra::assignments::{self as repo, Assignment, AssignmentInput, StoredSegment, WriteConflict};
-use infra::capacity::local_date;
+use infra::capacity::{local_date, sql_date};
 use infra::issues::Issue;
 use infra::nodes::Node;
+use infra::overload::{self as checks, Candidate, Forced};
 use infra::uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use time::Date;
@@ -32,7 +44,7 @@ use crate::idempotency::{self, Start};
 use crate::issues::{TAG, visible_issue};
 use crate::nodes::{ensure_changeable, is_tenant_admin};
 use crate::permissions;
-use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
+use crate::problem::{ErrorCode, OverloadDay, OverloadProblem, PROBLEM_JSON, Problem, ProblemBody};
 use crate::resources::KindView;
 use crate::tenant::{AppState, TenantTx};
 
@@ -104,6 +116,11 @@ pub struct AssignmentBody {
     provisional: bool,
     /// 1 to 50 segments that never take a same day.
     segments: Vec<SegmentBody>,
+    /// Writes it even beyond the resource's capacity plus tolerance, in
+    /// blocking mode: members with `force_overload` on its project (tenant
+    /// admins always). Traced.
+    #[serde(default)]
+    force: bool,
 }
 
 /// The new state of an assignment: its resource stays.
@@ -114,6 +131,9 @@ pub struct AssignmentChangeBody {
     #[serde(default)]
     provisional: bool,
     segments: Vec<SegmentBody>,
+    /// As for a creation.
+    #[serde(default)]
+    force: bool,
 }
 
 /// The resource of an assignment.
@@ -166,6 +186,10 @@ pub struct AssignmentView {
     load_minutes: u32,
     /// Some segments fall outside the ticket's dates, changed since.
     outside_issue_dates: bool,
+    /// The days it loads while its resource is over capacity plus
+    /// tolerance (provisional assignments counted by the tenant's
+    /// setting), by date: empty when none.
+    overloads: Vec<OverloadDay>,
     #[schema(example = 1)]
     version: i64,
 }
@@ -281,8 +305,31 @@ async fn loads(
         .collect())
 }
 
-fn view(assignment: Assignment, loads: &HashMap<Uuid, Vec<(u32, u32)>>, issue: &Issue) -> AssignmentView {
+/// An overloaded day as sent.
+fn overload_day(overload: &Overload) -> Option<OverloadDay> {
+    Some(OverloadDay {
+        date: sql_date(overload.date)?,
+        planned_minutes: overload.planned,
+        available_minutes: overload.available,
+        limit_minutes: overload.limit,
+    })
+}
+
+fn overload_days(overloads: &[Overload]) -> Vec<OverloadDay> {
+    overloads.iter().filter_map(overload_day).collect()
+}
+
+fn view(
+    assignment: Assignment,
+    loads: &HashMap<Uuid, Vec<(u32, u32)>>,
+    flagged: &HashMap<Uuid, Vec<Overload>>,
+    issue: &Issue,
+) -> AssignmentView {
     let per_segment = loads.get(&assignment.id).cloned().unwrap_or_default();
+    let overloads = flagged
+        .get(&assignment.id)
+        .map(|o| overload_days(o))
+        .unwrap_or_default();
     let outside = rules::outside_issue_dates(
         &domain_segments(&assignment.segments),
         issue.start_date.and_then(local_date),
@@ -320,6 +367,7 @@ fn view(assignment: Assignment, loads: &HashMap<Uuid, Vec<(u32, u32)>>, issue: &
         load_minutes: segments.iter().map(|s| s.load_minutes).sum(),
         segments,
         outside_issue_dates: outside,
+        overloads,
         version: assignment.version,
     }
 }
@@ -330,7 +378,9 @@ async fn one_view(
     issue: &Issue,
 ) -> Result<AssignmentView, Problem> {
     let loads = loads(tx, &[&assignment]).await?;
-    Ok(view(assignment, &loads, issue))
+    let policy = checks::policy(tx).await?;
+    let flagged = checks::flagged(tx, &policy, &[&assignment]).await?;
+    Ok(view(assignment, &loads, &flagged, issue))
 }
 
 /// Whether the member acting assigns resources on `project`.
@@ -350,6 +400,80 @@ async fn require_assign(state: &AppState, tx: &mut TenantTx, project: &Node) -> 
         );
     }
     ensure_changeable(project)
+}
+
+/// Whether the member acting forces overloads on `project`.
+async fn forces(state: &AppState, tx: &mut TenantTx, project: &Node) -> Result<bool, Problem> {
+    if is_tenant_admin(tx) {
+        return Ok(true);
+    }
+    Ok(permissions::effective(state, tx, Some(project.id))
+        .await?
+        .contains(Permission::ForceOverload))
+}
+
+/// `workload.overload`, listing `days`.
+fn overload_problem(days: &[Overload], forceable: bool) -> Problem {
+    let first = days.first().map(|d| d.date.to_string()).unwrap_or_default();
+    Problem::overload(
+        OverloadProblem {
+            days: overload_days(days),
+            forceable,
+        },
+        format!(
+            "{} day(s) over the resource's capacity plus tolerance, the first on {first}",
+            days.len()
+        ),
+    )
+}
+
+/// Checks the overload of writing `candidate`, under its resource's lock
+/// (held until the end of the transaction): refused in blocking mode
+/// unless `force`, which needs `force_overload`.
+async fn check_overload(
+    state: &AppState,
+    tx: &mut TenantTx,
+    project: &Node,
+    candidate: &Candidate<'_>,
+    force: bool,
+) -> Result<Outcome, Problem> {
+    let forceable = forces(state, tx, project).await?;
+    if force && !forceable {
+        return Err(
+            Problem::new(ErrorCode::PermissionDenied).with_detail("missing permission: force_overload")
+        );
+    }
+    checks::lock_resource(tx, candidate.resource_id).await?;
+    let policy = checks::policy(tx).await?;
+    let days = checks::day_loads(tx, &policy, candidate).await?;
+    let outcome = overload_rules::decide(&policy, overload_rules::overloads(&days, &policy), force);
+    if let Outcome::Refused(days) = &outcome {
+        return Err(overload_problem(days, forceable));
+    }
+    Ok(outcome)
+}
+
+/// Traces `outcome` when it was forced.
+async fn trace_forced(tx: &mut TenantTx, outcome: &Outcome, assignment: &Assignment) -> Result<(), Problem> {
+    let Outcome::Forced(days) = outcome else {
+        return Ok(());
+    };
+    let author = tx.author();
+    checks::record_forced(
+        tx,
+        author,
+        &Forced {
+            assignment_id: assignment.id,
+            issue_id: assignment.issue_id,
+            resource_id: assignment.resource.id,
+            resource_name: &assignment.resource.display_name,
+            overloads: days,
+        },
+    )
+    .await?;
+    tracing::info!(target: "audit", actor = ?author.actor_id, issue = %assignment.issue_id,
+                   assignment = %assignment.id, days = days.len(), "overload forced");
+    Ok(())
 }
 
 /// The assignment `id`, its ticket and project, if the member sees them.
@@ -436,9 +560,15 @@ pub async fn list(
     let (issue, project) = visible_issue(&state, &mut tx, &id_or_key).await?;
     let can_assign = assigns(&state, &mut tx, &project).await? && !project.archived;
     let assignments = repo::of_issue(&mut tx, issue.id).await?;
-    let loads = loads(&mut tx, &assignments.iter().collect::<Vec<_>>()).await?;
+    let all: Vec<&Assignment> = assignments.iter().collect();
+    let loads = loads(&mut tx, &all).await?;
+    let policy = checks::policy(&mut tx).await?;
+    let flagged = checks::flagged(&mut tx, &policy, &all).await?;
     tx.commit().await?;
-    let items: Vec<AssignmentView> = assignments.into_iter().map(|a| view(a, &loads, &issue)).collect();
+    let items: Vec<AssignmentView> = assignments
+        .into_iter()
+        .map(|a| view(a, &loads, &flagged, &issue))
+        .collect();
     Ok(ApiJson(AssignmentList {
         load_minutes: items.iter().map(|a| a.load_minutes).sum(),
         items,
@@ -455,7 +585,10 @@ pub async fn list(
     summary = "Assign a resource to a ticket",
     description = "Members with `assign_resources` on its project (tenant admins always). One \
                    assignment per resource and ticket; its segments never take a same day and stay \
-                   within the ticket's dates, when it has them.",
+                   within the ticket's dates, when it has them. The resulting load of each day is \
+                   checked against the resource's capacity plus the tenant's tolerance: in blocking \
+                   mode an overload is refused unless forced (`force`, with `force_overload`); in \
+                   warning mode it is written and flagged (`overloads`).",
     params(
         ("idOrKey" = String, Path, description = "Id, key or former key of the ticket"),
         ("Idempotency-Key" = Option<String>, Header, description = "Unique key of this creation"),
@@ -471,10 +604,13 @@ pub async fn list(
                                       `segments.{i}.value`: `out_of_range`; `segments.{i}.start`: `no_working_day`)",
          body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
-        (status = 403, description = "`permission.denied`, or `csrf.invalid`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 403, description = "`permission.denied` (`assign_resources`, or `force_overload` when \
+                                      forcing), or `csrf.invalid`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 404, description = "No such ticket visible to the member", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 409, description = "`assignment.resource_taken`, `assignment.segments_overlap`, \
-                                      `assignment.outside_issue_dates`, `node.archived`, or `idempotency_key.in_flight`",
+                                      `assignment.outside_issue_dates`, `workload.overload` (with `overload`: \
+                                      the days, and whether the member may force it), `node.archived`, or \
+                                      `idempotency_key.in_flight`",
          body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 422, description = "`idempotency_key.reused`", body = ProblemBody, content_type = PROBLEM_JSON),
     )
@@ -516,6 +652,21 @@ pub async fn create(
     };
     let segments = checked(&body.segments, (issue.start_date, issue.due_date))?;
     require_placeable(&mut tx, (resource.id, resource.calendar_id), &segments).await?;
+    let outcome = check_overload(
+        &state,
+        &mut tx,
+        &project,
+        &Candidate {
+            assignment_id: None,
+            issue_id: issue.id,
+            resource_id: resource.id,
+            calendar_id: resource.calendar_id,
+            provisional: body.provisional,
+            segments: &segments,
+        },
+        body.force,
+    )
+    .await?;
     let actor = tx.account_id();
     let input = AssignmentInput {
         provisional: body.provisional,
@@ -532,6 +683,7 @@ pub async fn create(
     .await?
     .map_err(conflict_problem)?;
     tracing::info!(target: "audit", actor = %actor, issue = %issue.id, resource = %resource.id, assignment = %assignment.id, "resource assigned");
+    trace_forced(&mut tx, &outcome, &assignment).await?;
     let (id, version) = (assignment.id, assignment.version);
     let view = one_view(&mut tx, assignment, &issue).await?;
     let response = idempotency::created(
@@ -581,7 +733,8 @@ pub async fn read(
     operation_id = "updateAssignment",
     summary = "Change an assignment",
     description = "Members with `assign_resources` on the ticket's project: its segments and \
-                   provisional flag are replaced; its resource stays.",
+                   provisional flag are replaced; its resource stays. Checked for overload as a \
+                   creation is, on the days it adds load to.",
     params(
         ("id" = Uuid, Path, description = "Id of the assignment"),
         ("If-Match" = String, Header, description = "ETag of the version being replaced, or `*`"),
@@ -593,7 +746,8 @@ pub async fn read(
         (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 403, description = "`permission.denied`, or `csrf.invalid`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 404, description = "No such assignment visible to the member", body = ProblemBody, content_type = PROBLEM_JSON),
-        (status = 409, description = "`assignment.segments_overlap`, `assignment.outside_issue_dates`, or `node.archived`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 409, description = "`assignment.segments_overlap`, `assignment.outside_issue_dates`, \
+                                      `workload.overload`, or `node.archived`", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 412, description = "The assignment changed since this ETag", body = ProblemBody, content_type = PROBLEM_JSON),
         (status = 428, description = "`If-Match` is missing", body = ProblemBody, content_type = PROBLEM_JSON),
     )
@@ -615,6 +769,21 @@ pub async fn update(
         &segments,
     )
     .await?;
+    let outcome = check_overload(
+        &state,
+        &mut tx,
+        &project,
+        &Candidate {
+            assignment_id: Some(id),
+            issue_id: issue.id,
+            resource_id: assignment.resource.id,
+            calendar_id: assignment.resource.calendar_id,
+            provisional: body.provisional,
+            segments: &segments,
+        },
+        body.force,
+    )
+    .await?;
     let actor = tx.account_id();
     let input = AssignmentInput {
         provisional: body.provisional,
@@ -624,6 +793,7 @@ pub async fn update(
         .await?
         .map_err(conflict_problem)?;
     tracing::info!(target: "audit", actor = %actor, issue = %issue.id, assignment = %id, "assignment changed");
+    trace_forced(&mut tx, &outcome, &updated).await?;
     let version = updated.version;
     let view = one_view(&mut tx, updated, &issue).await?;
     tx.commit().await?;
@@ -668,6 +838,202 @@ pub async fn delete(
     tracing::info!(target: "audit", actor = %actor, issue = %issue.id, assignment = %id, "assignment removed");
     tx.commit().await?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// What a tenant does with an overload.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+#[schema(as = OverloadMode)]
+pub enum OverloadModeView {
+    /// Refused, unless forced.
+    Blocking,
+    /// Written and flagged.
+    Warning,
+}
+
+impl From<OverloadMode> for OverloadModeView {
+    fn from(mode: OverloadMode) -> Self {
+        match mode {
+            OverloadMode::Blocking => Self::Blocking,
+            OverloadMode::Warning => Self::Warning,
+        }
+    }
+}
+
+/// An assignment to preview.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[schema(as = AssignmentPreviewFields, example = json!({
+    "issueId": "0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7a01",
+    "resourceId": "0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7b01",
+    "segments": [{"start": "2026-11-16", "end": "2026-11-20", "mode": "hours_per_day", "value": 240}]
+}))]
+pub struct PreviewBody {
+    /// The ticket.
+    issue_id: Uuid,
+    /// The resource: an active one, or that of `assignmentId`.
+    resource_id: Uuid,
+    /// The assignment changed, of this ticket and resource; left out for a
+    /// new one.
+    #[serde(default)]
+    assignment_id: Option<Uuid>,
+    #[serde(default)]
+    provisional: bool,
+    /// As for a write.
+    segments: Vec<SegmentBody>,
+}
+
+/// One day of a preview.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(as = AssignmentPreviewDay)]
+pub struct PreviewDayView {
+    #[schema(value_type = String, format = Date, example = "2026-11-18")]
+    date: Date,
+    /// Minutes of capacity, absences deducted.
+    #[schema(example = 420)]
+    capacity_minutes: u32,
+    /// Minutes allowed: the capacity plus the tolerance.
+    #[schema(example = 420)]
+    limit_minutes: u32,
+    /// Load of the resource's other assignments.
+    #[schema(example = 240)]
+    existing_minutes: u32,
+    /// Load of this assignment as previewed.
+    #[schema(example = 240)]
+    assignment_minutes: u32,
+    /// Their sum.
+    #[schema(example = 480)]
+    total_minutes: u32,
+    /// The write would overload it.
+    overloaded: bool,
+}
+
+/// What writing an assignment would give, without writing it.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(as = AssignmentPreview)]
+pub struct PreviewView {
+    /// The days of its segments that have capacity or load, by date. Loads
+    /// are counted as the check counts them: provisional assignments by the
+    /// tenant's setting.
+    days: Vec<PreviewDayView>,
+    /// The days the write would overload, by date.
+    overloads: Vec<OverloadDay>,
+    mode: OverloadModeView,
+    #[schema(example = 0)]
+    tolerance_percent: u8,
+    /// Provisional assignments count in the check.
+    counts_provisional: bool,
+    /// The write would be refused (blocking mode, overloads, not forced).
+    blocked: bool,
+    /// The member may force it.
+    forceable: bool,
+}
+
+fn preview_days(days: &[overload_rules::DayLoad], policy: &Policy) -> Vec<PreviewDayView> {
+    days.iter()
+        .filter(|d| d.capacity > 0 || d.existing > 0 || d.after > 0)
+        .filter_map(|d| {
+            Some(PreviewDayView {
+                date: sql_date(d.date)?,
+                capacity_minutes: d.capacity,
+                limit_minutes: policy.limit(d.capacity),
+                existing_minutes: d.existing,
+                assignment_minutes: d.after,
+                total_minutes: d.total(),
+                overloaded: overload_rules::overloads_day(d, policy),
+            })
+        })
+        .collect()
+}
+
+/// `POST /api/v1/assignments/preview`: writes nothing.
+#[utoipa::path(
+    post,
+    path = "/assignments/preview",
+    tag = TAG,
+    operation_id = "previewAssignment",
+    summary = "Preview the load of an assignment",
+    description = "Members with `assign_resources` on the ticket's project: for each day of the \
+                   segments, the load of the resource's other assignments, this assignment's and \
+                   their sum against the capacity plus tolerance, and the days a write would \
+                   overload. The same check as a write, without writing or locking.",
+    request_body = PreviewBody,
+    responses(
+        (status = 200, description = "The preview", body = PreviewView),
+        (status = 400, description = "`validation_failed`, as for a write (`assignmentId`: `not_found`)",
+         body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 403, description = "`permission.denied`, or `csrf.invalid`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 404, description = "No such ticket visible to the member", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 409, description = "`assignment.segments_overlap`, `assignment.outside_issue_dates`, or `node.archived`",
+         body = ProblemBody, content_type = PROBLEM_JSON),
+    )
+)]
+pub async fn preview(
+    State(state): State<AppState>,
+    mut tx: TenantTx,
+    ApiJson(body): ApiJson<PreviewBody>,
+) -> Result<ApiJson<PreviewView>, Problem> {
+    let (issue, project) = visible_issue(&state, &mut tx, &body.issue_id.to_string()).await?;
+    require_assign(&state, &mut tx, &project).await?;
+    let resource = match body.assignment_id {
+        Some(id) => {
+            let assignment = repo::find(&mut tx, id)
+                .await?
+                .filter(|a| a.issue_id == issue.id && a.resource.id == body.resource_id)
+                .ok_or_else(|| Problem::validation(vec![FieldError::new("assignmentId", "not_found")]))?;
+            (assignment.resource.id, assignment.resource.calendar_id)
+        }
+        None => match infra::resources::find(&mut tx, body.resource_id).await? {
+            None => {
+                return Err(Problem::validation(vec![FieldError::new(
+                    "resourceId",
+                    "not_found",
+                )]));
+            }
+            Some(r) if !r.active => {
+                return Err(Problem::validation(vec![FieldError::new(
+                    "resourceId",
+                    "inactive",
+                )]));
+            }
+            Some(r) => (r.id, r.calendar_id),
+        },
+    };
+    let segments = checked(&body.segments, (issue.start_date, issue.due_date))?;
+    require_placeable(&mut tx, resource, &segments).await?;
+    let forceable = forces(&state, &mut tx, &project).await?;
+    let policy = checks::policy(&mut tx).await?;
+    let days = checks::day_loads(
+        &mut tx,
+        &policy,
+        &Candidate {
+            assignment_id: body.assignment_id,
+            issue_id: issue.id,
+            resource_id: resource.0,
+            calendar_id: resource.1,
+            provisional: body.provisional,
+            segments: &segments,
+        },
+    )
+    .await?;
+    tx.commit().await?;
+    let overloads = overload_rules::overloads(&days, &policy);
+    let blocked = matches!(
+        overload_rules::decide(&policy, overloads.clone(), false),
+        Outcome::Refused(_)
+    );
+    Ok(ApiJson(PreviewView {
+        days: preview_days(&days, &policy),
+        overloads: overload_days(&overloads),
+        mode: policy.mode.into(),
+        tolerance_percent: policy.tolerance_percent,
+        counts_provisional: policy.count_provisional,
+        blocked,
+        forceable,
+    }))
 }
 
 #[cfg(test)]
@@ -728,6 +1094,84 @@ mod tests {
         );
         // An undated ticket takes any segment.
         assert_eq!(code(&[week, beyond], (None, None)), None);
+    }
+
+    fn local(text: &str) -> domain::dates::Date {
+        domain::dates::Date::parse(text).unwrap_or_else(|| panic!("{text}"))
+    }
+
+    #[test]
+    fn an_overload_maps_to_its_problem_with_every_day() {
+        let days = [
+            Overload {
+                date: local("2026-11-18"),
+                planned: 480,
+                available: 420,
+                limit: 420,
+            },
+            Overload {
+                date: local("2026-11-19"),
+                planned: 500,
+                available: 420,
+                limit: 462,
+            },
+        ];
+        let problem = overload_problem(&days, false);
+        assert_eq!(problem.code, ErrorCode::WorkloadOverload);
+        assert_eq!(
+            problem.detail.as_deref(),
+            Some("2 day(s) over the resource's capacity plus tolerance, the first on 2026-11-18")
+        );
+        let overload = problem.overload.unwrap_or_else(|| panic!("no days"));
+        assert!(!overload.forceable);
+        assert_eq!(
+            overload.days[1],
+            OverloadDay {
+                date: date!(2026 - 11 - 19),
+                planned_minutes: 500,
+                available_minutes: 420,
+                limit_minutes: 462,
+            }
+        );
+    }
+
+    #[test]
+    fn a_preview_keeps_the_days_with_capacity_or_load() {
+        let policy = Policy {
+            tolerance_percent: 10,
+            ..Policy::default()
+        };
+        let day = |text: &str, capacity, existing, after| overload_rules::DayLoad {
+            date: local(text),
+            capacity,
+            existing,
+            before: 0,
+            after,
+        };
+        let days = preview_days(
+            &[
+                day("2026-11-20", 420, 240, 240),
+                // A weekend with nothing, then one with load.
+                day("2026-11-21", 0, 0, 0),
+                day("2026-11-22", 0, 60, 0),
+                day("2026-11-23", 420, 0, 0),
+            ],
+            &policy,
+        );
+        let dates: Vec<Date> = days.iter().map(|d| d.date).collect();
+        assert_eq!(
+            dates,
+            [
+                date!(2026 - 11 - 20),
+                date!(2026 - 11 - 22),
+                date!(2026 - 11 - 23)
+            ]
+        );
+        assert_eq!(
+            (days[0].limit_minutes, days[0].total_minutes, days[0].overloaded),
+            (462, 480, true)
+        );
+        assert!(!days[1].overloaded, "the assignment adds nothing to it");
     }
 
     #[test]

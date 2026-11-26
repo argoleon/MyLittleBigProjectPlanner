@@ -172,6 +172,19 @@ async fn a_resource_is_assigned_with_segments_and_their_load() {
         json!({"effectiveFrom": "2026-01-01", "minutes": [420, 420, 420, 420, 210, 0, 0]}),
     )
     .await;
+    // 4 h on that Friday overload it (L08-US03): in warning mode the
+    // assignment is written and the day flagged.
+    let (status, saved) = send(
+        admin(&api, a, Method::PUT, "/api/v1/tenant/workload-settings")
+            .header("if-match", "*")
+            .json(&json!({
+                "defaultCapacityMinutes": [420, 420, 420, 420, 420, 0, 0],
+                "overloadTolerancePercent": 0,
+                "overloadMode": "warning",
+            })),
+    )
+    .await;
+    assert_eq!(status, 200, "{saved}");
 
     // AC1: 4 h/day from 16 to 20 November, then 50% the week after.
     let (status, assignment) = send(
@@ -200,6 +213,7 @@ async fn a_resource_is_assigned_with_segments_and_their_load() {
     assert_eq!(assignment["segments"][0]["workingDays"], 5);
     assert_eq!(assignment["loadMinutes"], 2145);
     assert_eq!(assignment["outsideIssueDates"], false);
+    assert_eq!(assignment["overloads"][0]["date"], "2026-11-20");
     let id = assignment["id"].as_str().unwrap().to_owned();
 
     // The same key replays the creation.
