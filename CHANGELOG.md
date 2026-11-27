@@ -44,6 +44,9 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
   - Before replacing, the dialog previews the assignments that move, the tickets where the person's segments and the moved ones would take a same day (which refuse the replacement, `assignment.segments_overlap`) and the person's days it would overload, checked as for an assignment: in blocking mode, forcing needs **Force overload** on every project concerned, and is traced.
   - Each ticket's history records it (**replaced … with …**). The generic resource is deactivated afterwards, unless unchecked.
   - `POST /api/v1/resources/{id}/replacement`, `POST /api/v1/resources/{id}/replacement/preview`.
+- **Confirming a provisional assignment** (#255)
+  - A provisional assignment (hatched in the heatmap, counted in the overload check or not by the organization's setting) gets a **Confirm** button on the ticket's Assignments card and on the resource's Assignments tab: it becomes firm and is checked for overload as a firm assignment. In blocking mode, those with **Force overload** are asked whether to force it (traced); the others are told the days.
+  - `POST /api/v1/assignments/{id}/confirm` (with `If-Match`).
 
 ## [0.7.0] - 2026-11-24
 
