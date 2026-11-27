@@ -23,6 +23,7 @@ import { ArchivedBanner } from './archived-banner';
 import { PERCENT, hoursOf } from './hierarchy-rows';
 import { HierarchyTree } from './hierarchy-tree';
 import { NodeDialog, NodeDialogData } from './node-dialog';
+import { WorkloadCard } from '../workload/workload-card';
 
 /**
  * View of a portfolio, program or project (mockup 05): its indicators
@@ -44,6 +45,7 @@ import { NodeDialog, NodeDialogData } from './node-dialog';
     MatProgressBarModule,
     RouterLink,
     TranslocoPipe,
+    WorkloadCard,
   ],
   templateUrl: './node-page.html',
   styleUrl: './node-page.scss',

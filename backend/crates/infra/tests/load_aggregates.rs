@@ -1,7 +1,9 @@
 //! Integration tests on a real PostgreSQL: the weekly and monthly load of
 //! resources (L08-US06) — marked stale by load and capacity changes within
 //! the horizon, one job queued for a burst, recomputed equal to the sums
-//! computed on the fly, read back by period; per tenant.
+//! computed on the fly, read back by period; per tenant. And the shares of
+//! each project (L08-US07): load and capacity in proportion, and the
+//! projects' totals in the hierarchy's figures.
 
 #![allow(clippy::unwrap_used)]
 
@@ -252,4 +254,134 @@ async fn load_and_capacity_changes_mark_their_weeks_and_months_and_the_job_store
             .is_empty()
     );
     other.commit().await.unwrap();
+}
+
+#[tokio::test]
+async fn a_resource_shares_its_capacity_between_its_projects_and_their_totals_follow() {
+    let db = TestDb::new().await;
+    let a = &db.tenant_a;
+    let admin = db.add_member(a, TenantRole::TenantAdmin).await.account_id;
+    let monday = monday_ahead();
+    let mut tx = begin_tenant_tx(&db.app_pool, a.id).await.unwrap();
+    let nathan = resource(&mut tx, "Nathan Roux").await;
+    // Two projects: 60% of the week on one, 40% on the other.
+    let first = ticket(&mut tx, admin).await;
+    let other_project = nodes::insert(
+        &mut tx,
+        &NewNode {
+            id: new_id(),
+            node_type: NodeType::Project,
+            key: "OPS",
+            fields: NodeFields {
+                key: None,
+                name: "Operations",
+                description: "",
+                objectives: "",
+                start_date: None,
+                end_date: None,
+                health: domain::hierarchy::Health::OnTrack,
+                owners: &[],
+            },
+            parent: None,
+            created_by: admin,
+        },
+    )
+    .await
+    .unwrap()
+    .unwrap()
+    .id;
+    let fields = json!({});
+    let second = issues::create(
+        &mut tx,
+        &NewIssue {
+            id: new_id(),
+            project_id: other_project,
+            project_key: "OPS",
+            type_id: Uuid::from_u128(1),
+            status_id: Uuid::from_u128(2),
+            parent_id: None,
+            summary: "Directory sync",
+            description: None,
+            priority: "medium",
+            reporter_id: admin,
+            assignee_id: None,
+            start_date: None,
+            due_date: None,
+            fields: &fields,
+        },
+    )
+    .await
+    .unwrap()
+    .id;
+    for (issue, percent) in [(first, 60), (second, 40)] {
+        let input = AssignmentInput {
+            provisional: false,
+            segments: vec![StoredSegment {
+                start: monday,
+                end: monday + Duration::days(4),
+                mode: Mode::Percentage,
+                value: percent,
+            }],
+        };
+        assignments::insert(&mut tx, new_id(), issue, nathan, &input, None)
+            .await
+            .unwrap()
+            .unwrap();
+    }
+    load_aggregates::recompute(&mut tx).await.unwrap();
+    let plat: Uuid = infra::sqlx::query_scalar("SELECT project_id FROM issue WHERE id = $1")
+        .bind(first)
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap();
+    let shares = load_aggregates::project_shares(&mut tx, &[plat, other_project], "week", &[monday])
+        .await
+        .unwrap();
+    // 21 h and 14 h of 35 h: the capacity shared the same way.
+    assert_eq!(shares[&(plat, monday)], (1260, 0, 1260));
+    assert_eq!(shares[&(other_project, monday)], (840, 0, 840));
+    // Their totals feed the hierarchy's figures, recomputed by its job.
+    let totals: Vec<(Uuid, i64, i64)> = infra::sqlx::query_as(
+        "SELECT node_id, planned_minutes, capacity_minutes FROM project_figure ORDER BY planned_minutes DESC",
+    )
+    .fetch_all(&mut *tx)
+    .await
+    .unwrap();
+    // Monthly shares: the capacity of the whole month(s), shared 3 to 2.
+    assert_eq!(
+        (totals[0].0, totals[0].1, totals[1].0, totals[1].1),
+        (plat, 1260, other_project, 840)
+    );
+    let (plat_capacity, ops_capacity) = (totals[0].2, totals[1].2);
+    assert!(plat_capacity + ops_capacity >= 2100 * 4, "{totals:?}");
+    assert!((plat_capacity * 2 - ops_capacity * 3).abs() <= 3, "{totals:?}");
+    let stale: i64 = infra::sqlx::query_scalar("SELECT count(*) FROM node_aggregate_stale")
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap();
+    assert!(stale >= 2);
+
+    // One assignment gone: its project's share and total go too.
+    infra::sqlx::query("DELETE FROM assignment WHERE issue_id = $1")
+        .bind(second)
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    load_aggregates::mark_stale(&mut tx, &[nathan], Some(monday), Some(monday))
+        .await
+        .unwrap();
+    load_aggregates::recompute(&mut tx).await.unwrap();
+    let shares = load_aggregates::project_shares(&mut tx, &[plat, other_project], "week", &[monday])
+        .await
+        .unwrap();
+    assert_eq!(shares[&(plat, monday)], (1260, 0, 2100), "all the capacity now");
+    assert!(!shares.contains_key(&(other_project, monday)));
+    let left: i64 =
+        infra::sqlx::query_scalar("SELECT planned_minutes FROM project_figure WHERE node_id = $1")
+            .bind(other_project)
+            .fetch_one(&mut *tx)
+            .await
+            .unwrap();
+    assert_eq!(left, 0);
+    tx.commit().await.unwrap();
 }

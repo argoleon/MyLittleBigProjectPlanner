@@ -124,6 +124,8 @@
     <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.loading' | transloco" />
   }
 
+  <app-workload-card class="workload" owner="node" [ownerId]="current.id" />
+
   <app-hierarchy-tree [under]="current.id" [caption]="'hierarchy.view.caption' | transloco: { name: current.name }">
     <ui-empty-state icon="account_tree" [title]="'hierarchy.view.empty' | transloco" [message]="'hierarchy.view.emptyHint' | transloco">
       @if (canAddChild()) {

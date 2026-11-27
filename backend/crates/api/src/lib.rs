@@ -63,6 +63,7 @@ pub mod teams;
 pub mod tenant;
 pub mod transition_rules;
 pub mod workflows;
+pub mod workload_aggregates;
 pub mod workload_conflicts;
 pub mod workload_heatmap;
 

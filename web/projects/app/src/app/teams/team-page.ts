@@ -28,6 +28,7 @@ import { managesResources } from '../resources/resource-page';
 import { ResourcesStore } from '../resources/resources-store';
 import { AddMemberData, AddMemberDialog } from './add-member-dialog';
 import { TeamDialog, TeamDialogData } from './team-dialog';
+import { WorkloadCard } from '../workload/workload-card';
 
 /** Outcome of the last action, shown above the table. */
 interface Notice {
@@ -44,6 +45,7 @@ interface Notice {
 @Component({
   selector: 'app-team-page',
   imports: [
+    WorkloadCard,
     Avatar,
     EmptyState,
     ErrorState,

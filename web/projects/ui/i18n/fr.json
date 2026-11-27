@@ -2399,6 +2399,15 @@
       "percentage": "{{ percent }} de la capacité",
       "inNode": "Du filtre",
       "empty": "Rien de planifié sur cette période."
+    },
+    "aggregate": {
+      "title": "Charge et capacité",
+      "nodeHint": "Charge planifiée sur ses projets, contre la part de capacité qu’elle prend à leurs ressources.",
+      "teamHint": "Charge et capacité de ses membres actifs.",
+      "loading": "Chargement de la charge…",
+      "line": "{{ load }} sur {{ capacity }} · {{ percent }}",
+      "over": "surcharge",
+      "confidential": "Dont {{ count }} projet(s) confidentiel(s), comptés sans détail."
     }
   },
   "teams": {

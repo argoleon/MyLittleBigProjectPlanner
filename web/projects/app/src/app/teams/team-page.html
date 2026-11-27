@@ -34,6 +34,8 @@
     </p>
   }
 
+  <app-workload-card class="workload" owner="team" [ownerId]="team.id" />
+
   <section aria-labelledby="team-members">
     <h2 class="section-title" id="team-members">
       {{ 'teams.page.members' | transloco: { count: team.memberCount } }}

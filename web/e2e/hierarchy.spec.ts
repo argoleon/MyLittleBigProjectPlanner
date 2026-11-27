@@ -97,6 +97,20 @@ async function mockHierarchy(page: Page, top: object[] = []) {
   await page.route(`**/api/v1/nodes/${PROGRAM.id}`, (route) => route.fulfill({ json: PROGRAM }));
   await page.route(`**/api/v1/nodes/${PROGRAM.id}/aggregate`, (route) => route.fulfill({ json: AGGREGATE }));
   await page.route(`**/api/v1/nodes/${PROGRAM.id}/my-permissions`, (route) => route.fulfill({ json: [] }));
+  // Load against capacity per month (L08-US07), an overloaded one among them.
+  await page.route('**/api/v1/nodes/*/workload?*', (route) =>
+    route.fulfill({
+      json: {
+        scale: 'month',
+        periods: [
+          { start: '2026-11-01', end: '2026-11-30', loadMinutes: 18_720, provisionalMinutes: 0, capacityMinutes: 20_400, usedPercent: 92 },
+          { start: '2026-12-01', end: '2026-12-31', loadMinutes: 23_520, provisionalMinutes: 0, capacityMinutes: 21_000, usedPercent: 112 },
+        ],
+        count: 3,
+        confidentialProjects: 1,
+      },
+    }),
+  );
   await page.route(`**/api/v1/nodes/${PROJECT.id}`, (route) => route.fulfill({ json: PROJECT }));
   return created;
 }

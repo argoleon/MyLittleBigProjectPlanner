@@ -59,7 +59,7 @@ test('create a team, add a resource to it, filter by it, remove it', async ({ br
   await page.getByRole('option', { name: new RegExp(role) }).click();
   await dialog.getByRole('button', { name: 'Add' }).click();
   await expect(page.getByRole('status')).toHaveText(`${role} was added to the team.`);
-  await expect(page.getByRole('heading', { level: 2 })).toHaveText('Resources (1)');
+  await expect(page.getByRole('heading', { level: 2, name: /^Resources / })).toHaveText('Resources (1)');
   await expect(page.getByRole('row').filter({ hasText: role })).toBeVisible();
   expect(await accessibilityViolations(page), 'team page').toEqual([]);
 

@@ -34,6 +34,11 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
   - A cell, clicked or opened with the keyboard (arrows, Home/End, Page Up/Down, Enter, the focused cell said by screen readers), shows in a side panel the capacity, the planned hours and the gap, the overloads forced there, and the tickets behind the load, those the member does not see as **Busy (confidential)**. A **Table** view gives the same data in an accessible table.
   - The heatmap is drawn on a canvas, only what is in view: 200 resources over 3 months read in about 150 ms. Weekly and monthly sums are precomputed for a year back and two years ahead, kept up to date by the worker within seconds of a change of load or capacity.
   - `GET /api/v1/workload/heatmap`, `GET /api/v1/workload/cell`.
+- **Load against capacity by node and team** (#248)
+  - Portfolio, program and project pages, and team pages, show a **Load and capacity** card: per month (or week), the hours planned against the capacity, with the share used and overloaded periods said in words.
+  - A node sums its distinct projects, a project reached twice once, each with the weighting of its link; confidential projects count without detail. A project's capacity is its resources' capacity in proportion to their load there, so that a person shared between two programs is never counted twice. A team sums its active members.
+  - The planned load and capacity of the hierarchy's indicators are now fed by the assignments, and kept up to date within seconds.
+  - `GET /api/v1/nodes/{id}/workload`, `GET /api/v1/teams/{id}/workload`.
 
 ## [0.7.0] - 2026-11-24
 

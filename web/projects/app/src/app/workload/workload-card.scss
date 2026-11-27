@@ -1,0 +1,74 @@
+@use '../admin/admin-shared';
+
+:host {
+  display: block;
+}
+
+.card {
+  padding: var(--app-space-4);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface);
+}
+
+.card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--app-space-3);
+  margin-bottom: var(--app-space-3);
+}
+
+.card-title {
+  margin: 0;
+  font: var(--mat-sys-title-medium);
+}
+
+.hint,
+.confidential {
+  margin: var(--app-space-1) 0 0;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.confidential {
+  margin: 0 0 var(--app-space-2);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-1);
+}
+
+.periods {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--app-space-2);
+  margin-bottom: var(--app-space-1);
+  font: var(--mat-sys-body-medium);
+}
+
+.label {
+  font: var(--mat-sys-title-small);
+}
+
+.period.over {
+  --mat-progress-bar-active-indicator-color: var(--app-load-over-outline);
+
+  .over-text {
+    color: var(--mat-sys-error);
+    font: var(--mat-sys-label-large);
+  }
+}

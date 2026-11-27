@@ -8997,6 +8997,99 @@
         }
       }
     },
+    "/api/v1/nodes/{id}/workload": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Load against capacity of a node",
+        "description": "Members who see the node: per week or month, the load planned on its distinct projects (itself if it is one, or those below it, each with the weighting of its link; a project reached twice counts once), and the share of their resources' capacity that load takes. Confidential projects count without detail. Sums kept over a year back and two years ahead.",
+        "operationId": "getNodeWorkload",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the node",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "scale",
+            "in": "query",
+            "description": "`month` when left out.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/WorkloadAggregateScale"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "First day: its period comes first.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Last day: its period comes last.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The aggregate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkloadAggregate"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed` (`to`: `before_start`, `out_of_range`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such node visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/ping": {
       "get": {
         "tags": [
@@ -18744,6 +18837,99 @@
           },
           "404": {
             "description": "No such team in this tenant, or the resource is not in it",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{id}/workload": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Load against capacity of a team",
+        "description": "Internal members: per week or month, the load and capacity of the team's active members, summed.",
+        "operationId": "getTeamWorkload",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the team",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "scale",
+            "in": "query",
+            "description": "`month` when left out.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/WorkloadAggregateScale"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "First day: its period comes first.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Last day: its period comes last.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The aggregate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkloadAggregate"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed` (`to`: `before_start`, `out_of_range`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such team in this tenant",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -33876,6 +34062,103 @@
           },
           "toId": "01933b2e-7c4a-7b9e-8f3d-2a6c5e1f0b9a"
         }
+      },
+      "WorkloadAggregate": {
+        "type": "object",
+        "description": "Load against capacity per period.",
+        "required": [
+          "scale",
+          "periods",
+          "count",
+          "confidentialProjects"
+        ],
+        "properties": {
+          "confidentialProjects": {
+            "type": "integer",
+            "format": "int32",
+            "description": "For a node: those of its projects that are confidential, counted\nwithout detail; 0 for a team.",
+            "example": 1,
+            "minimum": 0
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32",
+            "description": "For a node: its distinct projects counted; for a team: its active\nmembers.",
+            "example": 6,
+            "minimum": 0
+          },
+          "periods": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkloadAggregatePeriod"
+            }
+          },
+          "scale": {
+            "$ref": "#/components/schemas/WorkloadAggregateScale"
+          }
+        }
+      },
+      "WorkloadAggregatePeriod": {
+        "type": "object",
+        "description": "A period of an aggregate.",
+        "required": [
+          "start",
+          "end",
+          "loadMinutes",
+          "provisionalMinutes",
+          "capacityMinutes",
+          "usedPercent"
+        ],
+        "properties": {
+          "capacityMinutes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Capacity, in minutes: of the members for a team; for a node, the\nshare of its resources' capacity their load there takes.",
+            "example": 20400,
+            "minimum": 0
+          },
+          "end": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-11-30"
+          },
+          "loadMinutes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Load planned, provisional included, in minutes.",
+            "example": 18720,
+            "minimum": 0
+          },
+          "provisionalMinutes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Its provisional part.",
+            "minimum": 0
+          },
+          "start": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-11-01"
+          },
+          "usedPercent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Load over capacity, in percent rounded to the nearest; `null`\nwithout capacity.",
+            "example": 92,
+            "minimum": 0
+          }
+        }
+      },
+      "WorkloadAggregateScale": {
+        "type": "string",
+        "description": "The span of a period of an aggregate.",
+        "enum": [
+          "week",
+          "month"
+        ]
       },
       "WorkloadConflict": {
         "type": "object",

@@ -169,6 +169,23 @@ impl Hierarchy {
         shares
     }
 
+    /// The projects `node` counts, each with its share in percent: itself
+    /// whole if it is a project, and its descendant projects that are not
+    /// archived ([`share_percent`]). What [`Self::aggregate`] sums.
+    pub fn counted(&self, node: Id) -> Vec<(Id, u8)> {
+        let mut counted = Vec::new();
+        if self.projects.contains_key(&node) {
+            counted.push((node, 100));
+        }
+        for (descendant, share) in self.shares(node) {
+            if self.projects.get(&descendant).is_some_and(|p| !p.archived) {
+                counted.push((descendant, share));
+            }
+        }
+        counted.sort_unstable();
+        counted
+    }
+
     /// The aggregate of `node`.
     pub fn aggregate(&self, node: Id) -> Aggregate {
         let mut sum = Sum::default();
@@ -305,6 +322,56 @@ mod tests {
             link(PROGRAM_A, WAREHOUSE, 100),
             link(WAREHOUSE, ERP, 100),
         ]
+    }
+
+    #[test]
+    fn a_node_counts_its_distinct_projects_with_their_shares() {
+        // A portfolio over a program with two projects, one weighted at
+        // 50%, the other reached again directly; an archived one left out.
+        let (portfolio, program, half, twice, archived) = (10, 20, 1, 2, 3);
+        let project = |archived| Project {
+            archived,
+            ..Project::default()
+        };
+        let hierarchy = Hierarchy::new(
+            [
+                (half, project(false)),
+                (twice, project(false)),
+                (archived, project(true)),
+            ],
+            &[
+                Link {
+                    parent: portfolio,
+                    child: program,
+                    weight_percent: 100,
+                },
+                Link {
+                    parent: program,
+                    child: half,
+                    weight_percent: 50,
+                },
+                Link {
+                    parent: program,
+                    child: twice,
+                    weight_percent: 100,
+                },
+                Link {
+                    parent: program,
+                    child: archived,
+                    weight_percent: 100,
+                },
+                Link {
+                    parent: portfolio,
+                    child: twice,
+                    weight_percent: 30,
+                },
+            ],
+        );
+        assert_eq!(hierarchy.counted(program), vec![(half, 50), (twice, 100)]);
+        // Higher up the weighting of a deeper link no longer applies, and a
+        // project reached twice counts once, whole.
+        assert_eq!(hierarchy.counted(portfolio), vec![(half, 100), (twice, 100)]);
+        assert_eq!(hierarchy.counted(half), vec![(half, 100)]);
     }
 
     #[test]

@@ -115,6 +115,7 @@ La hiérarchie est un graphe orienté sans cycle : un nœud peut avoir plusieurs
 - Un nœud agrège sur l'ensemble de ses projets descendants distincts. Un projet atteint par deux chemins est compté une fois.
 - Chaque lien parent-enfant porte une pondération optionnelle (100 % par défaut), pour les répartitions budgétaires.
 - Agrégats calculés : charge planifiée, capacité consommée, avancement (par catégorie de statut), nombre de tickets ouverts et en retard.
+- La capacité d'un projet est la part de la capacité de ses ressources que leur charge y prend : chaque ressource répartit sa capacité entre ses projets en proportion de sa charge sur chacun, sans double compte. Charge et capacité se lisent aussi par semaine et par mois, pour un nœud comme pour une équipe (la somme de ses membres).
 - Les agrégats sont précalculés par un worker et mis à jour en quelques secondes après chaque modification.
 
 **Droits dans le graphe**
