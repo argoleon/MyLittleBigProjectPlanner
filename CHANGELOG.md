@@ -4,6 +4,10 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-27
+
+Work package **L08 Assignments, workload**: assignments of resources to tickets by segments, the daily load, the overload check, absence conflicts, the workload heatmap, load against capacity by portfolio, program, project and team, replacing a generic resource with a person, provisional booking and the availability search.
+
 ### Added
 
 - **Assignments** (#220)
@@ -51,6 +55,13 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
   - A new **Availability** tab of the Workload screen finds who has a number of free days (working days entirely free, not necessarily in a row) or free hours over a period of up to 92 days, optionally in a team, most free time first, with their free time, free days and planned load against capacity. Free time is the capacity (absences, public holidays and closures deducted) less the load, day by day; the overload tolerance is not counted as free time. Provisional load counts unless left out. Load on tickets the reader does not see reduces it without naming them.
   - Each resource found opens in the heatmap on its days, with its details; the heatmap now opens from a link on a scale, period, team and resource.
   - `GET /api/v1/workload/availability` (also for the MCP tool `find_availability`, L16).
+
+### Upgrading from 0.7.0
+
+- **Migrations**: they add assignments, the daily load (partitioned by month), the absence conflicts and the precomputed load sums. No existing data is converted; the worker computes the load sums and keeps the partitions, so it must run.
+- **Overload check**: it applies from this version, in **blocking** mode with no tolerance unless an organization admin changed them in 0.7.0; provisional assignments count by default. Organization admins review the mode, the tolerance and the provisional setting in Administration, Workload, and give **Force overload** to the roles that may go beyond capacity.
+- **Notifications**: every project configuration gets the rule of the new **Absence conflict** event (the ticket's assignee and the Project manager role); adjust it in the configuration's notification rules if needed.
+- **Indicators**: the planned load and capacity of portfolios, programs and projects are now fed by the assignments; they fill in within seconds of the first assignments.
 
 ## [0.7.0] - 2026-11-24
 
@@ -376,6 +387,7 @@ Work package **L01 Technical foundation**: the base every later work package bui
   - License policy enforced on Rust crates and npm packages, RustSec and npm advisories, secret scan of the git history.
   - CI: every step a `just` recipe (`just ci` locally), GitHub Actions only calls them; release workflow publishing the images to GitHub Container Registry.
 
+[0.8.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.8.0
 [0.7.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.7.0
 [0.6.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.6.0
 [0.5.1]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.5.1
