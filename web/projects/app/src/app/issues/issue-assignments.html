@@ -63,6 +63,19 @@
             </p>
           </div>
           <span class="load">{{ assignment.loadMinutes | duration }}</span>
+          @if (canAssign() && assignment.provisional) {
+            <button
+              matButton
+              type="button"
+              class="confirm"
+              [id]="'assignment-confirm-' + assignment.id"
+              [attr.aria-label]="'assignments.confirm.of' | transloco: { name: assignment.resource.displayName }"
+              (click)="confirm(assignment)"
+            >
+              <mat-icon aria-hidden="true">check_circle</mat-icon>
+              {{ 'assignments.confirm.action' | transloco }}
+            </button>
+          }
           @if (canAssign()) {
             <button
               matIconButton

@@ -2346,7 +2346,9 @@
       "deleted": "The assignment on {{ key }} was removed.",
       "none": "No assignment.",
       "noneAhead": "No ongoing or upcoming assignment.",
-      "more": "Show more"
+      "more": "Show more",
+      "confirmOf": "Confirm the provisional assignment on {{ key }}",
+      "confirmed": "The assignment on {{ key }} is now firm."
     }
   },
   "workload": {
@@ -2688,6 +2690,15 @@
     "empty": "No resource is assigned to this ticket.",
     "provisional": "Provisional",
     "outside": "Some segments fall outside the ticket’s dates, changed since.",
+    "confirm": {
+      "action": "Confirm",
+      "of": "Confirm {{ name }}’s provisional assignment",
+      "done": "{{ name }}’s assignment is now firm.",
+      "blocked": "Confirmed, this assignment would go over capacity — {{ days }}. It stays provisional: reduce its segments, or ask someone allowed to force the overload.",
+      "forceTitle": "Force the overload?",
+      "forceMessage": "Confirmed, this assignment goes over capacity — {{ days }}. Forcing the overload is traced.",
+      "force": "Confirm anyway"
+    },
     "caption": "Segments of {{ name }}’s assignment",
     "columns": {
       "period": "Period",

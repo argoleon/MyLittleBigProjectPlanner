@@ -217,6 +217,7 @@ describe('IssueAssignments', () => {
     expect(Array.from(host.querySelectorAll('article button')).map((b) => b.getAttribute('aria-label'))).toEqual([
       'Edit Nathan Roux’s assignment',
       'Remove Nathan Roux from the ticket',
+      'Confirm Rust developer’s provisional assignment',
       'Edit Rust developer’s assignment',
       'Remove Rust developer from the ticket',
     ]);
@@ -472,6 +473,61 @@ describe('IssueAssignments', () => {
     expect(text(blocks[0].querySelector('[role="note"]'))).toBe('warning Resource overloaded: Wed, Nov 18: 8 h planned for 7 h available (+1 h).');
     expect(blocks[1].querySelector('.tag.overload')).toBeNull();
     expect(await axeViolations(fixture.nativeElement)).toEqual([]);
+  });
+
+  const isConfirm = (url: string, method: string) => url === `/api/v1/assignments/${DEV.id}/confirm` && method === 'POST';
+
+  it('confirms a provisional assignment, which then reads as firm', async () => {
+    const { host, click, reply, text } = await open({ items: [NATHAN, DEV], loadMinutes: 4230, canAssign: true });
+    expect(host.querySelector(`#assignment-confirm-${NATHAN.id}`)).toBeNull();
+    const button = host.querySelector(`#assignment-confirm-${DEV.id}`);
+    expect(text(button)).toBe('check_circle Confirm');
+    await click(button);
+    const confirmed = await reply(isConfirm, { ...DEV, provisional: false, version: 2 });
+    expect(confirmed.request.headers.get('If-Match')).toBe('"1"');
+    expect(confirmed.request.body).toEqual({ force: false });
+    await reply(isList, { items: [NATHAN, { ...DEV, provisional: false, version: 2 }], loadMinutes: 4230, canAssign: true });
+    expect(text(host.querySelector('[role="status"]'))).toBe('Rust developer’s assignment is now firm.');
+    expect(host.querySelector('.tag.provisional')).toBeNull();
+    expect(host.querySelector('button.confirm')).toBeNull();
+  });
+
+  it('asks to force the overload confirming makes, for those allowed', async () => {
+    const { host, click, reply, dialog, text, closed } = await open({ items: [DEV], loadMinutes: 2400, canAssign: true });
+    await click(host.querySelector(`#assignment-confirm-${DEV.id}`));
+    await reply(isConfirm, { ...problem(409, 'workload.overload'), overload: { days: [OVER], forceable: true } }, 409);
+    expect(text(dialog().querySelector('h2'))).toBe('Force the overload?');
+    expect(text(dialog().querySelector('mat-dialog-content'))).toBe(
+      'Confirmed, this assignment goes over capacity — Wed, Nov 18: 8 h planned for 7 h available (+1 h). Forcing the overload is traced.',
+    );
+    expect(await axeViolations(dialog())).toEqual([]);
+    await click(Array.from(dialog().querySelectorAll('button')).find((b) => text(b) === 'Confirm anyway') ?? null);
+    await closed();
+    const forced = await reply(isConfirm, { ...DEV, provisional: false, overloads: [OVER], version: 2 });
+    expect(forced.request.body).toEqual({ force: true });
+    await reply(isList, { items: [{ ...DEV, provisional: false, overloads: [OVER], version: 2 }], loadMinutes: 2400, canAssign: true });
+    expect(text(host.querySelector('[role="status"]'))).toBe('Rust developer’s assignment is now firm.');
+  });
+
+  it('leaves the assignment provisional when forcing is declined', async () => {
+    const { host, http, click, reply, dialog, text, closed } = await open({ items: [DEV], loadMinutes: 2400, canAssign: true });
+    await click(host.querySelector(`#assignment-confirm-${DEV.id}`));
+    await reply(isConfirm, { ...problem(409, 'workload.overload'), overload: { days: [OVER], forceable: true } }, 409);
+    await click(Array.from(dialog().querySelectorAll('button')).find((b) => text(b) === 'Cancel') ?? null);
+    await closed();
+    expect(http.match(() => true).length).toBe(0);
+    expect(host.querySelector('[role="status"], [role="alert"]')).toBeNull();
+    expect(host.querySelector(`#assignment-confirm-${DEV.id}`)).not.toBeNull();
+  });
+
+  it('tells the days confirming would overload, without the permission to force', async () => {
+    const { host, click, reply, text } = await open({ items: [DEV], loadMinutes: 2400, canAssign: true });
+    await click(host.querySelector(`#assignment-confirm-${DEV.id}`));
+    await reply(isConfirm, { ...problem(409, 'workload.overload'), overload: { days: [OVER], forceable: false } }, 409);
+    expect(document.querySelector('mat-dialog-container')).toBeNull();
+    expect(text(host.querySelector('[role="alert"]'))).toBe(
+      'Confirmed, this assignment would go over capacity — Wed, Nov 18: 8 h planned for 7 h available (+1 h). It stays provisional: reduce its segments, or ask someone allowed to force the overload.',
+    );
   });
 
   it('reads the assignments again when the ticket changed elsewhere', async () => {

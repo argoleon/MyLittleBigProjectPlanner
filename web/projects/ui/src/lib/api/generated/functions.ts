@@ -17,6 +17,8 @@ export type { UpdateAssignment$Params as UpdateAssignment$Params } from './fn/is
 export { updateAssignment as updateAssignment } from './fn/issues/update-assignment';
 export type { DeleteAssignment$Params as DeleteAssignment$Params } from './fn/issues/delete-assignment';
 export { deleteAssignment as deleteAssignment } from './fn/issues/delete-assignment';
+export type { ConfirmAssignment$Params as ConfirmAssignment$Params } from './fn/issues/confirm-assignment';
+export { confirmAssignment as confirmAssignment } from './fn/issues/confirm-assignment';
 export type { SearchIssues$Params as SearchIssues$Params } from './fn/issues/search-issues';
 export { searchIssues as searchIssues } from './fn/issues/search-issues';
 export type { GetIssue$Params as GetIssue$Params } from './fn/issues/get-issue';

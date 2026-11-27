@@ -24,6 +24,7 @@ export type { AssignedProject } from './models/assigned-project';
 export type { AssignedResource } from './models/assigned-resource';
 export type { Assignment } from './models/assignment';
 export type { AssignmentChange } from './models/assignment-change';
+export type { AssignmentConfirmation } from './models/assignment-confirmation';
 export type { AssignmentConflict } from './models/assignment-conflict';
 export type { AssignmentFields } from './models/assignment-fields';
 export type { AssignmentList } from './models/assignment-list';

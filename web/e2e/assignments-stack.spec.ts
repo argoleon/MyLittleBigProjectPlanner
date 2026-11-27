@@ -10,7 +10,8 @@
  * lists both stories under their project (L08-US05), and the heatmap, by
  * keyboard and in its table view, shows the week of those hours and what
  * is behind it, the forced overload included (L08-US06). A generic
- * resource is replaced by a person from its page (L08-US08).
+ * resource is replaced by a person from its page (L08-US08). A provisional
+ * assignment is pencilled in, then confirmed as firm (L08-US09).
  *
  * Runs with `just compose-e2e` only: deploy/tests/e2e.sh creates the admin
  * and passes E2E_ADMIN_EMAIL and E2E_ADMIN_SECRET.
@@ -277,4 +278,47 @@ test('a generic resource is replaced by a person from today on, and deactivated'
   await expect(card.locator('article.assignment h3')).toHaveText([person]);
   await page.getByRole('tab', { name: 'Activity' }).click();
   await expect(page.locator('app-issue-activity .entry .sentence').first()).toContainText(`replaced ${name} with ${person}`);
+});
+
+test('a provisional assignment is pencilled in, then confirmed as firm', async ({ page }) => {
+  test.setTimeout(120_000);
+  const stamp = Date.now();
+  const key = `PV${String(stamp).slice(-6)}`;
+  const name = `E2E Provisional ${stamp}`;
+  const wednesday = plainWednesday();
+  const day = new Date(wednesday).toISOString().slice(0, 10);
+
+  await page.context().addInitScript(() => localStorage.setItem('mlbpp.language', 'en'));
+  await page.goto('/sign-in');
+  await page.getByLabel('Email').fill(adminEmail!);
+  await page.getByLabel('Password').fill(adminSecret!);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Home');
+  await seed(page, key, name, day);
+
+  // 3 h pencilled in on that Wednesday, next to the 4 h firm: 7 h, it fits.
+  await page.goto(`/issues/${key}-1`);
+  const card = page.locator('app-issue-assignments');
+  await card.getByRole('button', { name: 'Add a resource' }).click();
+  const dialog = page.getByRole('dialog');
+  await opened(dialog);
+  await dialog.getByRole('combobox', { name: 'Resource' }).fill(name);
+  await page.getByRole('option', { name }).click();
+  await dialog.getByLabel('Start of period 1').fill(typed(wednesday));
+  await dialog.getByLabel('End of period 1').fill(typed(wednesday));
+  await dialog.getByLabel('Value 1').fill('3');
+  await dialog.getByRole('switch', { name: 'Provisional assignment' }).click();
+  await expect(dialog.getByRole('switch', { name: 'Provisional assignment' })).toBeChecked();
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(dialog).toHaveCount(0);
+  const block = card.locator('article.assignment', { hasText: name });
+  await expect(block.locator('.tag.provisional')).toHaveText('Provisional');
+
+  // Confirmed: firm, checked as such (7 h for 7 h passes).
+  const confirm = block.getByRole('button', { name: `Confirm ${name}’s provisional assignment` });
+  expect(await accessibilityViolations(page), 'provisional assignment').toEqual([]);
+  await confirm.click();
+  await expect(card.getByRole('status')).toHaveText(`${name}’s assignment is now firm.`);
+  await expect(block.locator('.tag.provisional')).toHaveCount(0);
+  await expect(confirm).toHaveCount(0);
 });

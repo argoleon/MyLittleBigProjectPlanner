@@ -27,6 +27,7 @@ import {
 } from 'ui';
 
 import { AssignmentDialog, AssignmentDialogData } from '../issues/assignment-dialog';
+import { ProvisionalConfirmation } from '../issues/provisional-confirmation';
 import { segmentValueText } from '../issues/segment-text';
 
 /** Assignments read per page. */
@@ -75,7 +76,8 @@ export function groupByProject(assignments: readonly ResourceAssignment[]): Assi
  * and load, ongoing and upcoming ones first, past ones on demand. Time on
  * tickets the member does not see shows as busy, without ticket nor
  * project. Those who assign resources on a project change an assignment
- * through the dialog of mockup 21, or remove it after confirmation.
+ * through the dialog of mockup 21, confirm a provisional one (L08-US09),
+ * or remove it after confirmation.
  */
 @Component({
   selector: 'app-resource-assignments',
@@ -101,6 +103,7 @@ export class ResourceAssignments {
   private readonly dialog = inject(MatDialog);
   private readonly locale = inject(LocaleService);
   private readonly transloco = inject(TranslocoService);
+  private readonly confirmation = inject(ProvisionalConfirmation);
 
   /** Past assignments are listed too. */
   protected readonly showPast = signal(false);
@@ -194,6 +197,20 @@ export class ResourceAssignments {
         this.notice.set({ ok: true, messageKey: 'resources.assignments.saved', params: { key: data.issue.key } });
         this.reload();
       });
+  }
+
+  /** Makes a provisional assignment firm, forcing its overload when asked. */
+  protected async confirm(item: ResourceAssignment): Promise<void> {
+    const key = item.issue?.key ?? '';
+    this.notice.set(null);
+    const outcome = await this.confirmation.confirm(item.id, item.version, `#resource-assignment-confirm-${item.id}`);
+    if (outcome.status === 'cancelled') return;
+    if (outcome.status === 'refused') {
+      this.notice.set({ ok: false, messageKey: outcome.messageKey, params: outcome.params });
+      return;
+    }
+    this.notice.set({ ok: true, messageKey: 'resources.assignments.confirmed', params: { key } });
+    this.reload();
   }
 
   protected remove(item: ResourceAssignment): void {
