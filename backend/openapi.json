@@ -597,6 +597,137 @@
         }
       }
     },
+    "/api/v1/assignments/{id}/confirm": {
+      "post": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Confirm a provisional assignment",
+        "description": "Members with `assign_resources` on the ticket's project: the assignment becomes firm, its segments unchanged. Checked for overload as a firm assignment, on the days its load now counts (L08-US09). An assignment already firm is returned unchanged.",
+        "operationId": "confirmAssignment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the assignment",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the version being confirmed, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignmentConfirmation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The assignment",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "New version"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Assignment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`permission.denied`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such assignment visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`workload.overload`, or `node.archived`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The assignment changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/invitation": {
       "post": {
         "tags": [
@@ -23137,6 +23268,17 @@
             "items": {
               "$ref": "#/components/schemas/AssignmentSegmentFields"
             }
+          }
+        },
+        "additionalProperties": false
+      },
+      "AssignmentConfirmation": {
+        "type": "object",
+        "description": "Confirming a provisional assignment.",
+        "properties": {
+          "force": {
+            "type": "boolean",
+            "description": "As for a creation."
           }
         },
         "additionalProperties": false

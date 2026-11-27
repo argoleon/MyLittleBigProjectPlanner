@@ -832,6 +832,96 @@ pub async fn update(
     Ok(with_etag(ApiJson(view).into_response(), version))
 }
 
+/// Confirming a provisional assignment.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[schema(as = AssignmentConfirmation)]
+pub struct ConfirmBody {
+    /// As for a creation.
+    #[serde(default)]
+    force: bool,
+}
+
+/// `POST /api/v1/assignments/{id}/confirm`: requires `If-Match`.
+#[utoipa::path(
+    post,
+    path = "/assignments/{id}/confirm",
+    tag = TAG,
+    operation_id = "confirmAssignment",
+    summary = "Confirm a provisional assignment",
+    description = "Members with `assign_resources` on the ticket's project: the assignment becomes \
+                   firm, its segments unchanged. Checked for overload as a firm assignment, on the \
+                   days its load now counts (L08-US09). An assignment already firm is returned \
+                   unchanged.",
+    params(
+        ("id" = Uuid, Path, description = "Id of the assignment"),
+        ("If-Match" = String, Header, description = "ETag of the version being confirmed, or `*`"),
+    ),
+    request_body = ConfirmBody,
+    responses(
+        (status = 200, description = "The assignment", body = AssignmentView, headers(("ETag" = String, description = "New version"))),
+        (status = 400, description = "`validation_failed`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 403, description = "`permission.denied`, or `csrf.invalid`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 404, description = "No such assignment visible to the member", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 409, description = "`workload.overload`, or `node.archived`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 412, description = "The assignment changed since this ETag", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 428, description = "`If-Match` is missing", body = ProblemBody, content_type = PROBLEM_JSON),
+    )
+)]
+pub async fn confirm(
+    State(state): State<AppState>,
+    mut tx: TenantTx,
+    headers: HeaderMap,
+    ApiPath(id): ApiPath<Uuid>,
+    ApiJson(body): ApiJson<ConfirmBody>,
+) -> Result<Response, Problem> {
+    let if_match = require_if_match(&headers)?;
+    let (assignment, issue, project) = visible_assignment(&state, &mut tx, id).await?;
+    require_assign(&state, &mut tx, &project).await?;
+    if if_match
+        .versions()
+        .is_some_and(|versions| !versions.contains(&assignment.version))
+    {
+        return Err(conflict_problem(WriteConflict::VersionMismatch));
+    }
+    if !assignment.provisional {
+        let version = assignment.version;
+        let view = one_view(&mut tx, assignment, &issue).await?;
+        tx.commit().await?;
+        return Ok(with_etag(ApiJson(view).into_response(), version));
+    }
+    let outcome = check_overload(
+        &state,
+        &mut tx,
+        &project,
+        &Candidate {
+            assignment_id: Some(id),
+            issue_id: issue.id,
+            resource_id: assignment.resource.id,
+            calendar_id: assignment.resource.calendar_id,
+            provisional: false,
+            segments: &assignment.segments,
+        },
+        body.force,
+    )
+    .await?;
+    let actor = tx.account_id();
+    let input = AssignmentInput {
+        provisional: false,
+        segments: assignment.segments,
+    };
+    let updated = repo::update(&mut tx, id, if_match.versions(), &input, Some(actor))
+        .await?
+        .map_err(conflict_problem)?;
+    tracing::info!(target: "audit", actor = %actor, issue = %issue.id, assignment = %id, "assignment confirmed");
+    trace_forced(&mut tx, &outcome, &updated).await?;
+    let version = updated.version;
+    let view = one_view(&mut tx, updated, &issue).await?;
+    tx.commit().await?;
+    Ok(with_etag(ApiJson(view).into_response(), version))
+}
+
 /// `DELETE /api/v1/assignments/{id}`: requires `If-Match`.
 #[utoipa::path(
     delete,

@@ -415,6 +415,175 @@ async fn provisional_assignments_count_by_the_tenant_setting() {
     assert_eq!(list["items"][0]["overloads"][0]["plannedMinutes"], 720);
 }
 
+/// The provisional flags of `assignment`'s daily load rows.
+async fn provisional_rows(db: &TestDb, tenant: &SeedTenant, assignment: &str) -> Vec<bool> {
+    let mut tx = infra::db::begin_tenant_tx(&db.app_pool, tenant.id).await.unwrap();
+    let rows: Vec<bool> = infra::sqlx::query_scalar(
+        "SELECT provisional FROM resource_day_load WHERE assignment_id = $1 ORDER BY day",
+    )
+    .bind(Uuid::try_parse(assignment).unwrap())
+    .fetch_all(&mut *tx)
+    .await
+    .unwrap();
+    tx.commit().await.unwrap();
+    rows
+}
+
+/// What the worker does after a write: the stale sums computed again.
+async fn aggregates(db: &TestDb, tenant: &SeedTenant) {
+    let mut tx = infra::db::begin_tenant_tx(&db.app_pool, tenant.id).await.unwrap();
+    infra::load_aggregates::recompute(&mut tx).await.unwrap();
+    tx.commit().await.unwrap();
+}
+
+const WEEK: &str = "/api/v1/workload/heatmap?scale=week&from=2026-11-16&to=2026-11-22";
+
+#[tokio::test]
+async fn confirming_a_provisional_assignment_checks_it_as_a_firm_one() {
+    let db = TestDb::new().await;
+    let api = common::start(&db, multi()).await;
+    let a = &db.tenant_a;
+    let project = plat(&api, a).await;
+    let nathan = resource(&api, a, "Nathan Roux").await;
+    four_hours_on_the_18th(&api, a, &nathan, false).await;
+
+    // Provisional load left out of the check: 4 h a day more is accepted.
+    settings(&api, a, 0, "blocking", Some(false)).await;
+    let mut pencilled = four_hours_a_day(&nathan);
+    pencilled["provisional"] = json!(true);
+    let assignment = created(&api, a, &assignments("PLAT-1"), pencilled).await;
+    assert_eq!(
+        (&assignment["provisional"], &assignment["overloads"]),
+        (&json!(true), &json!([]))
+    );
+    let id = assignment["id"].as_str().unwrap().to_owned();
+    assert_eq!(provisional_rows(&db, a, &id).await, [true; 5]);
+    aggregates(&db, a).await;
+    let row = &get(&api, a, WEEK).await["rows"][0];
+    assert_eq!(
+        (&row["load"], &row["provisional"]),
+        (&json!([1440]), &json!([1200]))
+    );
+
+    let path = format!("/api/v1/assignments/{id}/confirm");
+    let (status, problem) = send(admin(&api, a, Method::POST, &path).json(&json!({}))).await;
+    assert_problem(status, &problem, 428, "precondition_required");
+    let (status, problem) = send(
+        admin(&api, a, Method::POST, &path)
+            .header("if-match", "\"7\"")
+            .json(&json!({})),
+    )
+    .await;
+    assert_problem(status, &problem, 412, "precondition_failed");
+
+    // Confirmed, it counts as firm: 4 + 4 h on the 18th is refused.
+    let (status, problem) = send(
+        admin(&api, a, Method::POST, &path)
+            .header("if-match", "\"1\"")
+            .json(&json!({})),
+    )
+    .await;
+    assert_problem(status, &problem, 409, "workload.overload");
+    assert_eq!(
+        problem["overload"]["days"],
+        json!([{"date": "2026-11-18", "plannedMinutes": 480, "availableMinutes": 420, "limitMinutes": 420}])
+    );
+    assert_eq!(provisional_rows(&db, a, &id).await, [true; 5], "nothing written");
+
+    // A planner may confirm, not force; a reader may not confirm.
+    let (planner, session) = member(&db, &api, a).await;
+    grant(&api, a, &project, planner, json!(["view", "assign_resources"])).await;
+    let (status, problem) = send(
+        as_member(&api, a, &session, Method::POST, &path)
+            .header("if-match", "\"1\"")
+            .json(&json!({"force": true})),
+    )
+    .await;
+    assert_problem(status, &problem, 403, "permission.denied");
+    let (reader, reader_session) = member(&db, &api, a).await;
+    let role = created(
+        &api,
+        a,
+        "/api/v1/tenant/roles",
+        json!({"labelTranslations": {"fr": "Consultation seule", "en": "View only"}, "permissions": ["view"]}),
+    )
+    .await;
+    created(
+        &api,
+        a,
+        &format!("/api/v1/nodes/{project}/grants"),
+        json!({"roleId": role["id"], "accountId": reader}),
+    )
+    .await;
+    let (status, problem) = send(
+        as_member(&api, a, &reader_session, Method::POST, &path)
+            .header("if-match", "*")
+            .json(&json!({})),
+    )
+    .await;
+    assert_problem(status, &problem, 403, "permission.denied");
+    // Another tenant does not see it.
+    let (status, _) = send(
+        admin(&api, &db.tenant_b, Method::POST, &path)
+            .header("if-match", "*")
+            .json(&json!({})),
+    )
+    .await;
+    assert_eq!(status, 404);
+
+    // Forced by an admin: firm, flagged and traced.
+    let (status, confirmed) = send(
+        admin(&api, a, Method::POST, &path)
+            .header("if-match", "\"1\"")
+            .json(&json!({"force": true})),
+    )
+    .await;
+    assert_eq!(status, 200, "{confirmed}");
+    assert_eq!(
+        (&confirmed["provisional"], &confirmed["version"]),
+        (&json!(false), &json!(2))
+    );
+    assert_eq!(
+        confirmed["segments"], assignment["segments"],
+        "segments unchanged"
+    );
+    assert_eq!(confirmed["overloads"][0]["date"], "2026-11-18");
+    assert_eq!(provisional_rows(&db, a, &id).await, [false; 5]);
+    let forced = get(&api, a, "/api/v1/tenant/forced-overloads").await;
+    assert_eq!(forced["items"][0]["assignmentId"], json!(id), "{forced}");
+    aggregates(&db, a).await;
+    let row = &get(&api, a, WEEK).await["rows"][0];
+    assert_eq!((&row["load"], &row["provisional"]), (&json!([1440]), &json!([0])));
+
+    // Confirming a firm assignment changes nothing.
+    let (status, again) = send(
+        admin(&api, a, Method::POST, &path)
+            .header("if-match", "\"2\"")
+            .json(&json!({})),
+    )
+    .await;
+    assert_eq!(status, 200, "{again}");
+    assert_eq!(again["version"], 2);
+
+    // Within capacity, a planner confirms without forcing.
+    let small = json!({"resourceId": nathan, "provisional": true, "segments": [segment("2026-11-16", "2026-11-16", "hours_per_day", 120)]});
+    let other = created(&api, a, &assignments("PLAT-3"), small).await;
+    let (status, confirmed) = send(
+        as_member(
+            &api,
+            a,
+            &session,
+            Method::POST,
+            &format!("/api/v1/assignments/{}/confirm", other["id"].as_str().unwrap()),
+        )
+        .header("if-match", "\"1\"")
+        .json(&json!({})),
+    )
+    .await;
+    assert_eq!(status, 200, "{confirmed}");
+    assert_eq!(confirmed["provisional"], false);
+}
+
 #[tokio::test]
 async fn two_writers_at_once_never_exceed_the_capacity_together() {
     let db = TestDb::new().await;
