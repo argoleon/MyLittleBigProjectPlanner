@@ -183,6 +183,10 @@ export type { UpdateResourceException$Params as UpdateResourceException$Params }
 export { updateResourceException as updateResourceException } from './fn/resources/update-resource-exception';
 export type { DeleteResourceException$Params as DeleteResourceException$Params } from './fn/resources/delete-resource-exception';
 export { deleteResourceException as deleteResourceException } from './fn/resources/delete-resource-exception';
+export type { ReplaceResource$Params as ReplaceResource$Params } from './fn/resources/replace-resource';
+export { replaceResource as replaceResource } from './fn/resources/replace-resource';
+export type { PreviewResourceReplacement$Params as PreviewResourceReplacement$Params } from './fn/resources/preview-resource-replacement';
+export { previewResourceReplacement as previewResourceReplacement } from './fn/resources/preview-resource-replacement';
 export type { ListTeams$Params as ListTeams$Params } from './fn/resources/list-teams';
 export { listTeams as listTeams } from './fn/resources/list-teams';
 export type { CreateTeam$Params as CreateTeam$Params } from './fn/resources/create-team';

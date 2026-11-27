@@ -17511,6 +17511,184 @@
         }
       }
     },
+    "/api/v1/resources/{id}/replacement": {
+      "post": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Replace a generic resource with a person",
+        "description": "Tenant admins and resource managers. The assignments of the generic resource move to the person from today on: days before stay, a segment across today is cut (a total effort shared in proportion to its working days), and segments join the person's assignment of the same ticket when there is one. Tickets of archived projects stay. Each ticket's history records it. The person's load is checked as for an assignment: in blocking mode an overload is refused unless forced (`force`, with `force_overload` on every project concerned), and a forced one is traced. The generic resource is then deactivated unless `deactivate` is `false`.",
+        "operationId": "replaceResource",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The generic resource",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceReplacementFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Replaced",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceReplacement"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed` (`id`: `not_generic`; `personId`: `not_found`, `not_a_person`, `inactive`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: neither tenant admin nor resource manager; `permission.denied` (`force_overload` when forcing); or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such resource in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`assignment.segments_overlap` (naming the tickets), or `workload.overload` (with `overload`: the days, and whether the member may force it); nothing is written",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/resources/{id}/replacement/preview": {
+      "post": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Preview replacing a generic resource with a person",
+        "description": "Tenant admins and resource managers: the assignments that would move from today on, the tickets where segments would overlap, those of archived projects left behind, and the person's days the replacement would overload. The same as a replacement, without writing.",
+        "operationId": "previewResourceReplacement",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The generic resource",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceReplacementPreviewFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceReplacement"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed` (`id`: `not_generic`; `personId`: `not_found`, `not_a_person`, `inactive`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: neither tenant admin nor resource manager; or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such resource in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/saved-filters": {
       "get": {
         "tags": [
@@ -22580,7 +22758,8 @@
           "comment_deleted",
           "attachment_added",
           "attachment_removed",
-          "overload_forced"
+          "overload_forced",
+          "resource_replaced"
         ]
       },
       "ActivityEntry": {
@@ -32291,6 +32470,171 @@
               "null"
             ],
             "description": "Cursor of the next page, `null` on the last page."
+          }
+        }
+      },
+      "ResourceReplacement": {
+        "type": "object",
+        "description": "What a replacement does, or would do.",
+        "required": [
+          "from",
+          "moved",
+          "overlaps",
+          "archived",
+          "overloads",
+          "mode",
+          "blocked",
+          "forceable",
+          "deactivated"
+        ],
+        "properties": {
+          "archived": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceReplacementTicket"
+            },
+            "description": "Tickets of archived projects, left on the generic resource."
+          },
+          "blocked": {
+            "type": "boolean",
+            "description": "The replacement would be refused: overlaps, or overloads in blocking\nmode without forcing."
+          },
+          "deactivated": {
+            "type": "boolean",
+            "description": "The generic resource was deactivated (always `false` in a preview)."
+          },
+          "forceable": {
+            "type": "boolean",
+            "description": "The member may force the overloads."
+          },
+          "from": {
+            "type": "string",
+            "format": "date",
+            "description": "The first day moved: today.",
+            "example": "2026-11-27"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/OverloadMode"
+          },
+          "moved": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceReplacementMove"
+            },
+            "description": "The assignments moved."
+          },
+          "overlaps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceReplacementTicket"
+            },
+            "description": "Tickets where the person's segments and the moved ones would take a\nsame day: the replacement is refused while there are any."
+          },
+          "overloads": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OverloadDay"
+            },
+            "description": "The person's days the replacement would overload, by date."
+          }
+        }
+      },
+      "ResourceReplacementFields": {
+        "type": "object",
+        "description": "A replacement to make.",
+        "required": [
+          "personId"
+        ],
+        "properties": {
+          "deactivate": {
+            "type": "boolean",
+            "description": "Deactivate the generic resource afterwards; `true` when left out."
+          },
+          "force": {
+            "type": "boolean",
+            "description": "Write it despite overloads in blocking mode: members with\n`force_overload` on every project concerned (tenant admins always)."
+          },
+          "personId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The person taking over: an active person resource."
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "deactivate": true,
+          "personId": "0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7b02"
+        }
+      },
+      "ResourceReplacementMove": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ResourceReplacementTicket"
+          },
+          {
+            "type": "object",
+            "required": [
+              "merged",
+              "start",
+              "end"
+            ],
+            "properties": {
+              "end": {
+                "type": "string",
+                "format": "date",
+                "example": "2026-12-18"
+              },
+              "merged": {
+                "type": "boolean",
+                "description": "Joined to the person's assignment of the ticket."
+              },
+              "start": {
+                "type": "string",
+                "format": "date",
+                "description": "The first and last day moved.",
+                "example": "2026-11-27"
+              }
+            }
+          }
+        ],
+        "description": "An assignment moved to the person."
+      },
+      "ResourceReplacementPreviewFields": {
+        "type": "object",
+        "description": "A replacement to preview.",
+        "required": [
+          "personId"
+        ],
+        "properties": {
+          "personId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The person taking over: an active person resource."
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResourceReplacementTicket": {
+        "type": "object",
+        "description": "A ticket of a replacement. A ticket the member does not see shows\nwithout its id and key.",
+        "required": [
+          "issueId",
+          "issueKey"
+        ],
+        "properties": {
+          "issueId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "issueKey": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "PLAT-148"
           }
         }
       },

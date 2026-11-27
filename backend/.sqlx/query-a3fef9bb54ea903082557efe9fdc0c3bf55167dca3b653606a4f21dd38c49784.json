@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT DISTINCT a.id AS \"id!\" FROM assignment a\n        JOIN assignment_segment s ON s.assignment_id = a.id\n        WHERE a.resource_id = $1 AND s.end_date >= $2\n        ORDER BY 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "assignment",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Date"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a3fef9bb54ea903082557efe9fdc0c3bf55167dca3b653606a4f21dd38c49784"
+}

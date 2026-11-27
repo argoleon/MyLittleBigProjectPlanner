@@ -1724,7 +1724,8 @@
       },
       "attached": "a joint {{ name }}",
       "fileRemoved": "a retiré le fichier {{ name }}",
-      "overloadForced": "a forcé une surcharge de {{ name }}"
+      "overloadForced": "a forcé une surcharge de {{ name }}",
+      "resourceReplaced": "a remplacé {{ old }} par {{ new }}"
     },
     "attachments": {
       "title": "Pièces jointes ({{ count }})",
@@ -2294,6 +2295,30 @@
       "tabs": "Rubriques de la ressource",
       "capacityTab": "Capacité et calendrier",
       "assignmentsTab": "Affectations"
+    },
+    "replace": {
+      "action": "Remplacer par une personne",
+      "title": "Remplacer {{ name }} par une personne",
+      "intro": "Ses affectations passent à la personne à partir d’aujourd’hui ({{ date }}). Les jours précédents restent sur {{ name }}.",
+      "person": "Personne",
+      "personHint": "Une personne active, par nom ou fonction.",
+      "deactivate": "Désactiver {{ name }} ensuite",
+      "deactivateHint": "Une ressource inactive n’est plus proposée pour les nouvelles affectations.",
+      "previewing": "Vérification de ce qui sera transféré…",
+      "previewFailed": "Impossible de vérifier ce qui sera transféré. Réessayez.",
+      "nothingMoves": "Aucune affectation de {{ name }} à partir d’aujourd’hui : rien n’est transféré.",
+      "moves": "Affectations transférées ({{ count }})",
+      "hidden": "Un ticket que vous ne voyez pas",
+      "period": "du {{ from }} au {{ to }}",
+      "merged": "rejoint son affectation",
+      "overlaps": "Ses segments et ceux transférés tombent un même jour sur {{ keys }}. Modifiez l’un d’eux avant de remplacer.",
+      "archived": "Restent sur {{ name }}, projets archivés : {{ keys }}.",
+      "blocked": "Capacité dépassée — {{ days }}. Le remplacement ne peut pas être fait en l’état.",
+      "blockedForceable": "Capacité dépassée — {{ days }}. Le remplacement ne peut pas être fait en l’état, sauf à forcer la surcharge.",
+      "warning": "Capacité dépassée — {{ days }}. Le remplacement sera fait et la surcharge signalée.",
+      "submit": "Remplacer",
+      "done": "Les affectations de {{ generic }} sont passées à {{ person }} ({{ count }}).",
+      "doneDeactivated": "Les affectations de {{ generic }} sont passées à {{ person }} ({{ count }}) ; {{ generic }} est désormais inactive."
     },
     "team": "Équipe",
     "allTeams": "Toutes les équipes",

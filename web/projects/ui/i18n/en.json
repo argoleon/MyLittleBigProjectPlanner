@@ -1724,7 +1724,8 @@
       },
       "attached": "attached {{ name }}",
       "fileRemoved": "removed the file {{ name }}",
-      "overloadForced": "forced an overload of {{ name }}"
+      "overloadForced": "forced an overload of {{ name }}",
+      "resourceReplaced": "replaced {{ old }} with {{ new }}"
     },
     "attachments": {
       "title": "Attachments ({{ count }})",
@@ -2294,6 +2295,30 @@
       "tabs": "Sections of the resource",
       "capacityTab": "Capacity and calendar",
       "assignmentsTab": "Assignments"
+    },
+    "replace": {
+      "action": "Replace with a person",
+      "title": "Replace {{ name }} with a person",
+      "intro": "Its assignments move to the person from today on ({{ date }}). Days before today stay on {{ name }}.",
+      "person": "Person",
+      "personHint": "An active person, by name or job title.",
+      "deactivate": "Deactivate {{ name }} afterwards",
+      "deactivateHint": "An inactive resource is no longer offered for new assignments.",
+      "previewing": "Checking what moves…",
+      "previewFailed": "What moves could not be checked. Try again.",
+      "nothingMoves": "No assignment of {{ name }} from today on: nothing moves.",
+      "moves": "Assignments that move ({{ count }})",
+      "hidden": "A ticket you do not see",
+      "period": "from {{ from }} to {{ to }}",
+      "merged": "joins their assignment",
+      "overlaps": "Their segments and the moved ones take a same day on {{ keys }}. Change one of them before replacing.",
+      "archived": "Left on {{ name }}, archived projects: {{ keys }}.",
+      "blocked": "Capacity exceeded — {{ days }}. The replacement cannot be made as it is.",
+      "blockedForceable": "Capacity exceeded — {{ days }}. The replacement cannot be made as it is, unless you force the overload.",
+      "warning": "Capacity exceeded — {{ days }}. The replacement will be made and the overload flagged.",
+      "submit": "Replace",
+      "done": "The assignments of {{ generic }} moved to {{ person }} ({{ count }}).",
+      "doneDeactivated": "The assignments of {{ generic }} moved to {{ person }} ({{ count }}); {{ generic }} is now inactive."
     },
     "team": "Team",
     "allTeams": "All teams",

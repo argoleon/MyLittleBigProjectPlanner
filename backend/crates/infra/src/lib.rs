@@ -61,6 +61,7 @@ pub mod platform;
 pub mod query_suggestions;
 pub mod rate_limit;
 pub mod reference_items;
+pub mod replacement;
 pub mod resources;
 pub mod rich_text;
 pub mod roles;

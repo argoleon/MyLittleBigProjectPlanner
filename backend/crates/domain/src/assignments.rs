@@ -209,6 +209,50 @@ pub fn assignment_load(segments: &[Segment], calendar: &ResourceCalendar<'_>) ->
     days
 }
 
+/// `segment` cut at `today` (L08-US08, a generic resource replaced): what
+/// came before stays, what comes from `today` on moves. A percentage or
+/// hours-per-day segment keeps its value on both sides; a total effort is
+/// shared in proportion to the working days on each side (`days`: those of
+/// the segment, as `ResourceCalendar::days` gives them), the rounding going
+/// to the part that moves. A side without load is left out.
+pub fn split_at(segment: &Segment, today: Date, days: &[Day]) -> (Option<Segment>, Option<Segment>) {
+    if segment.end < today {
+        return (Some(*segment), None);
+    }
+    if segment.start >= today {
+        return (None, Some(*segment));
+    }
+    let before = Segment {
+        end: today.add_days(-1),
+        ..*segment
+    };
+    let after = Segment {
+        start: today,
+        ..*segment
+    };
+    if segment.mode != Mode::TotalEffort {
+        return (Some(before), Some(after));
+    }
+    let working = |d: &&Day| d.scheduled > 0;
+    let total = u32::try_from(days.iter().filter(working).count()).unwrap_or(0);
+    let past = u32::try_from(days.iter().filter(|d| d.date < today).filter(working).count()).unwrap_or(0);
+    if total == 0 {
+        return (None, Some(after));
+    }
+    let kept = u32::try_from(u64::from(segment.value) * u64::from(past) / u64::from(total)).unwrap_or(0);
+    let moved = segment.value - kept;
+    (
+        (kept > 0).then_some(Segment {
+            value: kept,
+            ..before
+        }),
+        (moved > 0).then_some(Segment {
+            value: moved,
+            ..after
+        }),
+    )
+}
+
 /// Whether a total-effort segment has no working day to go on: its
 /// effort cannot be placed (field `segments.{i}.start`, `no_working_day`).
 pub fn unplaceable(segments: &[Segment], calendar: &ResourceCalendar<'_>) -> Vec<FieldError> {
@@ -267,6 +311,52 @@ mod tests {
 
     fn minutes(load: &[(Date, u32)]) -> Vec<u32> {
         load.iter().map(|(_, m)| *m).collect()
+    }
+
+    #[test]
+    fn a_segment_is_cut_at_today_its_effort_shared_by_working_days() {
+        let cal = calendar(&[], FULL, &[]);
+        let split = |s: Segment, today: &str| split_at(&s, date(today), &cal.days(s.start, s.end));
+        // Two weeks at 4 h a day, cut on the second Monday.
+        let hours = segment("2026-11-16", "2026-11-27", Mode::HoursPerDay, 240);
+        assert_eq!(
+            split(hours, "2026-11-23"),
+            (
+                Some(segment("2026-11-16", "2026-11-22", Mode::HoursPerDay, 240)),
+                Some(segment("2026-11-23", "2026-11-27", Mode::HoursPerDay, 240))
+            )
+        );
+        // All past, or all to come.
+        assert_eq!(split(hours, "2026-12-01"), (Some(hours), None));
+        assert_eq!(split(hours, "2026-11-16"), (None, Some(hours)));
+        // 40 h over 10 working days, 3 of them past: 12 h stay, 28 h move.
+        let effort = segment("2026-11-16", "2026-11-27", Mode::TotalEffort, 2400);
+        assert_eq!(
+            split(effort, "2026-11-19"),
+            (
+                Some(segment("2026-11-16", "2026-11-18", Mode::TotalEffort, 720)),
+                Some(segment("2026-11-19", "2026-11-27", Mode::TotalEffort, 1680))
+            )
+        );
+        // Rounding goes to the part that moves: 100 min over 3 days, 1 past.
+        let small = segment("2026-11-16", "2026-11-18", Mode::TotalEffort, 100);
+        assert_eq!(split(small, "2026-11-17").1.map(|s| s.value), Some(67));
+        // Cut on a Saturday: no working day left before, the whole effort
+        // stays where the working days were.
+        let week = segment("2026-11-16", "2026-11-22", Mode::TotalEffort, 600);
+        assert_eq!(
+            split(week, "2026-11-21"),
+            (
+                Some(segment("2026-11-16", "2026-11-20", Mode::TotalEffort, 600)),
+                None
+            )
+        );
+        // A percentage keeps its value.
+        let share = segment("2026-11-16", "2026-11-20", Mode::Percentage, 50);
+        assert_eq!(
+            split(share, "2026-11-18").1,
+            Some(segment("2026-11-18", "2026-11-20", Mode::Percentage, 50))
+        );
     }
 
     #[test]

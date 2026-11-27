@@ -39,6 +39,11 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
   - A node sums its distinct projects, a project reached twice once, each with the weighting of its link; confidential projects count without detail. A project's capacity is its resources' capacity in proportion to their load there, so that a person shared between two programs is never counted twice. A team sums its active members.
   - The planned load and capacity of the hierarchy's indicators are now fed by the assignments, and kept up to date within seconds.
   - `GET /api/v1/nodes/{id}/workload`, `GET /api/v1/teams/{id}/workload`.
+- **Replacing a generic resource with a person** (#252)
+  - Organization admins and resource managers replace a generic resource with a person from its page (**Replace with a person**). Its assignments move to the person from today on: days before today stay on the generic resource, a segment across today is cut (a total effort shared in proportion to its working days), and segments join the person's assignment of the same ticket when there is one. Tickets of archived projects stay.
+  - Before replacing, the dialog previews the assignments that move, the tickets where the person's segments and the moved ones would take a same day (which refuse the replacement, `assignment.segments_overlap`) and the person's days it would overload, checked as for an assignment: in blocking mode, forcing needs **Force overload** on every project concerned, and is traced.
+  - Each ticket's history records it (**replaced … with …**). The generic resource is deactivated afterwards, unless unchecked.
+  - `POST /api/v1/resources/{id}/replacement`, `POST /api/v1/resources/{id}/replacement/preview`.
 
 ## [0.7.0] - 2026-11-24
 

@@ -56,6 +56,7 @@ use crate::platform;
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
 use crate::query_assist;
 use crate::reference_items;
+use crate::resource_replacement;
 use crate::resources;
 use crate::roles;
 use crate::saved_filters;
@@ -225,6 +226,8 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(absences::list, absences::create))
         .routes(routes!(absences::update, absences::delete))
         .routes(routes!(resources::mine))
+        .routes(routes!(resource_replacement::replace))
+        .routes(routes!(resource_replacement::preview))
         .routes(routes!(calendars::list, calendars::create))
         .routes(routes!(calendars::read, calendars::update, calendars::delete))
         .routes(routes!(calendars::year))
