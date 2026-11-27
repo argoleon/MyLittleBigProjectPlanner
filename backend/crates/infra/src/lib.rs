@@ -9,6 +9,7 @@ pub mod assignments;
 pub mod attachments;
 pub mod audit;
 pub mod auth_policy;
+pub mod availability;
 pub mod boards;
 pub mod bootstrap;
 pub mod bulk_actions;

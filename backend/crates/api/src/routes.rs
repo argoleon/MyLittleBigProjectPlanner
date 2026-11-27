@@ -68,6 +68,7 @@ use crate::tenant::{AppState, PublicTenantTx};
 use crate::transition_rules;
 use crate::workflows;
 use crate::workload_aggregates;
+use crate::workload_availability;
 use crate::workload_conflicts;
 use crate::workload_heatmap;
 
@@ -262,6 +263,7 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(workload_conflicts::list))
         .routes(routes!(workload_heatmap::heatmap))
         .routes(routes!(workload_heatmap::cell))
+        .routes(routes!(workload_availability::find))
         .routes(routes!(workload_aggregates::node))
         .routes(routes!(workload_aggregates::team))
         .routes(routes!(teams::list, teams::create))

@@ -44,6 +44,8 @@ export type { AssignTarget } from './models/assign-target';
 export type { AttachmentStatus } from './models/attachment-status';
 export type { AttachmentUpload } from './models/attachment-upload';
 export type { AuthPolicy } from './models/auth-policy';
+export type { Availability } from './models/availability';
+export type { AvailableResource } from './models/available-resource';
 export type { Board } from './models/board';
 export type { BoardCard } from './models/board-card';
 export type { BoardCards } from './models/board-cards';
@@ -587,6 +589,8 @@ export type { GetWorkloadSettings$Params as GetWorkloadSettings$Params } from '.
 export { getWorkloadSettings as getWorkloadSettings } from './fn/resources/get-workload-settings';
 export type { UpdateWorkloadSettings$Params as UpdateWorkloadSettings$Params } from './fn/resources/update-workload-settings';
 export { updateWorkloadSettings as updateWorkloadSettings } from './fn/resources/update-workload-settings';
+export type { FindAvailability$Params as FindAvailability$Params } from './fn/resources/find-availability';
+export { findAvailability as findAvailability } from './fn/resources/find-availability';
 export type { GetWorkloadCell$Params as GetWorkloadCell$Params } from './fn/resources/get-workload-cell';
 export { getWorkloadCell as getWorkloadCell } from './fn/resources/get-workload-cell';
 export type { ListWorkloadConflicts$Params as ListWorkloadConflicts$Params } from './fn/resources/list-workload-conflicts';

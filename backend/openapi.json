@@ -22214,6 +22214,113 @@
         }
       }
     },
+    "/api/v1/workload/availability": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Search for available resources",
+        "description": "Internal members: the active resources (of a team) with at least `minHours` free hours, or `minDays` working days entirely free, from `from` to `to`, most free time first. Free time is the capacity (absences, public holidays and closures deducted) less the load, day by day; the overload tolerance is left out. Load on tickets the member does not see counts, without naming them.",
+        "operationId": "findAvailability",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "First day.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Last day, included: 92 days at most.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "teamId",
+            "in": "query",
+            "description": "Only the members of this team.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "minHours",
+            "in": "query",
+            "description": "At least these free hours over the period (1 to 2000).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 2000,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "minDays",
+            "in": "query",
+            "description": "At least this many working days entirely free (1 to 92), not\nnecessarily in a row. Not with `minHours`.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 92,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "includeProvisional",
+            "in": "query",
+            "description": "Provisional assignments take free time (`true` when left out).",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The resources found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Availability"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed` (`to`: `before_start`, `out_of_range` beyond 92 days; `minHours`, `minDays`: `out_of_range`; `minDays`: `not_allowed` with `minHours`), or `invalid_query`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/workload/cell": {
       "get": {
         "tags": [
@@ -23691,6 +23798,87 @@
           "localAccountsRequireMfa": true,
           "portalMagicLinkEnabled": true,
           "portalPasswordEnabled": true
+        }
+      },
+      "Availability": {
+        "type": "object",
+        "description": "The resources meeting a search, most free time first.",
+        "required": [
+          "from",
+          "to",
+          "includeProvisional",
+          "items"
+        ],
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "includeProvisional": {
+            "type": "boolean"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AvailableResource"
+            }
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "AvailableResource": {
+        "type": "object",
+        "description": "A resource found, with its free capacity over the period.",
+        "required": [
+          "resource",
+          "freeMinutes",
+          "freeDays",
+          "capacityMinutes",
+          "loadMinutes",
+          "workingDays"
+        ],
+        "properties": {
+          "capacityMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Capacity, absences, public holidays and closures deducted.",
+            "example": 2100,
+            "minimum": 0
+          },
+          "freeDays": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Working days entirely free: nothing planned, no absence.",
+            "example": 2,
+            "minimum": 0
+          },
+          "freeMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Capacity left, day by day (capacity less load, at least 0).",
+            "example": 1260,
+            "minimum": 0
+          },
+          "loadMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Load planned, provisional included or not.",
+            "example": 840,
+            "minimum": 0
+          },
+          "resource": {
+            "$ref": "#/components/schemas/HeatmapResource"
+          },
+          "workingDays": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Days with capacity.",
+            "example": 5,
+            "minimum": 0
+          }
         }
       },
       "BTreeMap": {
