@@ -23,6 +23,7 @@ import { AbsencesCard } from '../absences/absences-card';
 import { MonthCalendar } from '../calendars/month-calendar';
 import { CapacityCard } from '../capacity/capacity-card';
 import { CapacityWeeks } from '../capacity/capacity-weeks';
+import { ReplaceDialog, ReplaceDialogData, ReplaceDialogResult } from './replace-dialog';
 import { ResourceAssignments } from './resource-assignments';
 import { ResourceDialog, ResourceDialogData } from './resource-dialog';
 
@@ -37,7 +38,8 @@ export function managesResources(role: TenantRole | undefined): boolean {
  * (L07-US04), its absences (L07-US05), which the person and the managers
  * declare, and its capacity over the next 4 weeks (L07-US06); on its
  * "Assignments" tab (`?tab=assignments`), its assignments by project
- * (L08-US05).
+ * (L08-US05). Resource managers replace a generic resource with a person
+ * (L08-US08).
  */
 @Component({
   selector: 'app-resource-page',
@@ -88,9 +90,35 @@ export class ResourcePage {
   /** The absences card, on the capacity tab: it tells who declares absences. */
   private readonly absences = viewChild(AbsencesCard);
   protected readonly canDeclare = computed(() => this.absences()?.canManage() ?? false);
+  private readonly assignments = viewChild(ResourceAssignments);
+  /** What the last replacement did, told above the tabs. */
+  protected readonly notice = signal<{ key: string; params: Record<string, string> } | null>(null);
 
   protected declare(): void {
     this.absences()?.declare('#absence-declare');
+  }
+
+  protected replace(generic: Resource): void {
+    this.notice.set(null);
+    this.dialog
+      .open<ReplaceDialog, ReplaceDialogData, ReplaceDialogResult>(ReplaceDialog, {
+        data: { generic },
+        width: 'min(600px, 100vw)',
+        autoFocus: 'first-tabbable',
+        restoreFocus: '#resource-replace',
+      })
+      .afterClosed()
+      .subscribe((result) => {
+        if (!result) return;
+        const { replacement, person } = result;
+        this.notice.set({
+          key: replacement.deactivated ? 'resources.replace.doneDeactivated' : 'resources.replace.done',
+          params: { generic: generic.displayName, person: person.displayName, count: String(replacement.moved.length) },
+        });
+        this.saved.set(null);
+        this.current.reload();
+        this.assignments()?.reload();
+      });
   }
 
   protected edit(resource: Resource): void {

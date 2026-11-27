@@ -141,7 +141,7 @@ export class ResourceAssignments {
   }
 
   /** Reads the list again from its first page. */
-  private reset(): void {
+  reload(): void {
     this.more.set([]);
     this.cursor.set(undefined);
     this.first.reload();
@@ -192,7 +192,7 @@ export class ResourceAssignments {
       .subscribe((saved) => {
         if (!saved) return;
         this.notice.set({ ok: true, messageKey: 'resources.assignments.saved', params: { key: data.issue.key } });
-        this.reset();
+        this.reload();
       });
   }
 
@@ -215,7 +215,7 @@ export class ResourceAssignments {
         try {
           await this.api.invoke(deleteAssignment, { id: item.id, 'If-Match': `"${item.version}"` });
           this.notice.set({ ok: true, messageKey: 'resources.assignments.deleted', params: { key } });
-          this.reset();
+          this.reload();
         } catch (error) {
           this.notice.set({ ok: false, messageKey: isApiProblem(error) ? error.translationKey : errorTranslationKey('unknown') });
         }

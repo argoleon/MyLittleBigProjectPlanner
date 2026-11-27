@@ -27,6 +27,12 @@
           <mat-icon aria-hidden="true">edit</mat-icon>
           {{ 'resources.page.edit' | transloco }}
         </button>
+        @if (shown.kind === 'generic') {
+          <button matButton="outlined" type="button" class="replace" id="resource-replace" (click)="replace(shown)">
+            <mat-icon aria-hidden="true">person_add</mat-icon>
+            {{ 'resources.replace.action' | transloco }}
+          </button>
+        }
       }
       @if (canDeclare()) {
         <button matButton="filled" type="button" id="absence-declare" (click)="declare()">
@@ -36,6 +42,9 @@
       }
     </div>
   </div>
+  @if (notice(); as notice) {
+    <p class="message info" role="status">{{ notice.key | transloco: notice.params }}</p>
+  }
   <nav mat-tab-nav-bar class="tabs" [tabPanel]="panel" [attr.aria-label]="'resources.page.tabs' | transloco">
     <a mat-tab-link [routerLink]="[]" [queryParams]="{ tab: null }" [active]="!onAssignments()">{{ 'resources.page.capacityTab' | transloco }}</a>
     <a mat-tab-link [routerLink]="[]" [queryParams]="{ tab: 'assignments' }" [active]="onAssignments()">{{ 'resources.page.assignmentsTab' | transloco }}</a>

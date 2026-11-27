@@ -9,7 +9,8 @@
  * absence and on the ticket (L08-US04). The resource's Assignments tab
  * lists both stories under their project (L08-US05), and the heatmap, by
  * keyboard and in its table view, shows the week of those hours and what
- * is behind it, the forced overload included (L08-US06).
+ * is behind it, the forced overload included (L08-US06). A generic
+ * resource is replaced by a person from its page (L08-US08).
  *
  * Runs with `just compose-e2e` only: deploy/tests/e2e.sh creates the admin
  * and passes E2E_ADMIN_EMAIL and E2E_ADMIN_SECRET.
@@ -219,4 +220,61 @@ test('a leave on planned hours shows them to reschedule on the absence and the t
   await expect(block.locator('.conflicts-title')).toHaveText('4 h to reschedule: the resource is away');
   await expect(block.locator('.conflicts-days li')).toHaveCount(1);
   await expect(block.locator('.conflicts-days li')).toContainText(': 4 h');
+});
+
+test('a generic resource is replaced by a person from today on, and deactivated', async ({ page }) => {
+  test.setTimeout(120_000);
+  const stamp = Date.now();
+  const key = `RP${String(stamp).slice(-6)}`;
+  const name = `E2E Generic ${stamp}`;
+  const person = `E2E Person ${stamp}`;
+  const day = new Date(plainWednesday()).toISOString().slice(0, 10);
+
+  await page.context().addInitScript(() => localStorage.setItem('mlbpp.language', 'en'));
+  await page.goto('/sign-in');
+  await page.getByLabel('Email').fill(adminEmail!);
+  await page.getByLabel('Password').fill(adminSecret!);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Home');
+  const generic = await seed(page, key, name, day);
+  await page.evaluate(async (person) => {
+    const session = (await (await fetch('/api/v1/auth/session')).json()) as { csrfToken: string };
+    const headers = { 'content-type': 'application/json', 'x-csrf-token': session.csrfToken };
+    const response = await fetch('/api/v1/resources', { method: 'POST', headers, body: JSON.stringify({ kind: 'person', displayName: person }) });
+    if (response.status >= 300) throw new Error(`POST /api/v1/resources: ${response.status}`);
+    const { id } = (await response.json()) as { id: string };
+    // 7 h a day whatever the tenant's default: the 4 h moved fit.
+    const pattern = await fetch(`/api/v1/resources/${id}/capacity-patterns`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ effectiveFrom: '2000-01-03', minutes: [420, 420, 420, 420, 420, 0, 0] }),
+    });
+    if (pattern.status >= 300) throw new Error(`POST capacity-patterns: ${pattern.status}`);
+  }, person);
+
+  // From the generic resource's page: the preview, then the replacement (L08-US08).
+  await page.goto(`/workload/resources/${generic}`);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(name);
+  await page.getByRole('button', { name: 'Replace with a person' }).click();
+  const dialog = page.getByRole('dialog');
+  await opened(dialog);
+  await dialog.getByRole('combobox', { name: 'Person' }).fill(person);
+  await page.getByRole('option', { name: person }).click();
+  await expect(dialog.locator('#replace-preview')).toHaveText('Assignments that move (1)');
+  await expect(dialog.locator('.moves li')).toContainText(`${key}-2`);
+  await expect(dialog.getByRole('checkbox', { name: `Deactivate ${name} afterwards` })).toBeChecked();
+  expect(await accessibilityViolations(page), 'replace dialog').toEqual([]);
+  await dialog.getByRole('button', { name: 'Replace', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole('status').filter({ hasText: 'moved to' })).toHaveText(
+    `The assignments of ${name} moved to ${person} (1); ${name} is now inactive.`,
+  );
+  await expect(page.locator('.chips')).toContainText('Status: Inactive');
+
+  // On the ticket: the person holds the hours, and the activity says so.
+  await page.goto(`/issues/${key}-2`);
+  const card = page.locator('app-issue-assignments');
+  await expect(card.locator('article.assignment h3')).toHaveText([person]);
+  await page.getByRole('tab', { name: 'Activity' }).click();
+  await expect(page.locator('app-issue-activity .entry .sentence').first()).toContainText(`replaced ${name} with ${person}`);
 });
