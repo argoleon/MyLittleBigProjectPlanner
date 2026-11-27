@@ -87,11 +87,14 @@ async fn ticket_created_notifies_the_reporter_and_the_project_managers() {
             ("status_changed", &json!(["reporter", "assignee", "watchers"])),
             ("commented", &json!(["reporter", "assignee", "watchers"])),
             ("mentioned", &json!(["mentioned"])),
+            ("absence_conflict", &json!(["assignee"])),
         ]
     );
 
     // Created: the reporter and the project managers.
     let manager = role(&api, t, "Project manager").await;
+    // Absence conflicts (L08-US04): the project managers too, by default.
+    assert_eq!(rule(&list, "absence_conflict")["roleIds"], json!([manager]));
     let body = json!({"recipientKinds": ["reporter"], "roleIds": [manager]});
     let (status, saved) = send(
         admin(&api, t, Method::PUT, &format!("{rules}/created"))

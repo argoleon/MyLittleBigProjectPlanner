@@ -78,3 +78,22 @@
   display: flex;
   white-space: nowrap;
 }
+
+// Hours planned on the absence, to reschedule (L08-US04).
+.conflict {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--app-space-1);
+  margin-inline-start: var(--app-space-2);
+  padding: 0 var(--app-space-2);
+  border-radius: var(--mat-sys-corner-extra-small);
+  background: var(--app-load-over);
+  color: var(--app-load-over-on);
+  font: var(--mat-sys-label-small);
+
+  mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+}

@@ -8,7 +8,7 @@
  * Runs with `just compose-e2e` only: deploy/tests/e2e.sh creates the admin
  * and passes E2E_ADMIN_EMAIL and E2E_ADMIN_SECRET.
  */
-import { expect, test } from '@playwright/test';
+import { type Locator, expect, test } from '@playwright/test';
 
 import { accessibilityViolations } from './fixtures';
 
@@ -16,6 +16,15 @@ const adminEmail = process.env['E2E_ADMIN_EMAIL'];
 const adminSecret = process.env['E2E_ADMIN_SECRET'];
 
 test.skip(!adminEmail || !adminSecret, 'needs the compose stack (just compose-e2e)');
+
+/**
+ * Waits for a dialog to give the focus to its first field: filled before,
+ * a field may lose its text to that late focus (or another field's text
+ * may land in it).
+ */
+async function opened(dialog: Locator): Promise<void> {
+  await expect(dialog.locator(':focus')).toHaveCount(1);
+}
 
 test('add a capacity period to a resource and read it back', async ({ browser }) => {
   test.setTimeout(90_000);
@@ -39,6 +48,7 @@ test('add a capacity period to a resource and read it back', async ({ browser })
   await page.goto('/workload/resources');
   await page.getByRole('button', { name: 'New resource' }).click();
   const dialog = page.getByRole('dialog');
+  await opened(dialog);
   await dialog.getByLabel('Name').fill(name);
   await dialog.getByRole('button', { name: 'Create' }).click();
   await page.getByRole('link', { name }).click();
@@ -49,6 +59,7 @@ test('add a capacity period to a resource and read it back', async ({ browser })
   // A part-time period.
   await card.getByRole('button', { name: 'New period' }).click();
   const period = page.getByRole('dialog');
+  await opened(period);
   await period.getByLabel('From').fill('3/1/2026');
   await period.getByLabel('Wednesday').fill('0');
   await period.getByLabel('Friday').fill('3,5');

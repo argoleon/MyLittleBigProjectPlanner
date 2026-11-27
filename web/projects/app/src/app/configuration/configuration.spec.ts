@@ -207,7 +207,7 @@ describe('Administration tabs', () => {
     await harness.navigateByUrl('/admin/configurations');
     await reply((u) => u === '/api/v1/tenant', { id: 't1', slug: 'acme', name: 'Acme' });
     await reply(isList, page([DEFAULT]));
-    expect(texts('a[mat-tab-link]')).toEqual(['Members', 'Groups', 'Roles', 'Authentication', 'Workload', 'Project configurations']);
+    expect(texts('a[mat-tab-link]')).toEqual(['Members', 'Groups', 'Roles', 'Authentication', 'Workload', 'Forced overloads', 'Project configurations']);
   });
 });
 

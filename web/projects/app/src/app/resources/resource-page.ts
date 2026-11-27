@@ -1,7 +1,8 @@
-import { Component, computed, inject, input, resource, signal } from '@angular/core';
+import { Component, computed, inject, input, resource, signal, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTabsModule } from '@angular/material/tabs';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import {
@@ -22,6 +23,8 @@ import { AbsencesCard } from '../absences/absences-card';
 import { MonthCalendar } from '../calendars/month-calendar';
 import { CapacityCard } from '../capacity/capacity-card';
 import { CapacityWeeks } from '../capacity/capacity-weeks';
+import { ReplaceDialog, ReplaceDialogData, ReplaceDialogResult } from './replace-dialog';
+import { ResourceAssignments } from './resource-assignments';
 import { ResourceDialog, ResourceDialogData } from './resource-dialog';
 
 /** Whether a member with `role` creates and changes resources. */
@@ -33,7 +36,10 @@ export function managesResources(role: TenantRole | undefined): boolean {
  * The page of a resource (mockup 20, L07-US01): its name, kind, job title,
  * account, status, site, weekly capacity (L07-US03) and month calendar
  * (L07-US04), its absences (L07-US05), which the person and the managers
- * declare, and its capacity over the next 4 weeks (L07-US06).
+ * declare, and its capacity over the next 4 weeks (L07-US06); on its
+ * "Assignments" tab (`?tab=assignments`), its assignments by project
+ * (L08-US05). Resource managers replace a generic resource with a person
+ * (L08-US08).
  */
 @Component({
   selector: 'app-resource-page',
@@ -46,7 +52,9 @@ export function managesResources(role: TenantRole | undefined): boolean {
     LoadingState,
     MatButtonModule,
     MatIconModule,
+    MatTabsModule,
     MonthCalendar,
+    ResourceAssignments,
     ResourceKindChip,
     ResourceStateChip,
     RouterLink,
@@ -58,6 +66,8 @@ export function managesResources(role: TenantRole | undefined): boolean {
 export class ResourcePage {
   /** `:id` of the route. */
   readonly id = input.required<string>();
+  /** `?tab=` of the route: `assignments`, or the capacity and calendar. */
+  readonly tab = input<string | undefined>();
 
   private readonly api = inject(Api);
   private readonly auth = inject(AuthService);
@@ -76,6 +86,40 @@ export class ResourcePage {
   });
   protected readonly canManage = computed(() => managesResources(this.auth.session()?.account.tenantRole));
   protected readonly holding = resourceHolding;
+  protected readonly onAssignments = computed(() => this.tab() === 'assignments');
+  /** The absences card, on the capacity tab: it tells who declares absences. */
+  private readonly absences = viewChild(AbsencesCard);
+  protected readonly canDeclare = computed(() => this.absences()?.canManage() ?? false);
+  private readonly assignments = viewChild(ResourceAssignments);
+  /** What the last replacement did, told above the tabs. */
+  protected readonly notice = signal<{ key: string; params: Record<string, string> } | null>(null);
+
+  protected declare(): void {
+    this.absences()?.declare('#absence-declare');
+  }
+
+  protected replace(generic: Resource): void {
+    this.notice.set(null);
+    this.dialog
+      .open<ReplaceDialog, ReplaceDialogData, ReplaceDialogResult>(ReplaceDialog, {
+        data: { generic },
+        width: 'min(600px, 100vw)',
+        autoFocus: 'first-tabbable',
+        restoreFocus: '#resource-replace',
+      })
+      .afterClosed()
+      .subscribe((result) => {
+        if (!result) return;
+        const { replacement, person } = result;
+        this.notice.set({
+          key: replacement.deactivated ? 'resources.replace.doneDeactivated' : 'resources.replace.done',
+          params: { generic: generic.displayName, person: person.displayName, count: String(replacement.moved.length) },
+        });
+        this.saved.set(null);
+        this.current.reload();
+        this.assignments()?.reload();
+      });
+  }
 
   protected edit(resource: Resource): void {
     this.dialog

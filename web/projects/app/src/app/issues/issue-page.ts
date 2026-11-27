@@ -28,6 +28,7 @@ import {
 
 import type { EditOutcome } from './issue-edit-dialog';
 import { IssueActivity } from './issue-activity';
+import { IssueAssignments } from './issue-assignments';
 import { IssueAttachments } from './issue-attachments';
 import { IssueComments } from './issue-comments';
 import { createIssueFlow } from './issue-flow';
@@ -50,6 +51,7 @@ import { chipCategory, chipKind } from './issue-fields';
     ErrorState,
     InstantPipe,
     IssueActivity,
+    IssueAssignments,
     IssueAttachments,
     IssueComments,
     IssueRelations,

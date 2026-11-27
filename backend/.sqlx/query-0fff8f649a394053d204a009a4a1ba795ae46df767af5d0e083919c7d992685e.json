@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO load_aggregate (tenant_id, resource_id, period_kind, period_start, load_minutes,\n                                            provisional_minutes, capacity_minutes, scheduled_minutes)\n                SELECT app_current_tenant(), a.resource_id, $1, a.start, a.load, a.provisional, a.capacity, a.scheduled\n                FROM unnest($2::uuid[], $3::date[], $4::integer[], $5::integer[], $6::integer[], $7::integer[])\n                     AS a (resource_id, start, load, provisional, capacity, scheduled)\n                ON CONFLICT (tenant_id, resource_id, period_kind, period_start) DO UPDATE\n                SET load_minutes = EXCLUDED.load_minutes, provisional_minutes = EXCLUDED.provisional_minutes,\n                    capacity_minutes = EXCLUDED.capacity_minutes, scheduled_minutes = EXCLUDED.scheduled_minutes\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "UuidArray",
+        "DateArray",
+        "Int4Array",
+        "Int4Array",
+        "Int4Array",
+        "Int4Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0fff8f649a394053d204a009a4a1ba795ae46df767af5d0e083919c7d992685e"
+}

@@ -166,7 +166,8 @@
       "members": "Membres",
       "groups": "Groupes",
       "roles": "Rôles",
-      "configurations": "Configurations de projet"
+      "configurations": "Configurations de projet",
+      "forcedOverloads": "Surcharges forcées"
     },
     "auth": {
       "policyTitle": "Politique d’authentification",
@@ -353,7 +354,27 @@
         "warning": "L’affectation est acceptée et les jours en surcharge sont signalés."
       },
       "save": "Enregistrer",
-      "saved": "Les réglages de charge ont été enregistrés."
+      "saved": "Les réglages de charge ont été enregistrés.",
+      "countsProvisional": "Compter les affectations provisoires dans le contrôle de surcharge",
+      "countsProvisionalHint": "Désactivé, une affectation provisoire ne bloque personne et n’est jamais bloquée."
+    },
+    "forcedOverloads": {
+      "intro": "Chaque affectation enregistrée au-delà de la capacité et de la tolérance d’une ressource par un membre autorisé à forcer la surcharge. Elle figure aussi dans l’historique du ticket.",
+      "loading": "Chargement des surcharges forcées…",
+      "empty": "Aucune surcharge forcée",
+      "emptyHint": "Les affectations forcées au-delà de la capacité apparaîtront ici.",
+      "caption": "Surcharges forcées, des plus récentes aux plus anciennes",
+      "columns": {
+        "when": "Date",
+        "issue": "Ticket",
+        "resource": "Ressource",
+        "actor": "Forcée par",
+        "days": "Jours en surcharge"
+      },
+      "issueGone": "Ticket supprimé",
+      "resourceGone": "Ressource supprimée",
+      "actorGone": "Un ancien membre",
+      "more": "Afficher plus"
     }
   },
   "errors": {
@@ -463,7 +484,10 @@
       "person_only": "Seule une personne est liée à un compte.",
       "not_internal_member": "Pas un membre interne de l’organisation.",
       "not_a_site": "Pas un site de l’organisation.",
-      "overlap": "Une autre absence occupe cette demi-journée."
+      "overlap": "Une autre absence occupe cette demi-journée.",
+      "inactive": "Cette ressource est désactivée.",
+      "no_working_day": "Aucun jour ouvré de la ressource sur cette période.",
+      "outside_issue_dates": "En dehors des dates du ticket."
     },
     "invitation": {
       "invalid": "Ce lien d’invitation est invalide, a expiré ou a déjà servi. Demandez-en un nouveau.",
@@ -583,6 +607,14 @@
     },
     "absence": {
       "overlap": "Une autre absence de la ressource occupe déjà cette demi-journée."
+    },
+    "assignment": {
+      "resource_taken": "Cette ressource est déjà affectée au ticket : ajoutez un segment à son affectation.",
+      "segments_overlap": "Deux segments de l’affectation prennent un même jour.",
+      "outside_issue_dates": "Les segments doivent rester dans les dates du ticket."
+    },
+    "workload": {
+      "overload": "L’affectation dépasse la capacité de la ressource."
     }
   },
   "dialog": {
@@ -1438,7 +1470,8 @@
         "assigned": "Ticket assigné",
         "status_changed": "Statut modifié",
         "commented": "Commentaire ajouté",
-        "mentioned": "Mention d’une personne"
+        "mentioned": "Mention d’une personne",
+        "absence_conflict": "Conflit d’absence"
       },
       "kinds": {
         "reporter": "Rapporteur",
@@ -1690,7 +1723,9 @@
         "no": "non"
       },
       "attached": "a joint {{ name }}",
-      "fileRemoved": "a retiré le fichier {{ name }}"
+      "fileRemoved": "a retiré le fichier {{ name }}",
+      "overloadForced": "a forcé une surcharge de {{ name }}",
+      "resourceReplaced": "a remplacé {{ old }} par {{ new }}"
     },
     "attachments": {
       "title": "Pièces jointes ({{ count }})",
@@ -1740,7 +1775,8 @@
       "commented": "Commentaires",
       "created": "Nouveaux tickets",
       "export_ready": "Exports",
-      "bulk_done": "Actions groupées"
+      "bulk_done": "Actions groupées",
+      "absence_conflict": "Conflits d’absence"
     },
     "empty": "Aucune notification.",
     "more": "Voir les notifications plus anciennes",
@@ -1759,7 +1795,8 @@
       "commented": "{{ actor }} a commenté {{ key }}",
       "created": "{{ actor }} a créé {{ key }}",
       "export_ready": "Votre export {{ file }} est prêt",
-      "bulk_done": "Votre {{ action }} groupé est terminé"
+      "bulk_done": "Votre {{ action }} groupé est terminé",
+      "absence_conflict": "{{ hours }} à replanifier sur {{ key }} (absence de {{ resource }})"
     },
     "preferences": {
       "title": "Préférences de notification",
@@ -1776,7 +1813,8 @@
         "commented": "Nouveau commentaire",
         "mentioned": "Mentions",
         "export_ready": "Export prêt",
-        "bulk_done": "Action groupée terminée"
+        "bulk_done": "Action groupée terminée",
+        "absence_conflict": "Conflit d’absence"
       },
       "digest": "Résumé quotidien par email",
       "digestHint": "Chaque jour ouvré à 8 h, au lieu d’un email par événement."
@@ -2253,13 +2291,191 @@
       "teams": "Équipes",
       "noTeam": "Aucune équipe",
       "siteOf": "Site {{ name }}",
-      "noSite": "Calendrier de l’organisation"
+      "noSite": "Calendrier de l’organisation",
+      "tabs": "Rubriques de la ressource",
+      "capacityTab": "Capacité et calendrier",
+      "assignmentsTab": "Affectations"
+    },
+    "replace": {
+      "action": "Remplacer par une personne",
+      "title": "Remplacer {{ name }} par une personne",
+      "intro": "Ses affectations passent à la personne à partir d’aujourd’hui ({{ date }}). Les jours précédents restent sur {{ name }}.",
+      "person": "Personne",
+      "personHint": "Une personne active, par nom ou fonction.",
+      "deactivate": "Désactiver {{ name }} ensuite",
+      "deactivateHint": "Une ressource inactive n’est plus proposée pour les nouvelles affectations.",
+      "previewing": "Vérification de ce qui sera transféré…",
+      "previewFailed": "Impossible de vérifier ce qui sera transféré. Réessayez.",
+      "nothingMoves": "Aucune affectation de {{ name }} à partir d’aujourd’hui : rien n’est transféré.",
+      "moves": "Affectations transférées ({{ count }})",
+      "hidden": "Un ticket que vous ne voyez pas",
+      "period": "du {{ from }} au {{ to }}",
+      "merged": "rejoint son affectation",
+      "overlaps": "Ses segments et ceux transférés tombent un même jour sur {{ keys }}. Modifiez l’un d’eux avant de remplacer.",
+      "archived": "Restent sur {{ name }}, projets archivés : {{ keys }}.",
+      "blocked": "Capacité dépassée — {{ days }}. Le remplacement ne peut pas être fait en l’état.",
+      "blockedForceable": "Capacité dépassée — {{ days }}. Le remplacement ne peut pas être fait en l’état, sauf à forcer la surcharge.",
+      "warning": "Capacité dépassée — {{ days }}. Le remplacement sera fait et la surcharge signalée.",
+      "submit": "Remplacer",
+      "done": "Les affectations de {{ generic }} sont passées à {{ person }} ({{ count }}).",
+      "doneDeactivated": "Les affectations de {{ generic }} sont passées à {{ person }} ({{ count }}) ; {{ generic }} est désormais inactive."
     },
     "team": "Équipe",
-    "allTeams": "Toutes les équipes"
+    "allTeams": "Toutes les équipes",
+    "assignments": {
+      "title": "Affectations",
+      "loading": "Chargement des affectations…",
+      "showPast": "Afficher les affectations passées",
+      "busyGroup": "Occupé",
+      "busyHint": "Temps sur des tickets que vous ne voyez pas (projets confidentiels ou non accessibles) : seules les périodes et les heures s’affichent.",
+      "busy": "Occupé",
+      "caption": "Affectations sur {{ project }}",
+      "columns": {
+        "issue": "Ticket",
+        "periods": "Périodes",
+        "load": "Charge",
+        "actions": "Actions"
+      },
+      "conflict": "Conflit d’absence",
+      "editOf": "Modifier l’affectation sur {{ key }}",
+      "deleteOf": "Retirer l’affectation sur {{ key }}",
+      "deleteTitle": "Retirer l’affectation sur {{ key }} ?",
+      "deleteMessage": "Ses segments et sa charge disparaissent des jours de la ressource.",
+      "deleteConfirm": "Retirer",
+      "saved": "L’affectation sur {{ key }} a été enregistrée.",
+      "deleted": "L’affectation sur {{ key }} a été retirée.",
+      "none": "Aucune affectation.",
+      "noneAhead": "Aucune affectation en cours ni à venir.",
+      "more": "Afficher plus",
+      "confirmOf": "Confirmer l’affectation provisoire sur {{ key }}",
+      "confirmed": "L’affectation sur {{ key }} est désormais ferme."
+    }
   },
   "workload": {
-    "tabs": "Rubriques de la charge"
+    "tabs": "Rubriques de la charge",
+    "availability": {
+      "tab": "Disponibilités",
+      "title": "Qui est disponible ?",
+      "intro": "Les ressources ayant des jours ou des heures libres sur une période. Les absences, jours fériés et fermetures sont déduits ; la tolérance de surcharge n’est pas comptée comme du temps libre.",
+      "period": "Période",
+      "start": "Début de la période",
+      "end": "Fin de la période",
+      "need": "Recherche",
+      "needs": {
+        "days": "Jours libres",
+        "hours": "Heures libres"
+      },
+      "amount": "Au moins",
+      "daysHint": "Jours ouvrés entièrement libres, pas forcément consécutifs.",
+      "hoursHint": "Capacité restante sur la période.",
+      "options": "Options de recherche",
+      "search": "Rechercher",
+      "results": "Ressources trouvées",
+      "loading": "Recherche en cours…",
+      "foundOne": "1 ressource disponible du {{ from }} au {{ to }}.",
+      "foundMany": "{{ count }} ressources disponibles du {{ from }} au {{ to }}.",
+      "empty": "Aucune ressource n’a cette disponibilité. Essayez une période plus longue, moins d’heures ou de jours, ou une autre équipe.",
+      "caption": "Ressources disponibles, les plus libres d’abord",
+      "columns": {
+        "resource": "Ressource",
+        "free": "Temps libre",
+        "freeDays": "Jours libres",
+        "load": "Planifié",
+        "actions": "Actions"
+      },
+      "loadOf": "{{ load }} sur {{ capacity }}",
+      "openHeatmap": "Voir dans la heatmap",
+      "openHeatmapOf": "Voir dans la heatmap : {{ name }}",
+      "errors": {
+        "period": "Choisissez le premier et le dernier jour.",
+        "beforeStart": "La période se termine avant de commencer.",
+        "tooLong": "92 jours au plus.",
+        "amount": "Un nombre entier de 1 à {{ max }}."
+      }
+    },
+    "heatmap": {
+      "tab": "Heatmap",
+      "title": "Charge des ressources",
+      "loading": "Chargement de la charge…",
+      "empty": "Aucune ressource active pour ces filtres.",
+      "scale": "Échelle",
+      "scales": {
+        "day": "Jour",
+        "week": "Semaine",
+        "month": "Mois"
+      },
+      "period": "Période",
+      "previous": "Période précédente",
+      "next": "Période suivante",
+      "today": "Aujourd’hui",
+      "team": "Équipe",
+      "allTeams": "Toutes les équipes",
+      "node": "Portefeuille, programme ou projet",
+      "allNodes": "Toute l’organisation",
+      "nodeTypes": {
+        "portfolio": "Portefeuilles",
+        "program": "Programmes",
+        "project": "Projets"
+      },
+      "options": "Options de la heatmap",
+      "includeProvisional": "Inclure les provisoires",
+      "view": "Affichage",
+      "views": {
+        "heatmap": "Heatmap",
+        "table": "Tableau"
+      },
+      "summary": "Ressources : {{ count }} · du {{ from }} au {{ to }} · Surcharges : {{ overloads }}",
+      "legend": "Légende",
+      "levels": {
+        "low": "Moins de 40 %",
+        "medium": "40 à 70 %",
+        "high": "70 à 95 %",
+        "full": "95 à 100 %",
+        "over": "Surcharge",
+        "hidden": "Dont temps confidentiel",
+        "provisional": "Provisoire",
+        "absent": "Absence"
+      },
+      "instructions": "Flèches pour passer d’une case à l’autre, Début et Fin pour aller au bout de la ligne, Entrée pour voir ce qui compose la charge. La vue Tableau présente les mêmes données.",
+      "resource": "Ressource",
+      "caption": "Charge des ressources par période, en pourcentage de la capacité",
+      "week": "S{{ number }}",
+      "weekSpan": "{{ from }}–{{ to }}",
+      "absent": "Absence",
+      "hidden": "confidentiel",
+      "provisional": "provisoire",
+      "average": "Moyenne",
+      "describe": "{{ percent }}, {{ planned }} planifiées pour {{ available }} disponibles",
+      "describeAbsent": "absence sur toute la période",
+      "describeOff": "aucun jour ouvré",
+      "describeOver": "en surcharge",
+      "describeProvisional": "dont {{ hours }} provisoires",
+      "describeHidden": "dont {{ hours }} sur des tickets que vous ne voyez pas",
+      "describeAverage": "moyenne {{ percent }}"
+    },
+    "cell": {
+      "span": "du {{ from }} au {{ to }}",
+      "close": "Fermer le détail",
+      "loading": "Chargement du détail…",
+      "capacity": "Capacité",
+      "planned": "Planifié",
+      "gap": "Écart",
+      "forced": "Surcharge forcée sur {{ key }} par {{ name }} le {{ date }}.",
+      "busy": "Occupé (confidentiel)",
+      "busyHint": "Temps sur des tickets que vous ne voyez pas.",
+      "percentage": "{{ percent }} de la capacité",
+      "inNode": "Du filtre",
+      "empty": "Rien de planifié sur cette période."
+    },
+    "aggregate": {
+      "title": "Charge et capacité",
+      "nodeHint": "Charge planifiée sur ses projets, contre la part de capacité qu’elle prend à leurs ressources.",
+      "teamHint": "Charge et capacité de ses membres actifs.",
+      "loading": "Chargement de la charge…",
+      "line": "{{ load }} sur {{ capacity }} · {{ percent }}",
+      "over": "surcharge",
+      "confidential": "Dont {{ count }} projet(s) confidentiel(s), comptés sans détail."
+    }
   },
   "teams": {
     "title": "Équipes",
@@ -2502,6 +2718,114 @@
       "commentHint": "Seuls la personne et les gestionnaires le lisent.",
       "create": "Déclarer",
       "save": "Enregistrer"
+    },
+    "conflict": "{{ hours }} en conflit"
+  },
+  "assignments": {
+    "title": "Affectations",
+    "loading": "Chargement des affectations…",
+    "add": "Ajouter une ressource",
+    "total": "Total planifié : {{ hours }}",
+    "span": "du {{ from }} au {{ to }}",
+    "empty": "Aucune ressource affectée à ce ticket.",
+    "provisional": "Provisoire",
+    "outside": "Certains segments sortent des dates du ticket, modifiées depuis.",
+    "confirm": {
+      "action": "Confirmer",
+      "of": "Confirmer l’affectation provisoire de {{ name }}",
+      "done": "L’affectation de {{ name }} est désormais ferme.",
+      "blocked": "Confirmée, cette affectation dépasserait la capacité — {{ days }}. Elle reste provisoire : réduisez ses segments, ou demandez à une personne autorisée de forcer la surcharge.",
+      "forceTitle": "Forcer la surcharge ?",
+      "forceMessage": "Confirmée, cette affectation dépasse la capacité — {{ days }}. Forcer la surcharge est tracé.",
+      "force": "Confirmer quand même"
+    },
+    "caption": "Segments de l’affectation de {{ name }}",
+    "columns": {
+      "period": "Période",
+      "mode": "Mode",
+      "value": "Valeur",
+      "load": "Charge"
+    },
+    "period": "{{ from }} → {{ to }}",
+    "modeNames": {
+      "percentage": "Pourcentage",
+      "hours_per_day": "Heures par jour",
+      "total_effort": "Effort total"
+    },
+    "modes": {
+      "percentage": "%",
+      "hours_per_day": "h/jour",
+      "total_effort": "Effort total"
+    },
+    "perDay": "{{ hours }}/j",
+    "over": "{{ hours }} répartis sur {{ days }} jours ouvrés",
+    "editOf": "Modifier l’affectation de {{ name }}",
+    "deleteOf": "Retirer {{ name }} du ticket",
+    "deleteTitle": "Retirer {{ name }} ?",
+    "deleteMessage": "Ses segments et sa charge sur ce ticket disparaissent.",
+    "deleteConfirm": "Retirer",
+    "created": "{{ name }} a été affecté au ticket.",
+    "saved": "L’affectation de {{ name }} a été enregistrée.",
+    "deleted": "{{ name }} a été retiré du ticket.",
+    "dialog": {
+      "createTitle": "Affecter une ressource",
+      "editTitle": "Modifier l’affectation",
+      "dates": "du {{ from }} au {{ to }}",
+      "resource": "Ressource",
+      "resourceHint": "Par nom ou intitulé de poste ; jamais une équipe.",
+      "segments": "Segments",
+      "period": "Période {{ number }}",
+      "start": "Début de la période {{ number }}",
+      "end": "Fin de la période {{ number }}",
+      "mode": "Mode du segment {{ number }}",
+      "value": "Valeur {{ number }}",
+      "remove": "Supprimer le segment {{ number }}",
+      "addSegment": "Ajouter un segment",
+      "create": "Enregistrer",
+      "save": "Enregistrer",
+      "suffix": {
+        "percentage": "%",
+        "hours_per_day": "h/j",
+        "total_effort": "h"
+      },
+      "hints": {
+        "percentage": "Part de la capacité de chaque jour",
+        "hours_per_day": "Heures par jour ouvré, comme 4 ou 3:30",
+        "total_effort": "Heures réparties sur les jours ouvrés, comme 40"
+      },
+      "invalid": {
+        "percentage": "Un pourcentage de 1 à 100.",
+        "hours_per_day": "Des heures d’une journée, comme 4, 3,5 ou 3:30.",
+        "total_effort": "Des heures, comme 40 ou 12:30."
+      },
+      "provisional": "Affectation provisoire",
+      "provisionalHint": "Hachurée dans la heatmap ; selon le réglage de l’organisation, comptée ou non dans le contrôle de surcharge."
+    },
+    "overload": {
+      "badge": "Surcharge",
+      "flagged": "Ressource en surcharge : {{ days }}.",
+      "day": "{{ date }} : {{ planned }} planifiées pour {{ available }} disponibles (+{{ over }})",
+      "moreOne": "et 1 autre jour",
+      "moreMany": "et {{ count }} autres jours",
+      "separator": " ; ",
+      "blocked": "Capacité dépassée — {{ days }}. L’affectation ne peut pas être enregistrée telle quelle : réduisez ses segments.",
+      "blockedForceable": "Capacité dépassée — {{ days }}. L’affectation ne peut pas être enregistrée telle quelle : réduisez ses segments ou forcez la surcharge.",
+      "warning": "Capacité dépassée — {{ days }}. L’affectation sera enregistrée et la surcharge signalée.",
+      "force": "Forcer la surcharge",
+      "forceNote": "« Forcer la surcharge » est réservé aux rôles disposant de cette permission. L’action est tracée."
+    },
+    "preview": {
+      "title": "Aperçu de la charge de {{ name }}",
+      "caption": "Charge de {{ name }} par jour : capacité, charge existante, cette affectation et total",
+      "capacity": "Capacité",
+      "existing": "Charge existante",
+      "assignment": "Cette affectation",
+      "total": "Total",
+      "over": "en surcharge"
+    },
+    "conflicts": {
+      "title": "{{ hours }} à replanifier : la ressource est absente",
+      "day": "{{ date }} : {{ hours }}"
     }
   }
 }

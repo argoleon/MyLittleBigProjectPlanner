@@ -143,6 +143,8 @@ async function mockTickets(page: Page, mine = [SUMMARY]) {
   await page.route('**/api/v1/issues/*/attachments', (route) => route.fulfill({ json: [] }));
   // The member watches the ticket.
   await page.route('**/api/v1/issues/*/watchers', (route) => route.fulfill({ json: { count: 1, watching: true } }));
+  // Nobody assigned yet (L08-US01).
+  await page.route('**/api/v1/issues/*/assignments', (route) => route.fulfill({ json: { items: [], loadMinutes: 0, canAssign: false } }));
   await page.route('**/api/v1/me/issues**', (route) => route.fulfill({ json: { items: mine, nextCursor: null } }));
   await page.route('**/api/v1/nodes?**', (route) => route.fulfill({ json: { items: [PROJECT, CRM], nextCursor: null } }));
   await page.route('**/api/v1/projects/PLAT/issue-form**', (route) => route.fulfill({ json: FORM }));

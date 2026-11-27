@@ -229,6 +229,7 @@ describe('WorkloadSettingsTab', () => {
       defaultCapacityMinutes: DEFAULT,
       overloadTolerancePercent: 0,
       overloadMode: 'blocking',
+      overloadCountsProvisional: true,
       version: 4,
     });
     return { ...kit, fixture, host: fixture.nativeElement as HTMLElement };
@@ -248,11 +249,17 @@ describe('WorkloadSettingsTab', () => {
     await type(host.querySelector('input[formcontrolname="tolerance"]'), '10');
     await click(host.querySelector('mat-button-toggle[value="warning"] button'));
     expect(text(host.querySelector('.choice-hint'))).toContain('The assignment is accepted');
+    // Provisional assignments counted (the default), switched off.
+    const provisional = host.querySelector<HTMLButtonElement>('mat-slide-toggle button');
+    expect(provisional?.getAttribute('aria-checked')).toBe('true');
+    expect(text(host.querySelector('mat-slide-toggle'))).toContain('Count provisional assignments in the overload check');
+    await click(provisional);
     await click(host.querySelector('button[type="submit"]'));
     const saved = await reply((url, method) => url === SETTINGS && method === 'PUT', {
       defaultCapacityMinutes: [420, 420, 420, 420, 210, 0, 0],
       overloadTolerancePercent: 10,
       overloadMode: 'warning',
+      overloadCountsProvisional: false,
       version: 5,
     });
     expect(saved.request.headers.get('If-Match')).toBe('"4"');
@@ -260,7 +267,9 @@ describe('WorkloadSettingsTab', () => {
       defaultCapacityMinutes: [420, 420, 420, 420, 210, 0, 0],
       overloadTolerancePercent: 10,
       overloadMode: 'warning',
+      overloadCountsProvisional: false,
     });
+    expect(host.querySelector('mat-slide-toggle button')?.getAttribute('aria-checked')).toBe('false');
     expect(text(host.querySelector('[role="status"]'))).toBe('The workload settings were saved.');
   });
 

@@ -43,6 +43,11 @@ pub async fn record(conn: &mut PgConnection, event: &Event<'_>) -> Result<Uuid, 
     let job = crate::notifications::DispatchJob { event_id: id };
     let payload = serde_json::to_value(job).map_err(|e| sqlx::Error::Encode(Box::new(e)))?;
     crate::jobs::enqueue(conn, crate::notifications::DISPATCH_JOB, &payload).await?;
+    // A change of capacity, calendar or absence: the daily load follows.
+    if let Some(recompute) = crate::day_load::Recompute::of_event(event.kind, &event.payload) {
+        let payload = serde_json::to_value(recompute).map_err(|e| sqlx::Error::Encode(Box::new(e)))?;
+        crate::jobs::enqueue(conn, crate::day_load::RECOMPUTE_JOB, &payload).await?;
+    }
     Ok(id)
 }
 

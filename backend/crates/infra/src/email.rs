@@ -96,6 +96,27 @@ pub struct NotificationLine {
     /// The beginning of the comment.
     #[serde(default)]
     pub excerpt: Option<String>,
+    /// The hours to reschedule, for `absence_conflict`.
+    #[serde(default)]
+    pub conflict: Option<ConflictLine>,
+}
+
+/// Hours of a ticket an absence leaves no room for (L08-US04).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConflictLine {
+    pub resource_name: String,
+    pub minutes: u32,
+}
+
+/// A duration in `locale`: `7 h`, `3 h 30` (`3 h 30 min` in English).
+fn duration(minutes: u32, en: bool) -> String {
+    let (hours, rest) = (minutes / 60, minutes % 60);
+    match (rest, en) {
+        (0, _) => format!("{hours} h"),
+        (_, true) => format!("{hours} h {rest:02} min"),
+        (_, false) => format!("{hours} h {rest:02}"),
+    }
 }
 
 /// A notification in a digest.
@@ -117,6 +138,15 @@ pub fn notification_sentence(line: &NotificationLine, locale: &str) -> String {
         .or_else(|| line.status.values().next())
         .cloned()
         .unwrap_or_default();
+    if let (Some(conflict), "absence_conflict") = (&line.conflict, line.event.as_str()) {
+        let hours = duration(conflict.minutes, en);
+        let resource = &conflict.resource_name;
+        return if en {
+            format!("{hours} to reschedule on {key} (absence of {resource})")
+        } else {
+            format!("{hours} à replanifier sur {key} (absence de {resource})")
+        };
+    }
     match (line.event.as_str(), en) {
         ("mentioned", true) => format!("{actor} mentioned you on {key}"),
         ("mentioned", false) => format!("{actor} vous a mentionné sur {key}"),
@@ -679,7 +709,36 @@ mod tests {
             ]
             .into(),
             excerpt: Some("@Lucas peux-tu valider ?".to_owned()),
+            conflict: None,
         }
+    }
+
+    #[test]
+    fn an_absence_conflict_tells_the_hours_to_reschedule() {
+        let conflict = NotificationLine {
+            excerpt: None,
+            conflict: Some(ConflictLine {
+                resource_name: "Nathan Roux".to_owned(),
+                minutes: 450,
+            }),
+            ..line("absence_conflict")
+        };
+        assert_eq!(
+            notification_sentence(&conflict, "fr"),
+            "7 h 30 à replanifier sur PLAT-151 (absence de Nathan Roux)"
+        );
+        assert_eq!(
+            notification_sentence(&conflict, "en"),
+            "7 h 30 min to reschedule on PLAT-151 (absence of Nathan Roux)"
+        );
+        let whole = NotificationLine {
+            conflict: Some(ConflictLine {
+                resource_name: "Nathan Roux".to_owned(),
+                minutes: 420,
+            }),
+            ..conflict
+        };
+        assert!(notification_sentence(&whole, "en").starts_with("7 h to reschedule"));
     }
 
     #[test]

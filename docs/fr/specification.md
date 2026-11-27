@@ -115,6 +115,7 @@ La hiérarchie est un graphe orienté sans cycle : un nœud peut avoir plusieurs
 - Un nœud agrège sur l'ensemble de ses projets descendants distincts. Un projet atteint par deux chemins est compté une fois.
 - Chaque lien parent-enfant porte une pondération optionnelle (100 % par défaut), pour les répartitions budgétaires.
 - Agrégats calculés : charge planifiée, capacité consommée, avancement (par catégorie de statut), nombre de tickets ouverts et en retard.
+- La capacité d'un projet est la part de la capacité de ses ressources que leur charge y prend : chaque ressource répartit sa capacité entre ses projets en proportion de sa charge sur chacun, sans double compte. Charge et capacité se lisent aussi par semaine et par mois, pour un nœud comme pour une équipe (la somme de ses membres).
 - Les agrégats sont précalculés par un worker et mis à jour en quelques secondes après chaque modification.
 
 **Droits dans le graphe**
@@ -293,23 +294,27 @@ Une affectation relie une ressource à un ticket. Elle se compose d'un ou plusie
 | Effort total | 40 h entre le 3 et le 28 mars | effort réparti uniformément sur les jours ouvrés |
 
 - Exemple multi-segments : 4 h/jour la semaine 1, puis 2 h/jour la semaine 2, sur le même ticket.
-- Les segments doivent rester dans les dates du ticket.
+- Les segments d'une affectation ne se chevauchent pas et doivent rester dans les dates du ticket, quand il en a (seules les bornes renseignées sont vérifiées). Si les dates du ticket changent ensuite, les segments qui en sortent sont signalés sur le ticket, sans blocage.
+- Une seule affectation par ressource et par ticket : une nouvelle période est un nouveau segment.
+- Un jour ouvré est un jour où le calendrier et la capacité donnent des heures à la ressource, absences mises à part. L'effort total est réparti à parts égales sur ces jours, les minutes restantes allant aux premiers jours ; les heures qui tombent sur une absence y restent et deviennent un conflit.
 - Plusieurs ressources peuvent être affectées au même ticket, chacune avec son affectation indépendante. La charge du ticket est la somme des affectations.
-- Une affectation peut être marquée « provisoire » : hachurée dans la heatmap, et prise en compte ou non dans le contrôle de dépassement selon un réglage du tenant.
+- Une affectation peut être marquée « provisoire » : hachurée dans la heatmap, et prise en compte ou non dans le contrôle de dépassement selon un réglage du tenant (prise en compte par défaut).
 - Pour réserver quelqu'un sur un projet sans tâche précise, on crée un ticket « Activité projet ».
 - Après le MVP : profils de répartition (concentrée au début, personnalisée), modes MS Project (unités fixes, travail fixe, durée fixe), compétences, circuit de demande de ressource.
 
 **Stockage et calcul**
 
-- Les segments sont la source de vérité. Le système en déduit une ligne par ressource et par jour (`resource_day_load` : date locale, minutes, ticket, statut provisoire), recalculée à chaque modification de segment, de capacité ou d'absence.
-- Cette table est partitionnée par période. Des agrégats précalculés par semaine, par mois et par nœud de la hiérarchie alimentent les vues.
+- Les segments sont la source de vérité. Le système en déduit une ligne par affectation et par jour chargé (`resource_day_load` : ressource, date locale, minutes, ticket, statut provisoire). L'écriture d'une affectation la recalcule dans la même transaction ; une modification de capacité, de calendrier, d'absence ou de la capacité par défaut la recalcule en tâche de fond, en quelques secondes, pour les ressources et les jours concernés.
+- Cette table est partitionnée par mois ; les partitions sont créées à l'avance et au besoin. Des agrégats précalculés par semaine, par mois et par nœud de la hiérarchie alimentent les vues.
 - Granularité : la journée, stockée en minutes. Les créneaux horaires relèvent de la couche de réservation horaire (section 9).
 
 **Contrôle de dépassement**
 
 - À l'écriture d'une affectation, le système compare la charge résultante de chaque jour à la capacité plus la tolérance.
-- Mode bloquant (par défaut) : l'affectation est refusée et le message liste les jours en conflit. Les rôles disposant de la permission « Forcer la surcharge » peuvent passer outre ; c'est tracé.
+- Un jour est en conflit quand l'affectation y ajoute de la charge et que le total dépasse la capacité (absences déduites) plus la tolérance : modifier une affectation ne bute jamais sur un jour auquel elle n'ajoute rien.
+- Mode bloquant (par défaut) : l'affectation est refusée et le message liste les jours en conflit. Les rôles disposant de la permission « Forcer la surcharge » peuvent passer outre ; c'est tracé dans l'historique du ticket et dans une liste des surcharges forcées que l'admin du tenant consulte.
 - Mode alerte (au choix du tenant) : l'affectation est acceptée et la surcharge signalée.
+- Pendant la saisie d'une affectation, un aperçu montre pour chaque jour la charge existante, celle de l'affectation et le total, les jours en surcharge mis en évidence.
 - La vérification se fait en transaction, avec un verrou par ressource : deux chefs de projet qui affectent la même personne au même moment ne peuvent pas dépasser sa capacité à eux deux.
 - La charge future des tâches récurrentes est incluse (section 9).
 
@@ -319,12 +324,13 @@ Une affectation relie une ressource à un ticket. Elle se compose d'un ou plusie
 - Une absence va d'un premier à un dernier jour inclus ; elle peut commencer ou finir à midi. Une demi-journée retire la moitié de la capacité du jour. Les absences d'une ressource ne se chevauchent pas, demi-journée par demi-journée. Types : congé, formation, autre (pas de type « maladie », donnée de santé).
 - La personne liée à la ressource saisit les siennes, l'admin du tenant et les gestionnaires de ressources celles de tous. Tous les membres internes voient les dates et le type ; le commentaire est réservé à la personne et aux gestionnaires, et disparaît si la personne est effacée.
 - Affectation en pourcentage : la charge tombe à 0 sur le jour d'absence, automatiquement.
-- Affectation en heures par jour ou en effort total : les heures tombant sur l'absence deviennent un conflit, signalé au chef de projet (« 7 h à replanifier sur PROJ-42 »). Rien n'est décalé automatiquement.
+- Affectation en heures par jour ou en effort total : les heures tombant sur l'absence deviennent un conflit, signalé au chef de projet (« 7 h à replanifier sur PROJ-42 »). Rien n'est décalé automatiquement. Sur une demi-journée d'absence, seules les heures au-delà de la capacité restante sont en conflit. Le conflit se résout de lui-même quand le segment ou l'absence change ; il figure sur l'absence et sur l'affectation du ticket.
+- Le chef de projet est prévenu par l'événement de notification « Conflit d'absence » des règles du projet : par défaut l'assigné du ticket et les détenteurs du rôle Chef de projet.
 
 **Vues (MVP)**
 
 - Heatmap ressources × jours, semaines ou mois, en couleur selon le taux d'occupation. Un clic sur une case montre les tickets qui la composent.
-- Filtres par équipe, par projet, ou par nœud de la hiérarchie.
+- Filtres par équipe, par projet, ou par nœud de la hiérarchie. Un filtre par projet ou par nœud garde les ressources qui y ont de la charge sur la période et montre leur charge totale ; le détail d'une case distingue les tickets du filtre.
 - Charge comparée à la capacité, agrégée par équipe, par programme et par portefeuille.
 - Recherche de disponibilité : « qui a 3 jours libres la semaine prochaine dans l'équipe X ? ».
 - Le MVP détecte et signale les surcharges ; les propositions de replanification (nivellement) viennent après. La comparaison prévu / réel aussi.

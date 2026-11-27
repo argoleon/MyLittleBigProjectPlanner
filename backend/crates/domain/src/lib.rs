@@ -6,15 +6,18 @@
 pub mod absences;
 pub mod account;
 pub mod aggregates;
+pub mod assignments;
 pub mod attachments;
 pub mod audit;
 pub mod auth_policy;
+pub mod availability;
 pub mod boards;
 pub mod bulk;
 pub mod calendars;
 pub mod capacity;
 pub mod comments;
 pub mod configuration;
+pub mod conflicts;
 pub mod dates;
 pub mod devices;
 pub mod erasure;
@@ -35,6 +38,7 @@ pub mod migration;
 pub mod notifications;
 pub mod notify;
 pub mod oidc;
+pub mod overload;
 pub mod permissions;
 pub mod query;
 pub mod reference_item;
@@ -49,6 +53,7 @@ pub mod text_search;
 pub mod transitions;
 pub mod validation;
 pub mod workflows;
+pub mod workload;
 
 /// Name of the product, shared by every service.
 pub const PRODUCT_NAME: &str = "My Little Big Project Planner";

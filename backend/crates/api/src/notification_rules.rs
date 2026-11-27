@@ -39,14 +39,17 @@ pub enum EventView {
     Commented,
     /// Someone is mentioned in a description or a comment.
     Mentioned,
+    /// Hours of the ticket fall on an absence of their resource.
+    AbsenceConflict,
 }
 
-const EVENTS: [(EventView, Event); 5] = [
+const EVENTS: [(EventView, Event); 6] = [
     (EventView::Created, Event::Created),
     (EventView::Assigned, Event::Assigned),
     (EventView::StatusChanged, Event::StatusChanged),
     (EventView::Commented, Event::Commented),
     (EventView::Mentioned, Event::Mentioned),
+    (EventView::AbsenceConflict, Event::AbsenceConflict),
 ];
 
 impl From<Event> for EventView {

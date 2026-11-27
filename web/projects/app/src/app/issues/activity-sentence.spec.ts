@@ -127,6 +127,20 @@ describe('sentences of the Activity tab', () => {
     expect(say(entry({ action: 'attachment_added', new: value('text', 'plan.pdf') }), context('fr'))).toBe('Lucas Bernard a joint plan.pdf');
   });
 
+  it('says an overload forced, in English and in French', () => {
+    const forced = entry({ action: 'overload_forced', new: value('text', 'Nathan Roux') });
+    expect(say(forced, context('en'))).toBe('Lucas Bernard forced an overload of Nathan Roux');
+    TestBed.resetTestingModule();
+    expect(say(forced, context('fr'))).toBe('Lucas Bernard a forcé une surcharge de Nathan Roux');
+  });
+
+  it('says a generic resource replaced by a person, in English and in French', () => {
+    const replaced = entry({ action: 'resource_replaced', old: value('text', 'Backend developer'), new: value('text', 'Nathan Roux') });
+    expect(say(replaced, context('en'))).toBe('Lucas Bernard replaced Backend developer with Nathan Roux');
+    TestBed.resetTestingModule();
+    expect(say(replaced, context('fr'))).toBe('Lucas Bernard a remplacé Backend developer par Nathan Roux');
+  });
+
   it('names the system and former members', () => {
     const en = context('en');
     expect(sentenceOf(entry({ action: 'created', actor: null, origin: 'system' }), en).who).toBe('The system');

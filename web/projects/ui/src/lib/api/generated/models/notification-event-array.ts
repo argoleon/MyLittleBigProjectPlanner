@@ -11,5 +11,6 @@ export const NOTIFICATION_EVENT: NotificationEvent[] = [
   'assigned',
   'status_changed',
   'commented',
-  'mentioned'
+  'mentioned',
+  'absence_conflict'
 ];

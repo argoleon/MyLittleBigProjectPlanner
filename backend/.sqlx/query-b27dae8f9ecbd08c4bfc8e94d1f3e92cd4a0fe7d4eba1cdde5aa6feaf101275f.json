@@ -1,0 +1,139 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT a.id, a.issue_id, a.resource_id, r.kind,\n               coalesce(app_member_name(r.account_id), r.display_name) AS \"display_name!\",\n               r.job_title, r.active, r.account_id IS NOT NULL AS \"linked!\", r.calendar_id,\n               a.provisional, a.version\n        FROM assignment a\n        JOIN resource r ON r.id = a.resource_id\n        WHERE ($1::uuid IS NULL OR a.issue_id = $1) AND ($2::uuid[] IS NULL OR a.id = ANY($2))\n        ORDER BY lower(coalesce(app_member_name(r.account_id), r.display_name)), a.id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "assignment",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "issue_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "assignment",
+            "name": "issue_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "resource_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "assignment",
+            "name": "resource_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "resource",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "display_name!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "job_title",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "resource",
+            "name": "job_title"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "active",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "resource",
+            "name": "active"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "linked!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
+        "name": "calendar_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "resource",
+            "name": "calendar_id"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "provisional",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "assignment",
+            "name": "provisional"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "version",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "assignment",
+            "name": "version"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null,
+      true,
+      false,
+      null,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "b27dae8f9ecbd08c4bfc8e94d1f3e92cd4a0fe7d4eba1cdde5aa6feaf101275f"
+}

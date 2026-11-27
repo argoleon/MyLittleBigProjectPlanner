@@ -7,7 +7,7 @@
       "name": "MIT",
       "identifier": "MIT"
     },
-    "version": "0.7.0"
+    "version": "0.8.0"
   },
   "paths": {
     "/api/v1/account/mfa": {
@@ -219,6 +219,504 @@
           },
           "409": {
             "description": "`mfa.already_enabled`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assignments/preview": {
+      "post": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Preview the load of an assignment",
+        "description": "Members with `assign_resources` on the ticket's project: for each day of the segments, the load of the resource's other assignments, this assignment's and their sum against the capacity plus tolerance, and the days a write would overload. The same check as a write, without writing or locking.",
+        "operationId": "previewAssignment",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignmentPreviewFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignmentPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`, as for a write (`assignmentId`: `not_found`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`permission.denied`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such ticket visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`assignment.segments_overlap`, `assignment.outside_issue_dates`, or `node.archived`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assignments/{id}": {
+      "get": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Read an assignment",
+        "description": "Members who see its ticket.",
+        "operationId": "getAssignment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the assignment",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The assignment",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Assignment"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such assignment visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Change an assignment",
+        "description": "Members with `assign_resources` on the ticket's project: its segments and provisional flag are replaced; its resource stays. Checked for overload as a creation is, on the days it adds load to.",
+        "operationId": "updateAssignment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the assignment",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the version being replaced, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignmentChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The assignment",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "New version"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Assignment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`permission.denied`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such assignment visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`assignment.segments_overlap`, `assignment.outside_issue_dates`, `workload.overload`, or `node.archived`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The assignment changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Remove an assignment",
+        "description": "Members with `assign_resources` on the ticket's project.",
+        "operationId": "deleteAssignment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the assignment",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the assignment, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed"
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`permission.denied`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such assignment visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`node.archived`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The assignment changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assignments/{id}/confirm": {
+      "post": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Confirm a provisional assignment",
+        "description": "Members with `assign_resources` on the ticket's project: the assignment becomes firm, its segments unchanged. Checked for overload as a firm assignment, on the days its load now counts (L08-US09). An assignment already firm is returned unchanged.",
+        "operationId": "confirmAssignment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the assignment",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the version being confirmed, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignmentConfirmation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The assignment",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "New version"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Assignment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`permission.denied`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such assignment visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`workload.overload`, or `node.archived`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The assignment changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`If-Match` is missing",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3773,6 +4271,186 @@
           },
           "404": {
             "description": "No such ticket visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/issues/{idOrKey}/assignments": {
+      "get": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "List the assignments of a ticket",
+        "description": "Members who see the ticket: each assignment with its segments and their load, computed from the resource's capacity, public holidays and absences; the ticket's load is their sum.",
+        "operationId": "listIssueAssignments",
+        "parameters": [
+          {
+            "name": "idOrKey",
+            "in": "path",
+            "description": "Id, key or former key of the ticket",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The assignments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignmentList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such ticket visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Assign a resource to a ticket",
+        "description": "Members with `assign_resources` on its project (tenant admins always). One assignment per resource and ticket; its segments never take a same day and stay within the ticket's dates, when it has them. The resulting load of each day is checked against the resource's capacity plus the tenant's tolerance: in blocking mode an overload is refused unless forced (`force`, with `force_overload`); in warning mode it is written and flagged (`overloads`).",
+        "operationId": "createIssueAssignment",
+        "parameters": [
+          {
+            "name": "idOrKey",
+            "in": "path",
+            "description": "Id, key or former key of the ticket",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique key of this creation",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignmentFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Assigned",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Version of the assignment"
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "URL of the assignment"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Assignment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed` (`resourceId`: `not_found`, `inactive`; `segments`: `required`, `too_many`; `segments.{i}.end`: `before_start`, `out_of_range`; `segments.{i}.value`: `out_of_range`; `segments.{i}.start`: `no_working_day`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`permission.denied` (`assign_resources`, or `force_overload` when forcing), or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such ticket visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`assignment.resource_taken`, `assignment.segments_overlap`, `assignment.outside_issue_dates`, `workload.overload` (with `overload`: the days, and whether the member may force it), `node.archived`, or `idempotency_key.in_flight`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`idempotency_key.reused`",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -8439,6 +9117,99 @@
           },
           "409": {
             "description": "`node.archived`: the node or the parent is an archived project",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes/{id}/workload": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Load against capacity of a node",
+        "description": "Members who see the node: per week or month, the load planned on its distinct projects (itself if it is one, or those below it, each with the weighting of its link; a project reached twice counts once), and the share of their resources' capacity that load takes. Confidential projects count without detail. Sums kept over a year back and two years ahead.",
+        "operationId": "getNodeWorkload",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the node",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "scale",
+            "in": "query",
+            "description": "`month` when left out.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/WorkloadAggregateScale"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "First day: its period comes first.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Last day: its period comes last.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The aggregate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkloadAggregate"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed` (`to`: `before_start`, `out_of_range`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such node visible to the member",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -15408,7 +16179,7 @@
           "resources"
         ],
         "summary": "List the absences of a resource",
-        "description": "Any internal member: the absences meeting `from`–`to` (366 days at most). The comment only shows to the person and the managers.",
+        "description": "Any internal member: the absences meeting `from`–`to` (366 days at most). The comment only shows to the person and the managers. Each tells the hours planned on its days that it leaves no room for (`conflictMinutes`), all tickets together.",
         "operationId": "listAbsences",
         "parameters": [
           {
@@ -15828,6 +16599,119 @@
           },
           "428": {
             "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/resources/{id}/assignments": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "List the assignments of a resource",
+        "description": "Internal members: the resource's assignments with a segment meeting `from`–`to`, newest first, each with its segments and their load. An assignment on a ticket the member does not see shows as busy time: its periods and hours, no ticket nor project. `expand=issue` adds the ticket and its project.",
+        "operationId": "listResourceAssignments",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the resource",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Only those with a segment ending on or after this local date.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Only those with a segment starting on or before this local date.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, from 1 to 200 (default 50).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "`nextCursor` of the previous page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "description": "`issue`: each visible assignment with its ticket and project.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of assignments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceAssignmentPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid `limit`, `cursor`, dates or `expand`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such resource in this tenant",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -16747,6 +17631,184 @@
           },
           "428": {
             "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/resources/{id}/replacement": {
+      "post": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Replace a generic resource with a person",
+        "description": "Tenant admins and resource managers. The assignments of the generic resource move to the person from today on: days before stay, a segment across today is cut (a total effort shared in proportion to its working days), and segments join the person's assignment of the same ticket when there is one. Tickets of archived projects stay. Each ticket's history records it. The person's load is checked as for an assignment: in blocking mode an overload is refused unless forced (`force`, with `force_overload` on every project concerned), and a forced one is traced. The generic resource is then deactivated unless `deactivate` is `false`.",
+        "operationId": "replaceResource",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The generic resource",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceReplacementFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Replaced",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceReplacement"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed` (`id`: `not_generic`; `personId`: `not_found`, `not_a_person`, `inactive`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: neither tenant admin nor resource manager; `permission.denied` (`force_overload` when forcing); or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such resource in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`assignment.segments_overlap` (naming the tickets), or `workload.overload` (with `overload`: the days, and whether the member may force it); nothing is written",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/resources/{id}/replacement/preview": {
+      "post": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Preview replacing a generic resource with a person",
+        "description": "Tenant admins and resource managers: the assignments that would move from today on, the tickets where segments would overlap, those of archived projects left behind, and the person's days the replacement would overload. The same as a replacement, without writing.",
+        "operationId": "previewResourceReplacement",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The generic resource",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceReplacementPreviewFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceReplacement"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed` (`id`: `not_generic`; `personId`: `not_found`, `not_a_person`, `inactive`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: neither tenant admin nor resource manager; or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such resource in this tenant",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -18095,6 +19157,99 @@
         }
       }
     },
+    "/api/v1/teams/{id}/workload": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Load against capacity of a team",
+        "description": "Internal members: per week or month, the load and capacity of the team's active members, summed.",
+        "operationId": "getTeamWorkload",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the team",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "scale",
+            "in": "query",
+            "description": "`month` when left out.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/WorkloadAggregateScale"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "First day: its period comes first.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Last day: its period comes last.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The aggregate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkloadAggregate"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed` (`to`: `before_start`, `out_of_range`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such team in this tenant",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/tenant": {
       "get": {
         "tags": [
@@ -18268,6 +19423,80 @@
           },
           "428": {
             "description": "`If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenant/forced-overloads": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "List the forced overloads",
+        "description": "Tenant admins only, newest first: who forced an assignment beyond its resource's capacity plus tolerance, when, on which ticket and resource, and the days overloaded at the time.",
+        "operationId": "listForcedOverloads",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, from 1 to 200 (default 50).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "`nextCursor` of the previous page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of forced overloads",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForcedOverloadPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid `limit` or `cursor`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: not a tenant admin",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -20842,7 +22071,7 @@
           "resources"
         ],
         "summary": "Read the workload settings of the tenant",
-        "description": "Tenant admins only: default capacity, overload tolerance and mode.",
+        "description": "Tenant admins only: default capacity, overload tolerance and mode, and whether provisional assignments count in the overload check.",
         "operationId": "getWorkloadSettings",
         "responses": {
           "200": {
@@ -20984,6 +22213,421 @@
           }
         }
       }
+    },
+    "/api/v1/workload/availability": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "Search for available resources",
+        "description": "Internal members: the active resources (of a team) with at least `minHours` free hours, or `minDays` working days entirely free, from `from` to `to`, most free time first. Free time is the capacity (absences, public holidays and closures deducted) less the load, day by day; the overload tolerance is left out. Load on tickets the member does not see counts, without naming them.",
+        "operationId": "findAvailability",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "First day.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Last day, included: 92 days at most.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "teamId",
+            "in": "query",
+            "description": "Only the members of this team.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "minHours",
+            "in": "query",
+            "description": "At least these free hours over the period (1 to 2000).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 2000,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "minDays",
+            "in": "query",
+            "description": "At least this many working days entirely free (1 to 92), not\nnecessarily in a row. Not with `minHours`.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 92,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "includeProvisional",
+            "in": "query",
+            "description": "Provisional assignments take free time (`true` when left out).",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The resources found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Availability"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed` (`to`: `before_start`, `out_of_range` beyond 92 days; `minHours`, `minDays`: `out_of_range`; `minDays`: `not_allowed` with `minHours`), or `invalid_query`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workload/cell": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "What is behind a cell of the heatmap",
+        "description": "Internal members: a resource's capacity and load over a period, the tickets behind it with their hours (those the member does not see as one busy entry, without name), and the overloads forced there.",
+        "operationId": "getWorkloadCell",
+        "parameters": [
+          {
+            "name": "resourceId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "First day of the cell.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Last day, included (a year at most).",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "nodeId",
+            "in": "query",
+            "description": "The node the heatmap is filtered on: tickets of its projects are\nmarked (`inNode`).",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The cell",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeatmapCell"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed` (`to`: `before_start`, `out_of_range`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such resource, or `nodeId` not visible",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workload/conflicts": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "List the absence conflicts",
+        "description": "The conflicts of the tickets the member sees, newest first: per assignment and day, the hours planned in hours per day or total effort that an absence of the resource leaves no room for. Opened when an absence or a segment puts them there, resolved when no longer.",
+        "operationId": "listWorkloadConflicts",
+        "parameters": [
+          {
+            "name": "resourceId",
+            "in": "query",
+            "description": "Only this resource's.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "query",
+            "description": "Only those of this project's tickets.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Only those in this state; both when left out.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/WorkloadConflictStatus"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, from 1 to 200 (default 50).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "`nextCursor` of the previous page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of conflicts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkloadConflictPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid `limit`, `cursor` or `status`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`projectId`: no such project visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workload/heatmap": {
+      "get": {
+        "tags": [
+          "resources"
+        ],
+        "summary": "The workload heatmap",
+        "description": "Internal members: the active resources (of a team, or with load on a node's tickets), by name, and for each day, week or month of the range their load, its provisional part, its part on tickets the member does not see, and their capacity before and after absences.",
+        "operationId": "getWorkloadHeatmap",
+        "parameters": [
+          {
+            "name": "scale",
+            "in": "query",
+            "description": "`week` when left out.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/HeatmapScale"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "First day: its period is the first column.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Last day: its period is the last column.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "teamId",
+            "in": "query",
+            "description": "Only the members of this team.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "nodeId",
+            "in": "query",
+            "description": "Only those with load in the range on tickets of this project, or of\nthe projects below this program or portfolio. Their whole load shows.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "includeProvisional",
+            "in": "query",
+            "description": "Provisional assignments count in the load (`true` when left out).",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The heatmap",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Heatmap"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed` (`to`: `before_start`, `out_of_range` beyond 92 days, 53 weeks or 24 months), or `invalid_query`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`nodeId`: no such node visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -20999,6 +22643,7 @@
           "end",
           "endsAtNoon",
           "declaredBy",
+          "conflictMinutes",
           "version"
         ],
         "properties": {
@@ -21008,6 +22653,13 @@
               "null"
             ],
             "description": "For the person and the managers only; absent for others."
+          },
+          "conflictMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Minutes planned in hours per day or total effort, all tickets\ntogether, that it leaves no room for (L08-US04): to reschedule.\nKept up to date by the worker within seconds of a change.",
+            "example": 420,
+            "minimum": 0
           },
           "declaredBy": {
             "oneOf": [
@@ -21343,7 +22995,9 @@
           "comment_updated",
           "comment_deleted",
           "attachment_added",
-          "attachment_removed"
+          "attachment_removed",
+          "overload_forced",
+          "resource_replaced"
         ]
       },
       "ActivityEntry": {
@@ -21548,6 +23202,541 @@
           "nobody"
         ]
       },
+      "AssignedIssue": {
+        "type": "object",
+        "description": "The ticket of an assignment (`expand=issue`).",
+        "required": [
+          "id",
+          "key",
+          "summary",
+          "project"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string",
+            "example": "PLAT-148"
+          },
+          "project": {
+            "$ref": "#/components/schemas/AssignedProject"
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      },
+      "AssignedProject": {
+        "type": "object",
+        "description": "The project of a ticket, as listed with an assignment.",
+        "required": [
+          "id",
+          "key",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string",
+            "example": "PLAT"
+          },
+          "name": {
+            "type": "string",
+            "example": "Identity platform"
+          }
+        }
+      },
+      "AssignedResource": {
+        "type": "object",
+        "description": "The resource of an assignment.",
+        "required": [
+          "id",
+          "kind",
+          "displayName",
+          "active",
+          "linked"
+        ],
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Camille Martin"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "jobTitle": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ResourceKind"
+          },
+          "linked": {
+            "type": "boolean",
+            "description": "Linked to a member's account."
+          }
+        }
+      },
+      "Assignment": {
+        "type": "object",
+        "description": "An assignment of a resource to a ticket.",
+        "required": [
+          "id",
+          "issueId",
+          "resource",
+          "provisional",
+          "segments",
+          "loadMinutes",
+          "outsideIssueDates",
+          "overloads",
+          "conflicts",
+          "version"
+        ],
+        "properties": {
+          "conflicts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssignmentConflict"
+            },
+            "description": "The days an absence of the resource leaves no room for its hours\n(hours per day or total effort), by date: to reschedule (L08-US04)."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "issueId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "loadMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The load of its segments.",
+            "example": 1830,
+            "minimum": 0
+          },
+          "outsideIssueDates": {
+            "type": "boolean",
+            "description": "Some segments fall outside the ticket's dates, changed since."
+          },
+          "overloads": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OverloadDay"
+            },
+            "description": "The days it loads while its resource is over capacity plus\ntolerance (provisional assignments counted by the tenant's\nsetting), by date: empty when none."
+          },
+          "provisional": {
+            "type": "boolean"
+          },
+          "resource": {
+            "$ref": "#/components/schemas/AssignedResource"
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssignmentSegment"
+            }
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          }
+        }
+      },
+      "AssignmentChange": {
+        "type": "object",
+        "description": "The new state of an assignment: its resource stays.",
+        "required": [
+          "segments"
+        ],
+        "properties": {
+          "force": {
+            "type": "boolean",
+            "description": "As for a creation."
+          },
+          "provisional": {
+            "type": "boolean"
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssignmentSegmentFields"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "AssignmentConfirmation": {
+        "type": "object",
+        "description": "Confirming a provisional assignment.",
+        "properties": {
+          "force": {
+            "type": "boolean",
+            "description": "As for a creation."
+          }
+        },
+        "additionalProperties": false
+      },
+      "AssignmentConflict": {
+        "type": "object",
+        "description": "Hours of an assignment an absence leaves no room for, on a day.",
+        "required": [
+          "date",
+          "minutes"
+        ],
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-11-18"
+          },
+          "minutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Minutes to reschedule.",
+            "example": 420,
+            "minimum": 0
+          }
+        }
+      },
+      "AssignmentFields": {
+        "type": "object",
+        "description": "An assignment to create.",
+        "required": [
+          "resourceId",
+          "segments"
+        ],
+        "properties": {
+          "force": {
+            "type": "boolean",
+            "description": "Writes it even beyond the resource's capacity plus tolerance, in\nblocking mode: members with `force_overload` on its project (tenant\nadmins always). Traced."
+          },
+          "provisional": {
+            "type": "boolean",
+            "description": "`false` by default."
+          },
+          "resourceId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "An active resource of the tenant (never a team)."
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssignmentSegmentFields"
+            },
+            "description": "1 to 50 segments that never take a same day."
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "resourceId": "0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7b01",
+          "segments": [
+            {
+              "end": "2026-11-20",
+              "mode": "hours_per_day",
+              "start": "2026-11-16",
+              "value": 240
+            },
+            {
+              "end": "2026-11-27",
+              "mode": "percentage",
+              "start": "2026-11-23",
+              "value": 30
+            }
+          ]
+        }
+      },
+      "AssignmentList": {
+        "type": "object",
+        "description": "The assignments of a ticket.",
+        "required": [
+          "items",
+          "loadMinutes",
+          "canAssign"
+        ],
+        "properties": {
+          "canAssign": {
+            "type": "boolean",
+            "description": "The signed-in member assigns resources to this ticket."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Assignment"
+            },
+            "description": "By resource name."
+          },
+          "loadMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The ticket's load: the sum of its assignments.",
+            "minimum": 0
+          }
+        }
+      },
+      "AssignmentMode": {
+        "type": "string",
+        "description": "How a segment loads its days.",
+        "enum": [
+          "percentage",
+          "hours_per_day",
+          "total_effort"
+        ]
+      },
+      "AssignmentPreview": {
+        "type": "object",
+        "description": "What writing an assignment would give, without writing it.",
+        "required": [
+          "days",
+          "overloads",
+          "mode",
+          "tolerancePercent",
+          "countsProvisional",
+          "blocked",
+          "forceable"
+        ],
+        "properties": {
+          "blocked": {
+            "type": "boolean",
+            "description": "The write would be refused (blocking mode, overloads, not forced)."
+          },
+          "countsProvisional": {
+            "type": "boolean",
+            "description": "Provisional assignments count in the check."
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssignmentPreviewDay"
+            },
+            "description": "The days of its segments that have capacity or load, by date. Loads\nare counted as the check counts them: provisional assignments by the\ntenant's setting."
+          },
+          "forceable": {
+            "type": "boolean",
+            "description": "The member may force it."
+          },
+          "mode": {
+            "$ref": "#/components/schemas/OverloadMode"
+          },
+          "overloads": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OverloadDay"
+            },
+            "description": "The days the write would overload, by date."
+          },
+          "tolerancePercent": {
+            "type": "integer",
+            "format": "int32",
+            "example": 0,
+            "minimum": 0
+          }
+        }
+      },
+      "AssignmentPreviewDay": {
+        "type": "object",
+        "description": "One day of a preview.",
+        "required": [
+          "date",
+          "capacityMinutes",
+          "limitMinutes",
+          "existingMinutes",
+          "assignmentMinutes",
+          "totalMinutes",
+          "overloaded"
+        ],
+        "properties": {
+          "assignmentMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Load of this assignment as previewed.",
+            "example": 240,
+            "minimum": 0
+          },
+          "capacityMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Minutes of capacity, absences deducted.",
+            "example": 420,
+            "minimum": 0
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-11-18"
+          },
+          "existingMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Load of the resource's other assignments.",
+            "example": 240,
+            "minimum": 0
+          },
+          "limitMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Minutes allowed: the capacity plus the tolerance.",
+            "example": 420,
+            "minimum": 0
+          },
+          "overloaded": {
+            "type": "boolean",
+            "description": "The write would overload it."
+          },
+          "totalMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Their sum.",
+            "example": 480,
+            "minimum": 0
+          }
+        }
+      },
+      "AssignmentPreviewFields": {
+        "type": "object",
+        "description": "An assignment to preview.",
+        "required": [
+          "issueId",
+          "resourceId",
+          "segments"
+        ],
+        "properties": {
+          "assignmentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "The assignment changed, of this ticket and resource; left out for a\nnew one."
+          },
+          "issueId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The ticket."
+          },
+          "provisional": {
+            "type": "boolean"
+          },
+          "resourceId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The resource: an active one, or that of `assignmentId`."
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssignmentSegmentFields"
+            },
+            "description": "As for a write."
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "issueId": "0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7a01",
+          "resourceId": "0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7b01",
+          "segments": [
+            {
+              "end": "2026-11-20",
+              "mode": "hours_per_day",
+              "start": "2026-11-16",
+              "value": 240
+            }
+          ]
+        }
+      },
+      "AssignmentSegment": {
+        "type": "object",
+        "description": "A segment and its load.",
+        "required": [
+          "start",
+          "end",
+          "mode",
+          "value",
+          "loadMinutes",
+          "workingDays"
+        ],
+        "properties": {
+          "end": {
+            "type": "string",
+            "format": "date"
+          },
+          "loadMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Minutes it puts on the resource over its days.",
+            "example": 1200,
+            "minimum": 0
+          },
+          "mode": {
+            "$ref": "#/components/schemas/AssignmentMode"
+          },
+          "start": {
+            "type": "string",
+            "format": "date"
+          },
+          "value": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "workingDays": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Working days it covers (days the resource has capacity, absences aside).",
+            "example": 5,
+            "minimum": 0
+          }
+        }
+      },
+      "AssignmentSegmentFields": {
+        "type": "object",
+        "description": "A segment as written.",
+        "required": [
+          "start",
+          "end",
+          "mode",
+          "value"
+        ],
+        "properties": {
+          "end": {
+            "type": "string",
+            "format": "date",
+            "description": "Last day, included.",
+            "example": "2026-11-20"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/AssignmentMode"
+          },
+          "start": {
+            "type": "string",
+            "format": "date",
+            "description": "First day, a local date.",
+            "example": "2026-11-16"
+          },
+          "value": {
+            "type": "integer",
+            "format": "int32",
+            "description": "A percentage, or minutes (see `mode`).",
+            "example": 240,
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
       "AttachmentStatus": {
         "type": "string",
         "description": "Where an attachment stands.",
@@ -21609,6 +23798,87 @@
           "localAccountsRequireMfa": true,
           "portalMagicLinkEnabled": true,
           "portalPasswordEnabled": true
+        }
+      },
+      "Availability": {
+        "type": "object",
+        "description": "The resources meeting a search, most free time first.",
+        "required": [
+          "from",
+          "to",
+          "includeProvisional",
+          "items"
+        ],
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "includeProvisional": {
+            "type": "boolean"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AvailableResource"
+            }
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "AvailableResource": {
+        "type": "object",
+        "description": "A resource found, with its free capacity over the period.",
+        "required": [
+          "resource",
+          "freeMinutes",
+          "freeDays",
+          "capacityMinutes",
+          "loadMinutes",
+          "workingDays"
+        ],
+        "properties": {
+          "capacityMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Capacity, absences, public holidays and closures deducted.",
+            "example": 2100,
+            "minimum": 0
+          },
+          "freeDays": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Working days entirely free: nothing planned, no absence.",
+            "example": 2,
+            "minimum": 0
+          },
+          "freeMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Capacity left, day by day (capacity less load, at least 0).",
+            "example": 1260,
+            "minimum": 0
+          },
+          "loadMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Load planned, provisional included or not.",
+            "example": 840,
+            "minimum": 0
+          },
+          "resource": {
+            "$ref": "#/components/schemas/HeatmapResource"
+          },
+          "workingDays": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Days with capacity.",
+            "example": 5,
+            "minimum": 0
+          }
         }
       },
       "BTreeMap": {
@@ -23576,7 +25846,7 @@
       },
       "ErrorCode": {
         "type": "string",
-        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n| `invitation.invalid` | 400 | This invitation link is invalid, expired or already used |\n| `invitation.pending` | 409 | This email already has an open invitation; send it again instead |\n| `invitation.already_member` | 409 | This email already belongs to a member of the tenant |\n| `invitation.closed` | 409 | This invitation was already accepted or revoked |\n| `member.last_admin` | 409 | The tenant needs at least one active tenant admin |\n| `group.name_taken` | 409 | Another group already has this name |\n| `saved_filter.name_taken` | 409 | You already have a saved filter with this name |\n| `resource.account_taken` | 409 | This member is already linked to another resource |\n| `team.name_taken` | 409 | Another team already has this name |\n| `capacity_pattern.date_taken` | 409 | The resource already has a capacity period starting that day |\n| `calendar_exception.day_taken` | 409 | There is already an exception that day |\n| `absence.overlap` | 409 | Another absence of the resource takes a same half day |\n| `calendar.tenant` | 409 | The tenant calendar is never deleted and keeps a holiday set |\n| `calendar.name_taken` | 409 | Another calendar already has this name |\n| `board.name_taken` | 409 | This node already has a board with this name |\n| `board.no_transition` | 409 | No transition of the workflow leads to this column |\n| `export.too_large` | 422 | The query finds more tickets than an export holds |\n| `export.not_ready` | 409 | The export is not ready |\n| `bulk.too_many` | 422 | More tickets than a bulk action takes |\n| `permission.denied` | 403 | You do not have the permission this needs |\n| `role.label_taken` | 409 | Another role already has this label |\n| `role.in_use` | 409 | Grants use this role: remove them first |\n| `account.no_password` | 409 | This account signs in through its organization: it has no password |\n| `session.current` | 409 | This is the session of the request: sign out instead |\n| `account.reauthentication_required` | 403 | Sign in again through your organization, then erase your account within 10 minutes |\n| `account.platform_admin` | 409 | A platform super admin cannot be erased: another one removes the role first |\n| `export.pending` | 409 | The export is not ready yet |\n| `node.key_taken` | 409 | Another project of the organization has this key |\n| `node.cycle` | 409 | This link would make the node its own ancestor |\n| `node.parent_not_allowed` | 409 | This type of node cannot be attached under that parent |\n| `node.grant_exists` | 409 | They already have this role on this node |\n| `node.confidential_lockout` | 409 | You would lose your own access: get a role granted on the project itself first |\n| `node.archived` | 409 | This project is archived: it is read-only until it is restored |\n| `node.active_children` | 409 | This project still has active sub-projects: archive or detach them first |\n| `node.parent_archived` | 409 | This project is under an archived project: restore that one first |\n| `config.name_taken` | 409 | Another project configuration already has this name |\n| `config.no_draft` | 409 | This configuration has no draft: nothing to publish or discard |\n| `config.default` | 409 | The default configuration stays: new projects get it |\n| `config.in_use` | 409 | Projects use this configuration: move them to another one first |\n| `issue_type.key_taken` | 409 | Another type of this configuration already has this identifier |\n| `issue_type.cycle` | 409 | A type cannot be its own ancestor |\n| `issue_type.subtask_parent` | 409 | A sub-task type cannot be the parent of another type |\n| `issue_type.last_type` | 409 | A configuration keeps at least one type that is not a sub-task |\n| `issue_type.orphan_subtask` | 409 | A sub-task type would have no parent type left: change it first |\n| `workflow.key_taken` | 409 | Another workflow of this configuration, or status of this workflow, already has this identifier |\n| `workflow.in_use` | 409 | Issue types follow this workflow: move them to another one first |\n| `workflow.last` | 409 | A configuration keeps at least one workflow |\n| `workflow.invalid` | 409 | Workflows of the draft cannot be published as they are: see errors |\n| `config_field.key_taken` | 409 | Another field of this configuration already has this identifier |\n| `config_field.system` | 409 | A system field keeps its label and options and cannot be removed; only its types and rules change |\n| `screen.exists` | 409 | This type, or the configuration, already has a screen of this kind |\n| `screen.general` | 409 | The general creation and view screens of a configuration stay |\n| `screen.in_use` | 409 | Transitions show this screen: give them another one first |\n| `mapping_incomplete` | 400 | Every removed status and type must be mapped to one the draft keeps: see errors |\n| `config.migration_running` | 409 | A migration of this configuration is already under way |\n| `config.migration_required` | 409 | Tickets use statuses or types the draft removes: map them through a migration first |\n| `issue.subtask_moves_with_parent` | 409 | A sub-task moves with its parent: move the parent instead |\n| `issue_link.exists` | 409 | The two tickets already have this link |\n| `attachment.too_large` | 413 | The file is larger than the maximum allowed |\n| `attachment.quota_exceeded` | 413 | The organization's storage quota would be exceeded |\n| `attachment.not_uploaded` | 409 | The file was not uploaded, or not whole |\n| `attachment.not_scanned` | 409 | The file is not available: not scanned yet, or refused by the antivirus |\n| `storage.unavailable` | 503 | The file storage is not available |\n| `query.invalid` | 400 | The query cannot be run |\n",
+        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n| `invitation.invalid` | 400 | This invitation link is invalid, expired or already used |\n| `invitation.pending` | 409 | This email already has an open invitation; send it again instead |\n| `invitation.already_member` | 409 | This email already belongs to a member of the tenant |\n| `invitation.closed` | 409 | This invitation was already accepted or revoked |\n| `member.last_admin` | 409 | The tenant needs at least one active tenant admin |\n| `group.name_taken` | 409 | Another group already has this name |\n| `saved_filter.name_taken` | 409 | You already have a saved filter with this name |\n| `resource.account_taken` | 409 | This member is already linked to another resource |\n| `team.name_taken` | 409 | Another team already has this name |\n| `capacity_pattern.date_taken` | 409 | The resource already has a capacity period starting that day |\n| `calendar_exception.day_taken` | 409 | There is already an exception that day |\n| `absence.overlap` | 409 | Another absence of the resource takes a same half day |\n| `assignment.resource_taken` | 409 | The resource is already assigned to this ticket |\n| `assignment.segments_overlap` | 409 | Two segments of the assignment take a same day |\n| `assignment.outside_issue_dates` | 409 | Segments must stay within the ticket's dates |\n| `workload.overload` | 409 | The assignment exceeds the resource's capacity |\n| `calendar.tenant` | 409 | The tenant calendar is never deleted and keeps a holiday set |\n| `calendar.name_taken` | 409 | Another calendar already has this name |\n| `board.name_taken` | 409 | This node already has a board with this name |\n| `board.no_transition` | 409 | No transition of the workflow leads to this column |\n| `export.too_large` | 422 | The query finds more tickets than an export holds |\n| `export.not_ready` | 409 | The export is not ready |\n| `bulk.too_many` | 422 | More tickets than a bulk action takes |\n| `permission.denied` | 403 | You do not have the permission this needs |\n| `role.label_taken` | 409 | Another role already has this label |\n| `role.in_use` | 409 | Grants use this role: remove them first |\n| `account.no_password` | 409 | This account signs in through its organization: it has no password |\n| `session.current` | 409 | This is the session of the request: sign out instead |\n| `account.reauthentication_required` | 403 | Sign in again through your organization, then erase your account within 10 minutes |\n| `account.platform_admin` | 409 | A platform super admin cannot be erased: another one removes the role first |\n| `export.pending` | 409 | The export is not ready yet |\n| `node.key_taken` | 409 | Another project of the organization has this key |\n| `node.cycle` | 409 | This link would make the node its own ancestor |\n| `node.parent_not_allowed` | 409 | This type of node cannot be attached under that parent |\n| `node.grant_exists` | 409 | They already have this role on this node |\n| `node.confidential_lockout` | 409 | You would lose your own access: get a role granted on the project itself first |\n| `node.archived` | 409 | This project is archived: it is read-only until it is restored |\n| `node.active_children` | 409 | This project still has active sub-projects: archive or detach them first |\n| `node.parent_archived` | 409 | This project is under an archived project: restore that one first |\n| `config.name_taken` | 409 | Another project configuration already has this name |\n| `config.no_draft` | 409 | This configuration has no draft: nothing to publish or discard |\n| `config.default` | 409 | The default configuration stays: new projects get it |\n| `config.in_use` | 409 | Projects use this configuration: move them to another one first |\n| `issue_type.key_taken` | 409 | Another type of this configuration already has this identifier |\n| `issue_type.cycle` | 409 | A type cannot be its own ancestor |\n| `issue_type.subtask_parent` | 409 | A sub-task type cannot be the parent of another type |\n| `issue_type.last_type` | 409 | A configuration keeps at least one type that is not a sub-task |\n| `issue_type.orphan_subtask` | 409 | A sub-task type would have no parent type left: change it first |\n| `workflow.key_taken` | 409 | Another workflow of this configuration, or status of this workflow, already has this identifier |\n| `workflow.in_use` | 409 | Issue types follow this workflow: move them to another one first |\n| `workflow.last` | 409 | A configuration keeps at least one workflow |\n| `workflow.invalid` | 409 | Workflows of the draft cannot be published as they are: see errors |\n| `config_field.key_taken` | 409 | Another field of this configuration already has this identifier |\n| `config_field.system` | 409 | A system field keeps its label and options and cannot be removed; only its types and rules change |\n| `screen.exists` | 409 | This type, or the configuration, already has a screen of this kind |\n| `screen.general` | 409 | The general creation and view screens of a configuration stay |\n| `screen.in_use` | 409 | Transitions show this screen: give them another one first |\n| `mapping_incomplete` | 400 | Every removed status and type must be mapped to one the draft keeps: see errors |\n| `config.migration_running` | 409 | A migration of this configuration is already under way |\n| `config.migration_required` | 409 | Tickets use statuses or types the draft removes: map them through a migration first |\n| `issue.subtask_moves_with_parent` | 409 | A sub-task moves with its parent: move the parent instead |\n| `issue_link.exists` | 409 | The two tickets already have this link |\n| `attachment.too_large` | 413 | The file is larger than the maximum allowed |\n| `attachment.quota_exceeded` | 413 | The organization's storage quota would be exceeded |\n| `attachment.not_uploaded` | 409 | The file was not uploaded, or not whole |\n| `attachment.not_scanned` | 409 | The file is not available: not scanned yet, or refused by the antivirus |\n| `storage.unavailable` | 503 | The file storage is not available |\n| `query.invalid` | 400 | The query cannot be run |\n",
         "enum": [
           "bad_request",
           "validation_failed",
@@ -23628,6 +25898,10 @@
           "capacity_pattern.date_taken",
           "calendar_exception.day_taken",
           "absence.overlap",
+          "assignment.resource_taken",
+          "assignment.segments_overlap",
+          "assignment.outside_issue_dates",
+          "workload.overload",
           "calendar.tenant",
           "calendar.name_taken",
           "board.name_taken",
@@ -24054,6 +26328,113 @@
         },
         "additionalProperties": false
       },
+      "ForcedOverload": {
+        "type": "object",
+        "description": "A forced overload.",
+        "required": [
+          "id",
+          "assignmentId",
+          "issueId",
+          "issueKey",
+          "issueSummary",
+          "resourceId",
+          "resourceName",
+          "actor",
+          "origin",
+          "days",
+          "createdAt"
+        ],
+        "properties": {
+          "actor": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/IssuePerson",
+                "description": "Who forced it; `null`: no longer a member."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OverloadDay"
+            },
+            "description": "The days overloaded at the time, by date."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "issueId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "issueKey": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`null`: the ticket is gone.",
+            "example": "PLAT-148"
+          },
+          "issueSummary": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "origin": {
+            "type": "string",
+            "description": "`interface`, `api`, `mcp`…",
+            "example": "interface"
+          },
+          "resourceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "resourceName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`null`: the resource is gone.",
+            "example": "Nathan Roux"
+          }
+        }
+      },
+      "ForcedOverloadPage": {
+        "type": "object",
+        "description": "A page of forced overloads.",
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ForcedOverload"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cursor of the next (older) page, `null` on the last page."
+          }
+        }
+      },
       "GrantCandidate": {
         "type": "object",
         "description": "A member or a group a role can be granted to.",
@@ -24231,6 +26612,347 @@
             "example": "Platform"
           }
         }
+      },
+      "Heatmap": {
+        "type": "object",
+        "description": "The heatmap: columns, then a row per resource, by name.",
+        "required": [
+          "scale",
+          "periods",
+          "rows",
+          "tolerancePercent",
+          "includeProvisional"
+        ],
+        "properties": {
+          "includeProvisional": {
+            "type": "boolean",
+            "description": "Provisional assignments count in `load`."
+          },
+          "periods": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HeatmapPeriod"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HeatmapRow"
+            }
+          },
+          "scale": {
+            "$ref": "#/components/schemas/HeatmapScale"
+          },
+          "tolerancePercent": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The tenant's overload tolerance: a cell overloads beyond the\ncapacity plus this share.",
+            "example": 0,
+            "minimum": 0
+          }
+        }
+      },
+      "HeatmapCell": {
+        "type": "object",
+        "description": "A cell: a resource over a period, and what makes up its load.",
+        "required": [
+          "resource",
+          "from",
+          "to",
+          "capacityMinutes",
+          "scheduledMinutes",
+          "loadMinutes",
+          "provisionalMinutes",
+          "items",
+          "forced"
+        ],
+        "properties": {
+          "capacityMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "forced": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HeatmapForcedOverload"
+            },
+            "description": "On tickets the member sees, newest first."
+          },
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HeatmapCellItem"
+            },
+            "description": "The most loaded first; busy time last."
+          },
+          "loadMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "All of it, provisional included.",
+            "minimum": 0
+          },
+          "provisionalMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "resource": {
+            "$ref": "#/components/schemas/HeatmapResource"
+          },
+          "scheduledMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "HeatmapCellIssue": {
+        "type": "object",
+        "description": "The ticket of a cell item.",
+        "required": [
+          "id",
+          "key",
+          "summary",
+          "project"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string",
+            "example": "PLAT-142"
+          },
+          "project": {
+            "$ref": "#/components/schemas/AssignedProject"
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      },
+      "HeatmapCellItem": {
+        "type": "object",
+        "description": "What a cell's load is made of: a ticket, or busy time on tickets the\nmember does not see.",
+        "required": [
+          "issue",
+          "minutes",
+          "provisional",
+          "segments",
+          "inNode"
+        ],
+        "properties": {
+          "inNode": {
+            "type": "boolean",
+            "description": "A ticket of the node the heatmap is filtered on."
+          },
+          "issue": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/HeatmapCellIssue",
+                "description": "`null` for busy time."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "minutes": {
+            "type": "integer",
+            "format": "int32",
+            "example": 1050,
+            "minimum": 0
+          },
+          "provisional": {
+            "type": "boolean"
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HeatmapCellSegment"
+            },
+            "description": "The segments meeting the period: how the ticket loads it."
+          }
+        }
+      },
+      "HeatmapCellSegment": {
+        "type": "object",
+        "description": "The mode and value of a segment behind a cell.",
+        "required": [
+          "mode",
+          "value"
+        ],
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/AssignmentMode"
+          },
+          "value": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "HeatmapForcedOverload": {
+        "type": "object",
+        "description": "An overload forced on the resource in the period.",
+        "required": [
+          "issueKey",
+          "actorName",
+          "createdAt"
+        ],
+        "properties": {
+          "actorName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`null`: no longer a member."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "issueKey": {
+            "type": "string",
+            "example": "PLAT-148"
+          }
+        }
+      },
+      "HeatmapPeriod": {
+        "type": "object",
+        "description": "A column.",
+        "required": [
+          "start",
+          "end"
+        ],
+        "properties": {
+          "end": {
+            "type": "string",
+            "format": "date",
+            "description": "Last day, included.",
+            "example": "2026-11-22"
+          },
+          "start": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-11-16"
+          }
+        }
+      },
+      "HeatmapResource": {
+        "type": "object",
+        "description": "A resource of the heatmap.",
+        "required": [
+          "id",
+          "kind",
+          "displayName",
+          "linked"
+        ],
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "example": "Camille Martin"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "jobTitle": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ResourceKind"
+          },
+          "linked": {
+            "type": "boolean",
+            "description": "Linked to a member's account."
+          }
+        }
+      },
+      "HeatmapRow": {
+        "type": "object",
+        "description": "A row: one resource, one value per column of each series, in minutes.",
+        "required": [
+          "resource",
+          "load",
+          "provisional",
+          "hidden",
+          "capacity",
+          "scheduled"
+        ],
+        "properties": {
+          "capacity": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "description": "Capacity, absences deducted."
+          },
+          "hidden": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "description": "Its part on tickets the member does not see: busy time."
+          },
+          "load": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "description": "Load planned, provisional included unless left out."
+          },
+          "provisional": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "description": "Its provisional part (0 when provisional assignments are left out)."
+          },
+          "resource": {
+            "$ref": "#/components/schemas/HeatmapResource"
+          },
+          "scheduled": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "description": "Capacity before absences: more than `capacity` when absences take\nsome, 0 on a period with no working day."
+          }
+        }
+      },
+      "HeatmapScale": {
+        "type": "string",
+        "description": "The span of a column.",
+        "enum": [
+          "day",
+          "week",
+          "month"
+        ]
       },
       "HierarchyNode": {
         "type": "object",
@@ -26287,6 +29009,7 @@
           "actorName",
           "status",
           "excerpt",
+          "conflict",
           "read",
           "createdAt"
         ],
@@ -26303,6 +29026,17 @@
               {
                 "$ref": "#/components/schemas/NotificationBulk",
                 "description": "The bulk action done (`bulk_done`)."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "conflict": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/NotificationConflict",
+                "description": "The hours to reschedule (`absence_conflict`)."
               },
               {
                 "type": "null"
@@ -26383,6 +29117,7 @@
           "status_changed",
           "commented",
           "mentioned",
+          "absence_conflict",
           "export_ready",
           "bulk_done"
         ]
@@ -28157,6 +30892,27 @@
         },
         "additionalProperties": false
       },
+      "NotificationConflict": {
+        "type": "object",
+        "description": "Hours of a ticket an absence leaves no room for.",
+        "required": [
+          "resourceName",
+          "minutes"
+        ],
+        "properties": {
+          "minutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Minutes to reschedule, over the days newly in conflict.",
+            "example": 420,
+            "minimum": 0
+          },
+          "resourceName": {
+            "type": "string",
+            "example": "Nathan Roux"
+          }
+        }
+      },
       "NotificationEvent": {
         "type": "string",
         "description": "A ticket event that notifies.",
@@ -28165,7 +30921,8 @@
           "assigned",
           "status_changed",
           "commented",
-          "mentioned"
+          "mentioned",
+          "absence_conflict"
         ]
       },
       "NotificationExport": {
@@ -28480,6 +31237,45 @@
           "issuer": "https://login.microsoftonline.com/<tenant>/v2.0"
         }
       },
+      "OverloadDay": {
+        "type": "object",
+        "description": "A day over the limit of a resource (L08-US03).",
+        "required": [
+          "date",
+          "plannedMinutes",
+          "availableMinutes",
+          "limitMinutes"
+        ],
+        "properties": {
+          "availableMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Minutes of capacity that day, absences deducted.",
+            "example": 420,
+            "minimum": 0
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "A local date of the resource.",
+            "example": "2026-11-18"
+          },
+          "limitMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Minutes allowed: the capacity plus the tenant's tolerance.",
+            "example": 420,
+            "minimum": 0
+          },
+          "plannedMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Minutes planned that day: the other assignments and this one.",
+            "example": 480,
+            "minimum": 0
+          }
+        }
+      },
       "OverloadMode": {
         "type": "string",
         "description": "What happens when an assignment exceeds capacity plus tolerance.",
@@ -28487,6 +31283,27 @@
           "blocking",
           "warning"
         ]
+      },
+      "OverloadProblem": {
+        "type": "object",
+        "description": "Why an assignment was refused (`workload.overload`).",
+        "required": [
+          "days",
+          "forceable"
+        ],
+        "properties": {
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OverloadDay"
+            },
+            "description": "The days overloaded, by date."
+          },
+          "forceable": {
+            "type": "boolean",
+            "description": "The member may force it (`force: true`): \"Force overload\" permission."
+          }
+        }
       },
       "ParentRefusal": {
         "type": "string",
@@ -28813,6 +31630,17 @@
               "$ref": "#/components/schemas/FieldError"
             },
             "description": "Invalid fields, for `validation_failed` and similar codes."
+          },
+          "overload": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OverloadProblem",
+                "description": "For `workload.overload`: the days and whether the member may force it."
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "query": {
             "oneOf": [
@@ -29658,6 +32486,113 @@
           }
         }
       },
+      "ResourceAssignment": {
+        "type": "object",
+        "description": "An assignment of a resource, as its page lists it.",
+        "required": [
+          "id",
+          "busy",
+          "issueId",
+          "provisional",
+          "segments",
+          "loadMinutes",
+          "overloads",
+          "conflicts",
+          "canEdit",
+          "version"
+        ],
+        "properties": {
+          "busy": {
+            "type": "boolean",
+            "description": "On a ticket the member does not see (a confidential project, or one\nnot granted to them): only its periods and hours show, as busy time."
+          },
+          "canEdit": {
+            "type": "boolean",
+            "description": "The member changes and removes it (`assign_resources` on its\nproject, not archived)."
+          },
+          "conflicts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssignmentConflict"
+            },
+            "description": "As on the ticket; empty when busy."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "issue": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AssignedIssue",
+                "description": "With `expand=issue`, when not busy."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "issueId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "`null` when busy."
+          },
+          "loadMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "example": 1830,
+            "minimum": 0
+          },
+          "overloads": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OverloadDay"
+            },
+            "description": "As on the ticket; empty when busy."
+          },
+          "provisional": {
+            "type": "boolean"
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssignmentSegment"
+            }
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          }
+        }
+      },
+      "ResourceAssignmentPage": {
+        "type": "object",
+        "description": "A page of a resource's assignments.",
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceAssignment"
+            },
+            "description": "Newest first."
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cursor of the next (older) page, `null` on the last page."
+          }
+        }
+      },
       "ResourceCapacity": {
         "type": "object",
         "description": "The capacity of a resource over the range.",
@@ -29865,6 +32800,171 @@
               "null"
             ],
             "description": "Cursor of the next page, `null` on the last page."
+          }
+        }
+      },
+      "ResourceReplacement": {
+        "type": "object",
+        "description": "What a replacement does, or would do.",
+        "required": [
+          "from",
+          "moved",
+          "overlaps",
+          "archived",
+          "overloads",
+          "mode",
+          "blocked",
+          "forceable",
+          "deactivated"
+        ],
+        "properties": {
+          "archived": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceReplacementTicket"
+            },
+            "description": "Tickets of archived projects, left on the generic resource."
+          },
+          "blocked": {
+            "type": "boolean",
+            "description": "The replacement would be refused: overlaps, or overloads in blocking\nmode without forcing."
+          },
+          "deactivated": {
+            "type": "boolean",
+            "description": "The generic resource was deactivated (always `false` in a preview)."
+          },
+          "forceable": {
+            "type": "boolean",
+            "description": "The member may force the overloads."
+          },
+          "from": {
+            "type": "string",
+            "format": "date",
+            "description": "The first day moved: today.",
+            "example": "2026-11-27"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/OverloadMode"
+          },
+          "moved": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceReplacementMove"
+            },
+            "description": "The assignments moved."
+          },
+          "overlaps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceReplacementTicket"
+            },
+            "description": "Tickets where the person's segments and the moved ones would take a\nsame day: the replacement is refused while there are any."
+          },
+          "overloads": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OverloadDay"
+            },
+            "description": "The person's days the replacement would overload, by date."
+          }
+        }
+      },
+      "ResourceReplacementFields": {
+        "type": "object",
+        "description": "A replacement to make.",
+        "required": [
+          "personId"
+        ],
+        "properties": {
+          "deactivate": {
+            "type": "boolean",
+            "description": "Deactivate the generic resource afterwards; `true` when left out."
+          },
+          "force": {
+            "type": "boolean",
+            "description": "Write it despite overloads in blocking mode: members with\n`force_overload` on every project concerned (tenant admins always)."
+          },
+          "personId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The person taking over: an active person resource."
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "deactivate": true,
+          "personId": "0194f0a2-7c1e-7d3a-9b2f-3c4d5e6f7b02"
+        }
+      },
+      "ResourceReplacementMove": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ResourceReplacementTicket"
+          },
+          {
+            "type": "object",
+            "required": [
+              "merged",
+              "start",
+              "end"
+            ],
+            "properties": {
+              "end": {
+                "type": "string",
+                "format": "date",
+                "example": "2026-12-18"
+              },
+              "merged": {
+                "type": "boolean",
+                "description": "Joined to the person's assignment of the ticket."
+              },
+              "start": {
+                "type": "string",
+                "format": "date",
+                "description": "The first and last day moved.",
+                "example": "2026-11-27"
+              }
+            }
+          }
+        ],
+        "description": "An assignment moved to the person."
+      },
+      "ResourceReplacementPreviewFields": {
+        "type": "object",
+        "description": "A replacement to preview.",
+        "required": [
+          "personId"
+        ],
+        "properties": {
+          "personId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The person taking over: an active person resource."
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResourceReplacementTicket": {
+        "type": "object",
+        "description": "A ticket of a replacement. A ticket the member does not see shows\nwithout its id and key.",
+        "required": [
+          "issueId",
+          "issueKey"
+        ],
+        "properties": {
+          "issueId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "issueKey": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "PLAT-148"
           }
         }
       },
@@ -31637,6 +34737,237 @@
           "toId": "01933b2e-7c4a-7b9e-8f3d-2a6c5e1f0b9a"
         }
       },
+      "WorkloadAggregate": {
+        "type": "object",
+        "description": "Load against capacity per period.",
+        "required": [
+          "scale",
+          "periods",
+          "count",
+          "confidentialProjects"
+        ],
+        "properties": {
+          "confidentialProjects": {
+            "type": "integer",
+            "format": "int32",
+            "description": "For a node: those of its projects that are confidential, counted\nwithout detail; 0 for a team.",
+            "example": 1,
+            "minimum": 0
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32",
+            "description": "For a node: its distinct projects counted; for a team: its active\nmembers.",
+            "example": 6,
+            "minimum": 0
+          },
+          "periods": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkloadAggregatePeriod"
+            }
+          },
+          "scale": {
+            "$ref": "#/components/schemas/WorkloadAggregateScale"
+          }
+        }
+      },
+      "WorkloadAggregatePeriod": {
+        "type": "object",
+        "description": "A period of an aggregate.",
+        "required": [
+          "start",
+          "end",
+          "loadMinutes",
+          "provisionalMinutes",
+          "capacityMinutes",
+          "usedPercent"
+        ],
+        "properties": {
+          "capacityMinutes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Capacity, in minutes: of the members for a team; for a node, the\nshare of its resources' capacity their load there takes.",
+            "example": 20400,
+            "minimum": 0
+          },
+          "end": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-11-30"
+          },
+          "loadMinutes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Load planned, provisional included, in minutes.",
+            "example": 18720,
+            "minimum": 0
+          },
+          "provisionalMinutes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Its provisional part.",
+            "minimum": 0
+          },
+          "start": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-11-01"
+          },
+          "usedPercent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Load over capacity, in percent rounded to the nearest; `null`\nwithout capacity.",
+            "example": 92,
+            "minimum": 0
+          }
+        }
+      },
+      "WorkloadAggregateScale": {
+        "type": "string",
+        "description": "The span of a period of an aggregate.",
+        "enum": [
+          "week",
+          "month"
+        ]
+      },
+      "WorkloadConflict": {
+        "type": "object",
+        "description": "Hours of an assignment an absence leaves no room for, on a day.",
+        "required": [
+          "id",
+          "assignmentId",
+          "issue",
+          "resource",
+          "day",
+          "minutes",
+          "status",
+          "openedAt",
+          "resolvedAt"
+        ],
+        "properties": {
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "day": {
+            "type": "string",
+            "format": "date",
+            "description": "A local date of the resource.",
+            "example": "2026-11-18"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "issue": {
+            "$ref": "#/components/schemas/WorkloadConflictIssue"
+          },
+          "minutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Minutes to reschedule; the last value once resolved.",
+            "example": 420,
+            "minimum": 0
+          },
+          "openedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolvedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "resource": {
+            "$ref": "#/components/schemas/WorkloadConflictResource"
+          },
+          "status": {
+            "$ref": "#/components/schemas/WorkloadConflictStatus"
+          }
+        }
+      },
+      "WorkloadConflictIssue": {
+        "type": "object",
+        "description": "The ticket of a conflict.",
+        "required": [
+          "id",
+          "key",
+          "summary",
+          "projectId"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string",
+            "example": "PROJ-42"
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      },
+      "WorkloadConflictPage": {
+        "type": "object",
+        "description": "A page of conflicts.",
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkloadConflict"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cursor of the next (older) page, `null` on the last page."
+          }
+        }
+      },
+      "WorkloadConflictResource": {
+        "type": "object",
+        "description": "The resource of a conflict.",
+        "required": [
+          "id",
+          "displayName"
+        ],
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "example": "Nathan Roux"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "WorkloadConflictStatus": {
+        "type": "string",
+        "description": "Whether a conflict still stands.",
+        "enum": [
+          "open",
+          "resolved"
+        ]
+      },
       "WorkloadSettings": {
         "type": "object",
         "description": "The workload settings of the tenant.",
@@ -31644,6 +34975,7 @@
           "defaultCapacityMinutes",
           "overloadTolerancePercent",
           "overloadMode",
+          "overloadCountsProvisional",
           "version"
         ],
         "properties": {
@@ -31664,6 +34996,11 @@
               0,
               0
             ]
+          },
+          "overloadCountsProvisional": {
+            "type": "boolean",
+            "description": "Provisional assignments count in the overload check (L08-US03).",
+            "example": true
           },
           "overloadMode": {
             "type": "string",
@@ -31701,6 +35038,13 @@
             },
             "description": "Seven values, Monday first, from 0 to 1,440 minutes."
           },
+          "overloadCountsProvisional": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Whether provisional assignments count in the overload check; left\nout: unchanged."
+          },
           "overloadMode": {
             "type": "string",
             "description": "`blocking` or `warning`."
@@ -31722,6 +35066,7 @@
             0,
             0
           ],
+          "overloadCountsProvisional": true,
           "overloadMode": "blocking",
           "overloadTolerancePercent": 10
         }

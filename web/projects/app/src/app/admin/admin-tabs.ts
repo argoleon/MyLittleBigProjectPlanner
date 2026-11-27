@@ -19,6 +19,7 @@ export const ADMIN_TABS: readonly AdminTab[] = [
   { path: 'roles', labelKey: 'admin.tabs.roles', roles: ['tenant_admin'] },
   { path: 'authentication', labelKey: 'admin.tabs.authentication', roles: ['tenant_admin'] },
   { path: 'workload', labelKey: 'admin.tabs.workload', roles: ['tenant_admin'] },
+  { path: 'forced-overloads', labelKey: 'admin.tabs.forcedOverloads', roles: ['tenant_admin'] },
   { path: 'configurations', labelKey: 'admin.tabs.configurations', roles: ['tenant_admin', 'configuration_admin'] },
 ];
 

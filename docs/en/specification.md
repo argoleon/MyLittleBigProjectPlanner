@@ -115,6 +115,7 @@ The hierarchy is a directed acyclic graph: a node can have several parents, with
 - A node aggregates over all its distinct descendant projects. A project reached through two paths is counted once.
 - Each parent-child link has an optional weighting (100% by default), for budget allocations.
 - Computed aggregates: planned load, consumed capacity, progress (by status category), number of open and late tickets.
+- A project's capacity is the share of its resources' capacity their load there takes: each resource splits its capacity between its projects in proportion to its load on each, with no double counting. Load and capacity also read per week and month, for a node as for a team (the sum of its members).
 - Aggregates are precomputed by a worker and updated within seconds after each change.
 
 **Permissions in the graph**
@@ -293,23 +294,27 @@ An assignment links a resource to a ticket. It is made of one or more successive
 | Total effort | 40 h between 3 and 28 March | effort spread evenly over working days |
 
 - Multi-segment example: 4 h/day in week 1, then 2 h/day in week 2, on the same ticket.
-- Segments must stay within the ticket's dates.
+- Segments of an assignment never overlap and must stay within the ticket's dates, when it has them (only the bounds set are checked). If the ticket's dates change later, segments left outside are flagged on the ticket, not blocked.
+- One assignment per resource and ticket: a new period is a new segment.
+- A working day is a day the calendar and the capacity give the resource hours, absences aside. Total effort is spread evenly over these days, the minutes left over going to the first days; hours falling on an absence stay there and become a conflict.
 - Several resources can be assigned to the same ticket, each with its own independent assignment. The ticket's load is the sum of its assignments.
-- An assignment can be marked "provisional": hatched in the heatmap, and counted or not in the overload check depending on a tenant setting.
+- An assignment can be marked "provisional": hatched in the heatmap, and counted or not in the overload check depending on a tenant setting (counted by default).
 - To book someone on a project without a specific task, create a "Project activity" ticket.
 - After the MVP: distribution profiles (front-loaded, custom), MS Project modes (fixed units, fixed work, fixed duration), skills, resource request workflow.
 
 **Storage and computation**
 
-- Segments are the source of truth. The system derives one row per resource and per day (`resource_day_load`: local date, minutes, ticket, provisional flag), recomputed whenever a segment, capacity or absence changes.
-- This table is partitioned by period. Precomputed aggregates per week, per month and per hierarchy node feed the views.
+- Segments are the source of truth. The system derives one row per assignment and day it loads (`resource_day_load`: resource, local date, minutes, ticket, provisional flag). Writing an assignment recomputes it in the same transaction; a change of capacity, calendar, absence or default capacity recomputes it in the background, within seconds, for the resources and days concerned.
+- This table is partitioned by month; partitions are created ahead and as needed. Precomputed aggregates per week, per month and per hierarchy node feed the views.
 - Granularity: the day, stored in minutes. Time slots belong to the time-slot booking layer (section 9).
 
 **Overload check**
 
 - When an assignment is written, the system compares the resulting load of each day with capacity plus tolerance.
-- Blocking mode (default): the assignment is rejected and the message lists the conflicting days. Roles with the "Force overload" permission can override it; this is logged.
+- A day is in conflict when the assignment adds load to it and the total exceeds the capacity (absences deducted) plus the tolerance: changing an assignment never trips over a day it does not add to.
+- Blocking mode (default): the assignment is rejected and the message lists the conflicting days. Roles with the "Force overload" permission can override it; this is logged in the ticket's history and in a list of forced overloads that the tenant admin reads.
 - Warning mode (tenant choice): the assignment is accepted and the overload is flagged.
+- While an assignment is being edited, a preview shows, for each day, the existing load, the assignment's and the total, overloaded days highlighted.
 - The check runs in a transaction, with a lock per resource: two project managers assigning the same person at the same time cannot exceed that person's capacity between them.
 - The future load of recurring tasks is included (section 9).
 
@@ -319,12 +324,13 @@ An assignment links a resource to a ticket. It is made of one or more successive
 - An absence runs from a first to a last day included; it may start or end at noon. A half day removes half of that day's capacity. Absences of a resource never overlap, half day by half day. Kinds: leave, training, other (no "sick leave" kind: health data).
 - The person linked to the resource enters their own; the tenant admin and resource managers enter anyone's. Every internal member sees the dates and kind; the comment is for the person and the managers only, and goes when the person is erased.
 - Percentage assignment: the load drops to 0 on the absence day, automatically.
-- Hours-per-day or total-effort assignment: hours falling on the absence become a conflict, reported to the project manager ("7 h to reschedule on PROJ-42"). Nothing is shifted automatically.
+- Hours-per-day or total-effort assignment: hours falling on the absence become a conflict, reported to the project manager ("7 h to reschedule on PROJ-42"). Nothing is shifted automatically. On a half day off, only the hours beyond the capacity left are in conflict. The conflict resolves itself when the segment or the absence changes; it shows on the absence and on the ticket's assignment.
+- The project manager is told through the "Absence conflict" notification event of the project's rules: by default the ticket's assignee and the holders of the Project manager role.
 
 **Views (MVP)**
 
 - Heatmap of resources × days, weeks or months, colored by occupation rate. Clicking a cell shows the tickets behind it.
-- Filters by team, by project, or by hierarchy node.
+- Filters by team, by project, or by hierarchy node. A project or node filter keeps the resources with load on it in the period and shows their whole load; a cell's details tell the filter's tickets apart.
 - Load compared with capacity, aggregated by team, program and portfolio.
 - Availability search: "who has 3 free days next week in team X?".
 - The MVP detects and reports overloads; rescheduling suggestions (leveling) come later, as does planned vs. actual comparison.

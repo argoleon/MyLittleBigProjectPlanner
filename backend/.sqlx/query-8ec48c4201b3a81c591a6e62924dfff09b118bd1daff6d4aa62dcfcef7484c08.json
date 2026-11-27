@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM load_aggregate_project p\n        USING unnest($1::uuid[], $2::date[]) AS w (resource_id, start)\n        WHERE p.resource_id = w.resource_id AND p.period_kind = $3 AND p.period_start = w.start\n        RETURNING p.project_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "project_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "load_aggregate_project",
+            "name": "project_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "DateArray",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8ec48c4201b3a81c591a6e62924dfff09b118bd1daff6d4aa62dcfcef7484c08"
+}

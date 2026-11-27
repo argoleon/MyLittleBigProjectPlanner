@@ -1,0 +1,121 @@
+<h2 mat-dialog-title>{{ 'resources.replace.title' | transloco: { name: data.generic.displayName } }}</h2>
+<form (submit)="submit($event)" novalidate>
+  <mat-dialog-content class="fields">
+    <p class="intro">
+      {{ 'resources.replace.intro' | transloco: { name: data.generic.displayName, date: (today | localDate: { day: 'numeric', month: 'long' }) } }}
+    </p>
+    @if (errorKey(); as errorKey) {
+      <p class="message error" role="alert">{{ errorKey | transloco }}</p>
+    }
+
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'resources.replace.person' | transloco }}</mat-label>
+      <mat-icon matPrefix aria-hidden="true">person_search</mat-icon>
+      <input
+        matInput
+        type="text"
+        class="person-input"
+        required
+        [formControl]="personInput"
+        [matAutocomplete]="people"
+        (input)="typed()"
+      />
+      <mat-hint>{{ 'resources.replace.personHint' | transloco }}</mat-hint>
+      <mat-autocomplete #people="matAutocomplete" [displayWith]="nameOf" (optionSelected)="choose($event)">
+        @for (choice of choices(); track choice.id) {
+          <mat-option [value]="choice">
+            <span>{{ choice.displayName }}</span>
+            @if (choice.jobTitle) {
+              <span class="choice-hint"> · {{ choice.jobTitle }}</span>
+            }
+          </mat-option>
+        }
+      </mat-autocomplete>
+      <mat-error>{{ (personInput.getError('api') ?? 'errors.field.required') | transloco }}</mat-error>
+    </mat-form-field>
+
+    <mat-checkbox class="deactivate" [formControl]="deactivate">
+      {{ 'resources.replace.deactivate' | transloco: { name: data.generic.displayName } }}
+    </mat-checkbox>
+    <p class="hint">{{ 'resources.replace.deactivateHint' | transloco }}</p>
+
+    @if (chosen()) {
+      <section class="preview" aria-labelledby="replace-preview" aria-live="polite">
+        @if (preview.isLoading()) {
+          <mat-progress-bar mode="indeterminate" [attr.aria-label]="'resources.replace.previewing' | transloco" />
+        }
+        @if (preview.error()) {
+          <p class="message error" role="alert">{{ 'resources.replace.previewFailed' | transloco }}</p>
+        }
+        @if (told(); as told) {
+          @if (told.moved.length === 0) {
+            <p class="nothing" id="replace-preview">{{ 'resources.replace.nothingMoves' | transloco: { name: data.generic.displayName } }}</p>
+          } @else {
+            <h3 class="preview-title" id="replace-preview">{{ 'resources.replace.moves' | transloco: { count: told.moved.length } }}</h3>
+            <ul class="moves">
+              @for (move of told.moved; track $index) {
+                <li>
+                  <span class="issue-key">{{ move.issueKey ?? hidden() }}</span>
+                  ·
+                  {{
+                    'resources.replace.period'
+                      | transloco
+                        : {
+                            from: (move.start | localDate: { day: 'numeric', month: 'short', year: 'numeric' }),
+                            to: (move.end | localDate: { day: 'numeric', month: 'short', year: 'numeric' }),
+                          }
+                  }}
+                  @if (move.merged) {
+                    · {{ 'resources.replace.merged' | transloco }}
+                  }
+                </li>
+              }
+            </ul>
+          }
+          @if (told.overlaps.length > 0) {
+            <p class="message error overlaps" role="alert">
+              {{ 'resources.replace.overlaps' | transloco: { keys: ticketsText(told.overlaps, hidden()) } }}
+            </p>
+          }
+          @if (told.archived.length > 0) {
+            <p class="archived">
+              {{ 'resources.replace.archived' | transloco: { name: data.generic.displayName, keys: ticketsText(told.archived, hidden()) } }}
+            </p>
+          }
+        }
+      </section>
+    }
+
+    @if (overload(); as overload) {
+      <p
+        class="message overload"
+        [class.error]="overload.blocked"
+        [class.warning]="!overload.blocked"
+        [attr.role]="overload.blocked ? 'alert' : 'status'"
+      >
+        <mat-icon aria-hidden="true">{{ overload.blocked ? 'block' : 'warning' }}</mat-icon>
+        <span>
+          {{
+            (overload.blocked ? (overload.forceable ? 'resources.replace.blockedForceable' : 'resources.replace.blocked') : 'resources.replace.warning')
+              | transloco: { days: overloadText() }
+          }}
+        </span>
+      </p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button matButton type="button" mat-dialog-close>{{ 'dialog.cancel' | transloco }}</button>
+    @if (overload()?.blocked && overload()?.forceable && (told()?.overlaps?.length ?? 0) === 0) {
+      <button matButton="outlined" type="button" class="force" [disabled]="saving()" (click)="force()">
+        <mat-icon aria-hidden="true">warning</mat-icon>
+        {{ 'assignments.overload.force' | transloco }}
+      </button>
+    }
+    <button matButton="filled" type="submit" class="confirm" [disabled]="saving() || blocked()">
+      {{ 'resources.replace.submit' | transloco }}
+    </button>
+  </mat-dialog-actions>
+  @if (overload()?.blocked && overload()?.forceable) {
+    <p class="force-note">{{ 'assignments.overload.forceNote' | transloco }}</p>
+  }
+</form>

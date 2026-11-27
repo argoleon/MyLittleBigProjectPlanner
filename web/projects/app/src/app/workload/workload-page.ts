@@ -9,8 +9,10 @@ interface WorkloadTab {
   readonly labelKey: string;
 }
 
-/** The tabs, in order. The heatmap comes first once built (L08). */
+/** The tabs, in order: the heatmap first (L08-US06). */
 export const WORKLOAD_TABS: readonly WorkloadTab[] = [
+  { path: 'heatmap', labelKey: 'workload.heatmap.tab' },
+  { path: 'availability', labelKey: 'workload.availability.tab' },
   { path: 'resources', labelKey: 'resources.title' },
   { path: 'teams', labelKey: 'teams.title' },
   { path: 'calendars', labelKey: 'calendars.title' },

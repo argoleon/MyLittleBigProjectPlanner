@@ -61,6 +61,8 @@ pub struct WorkloadSettings {
     pub default_capacity: WeekMinutes,
     pub overload_tolerance_percent: i16,
     pub overload_mode: String,
+    /// Provisional assignments count in the overload check.
+    pub overload_counts_provisional: bool,
     /// Version of the tenant.
     pub version: i64,
 }
@@ -285,7 +287,8 @@ async fn changed(
 pub async fn workload_settings(conn: &mut PgConnection) -> Result<Option<WorkloadSettings>, sqlx::Error> {
     let row = sqlx::query!(
         r#"
-        SELECT default_capacity_minutes, overload_tolerance_percent, overload_mode, version
+        SELECT default_capacity_minutes, overload_tolerance_percent, overload_mode,
+               overload_counts_provisional, version
         FROM tenant WHERE id = app_current_tenant()
         "#
     )
@@ -296,6 +299,7 @@ pub async fn workload_settings(conn: &mut PgConnection) -> Result<Option<Workloa
             .unwrap_or(WeekMinutes([420, 420, 420, 420, 420, 0, 0])),
         overload_tolerance_percent: row.overload_tolerance_percent,
         overload_mode: row.overload_mode,
+        overload_counts_provisional: row.overload_counts_provisional,
         version: row.version,
     }))
 }
@@ -313,14 +317,16 @@ pub async fn update_workload_settings(
     let updated = sqlx::query!(
         r#"
         SELECT default_capacity_minutes AS "default_capacity_minutes!", overload_tolerance_percent AS "overload_tolerance_percent!",
-               overload_mode AS "overload_mode!", version AS "version!"
-        FROM app_update_workload_settings($1, $2, $3, $4, $5)
+               overload_mode AS "overload_mode!",
+               overload_counts_provisional AS "overload_counts_provisional!", version AS "version!"
+        FROM app_update_workload_settings($1, $2, $3, $4, $5, $6)
         "#,
         actor,
         expected_versions,
         &minutes_of(settings.default_capacity),
         settings.overload_tolerance_percent,
-        settings.overload_mode
+        settings.overload_mode,
+        settings.overload_counts_provisional
     )
     .fetch_optional(&mut *conn)
     .await?;
@@ -332,6 +338,7 @@ pub async fn update_workload_settings(
             .unwrap_or(settings.default_capacity),
         overload_tolerance_percent: row.overload_tolerance_percent,
         overload_mode: row.overload_mode,
+        overload_counts_provisional: row.overload_counts_provisional,
         version: row.version,
     };
     if before.is_some_and(|b| b.default_capacity != after.default_capacity) {

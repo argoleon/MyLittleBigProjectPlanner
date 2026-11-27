@@ -110,8 +110,15 @@ async function signIn(kit: ReturnType<typeof setup>, role: Session['account']['t
 
 const isTeams = (url: string, method: string) => url === '/api/v1/teams' && method === 'GET';
 
+/** Answers the load and capacity card's request (tested in workload-card.spec), so that verify sees the page's own. */
+function answerWorkloadCard(): void {
+  TestBed.inject(HttpTestingController)
+    .match((r) => /\/workload\?/.test(r.urlWithParams))
+    .forEach((r) => r.flush({ scale: 'month', periods: [], count: 0, confidentialProjects: 0 }));
+}
+
 describe('WorkloadPage', () => {
-  it('shows Resources, Teams and Calendars as routed tabs', async () => {
+  it('shows the Heatmap, Availability, Resources, Teams and Calendars as routed tabs', async () => {
     const kit = setup([
       {
         path: 'workload',
@@ -127,9 +134,10 @@ describe('WorkloadPage', () => {
     await kit.reply(isTeams, { items: [], canManage: false });
     expect(kit.text(kit.root().querySelector('h1'))).toBe('Workload');
     const tabs = Array.from(kit.root().querySelectorAll('a[mat-tab-link]'));
-    expect(tabs.map((tab) => kit.text(tab))).toEqual(['Resources', 'Teams', 'Calendars']);
-    expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual(['false', 'true', 'false']);
+    expect(tabs.map((tab) => kit.text(tab))).toEqual(['Heatmap', 'Availability', 'Resources', 'Teams', 'Calendars']);
+    expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual(['false', 'false', 'false', 'true', 'false']);
     expect(await axeViolations(harness.routeNativeElement!.parentElement!)).toEqual([]);
+    answerWorkloadCard();
     TestBed.inject(HttpTestingController).verify();
   });
 });
@@ -147,6 +155,7 @@ describe('TeamsPage', () => {
 
   afterEach(() => {
     TestBed.inject(MatDialog).closeAll();
+    answerWorkloadCard();
     TestBed.inject(HttpTestingController).verify();
   });
 
@@ -264,6 +273,7 @@ describe('TeamPage', () => {
 
   afterEach(() => {
     TestBed.inject(MatDialog).closeAll();
+    answerWorkloadCard();
     TestBed.inject(HttpTestingController).verify();
   });
 
@@ -274,7 +284,7 @@ describe('TeamPage', () => {
     expect(list.request.params.get('active')).toBeNull();
     expect(text(root().querySelector('h1'))).toBe('Platform');
     expect(text(root().querySelector('.description'))).toBe('Identity services');
-    expect(text(root().querySelector('h2'))).toBe('Resources (2)');
+    expect(text(root().querySelector('#team-members'))).toBe('Resources (2)');
     expect(rows().map((row) => text(row.querySelector('.name')))).toEqual(['Alice Martin', 'Bob Durand']);
     expect(text(rows()[1].querySelector('ui-resource-state-chip'))).toBe('Status: Inactive');
     expect(root().querySelector('.breadcrumb a')?.getAttribute('href')).toBe('/workload/teams');
@@ -347,6 +357,7 @@ describe('TeamPage', () => {
     expect(rows().length).toBe(0);
     expect(root().querySelector('#team-add')).toBeNull();
     expect(root().querySelector('ui-empty-state')?.textContent).toContain('No resource in this team');
+    answerWorkloadCard();
     TestBed.inject(HttpTestingController).verify();
     TestBed.resetTestingModule();
 

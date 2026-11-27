@@ -13,6 +13,13 @@ export interface Absence {
    * For the person and the managers only; absent for others.
    */
   comment?: (string | null);
+
+  /**
+   * Minutes planned in hours per day or total effort, all tickets
+   * together, that it leaves no room for (L08-US04): to reschedule.
+   * Kept up to date by the worker within seconds of a change.
+   */
+  conflictMinutes: number;
   declaredBy: (AbsenceDeclarer | null);
 
   /**

@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO load_aggregate_project (tenant_id, resource_id, period_kind, period_start, project_id,\n                                            load_minutes, provisional_minutes, capacity_minutes)\n        SELECT app_current_tenant(), s.resource_id, $1, s.start, s.project_id, s.load, s.provisional, s.capacity\n        FROM unnest($2::uuid[], $3::date[], $4::uuid[], $5::integer[], $6::integer[], $7::integer[])\n             AS s (resource_id, start, project_id, load, provisional, capacity)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "UuidArray",
+        "DateArray",
+        "UuidArray",
+        "Int4Array",
+        "Int4Array",
+        "Int4Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9aeb35f005957100f3f413d1b21e52f43578786f0b868999b04963d977fdb8a7"
+}

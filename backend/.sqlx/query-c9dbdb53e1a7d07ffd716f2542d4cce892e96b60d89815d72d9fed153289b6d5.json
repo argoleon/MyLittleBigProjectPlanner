@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT app_ensure_load_partitions(\n            (date_trunc('month', now() AT TIME ZONE 'UTC') - interval '12 months')::date,\n            (date_trunc('month', now() AT TIME ZONE 'UTC') + interval '24 months')::date\n        ) AS \"created!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "created!",
+        "type_info": "Int4",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "c9dbdb53e1a7d07ffd716f2542d4cce892e96b60d89815d72d9fed153289b6d5"
+}

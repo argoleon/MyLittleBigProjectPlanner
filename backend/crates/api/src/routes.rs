@@ -19,6 +19,7 @@ use utoipa_axum::routes;
 
 use crate::absences;
 use crate::account;
+use crate::assignments;
 use crate::auth;
 use crate::boards;
 use crate::bulk_actions;
@@ -28,6 +29,7 @@ use crate::config_fields;
 use crate::configs;
 use crate::day_capacity;
 use crate::events;
+use crate::forced_overloads;
 use crate::gdpr;
 use crate::grants;
 use crate::groups;
@@ -54,6 +56,7 @@ use crate::platform;
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
 use crate::query_assist;
 use crate::reference_items;
+use crate::resource_replacement;
 use crate::resources;
 use crate::roles;
 use crate::saved_filters;
@@ -64,6 +67,10 @@ use crate::teams;
 use crate::tenant::{AppState, PublicTenantTx};
 use crate::transition_rules;
 use crate::workflows;
+use crate::workload_aggregates;
+use crate::workload_availability;
+use crate::workload_conflicts;
+use crate::workload_heatmap;
 
 /// OpenAPI tag of the technical endpoints.
 const SYSTEM_TAG: &str = "system";
@@ -220,6 +227,8 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(absences::list, absences::create))
         .routes(routes!(absences::update, absences::delete))
         .routes(routes!(resources::mine))
+        .routes(routes!(resource_replacement::replace))
+        .routes(routes!(resource_replacement::preview))
         .routes(routes!(calendars::list, calendars::create))
         .routes(routes!(calendars::read, calendars::update, calendars::delete))
         .routes(routes!(calendars::year))
@@ -238,9 +247,25 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         ))
         .routes(routes!(calendars::resource_days))
         .routes(routes!(day_capacity::list))
+        .routes(routes!(assignments::list, assignments::create))
+        .routes(routes!(assignments::preview))
+        .routes(routes!(assignments::resource_list))
+        .routes(routes!(assignments::confirm))
+        .routes(routes!(
+            assignments::read,
+            assignments::update,
+            assignments::delete
+        ))
         .routes(routes!(capacity::list, capacity::create))
         .routes(routes!(capacity::update, capacity::delete))
         .routes(routes!(capacity::settings, capacity::update_settings))
+        .routes(routes!(forced_overloads::list))
+        .routes(routes!(workload_conflicts::list))
+        .routes(routes!(workload_heatmap::heatmap))
+        .routes(routes!(workload_heatmap::cell))
+        .routes(routes!(workload_availability::find))
+        .routes(routes!(workload_aggregates::node))
+        .routes(routes!(workload_aggregates::team))
         .routes(routes!(teams::list, teams::create))
         .routes(routes!(teams::read, teams::update, teams::delete))
         .routes(routes!(teams::add_member, teams::remove_member))

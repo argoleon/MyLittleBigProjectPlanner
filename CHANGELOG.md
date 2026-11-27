@@ -4,6 +4,65 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-27
+
+Work package **L08 Assignments, workload**: assignments of resources to tickets by segments, the daily load, the overload check, absence conflicts, the workload heatmap, load against capacity by portfolio, program, project and team, replacing a generic resource with a person, provisional booking and the availability search.
+
+### Added
+
+- **Assignments** (#220)
+  - A resource is assigned to a ticket through one or more successive segments, each with its period and mode: a percentage of each day's actual capacity (50% of a 3.5 h Friday is 1 h 45, a public holiday 0), hours per working day, or a total effort spread evenly over the working days. One assignment per resource and ticket; segments never overlap (`assignment.segments_overlap`) and stay within the ticket's dates when it has them (`assignment.outside_issue_dates`); a resource is assigned once per ticket (`assignment.resource_taken`), never a team.
+  - The ticket page shows an **Assignments** card: one block per resource with its segments, their load and the ticket's planned total; members with **Assign resources** on the project add, change and remove assignments in the **Assign a resource** dialog. Segments left outside dates changed since are flagged.
+  - Every change is recorded in the event outbox (`assignment.changed`, with the days concerned) for the daily load of L08.
+  - `/api/v1/issues/{idOrKey}/assignments` (list, create) and `/api/v1/assignments/{id}` (read, change, delete).
+- **Daily load** (#225)
+  - The load of each resource is kept day by day: one row per assignment and day, recomputed in the same transaction when an assignment is written, and by the worker within seconds when a capacity period, a calendar exception or holiday set, an absence or the default capacity changes (job `workload.recompute`, for the resources and days concerned). Deleting an assignment, or its ticket, removes its rows. The overload check and the heatmap read it.
+  - The table is partitioned by month; the worker creates the partitions of the year before and the two years after, and a write creates the ones it needs.
+- **Overload check** (#229)
+  - Every assignment write compares the resulting load of each day with the resource's capacity (public holidays, closures and absences deducted) plus the organization's tolerance, under a lock per resource: two project managers assigning the same person at the same time never exceed their capacity together. A day is in conflict when the assignment adds load to it.
+  - Blocking mode (the default) refuses the assignment with `workload.overload`, listing each day with the hours planned and available. Members with **Force overload** on the project (organization admins always) force it with `force: true`; the write is traced in the ticket's history (**forced an overload of…**) and in **Administration › Forced overloads**. Warning mode saves it; either way the ticket's **Assignments** card flags the resources taking part in an overload, with their days.
+  - The **Assign a resource** dialog previews, for each day, the existing load, this assignment's and the total, overloaded days marked in text and color, with the blocking message and the **Force overload** button for those allowed. It now also has the **Provisional assignment** switch.
+  - A new workload setting tells whether provisional assignments count in the check (they do by default).
+  - `POST /api/v1/assignments/preview`, `GET /api/v1/tenant/forced-overloads`; assignments carry their `overloads`; the workload settings gain `overloadCountsProvisional`.
+- **Absence conflicts** (#234)
+  - Hours planned in hours per day or total effort that an absence leaves no room for are a conflict, per assignment and day: all the hours of a day off, only those beyond the capacity left on a half day; percentages never conflict. Conflicts follow the daily load: opened when an absence or a segment puts hours there, resolved by themselves when no longer, reopened if they come back.
+  - A new notification event, **Absence conflict**, in the rules of every project configuration: by default the ticket's assignee and the Project manager role ("7 h to reschedule on PROJ-42 (absence of Nathan Roux)"), in the application and by email unless the member chooses otherwise. Only days still to come are told.
+  - The resource page shows the hours in conflict on each absence; the ticket's **Assignments** card lists the days and hours to reschedule.
+  - `GET /api/v1/workload/conflicts` (by resource, project and status; the tickets the member sees); assignments carry their open `conflicts`, absences their `conflictMinutes`; notifications gain `absence_conflict` and its `conflict`.
+- **Assignments of a resource** (#239)
+  - The resource page has two tabs: **Capacity and calendar**, and **Assignments**, which lists its assignments by project with their tickets, periods, values and load, provisional ones and those in overload or absence conflict marked; ongoing and upcoming ones first, past ones on demand. Members who assign resources on a project change an assignment there through the **Assign a resource** dialog (with the same overload check) or remove it after confirmation.
+  - Time on tickets the member does not see, on a confidential project or one not granted to them, shows as **Busy**: its periods and hours, without ticket nor project.
+  - `GET /api/v1/resources/{id}/assignments` (period, pages, `expand=issue`).
+- **Workload heatmap** (#242)
+  - The **Workload** menu opens on a heatmap of the active resources by day, week or month, each cell colored by occupation (under 40%, 40 to 70%, 70 to 95%, 95 to 100%, overload beyond the capacity plus the tolerance), absences and non-working periods shown apart, provisional load and load on tickets the member does not see hatched. Filters by team, and by portfolio, program or project (the resources with load there, their whole load shown); provisional load in or out; a team average row.
+  - A cell, clicked or opened with the keyboard (arrows, Home/End, Page Up/Down, Enter, the focused cell said by screen readers), shows in a side panel the capacity, the planned hours and the gap, the overloads forced there, and the tickets behind the load, those the member does not see as **Busy (confidential)**. A **Table** view gives the same data in an accessible table.
+  - The heatmap is drawn on a canvas, only what is in view: 200 resources over 3 months read in about 150 ms. Weekly and monthly sums are precomputed for a year back and two years ahead, kept up to date by the worker within seconds of a change of load or capacity.
+  - `GET /api/v1/workload/heatmap`, `GET /api/v1/workload/cell`.
+- **Load against capacity by node and team** (#248)
+  - Portfolio, program and project pages, and team pages, show a **Load and capacity** card: per month (or week), the hours planned against the capacity, with the share used and overloaded periods said in words.
+  - A node sums its distinct projects, a project reached twice once, each with the weighting of its link; confidential projects count without detail. A project's capacity is its resources' capacity in proportion to their load there, so that a person shared between two programs is never counted twice. A team sums its active members.
+  - The planned load and capacity of the hierarchy's indicators are now fed by the assignments, and kept up to date within seconds.
+  - `GET /api/v1/nodes/{id}/workload`, `GET /api/v1/teams/{id}/workload`.
+- **Replacing a generic resource with a person** (#252)
+  - Organization admins and resource managers replace a generic resource with a person from its page (**Replace with a person**). Its assignments move to the person from today on: days before today stay on the generic resource, a segment across today is cut (a total effort shared in proportion to its working days), and segments join the person's assignment of the same ticket when there is one. Tickets of archived projects stay.
+  - Before replacing, the dialog previews the assignments that move, the tickets where the person's segments and the moved ones would take a same day (which refuse the replacement, `assignment.segments_overlap`) and the person's days it would overload, checked as for an assignment: in blocking mode, forcing needs **Force overload** on every project concerned, and is traced.
+  - Each ticket's history records it (**replaced … with …**). The generic resource is deactivated afterwards, unless unchecked.
+  - `POST /api/v1/resources/{id}/replacement`, `POST /api/v1/resources/{id}/replacement/preview`.
+- **Confirming a provisional assignment** (#255)
+  - A provisional assignment (hatched in the heatmap, counted in the overload check or not by the organization's setting) gets a **Confirm** button on the ticket's Assignments card and on the resource's Assignments tab: it becomes firm and is checked for overload as a firm assignment. In blocking mode, those with **Force overload** are asked whether to force it (traced); the others are told the days.
+  - `POST /api/v1/assignments/{id}/confirm` (with `If-Match`).
+- **Availability search** (#258)
+  - A new **Availability** tab of the Workload screen finds who has a number of free days (working days entirely free, not necessarily in a row) or free hours over a period of up to 92 days, optionally in a team, most free time first, with their free time, free days and planned load against capacity. Free time is the capacity (absences, public holidays and closures deducted) less the load, day by day; the overload tolerance is not counted as free time. Provisional load counts unless left out. Load on tickets the reader does not see reduces it without naming them.
+  - Each resource found opens in the heatmap on its days, with its details; the heatmap now opens from a link on a scale, period, team and resource.
+  - `GET /api/v1/workload/availability` (also for the MCP tool `find_availability`, L16).
+
+### Upgrading from 0.7.0
+
+- **Migrations**: they add assignments, the daily load (partitioned by month), the absence conflicts and the precomputed load sums. No existing data is converted; the worker computes the load sums and keeps the partitions, so it must run.
+- **Overload check**: it applies from this version, in **blocking** mode with no tolerance unless an organization admin changed them in 0.7.0; provisional assignments count by default. Organization admins review the mode, the tolerance and the provisional setting in Administration, Workload, and give **Force overload** to the roles that may go beyond capacity.
+- **Notifications**: every project configuration gets the rule of the new **Absence conflict** event (the ticket's assignee and the Project manager role); adjust it in the configuration's notification rules if needed.
+- **Indicators**: the planned load and capacity of portfolios, programs and projects are now fed by the assignments; they fill in within seconds of the first assignments.
+
 ## [0.7.0] - 2026-11-24
 
 Work package **L07 Resources and capacity**: resources (persons and generic roles) and teams, weekly capacity historized by effective date, calendars with French public holidays and sites, absences by whole or half days, and the capacity of each day, read for one resource or for hundreds at once.
@@ -328,6 +387,7 @@ Work package **L01 Technical foundation**: the base every later work package bui
   - License policy enforced on Rust crates and npm packages, RustSec and npm advisories, secret scan of the git history.
   - CI: every step a `just` recipe (`just ci` locally), GitHub Actions only calls them; release workflow publishing the images to GitHub Container Registry.
 
+[0.8.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.8.0
 [0.7.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.7.0
 [0.6.0]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.6.0
 [0.5.1]: https://github.com/argoleon/MyLittleBigProjectPlanner/releases/tag/v0.5.1

@@ -53,3 +53,4 @@ export * from './lib/components/translatable-input';
 export * from './lib/components/rich-text';
 export * from './lib/components/priority';
 export * from './lib/components/avatar';
+export * from './lib/heatmap/heatmap';

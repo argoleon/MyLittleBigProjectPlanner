@@ -27,7 +27,15 @@
         <li class="absence">
           <mat-icon class="kind-icon" aria-hidden="true">{{ absence.kind === 'training' ? 'school' : 'beach_access' }}</mat-icon>
           <div class="what">
-            <span class="kind">{{ 'absences.kinds.' + absence.kind | transloco }}</span>
+            <span class="kind">
+              {{ 'absences.kinds.' + absence.kind | transloco }}
+              @if (absence.conflictMinutes > 0) {
+                <span class="conflict">
+                  <mat-icon aria-hidden="true">event_busy</mat-icon>
+                  {{ 'absences.conflict' | transloco: { hours: (absence.conflictMinutes | duration) } }}
+                </span>
+              }
+            </span>
             <span class="when">
               @let s = span(absence);
               @if (s.single) {

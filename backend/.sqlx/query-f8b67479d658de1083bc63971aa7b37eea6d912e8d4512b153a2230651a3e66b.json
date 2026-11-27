@@ -1,0 +1,185 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT w.id, w.assignment_id, w.issue_id, i.key AS issue_key, i.summary AS issue_summary,\n               i.project_id, w.resource_id,\n               coalesce(app_member_name(r.account_id), r.display_name) AS \"resource_name!\",\n               w.day, w.minutes, w.status, w.opened_at, w.resolved_at, w.created_at\n        FROM workload_conflict w\n        JOIN issue i ON i.id = w.issue_id\n        JOIN resource r ON r.id = w.resource_id\n        WHERE ($1::uuid IS NULL OR w.resource_id = $1)\n          AND ($2::uuid IS NULL OR i.project_id = $2)\n          AND ($3::text IS NULL OR w.status = $3)\n          AND ($4::uuid[] IS NULL OR i.project_id = ANY($4))\n          AND ($5::timestamptz IS NULL OR (w.created_at, w.id) < ($5, $6))\n        ORDER BY w.created_at DESC, w.id DESC\n        LIMIT $7\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "workload_conflict",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "assignment_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "workload_conflict",
+            "name": "assignment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "issue_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "workload_conflict",
+            "name": "issue_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "issue_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "key"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "issue_summary",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "summary"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "project_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "issue",
+            "name": "project_id"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "resource_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "workload_conflict",
+            "name": "resource_id"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "resource_name!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
+        "name": "day",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "workload_conflict",
+            "name": "day"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "minutes",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "workload_conflict",
+            "name": "minutes"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "workload_conflict",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "opened_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "workload_conflict",
+            "name": "opened_at"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "resolved_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "workload_conflict",
+            "name": "resolved_at"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "workload_conflict",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "UuidArray",
+        "Timestamptz",
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      null,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "f8b67479d658de1083bc63971aa7b37eea6d912e8d4512b153a2230651a3e66b"
+}

@@ -1,0 +1,202 @@
+<h2 mat-dialog-title>{{ (data.assignment ? 'assignments.dialog.editTitle' : 'assignments.dialog.createTitle') | transloco }}</h2>
+<form (submit)="submit($event)" novalidate>
+  <mat-dialog-content class="fields">
+    <p class="ticket">
+      {{ data.issue.key }} · {{ data.issue.summary }}
+      @if (data.issue.startDate && data.issue.dueDate) {
+        ·
+        {{
+          'assignments.dialog.dates'
+            | transloco
+              : {
+                  from: (data.issue.startDate | localDate: { day: 'numeric', month: 'short' }),
+                  to: (data.issue.dueDate | localDate: { day: 'numeric', month: 'short' }),
+                }
+        }}
+      }
+    </p>
+    @if (errorKey(); as errorKey) {
+      <p class="message error" role="alert">{{ errorKey | transloco }}</p>
+    }
+
+    @if (data.assignment; as assignment) {
+      <p class="resource-fixed">
+        <span class="label">{{ 'assignments.dialog.resource' | transloco }}</span>
+        <span>{{ assignment.resource.displayName }}</span>
+      </p>
+    } @else {
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'assignments.dialog.resource' | transloco }}</mat-label>
+        <mat-icon matPrefix aria-hidden="true">person_search</mat-icon>
+        <input
+          matInput
+          type="text"
+          class="resource-input"
+          required
+          [formControl]="resourceInput"
+          [matAutocomplete]="resources"
+          (input)="typed()"
+        />
+        <mat-hint>{{ 'assignments.dialog.resourceHint' | transloco }}</mat-hint>
+        <mat-autocomplete #resources="matAutocomplete" [displayWith]="nameOf" (optionSelected)="choose($event)">
+          @for (choice of choices(); track choice.id) {
+            <mat-option [value]="choice">
+              <span>{{ choice.displayName }}</span>
+              @if (choice.jobTitle) {
+                <span class="choice-hint"> · {{ choice.jobTitle }}</span>
+              }
+            </mat-option>
+          }
+        </mat-autocomplete>
+        <mat-error>{{ (resourceInput.getError('api') ?? 'errors.field.required') | transloco }}</mat-error>
+      </mat-form-field>
+    }
+
+    <h3 class="segments-title" id="segments-title">{{ 'assignments.dialog.segments' | transloco }}</h3>
+    <ol class="segments" aria-labelledby="segments-title">
+      @for (segment of segments.controls; track segment; let index = $index) {
+        <li class="segment" [formGroup]="segment">
+          <span class="number" aria-hidden="true">{{ index + 1 }}</span>
+          <mat-form-field appearance="outline" class="period">
+            <mat-label>{{ 'assignments.dialog.period' | transloco: { number: index + 1 } }}</mat-label>
+            <mat-date-range-input [rangePicker]="picker">
+              <input matStartDate formControlName="start" required [attr.aria-label]="'assignments.dialog.start' | transloco: { number: index + 1 }" />
+              <input matEndDate formControlName="end" required [attr.aria-label]="'assignments.dialog.end' | transloco: { number: index + 1 }" />
+            </mat-date-range-input>
+            <mat-datepicker-toggle matIconSuffix [for]="picker" />
+            <mat-date-range-picker #picker />
+            @if (segment.controls.start.getError('api') ?? segment.controls.end.getError('api'); as key) {
+              <mat-error>{{ key | transloco }}</mat-error>
+            } @else {
+              <mat-error>{{ 'errors.field.required' | transloco }}</mat-error>
+            }
+          </mat-form-field>
+          <mat-button-toggle-group
+            formControlName="mode"
+            class="mode"
+            [attr.aria-label]="'assignments.dialog.mode' | transloco: { number: index + 1 }"
+          >
+            @for (mode of modes; track mode) {
+              <mat-button-toggle [value]="mode">{{ 'assignments.modes.' + mode | transloco }}</mat-button-toggle>
+            }
+          </mat-button-toggle-group>
+          <mat-form-field appearance="outline" class="value">
+            <mat-label>{{ 'assignments.dialog.value' | transloco: { number: index + 1 } }}</mat-label>
+            <input matInput type="text" inputmode="decimal" formControlName="value" required />
+            <span matTextSuffix>{{ suffixKey(segment.controls.mode.value) | transloco }}</span>
+            <mat-hint>{{ 'assignments.dialog.hints.' + segment.controls.mode.value | transloco }}</mat-hint>
+            <mat-error>
+              {{
+                (segment.controls.value.getError('api') ??
+                  (segment.controls.value.hasError('required') ? 'errors.field.required' : 'assignments.dialog.invalid.' + segment.controls.mode.value))
+                  | transloco
+              }}
+            </mat-error>
+          </mat-form-field>
+          <button
+            matIconButton
+            type="button"
+            class="remove"
+            [disabled]="segments.length === 1"
+            [attr.aria-label]="'assignments.dialog.remove' | transloco: { number: index + 1 }"
+            (click)="removeSegment(index)"
+          >
+            <mat-icon aria-hidden="true">delete</mat-icon>
+          </button>
+        </li>
+      }
+    </ol>
+    <button matButton type="button" class="add-segment" [disabled]="segments.length >= maxSegments" (click)="addSegment()">
+      <mat-icon aria-hidden="true">add</mat-icon>
+      {{ 'assignments.dialog.addSegment' | transloco }}
+    </button>
+
+    <div class="provisional">
+      <mat-slide-toggle [formControl]="provisional">{{ 'assignments.dialog.provisional' | transloco }}</mat-slide-toggle>
+      <p class="provisional-hint">{{ 'assignments.dialog.provisionalHint' | transloco }}</p>
+    </div>
+
+    @if (preview.hasValue() && preview.value().days.length > 0) {
+      <section class="preview" aria-labelledby="preview-title">
+        <h3 class="preview-title" id="preview-title">{{ 'assignments.preview.title' | transloco: { name: resourceName() } }}</h3>
+        <div class="preview-scroll" tabindex="0" role="region" aria-labelledby="preview-title">
+          <table class="preview-table">
+            <caption class="cdk-visually-hidden">{{ 'assignments.preview.caption' | transloco: { name: resourceName() } }}</caption>
+            <thead>
+              <tr>
+                <td></td>
+                @for (day of preview.value().days; track day.date) {
+                  <th scope="col">{{ day.date | localDate: { weekday: 'short', day: 'numeric' } }}</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">{{ 'assignments.preview.capacity' | transloco }}</th>
+                @for (day of preview.value().days; track day.date) {
+                  <td class="capacity">{{ day.capacityMinutes | duration }}</td>
+                }
+              </tr>
+              <tr>
+                <th scope="row">{{ 'assignments.preview.existing' | transloco }}</th>
+                @for (day of preview.value().days; track day.date) {
+                  <td class="existing">{{ day.existingMinutes | duration }}</td>
+                }
+              </tr>
+              <tr>
+                <th scope="row">{{ 'assignments.preview.assignment' | transloco }}</th>
+                @for (day of preview.value().days; track day.date) {
+                  <td class="assignment">{{ day.assignmentMinutes | duration }}</td>
+                }
+              </tr>
+              <tr>
+                <th scope="row">{{ 'assignments.preview.total' | transloco }}</th>
+                @for (day of preview.value().days; track day.date) {
+                  <td class="total" [class.over]="day.overloaded">
+                    {{ day.totalMinutes | duration }}
+                    @if (day.overloaded) {
+                      <mat-icon class="over-icon" aria-hidden="true">warning</mat-icon>
+                      <span class="cdk-visually-hidden">{{ 'assignments.preview.over' | transloco }}</span>
+                    }
+                  </td>
+                }
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+
+    @if (overload(); as overload) {
+      <p
+        class="message overload"
+        [class.error]="overload.blocked"
+        [class.warning]="!overload.blocked"
+        [attr.role]="overload.blocked ? 'alert' : 'status'"
+      >
+        <mat-icon aria-hidden="true">{{ overload.blocked ? 'block' : 'warning' }}</mat-icon>
+        <span>
+          {{
+            (overload.blocked ? (overload.forceable ? 'assignments.overload.blockedForceable' : 'assignments.overload.blocked') : 'assignments.overload.warning')
+              | transloco: { days: overloadText() }
+          }}
+        </span>
+      </p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button matButton type="button" mat-dialog-close>{{ 'dialog.cancel' | transloco }}</button>
+    @if (overload()?.blocked && overload()?.forceable) {
+      <button matButton="outlined" type="button" class="force" [disabled]="saving()" (click)="force()">
+        <mat-icon aria-hidden="true">warning</mat-icon>
+        {{ 'assignments.overload.force' | transloco }}
+      </button>
+    }
+    <button matButton="filled" type="submit" [disabled]="saving() || overload()?.blocked">
+      {{ (data.assignment ? 'assignments.dialog.save' : 'assignments.dialog.create') | transloco }}
+    </button>
+  </mat-dialog-actions>
+  @if (overload()?.blocked && overload()?.forceable) {
+    <p class="force-note">{{ 'assignments.overload.forceNote' | transloco }}</p>
+  }
+</form>

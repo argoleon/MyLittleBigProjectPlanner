@@ -1,0 +1,63 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT project_id, period_start, sum(load_minutes)::integer AS \"load!\",\n               sum(provisional_minutes)::integer AS \"provisional!\", sum(capacity_minutes)::integer AS \"capacity!\"\n        FROM load_aggregate_project\n        WHERE project_id = ANY($1) AND period_kind = $2 AND period_start = ANY($3)\n        GROUP BY project_id, period_start\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "project_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "load_aggregate_project",
+            "name": "project_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "period_start",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "load_aggregate_project",
+            "name": "period_start"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "load!",
+        "type_info": "Int4",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "provisional!",
+        "type_info": "Int4",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "capacity!",
+        "type_info": "Int4",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "Text",
+        "DateArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "cc4124a5f93c284ebe1fcbf5ac7625f0522c550c2a9374f2cd33ca04984af566"
+}

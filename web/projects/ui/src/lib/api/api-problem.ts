@@ -3,6 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import type { ErrorCode } from './generated/models/error-code';
 import { ERROR_CODE } from './generated/models/error-code-array';
 import type { FieldError } from './generated/models/field-error';
+import type { OverloadProblem } from './generated/models/overload-problem';
 import type { QueryProblem } from './generated/models/query-problem';
 
 /**
@@ -61,6 +62,8 @@ export class ApiProblem extends Error {
     readonly fieldErrors: readonly FieldError[] = [],
     /** For `query.invalid`: where and why the query was refused. */
     readonly query: QueryProblem | null = null,
+    /** For an overload refused (code workload.overload): the days, and whether the member may force it. */
+    readonly overload: OverloadProblem | null = null,
   ) {
     super(`${status} ${code}: ${title}`);
   }
@@ -93,6 +96,7 @@ export class ApiProblem extends Error {
         typeof body['detail'] === 'string' ? body['detail'] : null,
         parseFieldErrors(body['errors']),
         parseQueryProblem(body['query']),
+        parseOverloadProblem(body['overload']),
       );
     }
     // Not a Problem Details body, or a code this client does not know yet.
@@ -128,6 +132,12 @@ function parseQueryProblem(query: unknown): QueryProblem | null {
     typeof candidate.length === 'number'
     ? candidate
     : null;
+}
+
+function parseOverloadProblem(overload: unknown): OverloadProblem | null {
+  if (typeof overload !== 'object' || overload === null || Array.isArray(overload)) return null;
+  const candidate = overload as OverloadProblem;
+  return Array.isArray(candidate.days) && typeof candidate.forceable === 'boolean' ? candidate : null;
 }
 
 function parseFieldErrors(errors: unknown): FieldError[] {

@@ -41,7 +41,8 @@ where
 pub const PARTITIONS_EVERY: Duration = Duration::from_secs(12 * 60 * 60);
 
 /// Keeps the monthly partitions of the event outbox (`infra::outbox`), of
-/// the history (`infra::audit`) and of notifications ready: at start, then every `every`,
+/// the history (`infra::audit`), of the daily load (`infra::day_load`) and
+/// of notifications ready: at start, then every `every`,
 /// until `token` is cancelled. A failure is logged and tried again next
 /// time; the default partitions take the rows meanwhile.
 pub async fn keep_partitions(pool: infra::sqlx::PgPool, token: CancellationToken, every: Duration) {
@@ -57,6 +58,11 @@ pub async fn keep_partitions(pool: infra::sqlx::PgPool, token: CancellationToken
                     Ok(0) => {}
                     Ok(created) => tracing::info!(created, "history partitions created"),
                     Err(err) => tracing::warn!(error = %err, "history partitions not checked"),
+                }
+                match infra::day_load::ensure_partitions_ahead(&mut conn).await {
+                    Ok(0) => {}
+                    Ok(created) => tracing::info!(created, "daily load partitions created"),
+                    Err(err) => tracing::warn!(error = %err, "daily load partitions not checked"),
                 }
                 match infra::notifications::ensure_partitions(&mut conn).await {
                     Ok(0) => {}

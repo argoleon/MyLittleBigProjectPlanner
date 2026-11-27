@@ -258,6 +258,7 @@ async fn only_a_tenant_admin_changes_the_workload_settings() {
         default_capacity: WeekMinutes([480, 480, 480, 480, 240, 0, 0]),
         overload_tolerance_percent: 10,
         overload_mode: "warning".to_owned(),
+        overload_counts_provisional: false,
         version: 0,
     };
     let after = capacity::update_workload_settings(&mut tx, admin, Some(&[before.version]), &wanted)
@@ -272,6 +273,8 @@ async fn only_a_tenant_admin_changes_the_workload_settings() {
         ),
         (wanted.default_capacity, 10, before.version + 1)
     );
+    assert!(before.overload_counts_provisional, "counted by default");
+    assert!(!after.overload_counts_provisional);
     assert_eq!(
         capacity::update_workload_settings(&mut tx, admin, Some(&[before.version]), &wanted)
             .await

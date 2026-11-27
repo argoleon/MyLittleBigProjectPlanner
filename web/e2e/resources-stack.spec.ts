@@ -31,10 +31,12 @@ test('create a person and a generic resource, then deactivate one', async ({ bro
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Home');
 
-  // Workload opens on its resources.
+  // Workload opens on its heatmap; its resources are the next tab.
   await page.getByRole('link', { name: 'Workload' }).click();
-  await expect(page).toHaveURL(/\/workload\/resources$/);
+  await expect(page).toHaveURL(/\/workload\/heatmap$/);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Workload');
+  await page.getByRole('tab', { name: 'Resources' }).click();
+  await expect(page).toHaveURL(/\/workload\/resources$/);
   await expect(page.getByRole('tab', { name: 'Resources' })).toHaveAttribute('aria-selected', 'true');
 
   // A person without account.

@@ -1,0 +1,60 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT l.assignment_id, l.day, l.minutes,\n               coalesce((\n                   SELECT sum(o.minutes) FROM resource_day_load o\n                   WHERE o.resource_id = l.resource_id AND o.day = l.day\n                     AND o.assignment_id <> l.assignment_id AND ($2 OR NOT o.provisional)\n               ), 0)::integer AS \"others!\"\n        FROM resource_day_load l\n        WHERE l.assignment_id = ANY($1)\n        ORDER BY l.day\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "assignment_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "resource_day_load",
+            "name": "assignment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "day",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "resource_day_load",
+            "name": "day"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "minutes",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "resource_day_load",
+            "name": "minutes"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "others!",
+        "type_info": "Int4",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "78494aa70108ad040df7116756951b0a01e0d74304548dd1acd0362436d552ee"
+}

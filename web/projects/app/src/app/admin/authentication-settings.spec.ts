@@ -116,7 +116,7 @@ describe('AuthenticationSettings', () => {
     const { root, text } = await open();
     expect(text('.eyebrow')).toBe('Administration · Acme Industrie');
     const tabs = Array.from(root().querySelectorAll('a[mat-tab-link]')).map((a) => a.textContent?.trim());
-    expect(tabs).toEqual(['Members', 'Groups', 'Roles', 'Authentication', 'Workload', 'Project configurations']);
+    expect(tabs).toEqual(['Members', 'Groups', 'Roles', 'Authentication', 'Workload', 'Forced overloads', 'Project configurations']);
     expect(text('a[mat-tab-link][aria-selected="true"]')).toBe('Authentication');
     const toggles = Array.from(root().querySelectorAll('mat-slide-toggle'));
     expect(toggles.map((t) => t.textContent?.trim())).toEqual([

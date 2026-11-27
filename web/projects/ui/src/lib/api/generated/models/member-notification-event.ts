@@ -8,5 +8,5 @@
  * (The rules of a configuration name the ticket events only:
  * `NotificationEvent`.)
  */
-export type MemberNotificationEvent = 'created' | 'assigned' | 'status_changed' | 'commented' | 'mentioned' | 'export_ready' | 'bulk_done';
+export type MemberNotificationEvent = 'created' | 'assigned' | 'status_changed' | 'commented' | 'mentioned' | 'absence_conflict' | 'export_ready' | 'bulk_done';
 

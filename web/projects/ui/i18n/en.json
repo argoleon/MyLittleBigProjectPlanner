@@ -166,7 +166,8 @@
       "members": "Members",
       "groups": "Groups",
       "roles": "Roles",
-      "configurations": "Project configurations"
+      "configurations": "Project configurations",
+      "forcedOverloads": "Forced overloads"
     },
     "auth": {
       "policyTitle": "Authentication policy",
@@ -353,7 +354,27 @@
         "warning": "The assignment is accepted, and the overloaded days are flagged."
       },
       "save": "Save",
-      "saved": "The workload settings were saved."
+      "saved": "The workload settings were saved.",
+      "countsProvisional": "Count provisional assignments in the overload check",
+      "countsProvisionalHint": "Off, a provisional assignment never blocks anyone and is never blocked."
+    },
+    "forcedOverloads": {
+      "intro": "Every assignment saved beyond a resource’s capacity plus tolerance by a member allowed to force overloads. It is also in the ticket’s history.",
+      "loading": "Loading forced overloads…",
+      "empty": "No forced overload",
+      "emptyHint": "Assignments forced beyond capacity will show here.",
+      "caption": "Forced overloads, newest first",
+      "columns": {
+        "when": "Date",
+        "issue": "Ticket",
+        "resource": "Resource",
+        "actor": "Forced by",
+        "days": "Overloaded days"
+      },
+      "issueGone": "Deleted ticket",
+      "resourceGone": "Deleted resource",
+      "actorGone": "A former member",
+      "more": "Show more"
     }
   },
   "errors": {
@@ -463,7 +484,10 @@
       "person_only": "Only a person is linked to an account.",
       "not_internal_member": "Not an internal member of the organization.",
       "not_a_site": "Not a site of the organization.",
-      "overlap": "Another absence takes this half day."
+      "overlap": "Another absence takes this half day.",
+      "inactive": "This resource is deactivated.",
+      "no_working_day": "The resource has no working day in this period.",
+      "outside_issue_dates": "Outside the ticket’s dates."
     },
     "invitation": {
       "invalid": "This invitation link is invalid, has expired or was already used. Ask for a new one.",
@@ -583,6 +607,14 @@
     },
     "absence": {
       "overlap": "Another absence of the resource takes a same half day."
+    },
+    "assignment": {
+      "resource_taken": "This resource is already assigned to the ticket: add a segment to its assignment.",
+      "segments_overlap": "Two segments of the assignment take a same day.",
+      "outside_issue_dates": "Segments must stay within the ticket’s dates."
+    },
+    "workload": {
+      "overload": "The assignment exceeds the resource’s capacity."
     }
   },
   "dialog": {
@@ -1438,7 +1470,8 @@
         "assigned": "Ticket assigned",
         "status_changed": "Status changed",
         "commented": "Comment added",
-        "mentioned": "Someone mentioned"
+        "mentioned": "Someone mentioned",
+        "absence_conflict": "Absence conflict"
       },
       "kinds": {
         "reporter": "Reporter",
@@ -1690,7 +1723,9 @@
         "no": "no"
       },
       "attached": "attached {{ name }}",
-      "fileRemoved": "removed the file {{ name }}"
+      "fileRemoved": "removed the file {{ name }}",
+      "overloadForced": "forced an overload of {{ name }}",
+      "resourceReplaced": "replaced {{ old }} with {{ new }}"
     },
     "attachments": {
       "title": "Attachments ({{ count }})",
@@ -1740,7 +1775,8 @@
       "commented": "Comments",
       "created": "New tickets",
       "export_ready": "Exports",
-      "bulk_done": "Bulk actions"
+      "bulk_done": "Bulk actions",
+      "absence_conflict": "Absence conflicts"
     },
     "empty": "No notification.",
     "more": "Show older notifications",
@@ -1759,7 +1795,8 @@
       "commented": "{{ actor }} commented on {{ key }}",
       "created": "{{ actor }} created {{ key }}",
       "export_ready": "Your export {{ file }} is ready",
-      "bulk_done": "Your bulk {{ action }} is done"
+      "bulk_done": "Your bulk {{ action }} is done",
+      "absence_conflict": "{{ hours }} to reschedule on {{ key }} (absence of {{ resource }})"
     },
     "preferences": {
       "title": "Notification preferences",
@@ -1776,7 +1813,8 @@
         "commented": "New comment",
         "mentioned": "Mentions",
         "export_ready": "Export ready",
-        "bulk_done": "Bulk action done"
+        "bulk_done": "Bulk action done",
+        "absence_conflict": "Absence conflict"
       },
       "digest": "Daily email digest",
       "digestHint": "Each working day at 8:00, instead of one email per event."
@@ -2253,13 +2291,191 @@
       "teams": "Teams",
       "noTeam": "No team",
       "siteOf": "Site {{ name }}",
-      "noSite": "Organization calendar"
+      "noSite": "Organization calendar",
+      "tabs": "Sections of the resource",
+      "capacityTab": "Capacity and calendar",
+      "assignmentsTab": "Assignments"
+    },
+    "replace": {
+      "action": "Replace with a person",
+      "title": "Replace {{ name }} with a person",
+      "intro": "Its assignments move to the person from today on ({{ date }}). Days before today stay on {{ name }}.",
+      "person": "Person",
+      "personHint": "An active person, by name or job title.",
+      "deactivate": "Deactivate {{ name }} afterwards",
+      "deactivateHint": "An inactive resource is no longer offered for new assignments.",
+      "previewing": "Checking what moves…",
+      "previewFailed": "What moves could not be checked. Try again.",
+      "nothingMoves": "No assignment of {{ name }} from today on: nothing moves.",
+      "moves": "Assignments that move ({{ count }})",
+      "hidden": "A ticket you do not see",
+      "period": "from {{ from }} to {{ to }}",
+      "merged": "joins their assignment",
+      "overlaps": "Their segments and the moved ones take a same day on {{ keys }}. Change one of them before replacing.",
+      "archived": "Left on {{ name }}, archived projects: {{ keys }}.",
+      "blocked": "Capacity exceeded — {{ days }}. The replacement cannot be made as it is.",
+      "blockedForceable": "Capacity exceeded — {{ days }}. The replacement cannot be made as it is, unless you force the overload.",
+      "warning": "Capacity exceeded — {{ days }}. The replacement will be made and the overload flagged.",
+      "submit": "Replace",
+      "done": "The assignments of {{ generic }} moved to {{ person }} ({{ count }}).",
+      "doneDeactivated": "The assignments of {{ generic }} moved to {{ person }} ({{ count }}); {{ generic }} is now inactive."
     },
     "team": "Team",
-    "allTeams": "All teams"
+    "allTeams": "All teams",
+    "assignments": {
+      "title": "Assignments",
+      "loading": "Loading assignments…",
+      "showPast": "Show past assignments",
+      "busyGroup": "Busy",
+      "busyHint": "Time on tickets you do not see (confidential or not granted projects): only the periods and hours show.",
+      "busy": "Busy",
+      "caption": "Assignments on {{ project }}",
+      "columns": {
+        "issue": "Ticket",
+        "periods": "Periods",
+        "load": "Load",
+        "actions": "Actions"
+      },
+      "conflict": "Absence conflict",
+      "editOf": "Edit the assignment on {{ key }}",
+      "deleteOf": "Remove the assignment on {{ key }}",
+      "deleteTitle": "Remove the assignment on {{ key }}?",
+      "deleteMessage": "Its segments and load leave the resource’s days.",
+      "deleteConfirm": "Remove",
+      "saved": "The assignment on {{ key }} was saved.",
+      "deleted": "The assignment on {{ key }} was removed.",
+      "none": "No assignment.",
+      "noneAhead": "No ongoing or upcoming assignment.",
+      "more": "Show more",
+      "confirmOf": "Confirm the provisional assignment on {{ key }}",
+      "confirmed": "The assignment on {{ key }} is now firm."
+    }
   },
   "workload": {
-    "tabs": "Workload sections"
+    "tabs": "Workload sections",
+    "availability": {
+      "tab": "Availability",
+      "title": "Who is available?",
+      "intro": "Resources with free days or free hours over a period. Absences, public holidays and closures are deducted; the overload tolerance is not counted as free time.",
+      "period": "Period",
+      "start": "Start of the period",
+      "end": "End of the period",
+      "need": "Looking for",
+      "needs": {
+        "days": "Free days",
+        "hours": "Free hours"
+      },
+      "amount": "At least",
+      "daysHint": "Working days entirely free, not necessarily in a row.",
+      "hoursHint": "Capacity left over the period.",
+      "options": "Search options",
+      "search": "Search",
+      "results": "Resources found",
+      "loading": "Searching…",
+      "foundOne": "1 resource available from {{ from }} to {{ to }}.",
+      "foundMany": "{{ count }} resources available from {{ from }} to {{ to }}.",
+      "empty": "No resource has this availability. Try a longer period, fewer hours or days, or another team.",
+      "caption": "Available resources, most free time first",
+      "columns": {
+        "resource": "Resource",
+        "free": "Free time",
+        "freeDays": "Free days",
+        "load": "Planned",
+        "actions": "Actions"
+      },
+      "loadOf": "{{ load }} of {{ capacity }}",
+      "openHeatmap": "See in the heatmap",
+      "openHeatmapOf": "See in the heatmap: {{ name }}",
+      "errors": {
+        "period": "Choose the first and last days.",
+        "beforeStart": "The period ends before it starts.",
+        "tooLong": "92 days at most.",
+        "amount": "A whole number from 1 to {{ max }}."
+      }
+    },
+    "heatmap": {
+      "tab": "Heatmap",
+      "title": "Resource workload",
+      "loading": "Loading the workload…",
+      "empty": "No active resource for these filters.",
+      "scale": "Scale",
+      "scales": {
+        "day": "Day",
+        "week": "Week",
+        "month": "Month"
+      },
+      "period": "Period",
+      "previous": "Previous period",
+      "next": "Next period",
+      "today": "Today",
+      "team": "Team",
+      "allTeams": "All teams",
+      "node": "Portfolio, program or project",
+      "allNodes": "The whole organization",
+      "nodeTypes": {
+        "portfolio": "Portfolios",
+        "program": "Programs",
+        "project": "Projects"
+      },
+      "options": "Heatmap options",
+      "includeProvisional": "Include provisional",
+      "view": "View",
+      "views": {
+        "heatmap": "Heatmap",
+        "table": "Table"
+      },
+      "summary": "Resources: {{ count }} · from {{ from }} to {{ to }} · Overloads: {{ overloads }}",
+      "legend": "Legend",
+      "levels": {
+        "low": "Under 40%",
+        "medium": "40 to 70%",
+        "high": "70 to 95%",
+        "full": "95 to 100%",
+        "over": "Overload",
+        "hidden": "Including confidential time",
+        "provisional": "Provisional",
+        "absent": "Absence"
+      },
+      "instructions": "Arrows move between cells, Home and End to the ends of the row, Enter shows what makes up the load. The Table view gives the same data.",
+      "resource": "Resource",
+      "caption": "Workload of the resources by period, in percent of the capacity",
+      "week": "W{{ number }}",
+      "weekSpan": "{{ from }}–{{ to }}",
+      "absent": "Away",
+      "hidden": "confidential",
+      "provisional": "provisional",
+      "average": "Average",
+      "describe": "{{ percent }}, {{ planned }} planned for {{ available }} available",
+      "describeAbsent": "away the whole period",
+      "describeOff": "no working day",
+      "describeOver": "overloaded",
+      "describeProvisional": "including {{ hours }} provisional",
+      "describeHidden": "including {{ hours }} on tickets you do not see",
+      "describeAverage": "average {{ percent }}"
+    },
+    "cell": {
+      "span": "from {{ from }} to {{ to }}",
+      "close": "Close the details",
+      "loading": "Loading the details…",
+      "capacity": "Capacity",
+      "planned": "Planned",
+      "gap": "Gap",
+      "forced": "Overload forced on {{ key }} by {{ name }} on {{ date }}.",
+      "busy": "Busy (confidential)",
+      "busyHint": "Time on tickets you do not see.",
+      "percentage": "{{ percent }} of the capacity",
+      "inNode": "In the filter",
+      "empty": "Nothing planned in this period."
+    },
+    "aggregate": {
+      "title": "Load and capacity",
+      "nodeHint": "Load planned on its projects, against the share of their resources’ capacity it takes.",
+      "teamHint": "Load and capacity of its active members.",
+      "loading": "Loading the workload…",
+      "line": "{{ load }} of {{ capacity }} · {{ percent }}",
+      "over": "overloaded",
+      "confidential": "Including {{ count }} confidential project(s), counted without detail."
+    }
   },
   "teams": {
     "title": "Teams",
@@ -2502,6 +2718,114 @@
       "commentHint": "Only the person and the managers read it.",
       "create": "Declare",
       "save": "Save"
+    },
+    "conflict": "{{ hours }} in conflict"
+  },
+  "assignments": {
+    "title": "Assignments",
+    "loading": "Loading the assignments…",
+    "add": "Add a resource",
+    "total": "Planned total: {{ hours }}",
+    "span": "from {{ from }} to {{ to }}",
+    "empty": "No resource is assigned to this ticket.",
+    "provisional": "Provisional",
+    "outside": "Some segments fall outside the ticket’s dates, changed since.",
+    "confirm": {
+      "action": "Confirm",
+      "of": "Confirm {{ name }}’s provisional assignment",
+      "done": "{{ name }}’s assignment is now firm.",
+      "blocked": "Confirmed, this assignment would go over capacity — {{ days }}. It stays provisional: reduce its segments, or ask someone allowed to force the overload.",
+      "forceTitle": "Force the overload?",
+      "forceMessage": "Confirmed, this assignment goes over capacity — {{ days }}. Forcing the overload is traced.",
+      "force": "Confirm anyway"
+    },
+    "caption": "Segments of {{ name }}’s assignment",
+    "columns": {
+      "period": "Period",
+      "mode": "Mode",
+      "value": "Value",
+      "load": "Load"
+    },
+    "period": "{{ from }} → {{ to }}",
+    "modeNames": {
+      "percentage": "Percentage",
+      "hours_per_day": "Hours per day",
+      "total_effort": "Total effort"
+    },
+    "modes": {
+      "percentage": "%",
+      "hours_per_day": "h/day",
+      "total_effort": "Total effort"
+    },
+    "perDay": "{{ hours }}/day",
+    "over": "{{ hours }} over {{ days }} working days",
+    "editOf": "Edit {{ name }}’s assignment",
+    "deleteOf": "Remove {{ name }} from the ticket",
+    "deleteTitle": "Remove {{ name }}?",
+    "deleteMessage": "Their segments and load on this ticket go.",
+    "deleteConfirm": "Remove",
+    "created": "{{ name }} was assigned to the ticket.",
+    "saved": "{{ name }}’s assignment was saved.",
+    "deleted": "{{ name }} was removed from the ticket.",
+    "dialog": {
+      "createTitle": "Assign a resource",
+      "editTitle": "Edit the assignment",
+      "dates": "from {{ from }} to {{ to }}",
+      "resource": "Resource",
+      "resourceHint": "By name or job title; never a team.",
+      "segments": "Segments",
+      "period": "Period {{ number }}",
+      "start": "Start of period {{ number }}",
+      "end": "End of period {{ number }}",
+      "mode": "Mode of segment {{ number }}",
+      "value": "Value {{ number }}",
+      "remove": "Delete segment {{ number }}",
+      "addSegment": "Add a segment",
+      "create": "Save",
+      "save": "Save",
+      "suffix": {
+        "percentage": "%",
+        "hours_per_day": "h/day",
+        "total_effort": "h"
+      },
+      "hints": {
+        "percentage": "Share of each day’s capacity",
+        "hours_per_day": "Hours per working day, such as 4 or 3:30",
+        "total_effort": "Hours spread over the working days, such as 40"
+      },
+      "invalid": {
+        "percentage": "A percentage from 1 to 100.",
+        "hours_per_day": "Hours of a day, such as 4, 3.5 or 3:30.",
+        "total_effort": "Hours, such as 40 or 12:30."
+      },
+      "provisional": "Provisional assignment",
+      "provisionalHint": "Hatched in the heatmap; counted in the overload check or not, by the organization’s setting."
+    },
+    "overload": {
+      "badge": "Overload",
+      "flagged": "Resource overloaded: {{ days }}.",
+      "day": "{{ date }}: {{ planned }} planned for {{ available }} available (+{{ over }})",
+      "moreOne": "and 1 more day",
+      "moreMany": "and {{ count }} more days",
+      "separator": "; ",
+      "blocked": "Capacity exceeded — {{ days }}. The assignment cannot be saved as it is: reduce its segments.",
+      "blockedForceable": "Capacity exceeded — {{ days }}. The assignment cannot be saved as it is: reduce its segments or force the overload.",
+      "warning": "Capacity exceeded — {{ days }}. The assignment will be saved and the overload flagged.",
+      "force": "Force overload",
+      "forceNote": "“Force overload” is reserved for roles with this permission. The action is traced."
+    },
+    "preview": {
+      "title": "Load preview of {{ name }}",
+      "caption": "Daily load of {{ name }}: capacity, existing load, this assignment and total",
+      "capacity": "Capacity",
+      "existing": "Existing load",
+      "assignment": "This assignment",
+      "total": "Total",
+      "over": "overloaded"
+    },
+    "conflicts": {
+      "title": "{{ hours }} to reschedule: the resource is away",
+      "day": "{{ date }}: {{ hours }}"
     }
   }
 }

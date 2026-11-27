@@ -5,5 +5,5 @@
 /**
  * A ticket event that notifies.
  */
-export type NotificationEvent = 'created' | 'assigned' | 'status_changed' | 'commented' | 'mentioned';
+export type NotificationEvent = 'created' | 'assigned' | 'status_changed' | 'commented' | 'mentioned' | 'absence_conflict';
 

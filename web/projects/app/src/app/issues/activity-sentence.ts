@@ -72,6 +72,10 @@ export function sentenceOf(entry: ActivityEntry, context: SentenceContext): Sent
       return sentence(t('issue.activity.attached', { name: entry.new?.text ?? '' }));
     case 'attachment_removed':
       return sentence(t('issue.activity.fileRemoved', { name: entry.old?.text ?? '' }));
+    case 'overload_forced':
+      return sentence(t('issue.activity.overloadForced', { name: entry.new?.text ?? '' }));
+    case 'resource_replaced':
+      return sentence(t('issue.activity.resourceReplaced', { old: entry.old?.text ?? '', new: entry.new?.text ?? '' }));
     case 'comment_created':
       return sentence(t('issue.activity.commented'));
     case 'comment_updated':

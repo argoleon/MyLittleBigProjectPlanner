@@ -23,6 +23,7 @@ const LEAVE: Absence = {
   endsAtNoon: false,
   comment: 'Family',
   declaredBy: { accountId: 'me', displayName: 'Camille Martin' },
+  conflictMinutes: 0,
   version: 1,
 };
 const TRIP: Absence = {
@@ -130,6 +131,15 @@ describe('AbsencesCard', () => {
       'Edit the absence of Dec 28, 2026',
       'Delete the absence of Dec 28, 2026',
     ]);
+    expect(await axeViolations(fixture.nativeElement)).toEqual([]);
+  });
+
+  it('shows the hours in conflict on an absence, in text and not only in color', async () => {
+    const { host, text, fixture } = await open([{ ...LEAVE, conflictMinutes: 450 }, TRIP]);
+    const rows = Array.from(host.querySelectorAll('.absence'));
+    expect(text(rows[0].querySelector('.conflict'))).toBe('event_busy 7 h 30 min in conflict');
+    expect(text(rows[0].querySelector('.kind'))).toBe('Leave event_busy 7 h 30 min in conflict');
+    expect(rows[1].querySelector('.conflict')).toBeNull();
     expect(await axeViolations(fixture.nativeElement)).toEqual([]);
   });
 

@@ -6,6 +6,7 @@
 
 pub mod absences;
 pub mod account;
+pub mod assignments;
 pub mod auth;
 pub mod boards;
 pub mod bulk_actions;
@@ -20,6 +21,7 @@ pub mod etag;
 pub mod events;
 pub mod extract;
 pub mod fields;
+pub mod forced_overloads;
 pub mod gdpr;
 pub mod grants;
 pub mod groups;
@@ -50,6 +52,7 @@ pub mod platform;
 pub mod problem;
 pub mod query_assist;
 pub mod reference_items;
+pub mod resource_replacement;
 pub mod resources;
 pub mod roles;
 mod routes;
@@ -61,6 +64,10 @@ pub mod teams;
 pub mod tenant;
 pub mod transition_rules;
 pub mod workflows;
+pub mod workload_aggregates;
+pub mod workload_availability;
+pub mod workload_conflicts;
+pub mod workload_heatmap;
 
 use std::future::{Future, IntoFuture};
 use std::time::Duration;
