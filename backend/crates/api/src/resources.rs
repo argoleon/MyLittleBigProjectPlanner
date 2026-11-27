@@ -33,7 +33,7 @@ pub const TAG: &str = "resources";
 const PATH: &str = "/api/v1/resources";
 
 /// 403 unless the signed-in member manages resources.
-fn require_manager(tx: &TenantTx) -> Result<(), Problem> {
+pub(crate) fn require_manager(tx: &TenantTx) -> Result<(), Problem> {
     if manages_resources(tx.member().tenant_role) {
         Ok(())
     } else {

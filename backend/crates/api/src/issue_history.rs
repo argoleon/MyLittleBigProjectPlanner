@@ -69,6 +69,8 @@ pub enum ActionView {
     AttachmentRemoved,
     /// An assignment forced beyond capacity: `new` names the resource.
     OverloadForced,
+    /// A generic resource replaced by a person: `old` and `new` name them.
+    ResourceReplaced,
 }
 
 impl From<Action> for ActionView {
@@ -85,6 +87,7 @@ impl From<Action> for ActionView {
             Action::AttachmentAdded => Self::AttachmentAdded,
             Action::AttachmentRemoved => Self::AttachmentRemoved,
             Action::OverloadForced => Self::OverloadForced,
+            Action::ResourceReplaced => Self::ResourceReplaced,
         }
     }
 }
@@ -387,6 +390,15 @@ impl Reading<'_> {
                     .and_then(|j| j.get("resourceName"))
                     .and_then(plain)
                     .map(|name| ValueView::text(ValueKind::Text, Some(name)));
+            }
+            Action::ResourceReplaced => {
+                let name = |json: Option<&Json>| {
+                    json.and_then(|j| j.get("name"))
+                        .and_then(plain)
+                        .map(|name| ValueView::text(ValueKind::Text, Some(name)))
+                };
+                old = name(entry.old.as_ref());
+                new = name(entry.new.as_ref());
             }
             Action::Created | Action::CommentCreated | Action::CommentUpdated | Action::CommentDeleted => {}
         }

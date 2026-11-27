@@ -331,7 +331,7 @@ fn overload_day(overload: &Overload) -> Option<OverloadDay> {
     })
 }
 
-fn overload_days(overloads: &[Overload]) -> Vec<OverloadDay> {
+pub(crate) fn overload_days(overloads: &[Overload]) -> Vec<OverloadDay> {
     overloads.iter().filter_map(overload_day).collect()
 }
 
@@ -443,7 +443,7 @@ async fn forces(state: &AppState, tx: &mut TenantTx, project: &Node) -> Result<b
 }
 
 /// `workload.overload`, listing `days`.
-fn overload_problem(days: &[Overload], forceable: bool) -> Problem {
+pub(crate) fn overload_problem(days: &[Overload], forceable: bool) -> Problem {
     let first = days.first().map(|d| d.date.to_string()).unwrap_or_default();
     Problem::overload(
         OverloadProblem {

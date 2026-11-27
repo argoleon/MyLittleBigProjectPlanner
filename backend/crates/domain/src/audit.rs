@@ -65,10 +65,13 @@ pub enum Action {
     /// An assignment was written beyond capacity in blocking mode, forced
     /// by a member allowed to (new value: the resource and the days).
     OverloadForced,
+    /// A generic resource's assignment moved to a person (old value: the
+    /// generic resource; new value: the person and the first day moved).
+    ResourceReplaced,
 }
 
 impl Action {
-    pub const ALL: [Self; 11] = [
+    pub const ALL: [Self; 12] = [
         Self::Created,
         Self::Updated,
         Self::Moved,
@@ -80,6 +83,7 @@ impl Action {
         Self::AttachmentAdded,
         Self::AttachmentRemoved,
         Self::OverloadForced,
+        Self::ResourceReplaced,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -95,6 +99,7 @@ impl Action {
             Self::AttachmentAdded => "attachment_added",
             Self::AttachmentRemoved => "attachment_removed",
             Self::OverloadForced => "overload_forced",
+            Self::ResourceReplaced => "resource_replaced",
         }
     }
 
