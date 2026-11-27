@@ -139,6 +139,7 @@ describe('ResourceAssignments', () => {
     expect(Array.from(groups[0].querySelectorAll('.actions button')).map((b) => b.getAttribute('aria-label'))).toEqual([
       'Edit the assignment on PLAT-148',
       'Remove the assignment on PLAT-148',
+      'Confirm the provisional assignment on PLAT-151',
       'Edit the assignment on PLAT-151',
       'Remove the assignment on PLAT-151',
     ]);
@@ -199,5 +200,32 @@ describe('ResourceAssignments', () => {
     expect(deleted.request.headers.get('If-Match')).toBe('"2"');
     await reply(isList, { items: [], nextCursor: null });
     expect(text(host.querySelector('[role="status"]'))).toBe('The assignment on PLAT-148 was removed.');
+  });
+
+  const isConfirm = (url: string, method: string) => url === '/api/v1/assignments/a2/confirm' && method === 'POST';
+
+  it('confirms a provisional assignment (L08-US09)', async () => {
+    const { host, click, reply, text } = await open({ items: [MIGRATION, LATER], nextCursor: null });
+    expect(host.querySelector('#resource-assignment-confirm-a1')).toBeNull();
+    await click(host.querySelector('#resource-assignment-confirm-a2'));
+    const confirmed = await reply(isConfirm, { ...LATER, provisional: false, version: 3 });
+    expect(confirmed.request.headers.get('If-Match')).toBe('"2"');
+    expect(confirmed.request.body).toEqual({ force: false });
+    await reply(isList, { items: [MIGRATION, { ...LATER, provisional: false, version: 3 }], nextCursor: null });
+    expect(text(host.querySelector('[role="status"]'))).toBe('The assignment on PLAT-151 is now firm.');
+    expect(host.querySelector('button.confirm')).toBeNull();
+  });
+
+  it('tells the days confirming would overload, without the permission to force', async () => {
+    const { host, click, reply, text } = await open({ items: [LATER], nextCursor: null });
+    await click(host.querySelector('#resource-assignment-confirm-a2'));
+    const over = { date: '2026-12-09', plannedMinutes: 480, availableMinutes: 420, limitMinutes: 420 };
+    await reply(
+      isConfirm,
+      { type: 'urn:mlbpp:problem:workload.overload', title: 'Overload', status: 409, code: 'workload.overload', overload: { days: [over], forceable: false } },
+      409,
+    );
+    expect(text(host.querySelector('[role="alert"]'))).toContain('Wed, Dec 9: 8 h planned for 7 h available (+1 h). It stays provisional');
+    expect(host.querySelector('#resource-assignment-confirm-a2')).not.toBeNull();
   });
 });

@@ -374,6 +374,28 @@ mod tests {
     }
 
     #[test]
+    fn confirming_a_provisional_assignment_checks_the_load_it_now_adds() {
+        // 4 h firm elsewhere, 4 h provisional confirmed, on a 7 h day.
+        let counted = policy(0, OverloadMode::Blocking);
+        let ignored = Policy {
+            count_provisional: false,
+            ..counted
+        };
+        // Left out of the check, its 4 h count only once confirmed: they
+        // are added, and refused.
+        let left_out = [day("2026-11-18", 420, 240, 0, 240)];
+        assert_eq!(overloads(&left_out, &ignored).len(), 1);
+        assert!(matches!(
+            decide(&ignored, overloads(&left_out, &ignored), false),
+            Outcome::Refused(_)
+        ));
+        // Already counted, confirming adds nothing: it passes, flagged.
+        let already = [day("2026-11-18", 420, 240, 240, 240)];
+        assert!(overloads(&already, &counted).is_empty());
+        assert_eq!(flagged(&already, &counted).len(), 1);
+    }
+
+    #[test]
     fn part_time_days_and_public_holidays_have_their_own_capacity() {
         // Friday at 3.5 h; Wednesday 11 November 2026 is Armistice Day.
         let part_time = [Period {

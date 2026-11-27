@@ -84,6 +84,19 @@
                 </td>
                 <td class="number">{{ item.loadMinutes | duration }}</td>
                 <td class="actions">
+                  @if (item.canEdit && item.provisional && item.issue; as issue) {
+                    <button
+                      matButton
+                      type="button"
+                      class="confirm"
+                      [id]="'resource-assignment-confirm-' + item.id"
+                      [attr.aria-label]="'resources.assignments.confirmOf' | transloco: { key: issue.key }"
+                      (click)="confirm(item)"
+                    >
+                      <mat-icon aria-hidden="true">check_circle</mat-icon>
+                      {{ 'assignments.confirm.action' | transloco }}
+                    </button>
+                  }
                   @if (item.canEdit && item.issue; as issue) {
                     <button
                       matIconButton

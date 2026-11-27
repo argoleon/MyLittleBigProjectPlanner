@@ -2346,7 +2346,9 @@
       "deleted": "L’affectation sur {{ key }} a été retirée.",
       "none": "Aucune affectation.",
       "noneAhead": "Aucune affectation en cours ni à venir.",
-      "more": "Afficher plus"
+      "more": "Afficher plus",
+      "confirmOf": "Confirmer l’affectation provisoire sur {{ key }}",
+      "confirmed": "L’affectation sur {{ key }} est désormais ferme."
     }
   },
   "workload": {
@@ -2688,6 +2690,15 @@
     "empty": "Aucune ressource affectée à ce ticket.",
     "provisional": "Provisoire",
     "outside": "Certains segments sortent des dates du ticket, modifiées depuis.",
+    "confirm": {
+      "action": "Confirmer",
+      "of": "Confirmer l’affectation provisoire de {{ name }}",
+      "done": "L’affectation de {{ name }} est désormais ferme.",
+      "blocked": "Confirmée, cette affectation dépasserait la capacité — {{ days }}. Elle reste provisoire : réduisez ses segments, ou demandez à une personne autorisée de forcer la surcharge.",
+      "forceTitle": "Forcer la surcharge ?",
+      "forceMessage": "Confirmée, cette affectation dépasse la capacité — {{ days }}. Forcer la surcharge est tracé.",
+      "force": "Confirmer quand même"
+    },
     "caption": "Segments de l’affectation de {{ name }}",
     "columns": {
       "period": "Période",

@@ -249,6 +249,7 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(assignments::list, assignments::create))
         .routes(routes!(assignments::preview))
         .routes(routes!(assignments::resource_list))
+        .routes(routes!(assignments::confirm))
         .routes(routes!(
             assignments::read,
             assignments::update,

@@ -24,6 +24,7 @@ import {
 
 import { AssignmentDialog, AssignmentDialogData } from './assignment-dialog';
 import { overloadDaysText } from './overload-text';
+import { ProvisionalConfirmation } from './provisional-confirmation';
 import { segmentValueText } from './segment-text';
 
 /** The first and last days of `assignments`; null when none has a segment. */
@@ -41,7 +42,8 @@ export function planSpan(assignments: readonly Assignment[]): { from: string; to
  * ticket's planned total, the sum of its assignments. Those who assign
  * resources add, change and remove them through the dialog of mockup 21.
  * An assignment taking part in an overload of its resource is flagged with
- * its days (L08-US03).
+ * its days (L08-US03). A provisional assignment is confirmed, then checked
+ * for overload as a firm one (L08-US09).
  */
 @Component({
   selector: 'app-issue-assignments',
@@ -59,6 +61,7 @@ export class IssueAssignments {
   private readonly dialog = inject(MatDialog);
   private readonly locale = inject(LocaleService);
   private readonly transloco = inject(TranslocoService);
+  private readonly confirmation = inject(ProvisionalConfirmation);
 
   protected readonly list = resource({
     params: () => this.issue().id,
@@ -123,6 +126,19 @@ export class IssueAssignments {
         });
         this.list.reload();
       });
+  }
+
+  /** Makes a provisional assignment firm, forcing its overload when asked. */
+  protected async confirm(assignment: Assignment): Promise<void> {
+    this.notice.set(null);
+    const outcome = await this.confirmation.confirm(assignment.id, assignment.version, `#assignment-confirm-${assignment.id}`);
+    if (outcome.status === 'cancelled') return;
+    if (outcome.status === 'refused') {
+      this.notice.set({ ok: false, messageKey: outcome.messageKey, params: outcome.params });
+      return;
+    }
+    this.notice.set({ ok: true, messageKey: 'assignments.confirm.done', params: { name: assignment.resource.displayName } });
+    this.list.reload();
   }
 
   protected remove(assignment: Assignment): void {

@@ -30,6 +30,7 @@ export type { AssignedProject } from './models/assigned-project';
 export type { AssignedResource } from './models/assigned-resource';
 export type { Assignment } from './models/assignment';
 export type { AssignmentChange } from './models/assignment-change';
+export type { AssignmentConfirmation } from './models/assignment-confirmation';
 export type { AssignmentConflict } from './models/assignment-conflict';
 export type { AssignmentFields } from './models/assignment-fields';
 export type { AssignmentList } from './models/assignment-list';
@@ -392,6 +393,8 @@ export type { UpdateAssignment$Params as UpdateAssignment$Params } from './fn/is
 export { updateAssignment as updateAssignment } from './fn/issues/update-assignment';
 export type { DeleteAssignment$Params as DeleteAssignment$Params } from './fn/issues/delete-assignment';
 export { deleteAssignment as deleteAssignment } from './fn/issues/delete-assignment';
+export type { ConfirmAssignment$Params as ConfirmAssignment$Params } from './fn/issues/confirm-assignment';
+export { confirmAssignment as confirmAssignment } from './fn/issues/confirm-assignment';
 export type { SearchIssues$Params as SearchIssues$Params } from './fn/issues/search-issues';
 export { searchIssues as searchIssues } from './fn/issues/search-issues';
 export type { GetIssue$Params as GetIssue$Params } from './fn/issues/get-issue';
