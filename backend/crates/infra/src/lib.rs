@@ -72,6 +72,7 @@ pub mod screens;
 pub mod search;
 pub mod sessions;
 pub mod shutdown;
+pub mod sprints;
 pub mod storage;
 pub mod teams;
 pub mod telemetry;

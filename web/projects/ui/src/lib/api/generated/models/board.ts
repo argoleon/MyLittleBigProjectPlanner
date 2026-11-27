@@ -3,6 +3,7 @@
 
 import { BoardColumn } from '../models/board-column';
 import { BoardEstimation } from '../models/board-estimation';
+import { BoardKind } from '../models/board-kind';
 import { BoardNode } from '../models/board-node';
 import { BoardQuickFilter } from '../models/board-quick-filter';
 import { BoardSwimlanes } from '../models/board-swimlanes';
@@ -16,6 +17,12 @@ export interface Board {
    * The member may change or delete it: `manage_boards` on its node.
    */
   canManage: boolean;
+
+  /**
+   * The member may plan its sprints and rank its tickets:
+   * `manage_sprints` on its node, which is not archived.
+   */
+  canPlan: boolean;
   columns: Array<BoardColumn>;
   estimation: BoardEstimation;
 
@@ -26,9 +33,9 @@ export interface Board {
   id: string;
 
   /**
-   * `kanban`; Scrum boards come with sprints.
+   * Set at creation.
    */
-  kind: string;
+  kind: BoardKind;
   name: string;
   node: BoardNode;
   quickFilters: Array<BoardQuickFilter>;

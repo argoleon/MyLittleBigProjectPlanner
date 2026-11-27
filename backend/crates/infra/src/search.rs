@@ -447,6 +447,10 @@ impl SortKey {
 
 /// The project's key, through the join the page query adds (`pn`).
 const PROJECT_KEY_SQL: &str = "pn.key";
+/// The stays of the ticket `i` in sprints that still count (not those it
+/// left while the sprint was open): a sub-task follows its parent (L09-US01).
+const SPRINT_STAYS_SQL: &str =
+    "SELECT 1 FROM sprint_issue si WHERE si.issue_id IN (i.id, i.parent_id) AND si.removed_at IS NULL";
 const PRIORITY_RANK_SQL: &str = "CASE i.priority WHEN 'lowest' THEN 1 WHEN 'low' THEN 2 WHEN 'medium' THEN 3 \
                                  WHEN 'high' THEN 4 ELSE 5 END";
 
@@ -721,6 +725,9 @@ impl Compiler<'_> {
             (SystemField::Description, Condition::Empty { .. }) => {
                 qb.push("i.description IS NULL");
             }
+            (SystemField::Sprint, Condition::Empty { .. }) => {
+                qb.push("NOT EXISTS (").push(SPRINT_STAYS_SQL).push(")");
+            }
             (
                 SystemField::Assignee
                 | SystemField::Reporter
@@ -842,6 +849,22 @@ impl Compiler<'_> {
                 qb.push("i.parent_id IN (SELECT p.id FROM issue p WHERE p.key = ANY(")
                     .push_bind(upper)
                     .push("))");
+            }
+            SystemField::Sprint => {
+                // A ticket in no sprint is unknown, not "another sprint": like
+                // an empty assignee, `!=` and `NOT IN` leave it out.
+                let open = values
+                    .iter()
+                    .any(|v| matches!(v, Value::Function(Function::OpenSprints)));
+                qb.push("CASE WHEN EXISTS (")
+                    .push(SPRINT_STAYS_SQL)
+                    .push(") THEN EXISTS (")
+                    .push(SPRINT_STAYS_SQL)
+                    .push(" AND ((si.sprint_open AND ")
+                    .push_bind(open)
+                    .push(") OR si.sprint_id IN (SELECT s.id FROM sprint s WHERE lower(s.name) = ANY(")
+                    .push_bind(lower)
+                    .push(")))) END");
             }
             _ => return Err(operator_not_allowed(clause, &[])),
         }
@@ -1382,11 +1405,29 @@ mod tests {
     }
 
     #[test]
-    fn sprints_and_versions_wait_for_l09() {
-        for query in ["sprint IN openSprints()", "fixVersion = \"2.1\""] {
-            let error = sql_of(&parse(query).unwrap(), &context()).unwrap_err();
-            assert_eq!(error.code(), "unsupported", "{query}");
-            assert_eq!(error.span, Span::new(0, query.chars().count()));
+    fn versions_wait_for_their_story() {
+        let query = "fixVersion = \"2.1\"";
+        let error = sql_of(&parse(query).unwrap(), &context()).unwrap_err();
+        assert_eq!(error.code(), "unsupported", "{query}");
+        assert_eq!(error.span, Span::new(0, query.chars().count()));
+    }
+
+    #[test]
+    fn sprints_compile_to_their_stays() {
+        for query in [
+            "sprint IN openSprints()",
+            "sprint = \"PLAT Sprint 4\"",
+            "sprint NOT IN (openSprints(), \"Sprint 2\")",
+            "sprint IS EMPTY",
+            "sprint IS NOT EMPTY",
+        ] {
+            let sql = sql_of(&parse(query).unwrap(), &context()).unwrap();
+            assert!(sql.contains("sprint_issue si"), "{query}: {sql}");
+            assert_eq!(
+                sql.matches('(').count(),
+                sql.matches(')').count(),
+                "{query}: {sql}"
+            );
         }
     }
 

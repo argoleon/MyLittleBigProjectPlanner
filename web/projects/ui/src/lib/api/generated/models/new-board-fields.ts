@@ -3,6 +3,7 @@
 
 import { BoardColumnFields } from '../models/board-column-fields';
 import { BoardEstimation } from '../models/board-estimation';
+import { BoardKind } from '../models/board-kind';
 import { BoardQuickFilter } from '../models/board-quick-filter';
 import { BoardSwimlanes } from '../models/board-swimlanes';
 
@@ -13,6 +14,11 @@ export interface NewBoardFields {
   columns?: (Array<BoardColumnFields> | null);
   estimation?: BoardEstimation;
   filter: string;
+
+  /**
+   * Kanban when left out; it cannot change afterwards.
+   */
+  kind?: BoardKind;
   name: string;
 
   /**

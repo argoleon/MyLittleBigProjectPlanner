@@ -62,6 +62,7 @@ use crate::roles;
 use crate::saved_filters;
 use crate::screens;
 use crate::search;
+use crate::sprints;
 use crate::sso;
 use crate::teams;
 use crate::tenant::{AppState, PublicTenantTx};
@@ -221,6 +222,11 @@ pub(crate) fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(boards::read, boards::update, boards::delete))
         .routes(routes!(boards::cards))
         .routes(routes!(boards::move_card))
+        .routes(routes!(sprints::backlog))
+        .routes(routes!(sprints::create))
+        .routes(routes!(sprints::read, sprints::update, sprints::delete))
+        .routes(routes!(sprints::move_issue))
+        .routes(routes!(sprints::rank_issue))
         .routes(routes!(resources::list, resources::create))
         .routes(routes!(resources::linkable_accounts))
         .routes(routes!(resources::read, resources::update))

@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO sprint_issue (id, tenant_id, sprint_id, issue_id, added_by)\n        VALUES ($1, app_current_tenant(), $2, $3, $4)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7fd404fdae089f3fea9c876399b259bbc67e74bd12bfbce77fa7a4091e9db7c2"
+}

@@ -75,6 +75,7 @@ async fn create(
         query: "assignee = currentUser()".to_owned(),
     }];
     let input = BoardInput {
+        kind: "kanban",
         name,
         filter: "project = PLAT",
         estimation: "points",
@@ -144,6 +145,7 @@ async fn boards_and_their_columns_stay_in_their_tenant() {
         .unwrap();
     assert_eq!(columns, 0);
     let input = BoardInput {
+        kind: "kanban",
         name: "Theirs",
         filter: "",
         estimation: "points",
@@ -230,6 +232,7 @@ async fn a_board_is_written_with_its_columns_in_order() {
         wip_limit: Some(10),
     }];
     let input = BoardInput {
+        kind: "kanban",
         name: "Platform",
         filter: "project = PLAT ORDER BY due",
         estimation: "hours",

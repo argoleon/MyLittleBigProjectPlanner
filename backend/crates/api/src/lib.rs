@@ -59,6 +59,7 @@ mod routes;
 pub mod saved_filters;
 pub mod screens;
 pub mod search;
+pub mod sprints;
 pub mod sso;
 pub mod teams;
 pub mod tenant;

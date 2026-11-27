@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO board_rank (tenant_id, board_id, issue_id, rank)\n        VALUES (app_current_tenant(), $1, $2, $3)\n        ON CONFLICT (tenant_id, board_id, issue_id) DO UPDATE SET rank = EXCLUDED.rank\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "04a22af9b699a912a01059c44355ad40ae328d8b4b94161e2fb72bed2e46e6e4"
+}

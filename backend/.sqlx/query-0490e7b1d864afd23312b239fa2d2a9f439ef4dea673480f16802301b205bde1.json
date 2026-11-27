@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT sprint_id, issue_id, added_at, removed_at FROM sprint_issue\n        WHERE sprint_id = $1 ORDER BY added_at, id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "sprint_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "sprint_issue",
+            "name": "sprint_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "issue_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "sprint_issue",
+            "name": "issue_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "added_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "sprint_issue",
+            "name": "added_at"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "removed_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "sprint_issue",
+            "name": "removed_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "0490e7b1d864afd23312b239fa2d2a9f439ef4dea673480f16802301b205bde1"
+}

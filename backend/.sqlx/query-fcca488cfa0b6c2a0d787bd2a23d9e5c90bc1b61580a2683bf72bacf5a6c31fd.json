@@ -1,0 +1,149 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT s.id, s.board_id, b.name AS board_name, s.sequence, s.name, s.goal,\n               s.start_date, s.end_date, s.state, s.version, s.created_at\n        FROM sprint s JOIN board b ON b.id = s.board_id\n        WHERE ($1::uuid[] IS NULL OR s.id = ANY($1))\n          AND ($2::uuid IS NULL OR (s.board_id = $2 AND s.state <> 'closed'))\n        ORDER BY (s.state = 'active') DESC, lower(b.name), s.board_id, s.sequence\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "sprint",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "board_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "sprint",
+            "name": "board_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "board_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "board",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "sequence",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "sprint",
+            "name": "sequence"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sprint",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "goal",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sprint",
+            "name": "goal"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "start_date",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "sprint",
+            "name": "start_date"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "end_date",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "sprint",
+            "name": "end_date"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "state",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sprint",
+            "name": "state"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "version",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "sprint",
+            "name": "version"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "sprint",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "fcca488cfa0b6c2a0d787bd2a23d9e5c90bc1b61580a2683bf72bacf5a6c31fd"
+}

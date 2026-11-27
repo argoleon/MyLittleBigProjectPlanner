@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO board (id, tenant_id, node_id, name, kind, filter, estimation, swimlanes, quick_filters, created_by)\n        VALUES ($1, app_current_tenant(), $2, $3, $9, $4, $5, $6, $7, $8)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c6ff89ebfa6cc6e5c5ef2f88deb92f1d2378d075e6df7ad5e9fb21c595d4532c"
+}

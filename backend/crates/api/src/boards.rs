@@ -1,4 +1,4 @@
-//! Kanban boards (specification §6, §12, L06-US05).
+//! Boards (specification §6, §12): Kanban (L06-US05) and Scrum (L09-US01).
 //!
 //! A board belongs to a node: the members who see the node see its board,
 //! those with `manage_boards` there (tenant admins always) create, change
@@ -12,6 +12,10 @@
 //! answers `screen`, several leading there answer `choose`: the client then
 //! runs the one picked through `POST /issues/{idOrKey}/transitions`, or
 //! moves again with its `transitionId`.
+//!
+//! Cards follow the board's manual rank, the unranked ones last in the
+//! filter's order; a Scrum board plans its tickets in sprints
+//! (`crate::sprints`).
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
@@ -19,12 +23,13 @@ use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use domain::boards::{
-    BoardFields, Candidate, ColumnFields, Drop, Estimation, MAX_CARDS, QuickFilterFields, StatusRef,
+    BoardFields, Candidate, ColumnFields, Drop, Estimation, Kind, MAX_CARDS, QuickFilterFields, StatusRef,
     Swimlanes, Wip, default_columns, default_quick_filters, effective_query, lanes, pick_transition,
     validate, wip,
 };
 use domain::issues::Priority;
 use domain::permissions::Permission;
+use domain::rank::sort_by_rank;
 use domain::transitions::allowed;
 use domain::validation::FieldError;
 use domain::workflows::Category;
@@ -81,6 +86,35 @@ impl From<Swimlanes> for SwimlanesView {
             Swimlanes::None => Self::None,
             Swimlanes::Assignee => Self::Assignee,
             Swimlanes::Epic => Self::Epic,
+        }
+    }
+}
+
+/// What a board is for: the flow of its tickets, or planning them in
+/// sprints.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+#[schema(as = BoardKind)]
+pub enum KindView {
+    #[default]
+    Kanban,
+    Scrum,
+}
+
+impl From<KindView> for Kind {
+    fn from(view: KindView) -> Self {
+        match view {
+            KindView::Kanban => Self::Kanban,
+            KindView::Scrum => Self::Scrum,
+        }
+    }
+}
+
+impl From<Kind> for KindView {
+    fn from(kind: Kind) -> Self {
+        match kind {
+            Kind::Kanban => Self::Kanban,
+            Kind::Scrum => Self::Scrum,
         }
     }
 }
@@ -171,9 +205,8 @@ pub struct BoardView {
     node: NodeView,
     #[schema(example = "Platform board")]
     name: String,
-    /// `kanban`; Scrum boards come with sprints.
-    #[schema(example = "kanban")]
-    kind: String,
+    /// Set at creation.
+    kind: KindView,
     /// Its query: the tickets it shows, and their order.
     #[schema(example = "project = PLAT AND status != cancelled")]
     filter: String,
@@ -184,6 +217,9 @@ pub struct BoardView {
     columns: Vec<ColumnView>,
     /// The member may change or delete it: `manage_boards` on its node.
     can_manage: bool,
+    /// The member may plan its sprints and rank its tickets:
+    /// `manage_sprints` on its node, which is not archived.
+    can_plan: bool,
     #[schema(example = 1)]
     version: i64,
 }
@@ -249,6 +285,9 @@ pub struct NewBoardBody {
     /// The node it belongs to.
     node_id: Uuid,
     name: String,
+    /// Kanban when left out; it cannot change afterwards.
+    #[serde(default)]
+    kind: KindView,
     filter: String,
     #[serde(default)]
     estimation: EstimationView,
@@ -379,6 +418,16 @@ pub struct CardView {
     version: i64,
 }
 
+impl CardView {
+    pub(crate) const fn id(&self) -> Uuid {
+        self.id
+    }
+
+    pub(crate) const fn estimate(&self) -> Option<f64> {
+        self.estimate
+    }
+}
+
 /// A swimlane: a row of the board, one cell per column.
 #[derive(Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -462,11 +511,12 @@ fn node_view(board: &Board) -> NodeView {
     }
 }
 
-fn board_view(board: Board, can_manage: bool) -> BoardView {
+fn board_view(board: Board, can_manage: bool, can_plan: bool) -> BoardView {
     BoardView {
+        can_plan: can_plan && !board.node_archived,
         id: board.id,
         node: node_view(&board),
-        kind: board.kind,
+        kind: Kind::parse(&board.kind).unwrap_or_default().into(),
         filter: board.filter,
         estimation: Estimation::parse(&board.estimation).unwrap_or_default().into(),
         swimlanes: Swimlanes::parse(&board.swimlanes).unwrap_or_default().into(),
@@ -513,7 +563,7 @@ async fn require_manage(state: &AppState, tx: &mut TenantTx, node: Uuid) -> Resu
 }
 
 /// The board `id`, if the member sees its node.
-async fn visible(tx: &mut TenantTx, sight: &Sight, id: Uuid) -> Result<Board, Problem> {
+pub(crate) async fn visible(tx: &mut TenantTx, sight: &Sight, id: Uuid) -> Result<Board, Problem> {
     repo::find(tx, id)
         .await?
         .filter(|b| sight.sees(b.node_id))
@@ -540,6 +590,7 @@ fn with_etag(mut response: Response, version: i64) -> Response {
 /// A board as checked: what is stored.
 struct Checked {
     name: String,
+    kind: Kind,
     filter: String,
     estimation: Estimation,
     swimlanes: Swimlanes,
@@ -562,6 +613,7 @@ impl Checked {
             columns,
             BoardInput {
                 name: &self.name,
+                kind: self.kind.as_str(),
                 filter: &self.filter,
                 estimation: self.estimation.as_str(),
                 swimlanes: self.swimlanes.as_str(),
@@ -572,10 +624,11 @@ impl Checked {
     }
 }
 
-/// Checks `body`, its filter included; columns and quick filters left out
-/// take `defaults`.
+/// Checks `body`, its filter included, for a board of `kind`; columns and
+/// quick filters left out take `defaults`.
 fn checked(
     body: &BoardBody,
+    kind: Kind,
     defaults: impl FnOnce() -> (Vec<ColumnFields>, Vec<QuickFilterFields>),
 ) -> Result<Checked, Problem> {
     let (columns, quick) = match (&body.columns, &body.quick_filters) {
@@ -597,6 +650,7 @@ fn checked(
     domain::query::parse(&body.filter).map_err(|e| query_problem(&e))?;
     Ok(Checked {
         name: fields.name.trim().to_owned(),
+        kind,
         filter: body.filter.trim().to_owned(),
         estimation: body.estimation.into(),
         swimlanes: body.swimlanes.into(),
@@ -677,18 +731,21 @@ pub async fn list(
     let sight = Sight::of(&mut tx).await?;
     let visible = sight.visible();
     let boards = repo::list(&mut tx, visible.as_deref(), params.node_id).await?;
-    let mut managed: HashMap<Uuid, bool> = HashMap::new();
+    let mut rights: HashMap<Uuid, (bool, bool)> = HashMap::new();
     let mut items = Vec::with_capacity(boards.len());
     for board in boards {
-        let can_manage = match managed.get(&board.node_id) {
+        let (can_manage, can_plan) = match rights.get(&board.node_id) {
             Some(can) => *can,
             None => {
-                let can = manages(&state, &mut tx, board.node_id).await?;
-                managed.insert(board.node_id, can);
+                let can = (
+                    manages(&state, &mut tx, board.node_id).await?,
+                    crate::sprints::plans(&state, &mut tx, board.node_id).await?,
+                );
+                rights.insert(board.node_id, can);
                 can
             }
         };
-        items.push(board_view(board, can_manage));
+        items.push(board_view(board, can_manage, can_plan));
     }
     tx.commit().await?;
     Ok(ApiJson(BoardList { items }))
@@ -791,7 +848,7 @@ pub async fn create(
         Vec::new()
     };
     let locale = language.locale();
-    let checked = checked(&fields, || {
+    let checked = checked(&fields, body.kind.into(), || {
         let refs: Vec<StatusRef> = defaults
             .iter()
             .filter_map(|s| {
@@ -811,7 +868,8 @@ pub async fn create(
         .map_err(conflict_problem)?;
     tracing::info!(target: "audit", actor = %author, board = %board.id, node = %node.id, "board created");
     let (id, version) = (board.id, board.version);
-    let view = board_view(board, true);
+    let can_plan = crate::sprints::plans(&state, &mut tx, node.id).await?;
+    let view = board_view(board, true, can_plan);
     let response =
         idempotency::created(&mut tx, key.as_deref(), &view, format!("{PATH}/{id}"), version).await?;
     tx.commit().await?;
@@ -848,13 +906,14 @@ pub async fn read(
     let sight = Sight::of(&mut tx).await?;
     let board = visible(&mut tx, &sight, id).await?;
     let can_manage = manages(&state, &mut tx, board.node_id).await?;
+    let can_plan = crate::sprints::plans(&state, &mut tx, board.node_id).await?;
     tx.commit().await?;
     let version = board.version;
     if if_none_match(&headers, version) {
         return Ok(with_etag(StatusCode::NOT_MODIFIED.into_response(), version));
     }
     Ok(with_etag(
-        ApiJson(board_view(board, can_manage)).into_response(),
+        ApiJson(board_view(board, can_manage, can_plan)).into_response(),
         version,
     ))
 }
@@ -902,7 +961,8 @@ pub async fn update(
     }
     let if_match = require_if_match(&headers)?;
     let current = board.clone();
-    let checked = checked(&body, move || {
+    let kind = Kind::parse(&board.kind).unwrap_or_default();
+    let checked = checked(&body, kind, move || {
         (
             current
                 .columns
@@ -930,10 +990,11 @@ pub async fn update(
         .map_err(conflict_problem)?;
     let actor = tx.account_id();
     tracing::info!(target: "audit", actor = %actor, board = %id, "board changed");
+    let can_plan = crate::sprints::plans(&state, &mut tx, board.node_id).await?;
     let version = board.version;
     tx.commit().await?;
     Ok(with_etag(
-        ApiJson(board_view(board, true)).into_response(),
+        ApiJson(board_view(board, true, can_plan)).into_response(),
         version,
     ))
 }
@@ -1008,8 +1069,9 @@ fn quick_toggled(raw: Option<&str>, count: usize) -> Result<Vec<usize>, Problem>
     operation_id = "getBoardCards",
     summary = "The cards of a board",
     description = "Members who see its node. The tickets of its filter (`AND` the quick filters \
-                   toggled on) that the member may see, at most 1,000, in the order of the filter \
-                   (priority then last change without `ORDER BY`), in the column of their status \
+                   toggled on) that the member may see, at most 1,000, in the board's rank, the \
+                   unranked ones last in the order of the filter (priority then last change \
+                   without `ORDER BY`), in the column of their status \
                    and grouped in swimlanes. Each column tells its count against its work in \
                    progress limit.",
     params(
@@ -1059,29 +1121,13 @@ pub async fn cards(
         .await
         .map_err(search_problem)?;
     let truncated = page.next_cursor.is_some();
-
-    let project_ids: Vec<Uuid> = page
-        .items
-        .iter()
-        .map(|i| i.project_id)
-        .collect::<BTreeSet<_>>()
-        .into_iter()
-        .collect();
-    let configs: HashMap<Uuid, Option<Uuid>> = infra::search::projects_of(&mut tx, &project_ids)
-        .await?
-        .into_iter()
-        .map(|p| (p.id, p.config_id))
-        .collect();
-    let mut contents: BTreeMap<Uuid, Content> = BTreeMap::new();
-    for config in configs.values().flatten() {
-        if let std::collections::btree_map::Entry::Vacant(entry) = contents.entry(*config) {
-            entry.insert(Content::of_config(&mut tx, *config).await?);
-        }
-    }
-    let ids: Vec<Uuid> = page.items.iter().map(|i| i.id).collect();
-    let epics = repo::epics_of(&mut tx, &ids, visible_projects.as_deref()).await?;
-    let mut blockers = repo::blockers_of(&mut tx, &ids, visible_projects.as_deref()).await?;
+    let mut items = page.items;
+    let ids: Vec<Uuid> = items.iter().map(|i| i.id).collect();
+    let ranks = infra::sprints::ranks_of(&mut tx, board.id, &ids).await?;
+    sort_by_rank(&mut items, |i| ranks.get(&i.id).map(String::as_str));
     let language = Language::of(&tx, &accept);
+    let built = build_cards(&mut tx, items, estimation, visible_projects.as_deref(), &language).await?;
+    let epics = built.epics;
     tx.commit().await?;
 
     let columns: Vec<ColumnFields> = board
@@ -1093,49 +1139,14 @@ pub async fn cards(
             wip_limit: c.wip_limit,
         })
         .collect();
-    // Each card with its column, in the filter's order.
-    let mut placed: Vec<(usize, CardView)> = Vec::with_capacity(page.items.len());
+    // Each card with its column, in the board's order.
+    let mut placed: Vec<(usize, CardView)> = Vec::with_capacity(built.cards.len());
     let mut unmapped = 0;
-    for issue in page.items {
-        let Some(content) = configs
-            .get(&issue.project_id)
-            .copied()
-            .flatten()
-            .and_then(|c| contents.get(&c))
-        else {
-            continue;
-        };
-        let status = language.status_view(content, issue.status_id);
-        let Some(column) = domain::boards::column_of(&columns, status.key()) else {
-            unmapped += 1;
-            continue;
-        };
-        let estimate = content
-            .fields
-            .iter()
-            .find(|f| f.key == estimation.field_key())
-            .and_then(|f| issue.fields.get(f.item_id.to_string()))
-            .and_then(serde_json::Value::as_f64);
-        let epic = epics
-            .get(&issue.id)
-            .map(|e| IssueRefView::new(e.id, e.key.clone(), e.summary.clone()));
-        placed.push((
-            column,
-            CardView {
-                issue_type: language.type_of(content, issue.type_id),
-                status,
-                priority: Priority::parse(&issue.priority).unwrap_or_default().into(),
-                assignee: person(issue.assignee_id, issue.assignee_name.as_ref()),
-                estimate,
-                epic,
-                blocked_by: blockers.remove(&issue.id).unwrap_or_default(),
-                version: issue.version,
-                id: issue.id,
-                key: issue.key,
-                summary: issue.summary,
-                project_id: issue.project_id,
-            },
-        ));
+    for built in built.cards {
+        match domain::boards::column_of(&columns, built.card.status.key()) {
+            Some(column) => placed.push((column, built.card)),
+            None => unmapped += 1,
+        }
     }
     let mut counts = vec![0_usize; columns.len()];
     for (column, _) in &placed {
@@ -1167,6 +1178,106 @@ pub async fn cards(
     .into_response();
     language.headers(&mut response);
     Ok(response)
+}
+
+/// A card, with what the backlog needs besides.
+#[derive(Debug)]
+pub(crate) struct BuiltCard {
+    pub(crate) card: CardView,
+    /// Its status is of the `done` category.
+    pub(crate) done: bool,
+    /// Its type is a sub-task.
+    pub(crate) subtask: bool,
+    pub(crate) parent_id: Option<Uuid>,
+}
+
+/// The cards of a list of tickets, and the epic of each.
+#[derive(Debug)]
+pub(crate) struct BuiltCards {
+    pub(crate) cards: Vec<BuiltCard>,
+    pub(crate) epics: HashMap<Uuid, infra::boards::EpicOf>,
+}
+
+/// The cards of `items`, in their order, estimated in `estimation`; those of
+/// a project without a configuration are left out.
+pub(crate) async fn build_cards(
+    tx: &mut TenantTx,
+    items: Vec<infra::issues::Issue>,
+    estimation: Estimation,
+    visible_projects: Option<&[Uuid]>,
+    language: &Language,
+) -> Result<BuiltCards, Problem> {
+    let project_ids: Vec<Uuid> = items
+        .iter()
+        .map(|i| i.project_id)
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect();
+    let configs: HashMap<Uuid, Option<Uuid>> = infra::search::projects_of(tx, &project_ids)
+        .await?
+        .into_iter()
+        .map(|p| (p.id, p.config_id))
+        .collect();
+    let mut contents: BTreeMap<Uuid, Content> = BTreeMap::new();
+    for config in configs.values().flatten() {
+        if let std::collections::btree_map::Entry::Vacant(entry) = contents.entry(*config) {
+            entry.insert(Content::of_config(tx, *config).await?);
+        }
+    }
+    let ids: Vec<Uuid> = items.iter().map(|i| i.id).collect();
+    let epics = repo::epics_of(tx, &ids, visible_projects).await?;
+    let mut blockers = repo::blockers_of(tx, &ids, visible_projects).await?;
+    let mut cards = Vec::with_capacity(items.len());
+    for issue in items {
+        let Some(content) = configs
+            .get(&issue.project_id)
+            .copied()
+            .flatten()
+            .and_then(|c| contents.get(&c))
+        else {
+            continue;
+        };
+        let estimate = content
+            .fields
+            .iter()
+            .find(|f| f.key == estimation.field_key())
+            .and_then(|f| issue.fields.get(f.item_id.to_string()))
+            .and_then(serde_json::Value::as_f64);
+        let epic = epics
+            .get(&issue.id)
+            .map(|e| IssueRefView::new(e.id, e.key.clone(), e.summary.clone()));
+        let done = content
+            .workflows
+            .statuses
+            .iter()
+            .find(|s| s.item_id == issue.status_id)
+            .is_some_and(|s| Category::parse(&s.category) == Some(Category::Done));
+        let subtask = content
+            .types
+            .iter()
+            .find(|t| t.item_id == issue.type_id)
+            .is_some_and(|t| t.is_subtask);
+        cards.push(BuiltCard {
+            done,
+            subtask,
+            parent_id: issue.parent_id,
+            card: CardView {
+                issue_type: language.type_of(content, issue.type_id),
+                status: language.status_view(content, issue.status_id),
+                priority: Priority::parse(&issue.priority).unwrap_or_default().into(),
+                assignee: person(issue.assignee_id, issue.assignee_name.as_ref()),
+                estimate,
+                epic,
+                blocked_by: blockers.remove(&issue.id).unwrap_or_default(),
+                version: issue.version,
+                id: issue.id,
+                key: issue.key,
+                summary: issue.summary,
+                project_id: issue.project_id,
+            },
+        });
+    }
+    Ok(BuiltCards { cards, epics })
 }
 
 /// What a lane is keyed by: the assignee's name, or the epic's project key
