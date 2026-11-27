@@ -1,0 +1,193 @@
+@if (read.error() && !shown()) {
+  <ui-error-state [error]="read.error()" (retry)="retry()" />
+} @else if (!shown()) {
+  <ui-loading-state [label]="'backlog.loading' | transloco" />
+} @else {
+  @let b = shown()!;
+  <div class="toolbar">
+    <p class="estimation">{{ 'backlog.estimatedIn.' + b.estimation | transloco }}</p>
+    @if (canPlan()) {
+      <button matButton="filled" type="button" class="create-sprint" (click)="createSprint()">
+        <mat-icon aria-hidden="true">add</mat-icon>
+        {{ 'backlog.createSprint' | transloco }}
+      </button>
+    }
+  </div>
+  @if (message(); as m) {
+    <div class="message error" role="alert">
+      <mat-icon aria-hidden="true">undo</mat-icon>
+      <span>{{ m.key | transloco: m.params }}</span>
+    </div>
+  }
+  @if (b.truncated) {
+    <p class="message warning" role="status">{{ 'boards.truncated' | transloco }}</p>
+  }
+  @if (read.isLoading()) {
+    <mat-progress-bar
+      mode="indeterminate"
+      class="progress"
+      [attr.aria-label]="'backlog.loading' | transloco"
+    />
+  }
+
+  <div class="lists" cdkDropListGroup>
+    @for (entry of b.sprints; track entry.sprint.id) {
+      @let s = entry.sprint;
+      <section
+        class="list sprint"
+        [class.foreign]="!entry.own"
+        [attr.aria-labelledby]="'sprint-' + s.id"
+      >
+        <header class="list-head">
+          <div class="list-title">
+            <h2 class="name" [id]="'sprint-' + s.id">{{ s.name }}</h2>
+            <span class="state" [attr.data-state]="s.state">{{
+              'backlog.sprint.state.' + s.state | transloco
+            }}</span>
+            <p class="meta">
+              @if (s.startDate && s.endDate) {
+                {{
+                  'backlog.sprint.dates'
+                    | transloco
+                      : {
+                          start: (s.startDate | localDate: { day: 'numeric', month: 'short' }),
+                          end: (s.endDate | localDate: { day: 'numeric', month: 'short' }),
+                        }
+                }}
+              }
+              @if (s.goal) {
+                <span class="goal">{{ 'backlog.sprint.goal' | transloco: { goal: s.goal } }}</span>
+              }
+              @if (!entry.own) {
+                <span class="other">{{
+                  'backlog.sprint.otherBoard' | transloco: { board: s.boardName }
+                }}</span>
+              }
+            </p>
+          </div>
+          <p class="totals">
+            {{
+              'backlog.totals.' + b.estimation
+                | transloco
+                  : { count: entry.totals.count, estimate: (entry.totals.estimate | localNumber) }
+            }}
+            @if (entry.totals.unestimated > 0) {
+              · {{ 'backlog.totals.unestimated' | transloco: { count: entry.totals.unestimated } }}
+            }
+          </p>
+          @if (entry.own && canPlan()) {
+            <button
+              matIconButton
+              type="button"
+              class="sprint-menu"
+              [matMenuTriggerFor]="sprintMenu"
+              [attr.aria-label]="'backlog.sprint.actions' | transloco: { name: s.name }"
+            >
+              <mat-icon aria-hidden="true">more_vert</mat-icon>
+            </button>
+            <mat-menu #sprintMenu="matMenu">
+              <button mat-menu-item type="button" class="edit-sprint" (click)="editSprint(s)">
+                {{ 'backlog.sprint.edit' | transloco }}
+              </button>
+              @if (s.state === 'future') {
+                <button
+                  mat-menu-item
+                  type="button"
+                  class="delete-sprint"
+                  (click)="deleteSprint(entry)"
+                >
+                  {{ 'backlog.sprint.delete.action' | transloco }}
+                </button>
+              }
+            </mat-menu>
+          }
+        </header>
+        <div
+          class="rows"
+          role="list"
+          cdkDropList
+          [cdkDropListData]="s.id"
+          [cdkDropListDisabled]="!movableIn(s.id) || moving() !== null"
+          [attr.aria-label]="'backlog.sprint.rows' | transloco: { name: s.name }"
+          (cdkDropListDropped)="dropped($event)"
+        >
+          @for (item of entry.items; track item.card.id; let i = $index; let n = $count) {
+            <app-backlog-row
+              cdkDrag
+              [cdkDragData]="item"
+              [cdkDragDisabled]="!(entry.own && canPlan()) || moving() !== null"
+              [item]="item"
+              [estimation]="b.estimation"
+              [movable]="entry.own && canPlan()"
+              [busy]="moving() === item.card.id"
+              [targets]="targetsOf(item)"
+              [index]="i"
+              [count]="n"
+              (sendTo)="sendTo(item, $event)"
+              (shift)="shift(item, $event)"
+            />
+          } @empty {
+            <p class="empty" role="listitem">
+              {{ (entry.own ? 'backlog.sprint.empty' : 'backlog.sprint.emptyOther') | transloco }}
+            </p>
+          }
+        </div>
+      </section>
+    }
+
+    <section class="list backlog" aria-labelledby="backlog-title">
+      <header class="list-head">
+        <div class="list-title">
+          <h2 class="name" id="backlog-title">{{ 'backlog.title' | transloco }}</h2>
+          <p class="meta">
+            {{
+              'backlog.totals.' + b.estimation
+                | transloco
+                  : {
+                      count: b.backlog.totals.count,
+                      estimate: (b.backlog.totals.estimate | localNumber),
+                    }
+            }}
+            @if (b.backlog.totals.unestimated > 0) {
+              ·
+              {{
+                'backlog.totals.unestimated' | transloco: { count: b.backlog.totals.unestimated }
+              }}
+            }
+            @if (canPlan() && ownSprints().length > 0) {
+              · {{ 'backlog.hint' | transloco }}
+            }
+          </p>
+        </div>
+      </header>
+      <div
+        class="rows"
+        role="list"
+        cdkDropList
+        [cdkDropListData]="backlogId"
+        [cdkDropListDisabled]="!movableIn(backlogId) || moving() !== null"
+        [attr.aria-label]="'backlog.title' | transloco"
+        (cdkDropListDropped)="dropped($event)"
+      >
+        @for (item of b.backlog.items; track item.card.id; let i = $index; let n = $count) {
+          <app-backlog-row
+            cdkDrag
+            [cdkDragData]="item"
+            [cdkDragDisabled]="!canPlan() || moving() !== null"
+            [item]="item"
+            [estimation]="b.estimation"
+            [movable]="canPlan()"
+            [busy]="moving() === item.card.id"
+            [targets]="targetsOf(item)"
+            [index]="i"
+            [count]="n"
+            (sendTo)="sendTo(item, $event)"
+            (shift)="shift(item, $event)"
+          />
+        } @empty {
+          <p class="empty" role="listitem">{{ 'backlog.empty' | transloco }}</p>
+        }
+      </div>
+    </section>
+  </div>
+}

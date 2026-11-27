@@ -487,7 +487,8 @@
       "overlap": "Another absence takes this half day.",
       "inactive": "This resource is deactivated.",
       "no_working_day": "The resource has no working day in this period.",
-      "outside_issue_dates": "Outside the ticket’s dates."
+      "outside_issue_dates": "Outside the ticket’s dates.",
+      "same_issue": "A ticket cannot be placed next to itself."
     },
     "invitation": {
       "invalid": "This invitation link is invalid, has expired or was already used. Ask for a new one.",
@@ -506,7 +507,8 @@
     },
     "board": {
       "name_taken": "This node already has a board with this name.",
-      "no_transition": "No transition of the workflow leads to this column."
+      "no_transition": "No transition of the workflow leads to this column.",
+      "not_scrum": "Only a Scrum board has a backlog and sprints."
     },
     "export": {
       "pending": "The export is not ready yet.",
@@ -615,6 +617,12 @@
     },
     "workload": {
       "overload": "The assignment exceeds the resource’s capacity."
+    },
+    "sprint": {
+      "closed": "This sprint is closed.",
+      "not_future": "Only a sprint not started yet can be deleted.",
+      "foreign": "This ticket is planned in a sprint of another board.",
+      "subtask": "A sub-task follows its parent into sprints."
     }
   },
   "dialog": {
@@ -2008,7 +2016,8 @@
       "message": "Create a board to follow the work of a project through its workflow."
     },
     "kind": {
-      "kanban": "Kanban"
+      "kanban": "Kanban",
+      "scrum": "Scrum"
     },
     "total": "{{ count }} tickets",
     "unmapped": "{{ count }} without a column",
@@ -2056,7 +2065,9 @@
         "hours": "{{ value }} hours remaining"
       },
       "move": "Move {{ key }}",
-      "moveTo": "Move to {{ column }}"
+      "moveTo": "Move to {{ column }}",
+      "moveUp": "Move up",
+      "moveDown": "Move down"
     },
     "choose": {
       "title": "Move {{ key }}",
@@ -2094,7 +2105,9 @@
         "title": "Delete the board?",
         "message": "The board {{ name }} will be deleted for everyone. Its tickets stay as they are.",
         "confirm": "Delete"
-      }
+      },
+      "kind": "Kind",
+      "kindHint": "Set at creation. A Scrum board plans its tickets in sprints from a backlog."
     }
   },
   "exports": {
@@ -2826,6 +2839,73 @@
     "conflicts": {
       "title": "{{ hours }} to reschedule: the resource is away",
       "day": "{{ date }}: {{ hours }}"
+    }
+  },
+  "backlog": {
+    "loading": "Loading the backlog…",
+    "title": "Backlog",
+    "estimatedIn": {
+      "points": "Estimated in points",
+      "hours": "Estimated in hours of remaining work"
+    },
+    "createSprint": "Create a sprint",
+    "hint": "drag a ticket to a sprint to plan it",
+    "empty": "No ticket left to plan.",
+    "totals": {
+      "points": "{{ count }} tickets · {{ estimate }} points",
+      "hours": "{{ count }} tickets · {{ estimate }} h",
+      "unestimated": "{{ count }} not estimated"
+    },
+    "sprint": {
+      "state": {
+        "future": "Planned",
+        "active": "Active",
+        "closed": "Closed"
+      },
+      "dates": "{{ start }} → {{ end }}",
+      "goal": "Goal: {{ goal }}",
+      "otherBoard": "Planned by the board {{ board }}, read-only here",
+      "empty": "Drag tickets here from the backlog to plan them.",
+      "emptyOther": "None of this board’s tickets.",
+      "rows": "Tickets of {{ name }}",
+      "actions": "Actions on {{ name }}",
+      "edit": "Edit the sprint",
+      "delete": {
+        "action": "Delete the sprint",
+        "title": "Delete {{ name }}?",
+        "message": "Its {{ count }} tickets go back to the backlog. The sprint cannot be restored.",
+        "confirm": "Delete"
+      }
+    },
+    "item": {
+      "subtasks": "{{ count }} sub-tasks",
+      "unestimated": "Not estimated",
+      "actions": "Plan {{ key }}",
+      "moveTo": "Move to {{ name }}",
+      "moveToBacklog": "Move to the backlog",
+      "top": "Move to the top",
+      "up": "Move up",
+      "down": "Move down",
+      "bottom": "Move to the bottom"
+    },
+    "refused": {
+      "foreign": "{{ key }} is planned by another board: it stays there.",
+      "subtask": "{{ key }} is a sub-task: it follows its parent."
+    },
+    "dialog": {
+      "newTitle": "New sprint",
+      "editTitle": "Edit the sprint",
+      "name": "Name",
+      "nameHint": "Left empty, it is named after the project, e.g. PLAT Sprint 4.",
+      "goal": "Goal",
+      "dates": "Dates",
+      "start": "Start",
+      "end": "End",
+      "datesHint": "Optional: both dates, or none.",
+      "bothDates": "Give both dates, or none.",
+      "create": "Create",
+      "save": "Save",
+      "conflict": "Someone changed this sprint meanwhile: close and open it again."
     }
   }
 }

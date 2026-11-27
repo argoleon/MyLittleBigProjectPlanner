@@ -4,6 +4,17 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
 
 ## [Unreleased]
 
+### Added
+
+- **Scrum backlog and sprint planning** (#261)
+  - A board is now **Kanban** or **Scrum**, chosen at creation. A Scrum board opens on its backlog: its open sprints, each with its tickets and total in the board's estimation (points or hours), then the backlog of the tickets of its filter in no open sprint, finished ones left out. Sub-tasks follow their parent and show as a count on its row.
+  - A ticket is in one open sprint at most. Another board whose filter holds it shows that sprint read-only, with the board planning it.
+  - Members with **Manage sprints** on the board's node create, change and delete (while not started) sprints: a name ("PLAT Sprint 4" when left empty), a goal and dates. They drag tickets between the backlog and the sprints, or reorder them; each ticket's menu does the same with the keyboard (to a sprint or the backlog, up, down, top, bottom). Others see the changes as they happen.
+  - The rank is kept per board, as lexicographic ranks (a move writes one row). **Kanban** cards follow it too: planners reorder the cards of a column, dragged or through the card's menu.
+  - Every stay of a ticket in a sprint is kept (added, removed), for the burndown and the velocity to come.
+  - The query language runs `sprint = "PLAT Sprint 4"`, `sprint IN openSprints()`, `sprint IS EMPTY`; a sub-task follows its parent. `fixVersion` still answers `query.unsupported` until the versions.
+  - `GET /api/v1/boards/{id}/backlog`, `POST /api/v1/boards/{id}/sprints`, `/api/v1/sprints/{id}` (read, change, delete), `POST /api/v1/boards/{id}/backlog/moves`, `POST /api/v1/boards/{id}/rank`; boards carry their `kind` and `canPlan`; problems `board.not_scrum`, `sprint.closed`, `sprint.not_future`, `sprint.foreign`, `sprint.subtask`.
+
 ## [0.8.0] - 2026-11-27
 
 Work package **L08 Assignments, workload**: assignments of resources to tickets by segments, the daily load, the overload check, absence conflicts, the workload heatmap, load against capacity by portfolio, program, project and team, replacing a generic resource with a person, provisional booking and the availability search.

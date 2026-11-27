@@ -40,6 +40,7 @@ const BOARD = {
   ],
   columns: COLUMNS,
   canManage: true,
+  canPlan: false,
   version: 1,
 };
 

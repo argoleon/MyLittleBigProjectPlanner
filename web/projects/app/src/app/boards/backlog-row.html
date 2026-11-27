@@ -1,0 +1,76 @@
+@let c = item().card;
+@if (movable()) {
+  <mat-icon class="handle" cdkDragHandle aria-hidden="true">drag_indicator</mat-icon>
+}
+<ui-type-chip
+  [kind]="chipKind(c.type.color)"
+  [label]="c.type.label ?? c.type.key"
+  [iconName]="c.type.icon"
+/>
+<a class="key" [routerLink]="['/issues', c.key]">{{ c.key }}</a>
+<span class="summary">{{ c.summary }}</span>
+@if (item().subtasks > 0) {
+  <span class="subtasks">{{
+    'backlog.item.subtasks' | transloco: { count: item().subtasks }
+  }}</span>
+}
+@if (c.epic; as epic) {
+  <span class="epic">{{ epic.summary }}</span>
+}
+<ui-status-chip
+  [category]="chipCategory(c.status.category)"
+  [label]="c.status.label ?? c.status.key"
+/>
+@if (c.estimate === null || c.estimate === undefined) {
+  <span class="estimate none" [attr.aria-label]="'backlog.item.unestimated' | transloco"
+    >–</span
+  >
+} @else {
+  <span
+    class="estimate"
+    [attr.aria-label]="
+      'boards.card.estimate.' + estimation() | transloco: { value: c.estimate }
+    "
+    >{{ c.estimate }}</span
+  >
+}
+<ui-avatar [name]="c.assignee?.name" />
+@if (movable()) {
+  <button
+    matIconButton
+    type="button"
+    class="row-menu"
+    [matMenuTriggerFor]="rowMenu"
+    [disabled]="busy()"
+    [attr.aria-label]="'backlog.item.actions' | transloco: { key: c.key }"
+  >
+    <mat-icon aria-hidden="true">more_vert</mat-icon>
+  </button>
+  <mat-menu #rowMenu="matMenu">
+    @for (target of targets(); track target.id) {
+      <button mat-menu-item type="button" class="send-to" (click)="sendTo.emit(target.id)">
+        @if (target.sprint; as sprint) {
+          {{ 'backlog.item.moveTo' | transloco: { name: sprint.name } }}
+        } @else {
+          {{ 'backlog.item.moveToBacklog' | transloco }}
+        }
+      </button>
+    }
+    @if (index() > 0) {
+      <button mat-menu-item type="button" class="move-top" (click)="shift.emit('top')">
+        {{ 'backlog.item.top' | transloco }}
+      </button>
+      <button mat-menu-item type="button" class="move-up" (click)="shift.emit('up')">
+        {{ 'backlog.item.up' | transloco }}
+      </button>
+    }
+    @if (index() < count() - 1) {
+      <button mat-menu-item type="button" class="move-down" (click)="shift.emit('down')">
+        {{ 'backlog.item.down' | transloco }}
+      </button>
+      <button mat-menu-item type="button" class="move-bottom" (click)="shift.emit('bottom')">
+        {{ 'backlog.item.bottom' | transloco }}
+      </button>
+    }
+  </mat-menu>
+}

@@ -12,7 +12,8 @@ import { chipKind } from '../issues/issue-fields';
  * A card of the Kanban board (mockup 04, L06-US05): key and type, title
  * (a link to the ticket), the tickets blocking it, its epic, estimate,
  * priority and assignee. A "Move" menu sends it to another column without
- * a mouse: the accessible alternative to dragging it.
+ * a mouse, or up and down its column for planners (L09-US01): the
+ * accessible alternative to dragging it.
  */
 @Component({
   selector: 'app-board-card',
@@ -43,7 +44,7 @@ import { chipKind } from '../issues/issue-fields';
         <span class="estimate" [attr.aria-label]="'boards.card.estimate.' + estimation() | transloco: { value: c.estimate }">{{ c.estimate }}</span>
       }
       <ui-avatar [name]="c.assignee?.name" />
-      @if (movable() && targets().length > 0) {
+      @if (movable() && (targets().length > 0 || rankable())) {
         <button
           matIconButton
           type="button"
@@ -59,6 +60,12 @@ import { chipKind } from '../issues/issue-fields';
             <button mat-menu-item type="button" class="move-to" (click)="moveTo.emit(column)">
               {{ 'boards.card.moveTo' | transloco: { column: column.name } }}
             </button>
+          }
+          @if (rankable() && !first()) {
+            <button mat-menu-item type="button" class="move-up" (click)="step.emit(-1)">{{ 'boards.card.moveUp' | transloco }}</button>
+          }
+          @if (rankable() && !last()) {
+            <button mat-menu-item type="button" class="move-down" (click)="step.emit(1)">{{ 'boards.card.moveDown' | transloco }}</button>
           }
         </mat-menu>
       }
@@ -84,8 +91,15 @@ export class BoardCard {
   /** The epic shows on the card (not when grouped by epic). */
   readonly showEpic = input(true);
   readonly estimation = input<'points' | 'hours'>('points');
+  /** The member may reorder the cards of its column (the board's rank). */
+  readonly rankable = input(false);
+  /** First and last of its cell: it cannot go further up or down. */
+  readonly first = input(false);
+  readonly last = input(false);
   /** Moved to another column with the keyboard. */
   readonly moveTo = output<BoardColumnCards>();
+  /** Moved one place up (-1) or down (1) in its column with the keyboard. */
+  readonly step = output<-1 | 1>();
 
   protected readonly chipKind = chipKind;
   protected readonly priorityIcon = priorityIcon;
