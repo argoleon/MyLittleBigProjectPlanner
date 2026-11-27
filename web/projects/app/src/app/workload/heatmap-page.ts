@@ -1,4 +1,4 @@
-import { Component, computed, inject, resource, signal } from '@angular/core';
+import { Component, computed, effect, inject, resource, signal, untracked } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatChipsModule } from '@angular/material/chips';
@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, ParamMap, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import {
   Api,
@@ -129,6 +129,43 @@ export class HeatmapPage {
     },
     loader: ({ params }) => this.api.invoke(getWorkloadCell, params),
   });
+
+  /** The resource and day a link asked to open, until the heatmap is read. */
+  private pending: { resourceId: string; date: string } | null = null;
+
+  constructor() {
+    this.follow(inject(ActivatedRoute).snapshot.queryParamMap);
+    effect(() => {
+      const pending = this.pending;
+      if (!pending || !this.data.hasValue()) return;
+      const data = this.data.value();
+      this.pending = null;
+      const row = data.rows.findIndex((r) => r.resource.id === pending.resourceId);
+      const column = Math.max(
+        0,
+        data.periods.findIndex((p) => p.start <= pending.date && pending.date <= p.end),
+      );
+      if (row >= 0) untracked(() => this.selected.set({ row, column }));
+    });
+  }
+
+  /**
+   * Opens on what a link asks for (the availability search, L08-US10):
+   * `scale`, the period of `date`, `teamId`, `provisional=false`, and the
+   * details of `resourceId` on `date`.
+   */
+  private follow(query: ParamMap): void {
+    const scale = query.get('scale');
+    if (scale === 'day' || scale === 'week' || scale === 'month') this.scale.set(scale);
+    const date = query.get('date');
+    const day = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null;
+    if (day) this.anchor.set(anchorOf(this.scale(), day));
+    const team = query.get('teamId');
+    if (team) this.teamId.set(team);
+    if (query.get('provisional') === 'false') this.includeProvisional.set(false);
+    const resourceId = query.get('resourceId');
+    if (resourceId) this.pending = { resourceId, date: day ?? this.range().from };
+  }
 
   protected setScale(scale: HeatmapScale): void {
     this.scale.set(scale);

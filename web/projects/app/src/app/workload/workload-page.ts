@@ -12,6 +12,7 @@ interface WorkloadTab {
 /** The tabs, in order: the heatmap first (L08-US06). */
 export const WORKLOAD_TABS: readonly WorkloadTab[] = [
   { path: 'heatmap', labelKey: 'workload.heatmap.tab' },
+  { path: 'availability', labelKey: 'workload.availability.tab' },
   { path: 'resources', labelKey: 'resources.title' },
   { path: 'teams', labelKey: 'teams.title' },
   { path: 'calendars', labelKey: 'calendars.title' },

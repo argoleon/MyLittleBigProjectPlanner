@@ -38,6 +38,8 @@ export type { AssignTarget } from './models/assign-target';
 export type { AttachmentStatus } from './models/attachment-status';
 export type { AttachmentUpload } from './models/attachment-upload';
 export type { AuthPolicy } from './models/auth-policy';
+export type { Availability } from './models/availability';
+export type { AvailableResource } from './models/available-resource';
 export type { Board } from './models/board';
 export type { BoardCard } from './models/board-card';
 export type { BoardCards } from './models/board-cards';

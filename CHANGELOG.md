@@ -47,6 +47,10 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
 - **Confirming a provisional assignment** (#255)
   - A provisional assignment (hatched in the heatmap, counted in the overload check or not by the organization's setting) gets a **Confirm** button on the ticket's Assignments card and on the resource's Assignments tab: it becomes firm and is checked for overload as a firm assignment. In blocking mode, those with **Force overload** are asked whether to force it (traced); the others are told the days.
   - `POST /api/v1/assignments/{id}/confirm` (with `If-Match`).
+- **Availability search** (#258)
+  - A new **Availability** tab of the Workload screen finds who has a number of free days (working days entirely free, not necessarily in a row) or free hours over a period of up to 92 days, optionally in a team, most free time first, with their free time, free days and planned load against capacity. Free time is the capacity (absences, public holidays and closures deducted) less the load, day by day; the overload tolerance is not counted as free time. Provisional load counts unless left out. Load on tickets the reader does not see reduces it without naming them.
+  - Each resource found opens in the heatmap on its days, with its details; the heatmap now opens from a link on a scale, period, team and resource.
+  - `GET /api/v1/workload/availability` (also for the MCP tool `find_availability`, L16).
 
 ## [0.7.0] - 2026-11-24
 

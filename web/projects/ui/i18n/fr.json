@@ -2353,6 +2353,46 @@
   },
   "workload": {
     "tabs": "Rubriques de la charge",
+    "availability": {
+      "tab": "Disponibilités",
+      "title": "Qui est disponible ?",
+      "intro": "Les ressources ayant des jours ou des heures libres sur une période. Les absences, jours fériés et fermetures sont déduits ; la tolérance de surcharge n’est pas comptée comme du temps libre.",
+      "period": "Période",
+      "start": "Début de la période",
+      "end": "Fin de la période",
+      "need": "Recherche",
+      "needs": {
+        "days": "Jours libres",
+        "hours": "Heures libres"
+      },
+      "amount": "Au moins",
+      "daysHint": "Jours ouvrés entièrement libres, pas forcément consécutifs.",
+      "hoursHint": "Capacité restante sur la période.",
+      "options": "Options de recherche",
+      "search": "Rechercher",
+      "results": "Ressources trouvées",
+      "loading": "Recherche en cours…",
+      "foundOne": "1 ressource disponible du {{ from }} au {{ to }}.",
+      "foundMany": "{{ count }} ressources disponibles du {{ from }} au {{ to }}.",
+      "empty": "Aucune ressource n’a cette disponibilité. Essayez une période plus longue, moins d’heures ou de jours, ou une autre équipe.",
+      "caption": "Ressources disponibles, les plus libres d’abord",
+      "columns": {
+        "resource": "Ressource",
+        "free": "Temps libre",
+        "freeDays": "Jours libres",
+        "load": "Planifié",
+        "actions": "Actions"
+      },
+      "loadOf": "{{ load }} sur {{ capacity }}",
+      "openHeatmap": "Voir dans la heatmap",
+      "openHeatmapOf": "Voir dans la heatmap : {{ name }}",
+      "errors": {
+        "period": "Choisissez le premier et le dernier jour.",
+        "beforeStart": "La période se termine avant de commencer.",
+        "tooLong": "92 jours au plus.",
+        "amount": "Un nombre entier de 1 à {{ max }}."
+      }
+    },
     "heatmap": {
       "tab": "Heatmap",
       "title": "Charge des ressources",

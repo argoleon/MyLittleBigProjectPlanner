@@ -151,7 +151,7 @@ pub(crate) fn checked_range(from: Date, to: Date, scale: Scale) -> Result<Vec<Pe
     Ok(columns)
 }
 
-fn resource_view(resource: &HeatmapResource) -> ResourceRefView {
+pub(crate) fn resource_view(resource: &HeatmapResource) -> ResourceRefView {
     ResourceRefView {
         id: resource.id,
         kind: resource.kind.into(),

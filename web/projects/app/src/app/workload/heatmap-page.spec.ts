@@ -3,12 +3,14 @@
  * and the real translations: the range and filters it asks for (scale,
  * period, team, node, provisional load), the summary, the drawn heatmap
  * and the equivalent table, a cell opened in the side panel with its
- * tickets, busy time and forced overload, accessibility.
+ * tickets, busy time and forced overload, accessibility; and a link from
+ * the availability search opening a resource's details (L08-US10).
  */
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { provideRouter } from '@angular/router';
+import { Routes, provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
 import { Heatmap as HeatmapData, HeatmapCell, HeatmapGrid, provideApi, provideMaterialDefaults, toLocalDate } from 'ui';
 import { axeViolations, provideI18nTesting } from 'ui/testing';
 
@@ -65,10 +67,10 @@ const CELL: HeatmapCell = {
 };
 
 describe('HeatmapPage', () => {
-  function setup() {
+  function setup(routes: Routes = []) {
     localStorage.clear();
     TestBed.configureTestingModule({
-      providers: [provideRouter([]), provideApi(), provideHttpClientTesting(), provideI18nTesting(), provideMaterialDefaults()],
+      providers: [provideRouter(routes), provideApi(), provideHttpClientTesting(), provideI18nTesting(), provideMaterialDefaults()],
     });
     const http = TestBed.inject(HttpTestingController);
     const settle = async () => {
@@ -207,5 +209,32 @@ describe('HeatmapPage', () => {
     host.querySelector<HTMLButtonElement>('aside.panel button.close')?.click();
     await settle();
     expect(host.querySelector('aside.panel')).toBeNull();
+  });
+
+  it('opens on the scale, period, team and resource a link asks for (L08-US10)', async () => {
+    const { reply, settle, text } = setup([{ path: 'heatmap', component: HeatmapPage }]);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/heatmap?scale=day&date=2026-11-18&teamId=t1&provisional=false&resourceId=r2');
+    await settle();
+    await reply((url) => url === '/api/v1/teams', { items: [], canManage: false });
+    await reply((url) => url.startsWith('/api/v1/nodes?'), { items: [], nextCursor: null });
+    const days = {
+      ...DATA,
+      scale: 'day' as const,
+      periods: [
+        { start: '2026-11-17', end: '2026-11-17' },
+        { start: '2026-11-18', end: '2026-11-18' },
+      ],
+    };
+    const asked = await reply(isHeatmap, days);
+    expect(asked.request.params.get('scale')).toBe('day');
+    expect(asked.request.params.get('from')).toBe('2026-11-16');
+    expect(asked.request.params.get('teamId')).toBe('t1');
+    expect(asked.request.params.get('includeProvisional')).toBe('false');
+    // The resource's details, on that day.
+    const cell = await reply((url) => url.startsWith('/api/v1/workload/cell?'), { ...CELL, resource: days.rows[1].resource });
+    expect(cell.request.params.get('resourceId')).toBe('r2');
+    expect(cell.request.params.get('from')).toBe('2026-11-18');
+    expect(text(harness.routeNativeElement?.querySelector('aside.panel h2'))).toBe('Rust developer');
   });
 });
