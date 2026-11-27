@@ -242,8 +242,14 @@ pub fn split_at(segment: &Segment, today: Date, days: &[Day]) -> (Option<Segment
     let kept = u32::try_from(u64::from(segment.value) * u64::from(past) / u64::from(total)).unwrap_or(0);
     let moved = segment.value - kept;
     (
-        (kept > 0).then_some(Segment { value: kept, ..before }),
-        (moved > 0).then_some(Segment { value: moved, ..after }),
+        (kept > 0).then_some(Segment {
+            value: kept,
+            ..before
+        }),
+        (moved > 0).then_some(Segment {
+            value: moved,
+            ..after
+        }),
     )
 }
 
@@ -338,10 +344,19 @@ mod tests {
         // Cut on a Saturday: no working day left before, the whole effort
         // stays where the working days were.
         let week = segment("2026-11-16", "2026-11-22", Mode::TotalEffort, 600);
-        assert_eq!(split(week, "2026-11-21"), (Some(segment("2026-11-16", "2026-11-20", Mode::TotalEffort, 600)), None));
+        assert_eq!(
+            split(week, "2026-11-21"),
+            (
+                Some(segment("2026-11-16", "2026-11-20", Mode::TotalEffort, 600)),
+                None
+            )
+        );
         // A percentage keeps its value.
         let share = segment("2026-11-16", "2026-11-20", Mode::Percentage, 50);
-        assert_eq!(split(share, "2026-11-18").1, Some(segment("2026-11-18", "2026-11-20", Mode::Percentage, 50)));
+        assert_eq!(
+            split(share, "2026-11-18").1,
+            Some(segment("2026-11-18", "2026-11-20", Mode::Percentage, 50))
+        );
     }
 
     #[test]

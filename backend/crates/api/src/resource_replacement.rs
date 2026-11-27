@@ -293,8 +293,16 @@ pub async fn preview(
     Ok(ApiJson(ReplacementView {
         from: today,
         moved: replacement.moved.iter().map(|m| moved_view(m, &sight)).collect(),
-        overlaps: replacement.overlaps.iter().map(|t| ticket_view(t, &sight)).collect(),
-        archived: replacement.archived.iter().map(|t| ticket_view(t, &sight)).collect(),
+        overlaps: replacement
+            .overlaps
+            .iter()
+            .map(|t| ticket_view(t, &sight))
+            .collect(),
+        archived: replacement
+            .archived
+            .iter()
+            .map(|t| ticket_view(t, &sight))
+            .collect(),
         overloads: overload_days(&replacement.overloads),
         mode: policy.mode.into(),
         blocked: refused || !replacement.overlaps.is_empty(),
@@ -351,7 +359,9 @@ pub async fn replace(
     }
     let forceable = forces(&state, &mut tx, &replacement.moved).await?;
     if body.force && !forceable {
-        return Err(Problem::new(ErrorCode::PermissionDenied).with_detail("missing permission: force_overload"));
+        return Err(
+            Problem::new(ErrorCode::PermissionDenied).with_detail("missing permission: force_overload")
+        );
     }
     let outcome = overload_rules::decide(&policy, replacement.overloads.clone(), body.force);
     if let Outcome::Refused(days) = &outcome {
@@ -402,7 +412,11 @@ pub async fn replace(
         from: today,
         moved: replacement.moved.iter().map(|m| moved_view(m, &sight)).collect(),
         overlaps: Vec::new(),
-        archived: replacement.archived.iter().map(|t| ticket_view(t, &sight)).collect(),
+        archived: replacement
+            .archived
+            .iter()
+            .map(|t| ticket_view(t, &sight))
+            .collect(),
         overloads: overload_days(&replacement.overloads),
         mode: policy.mode.into(),
         blocked: false,
@@ -435,10 +449,18 @@ mod tests {
         let problem = overlap_problem(&[ticket("PLAT-1", 1), ticket("SECRET-2", 2)], &sight);
         assert_eq!(problem.code, ErrorCode::AssignmentSegmentsOverlap);
         let detail = problem.detail.unwrap_or_default();
-        assert!(detail.contains("2 ticket(s): PLAT-1 (1 not visible to you)"), "{detail}");
+        assert!(
+            detail.contains("2 ticket(s): PLAT-1 (1 not visible to you)"),
+            "{detail}"
+        );
         assert!(!detail.contains("SECRET"), "{detail}");
         assert_eq!(ticket_view(&ticket("SECRET-2", 2), &sight).issue_key, None);
-        assert_eq!(ticket_view(&ticket("PLAT-1", 1), &Sight::All).issue_key.as_deref(), Some("PLAT-1"));
+        assert_eq!(
+            ticket_view(&ticket("PLAT-1", 1), &Sight::All)
+                .issue_key
+                .as_deref(),
+            Some("PLAT-1")
+        );
     }
 
     #[test]

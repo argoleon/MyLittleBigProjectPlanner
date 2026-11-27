@@ -197,7 +197,8 @@ pub async fn replace(
     let (Some(local_today), Some(local_last)) = (local_date(today), local_date(span_last)) else {
         return Ok(replacement);
     };
-    let inputs = crate::day_capacity::load(conn, &[(generic.id, generic.calendar_id)], span_first, span_last).await?;
+    let inputs =
+        crate::day_capacity::load(conn, &[(generic.id, generic.calendar_id)], span_first, span_last).await?;
     let levels = inputs.levels(generic.id);
     let Some(calendar) = inputs.calendar(generic.id, &levels) else {
         return Ok(replacement);
@@ -219,7 +220,9 @@ pub async fn replace(
         ) else {
             continue;
         };
-        let Some(issue) = refs.get(&assignment.issue_id) else { continue };
+        let Some(issue) = refs.get(&assignment.issue_id) else {
+            continue;
+        };
         let ticket = Ticket {
             issue_id: issue.issue_id,
             key: issue.key.clone(),
@@ -251,10 +254,17 @@ pub async fn replace(
                     provisional: assignment.provisional,
                     segments: future,
                 };
-                assignments::insert(conn, crate::id::new_id(), assignment.issue_id, person.id, &input, author.actor_id)
-                    .await?
-                    .map_err(conflict_error)?
-                    .id
+                assignments::insert(
+                    conn,
+                    crate::id::new_id(),
+                    assignment.issue_id,
+                    person.id,
+                    &input,
+                    author.actor_id,
+                )
+                .await?
+                .map_err(conflict_error)?
+                .id
             }
         };
         if past.is_empty() {
@@ -292,7 +302,8 @@ pub async fn replace(
 
     // The person's days the replacement adds to, against their capacity.
     let after = totals(conn, person.id, today, span_last, policy).await?;
-    let person_inputs = crate::day_capacity::load(conn, &[(person.id, person.calendar_id)], today, span_last).await?;
+    let person_inputs =
+        crate::day_capacity::load(conn, &[(person.id, person.calendar_id)], today, span_last).await?;
     let person_levels = person_inputs.levels(person.id);
     if let Some(person_calendar) = person_inputs.calendar(person.id, &person_levels) {
         let days: Vec<DayLoad> = person_calendar

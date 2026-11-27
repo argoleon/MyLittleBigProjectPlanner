@@ -110,7 +110,12 @@ async fn any_issue(db: &TestDb, tenant: &SeedTenant, key: &str) -> (Uuid, Uuid) 
 }
 
 fn segment(start: Date, end: Date, mode: Mode, value: u32) -> StoredSegment {
-    StoredSegment { start, end, mode, value }
+    StoredSegment {
+        start,
+        end,
+        mode,
+        value,
+    }
 }
 
 async fn assign(
@@ -122,7 +127,10 @@ async fn assign(
     segments: Vec<StoredSegment>,
 ) -> Assignment {
     let mut tx = begin_tenant_tx(&db.app_pool, tenant.id).await.unwrap();
-    let input = AssignmentInput { provisional, segments };
+    let input = AssignmentInput {
+        provisional,
+        segments,
+    };
     let saved = assignments::insert(&mut tx, new_id(), issue, resource, &input, None)
         .await
         .unwrap()
@@ -207,8 +215,24 @@ async fn assignments_move_from_today_on_and_past_days_stay() {
     let (past, _) = any_issue(&db, a, "OPS").await;
     let (ahead, _) = any_issue(&db, a, "DATA").await;
     // 10 h over five working days, cut on Wednesday: 4 h stay, 6 h move.
-    assign(&db, a, across, generic, false, vec![segment(MONDAY, FRIDAY, Mode::TotalEffort, 600)]).await;
-    assign(&db, a, past, generic, false, vec![segment(MONDAY, TUESDAY, Mode::HoursPerDay, 120)]).await;
+    assign(
+        &db,
+        a,
+        across,
+        generic,
+        false,
+        vec![segment(MONDAY, FRIDAY, Mode::TotalEffort, 600)],
+    )
+    .await;
+    assign(
+        &db,
+        a,
+        past,
+        generic,
+        false,
+        vec![segment(MONDAY, TUESDAY, Mode::HoursPerDay, 120)],
+    )
+    .await;
     let upcoming = assign(
         &db,
         a,
@@ -229,9 +253,15 @@ async fn assignments_move_from_today_on_and_past_days_stay() {
     assert!(across_moved.ticket.key.starts_with("PLAT-"));
 
     let kept = of(&db, a, across, generic).await.unwrap();
-    assert_eq!(kept.segments, vec![segment(MONDAY, TUESDAY, Mode::TotalEffort, 240)]);
+    assert_eq!(
+        kept.segments,
+        vec![segment(MONDAY, TUESDAY, Mode::TotalEffort, 240)]
+    );
     let taken = of(&db, a, across, person).await.unwrap();
-    assert_eq!(taken.segments, vec![segment(WEDNESDAY, FRIDAY, Mode::TotalEffort, 360)]);
+    assert_eq!(
+        taken.segments,
+        vec![segment(WEDNESDAY, FRIDAY, Mode::TotalEffort, 360)]
+    );
     assert_eq!(taken.id, across_moved.assignment_id);
     // Wholly past: left alone; wholly ahead: moved, flag kept, generic one gone.
     assert_eq!(of(&db, a, past, generic).await.unwrap().segments.len(), 1);
@@ -260,7 +290,12 @@ async fn assignments_move_from_today_on_and_past_days_stay() {
     assert_eq!(entry.new.as_ref().unwrap()["name"], "Nathan Roux");
     assert_eq!(entry.new.as_ref().unwrap()["from"], "2026-11-18");
     let untouched = infra::audit::of_issue(&mut tx, past, 10, None).await.unwrap();
-    assert!(untouched.items.iter().all(|e| e.action != Action::ResourceReplaced));
+    assert!(
+        untouched
+            .items
+            .iter()
+            .all(|e| e.action != Action::ResourceReplaced)
+    );
 }
 
 #[tokio::test]
@@ -271,10 +306,42 @@ async fn segments_join_the_persons_assignment_and_overlaps_are_refused() {
     let person = resource(&db, a, Kind::Person, "Nathan Roux").await;
     let (joined, _) = any_issue(&db, a, "PLAT").await;
     let (clashing, _) = any_issue(&db, a, "OPS").await;
-    assign(&db, a, joined, generic, false, vec![segment(WEDNESDAY, FRIDAY, Mode::HoursPerDay, 120)]).await;
-    assign(&db, a, joined, person, false, vec![segment(NEXT_MONDAY, NEXT_TUESDAY, Mode::HoursPerDay, 60)]).await;
-    assign(&db, a, clashing, generic, false, vec![segment(THURSDAY, FRIDAY, Mode::HoursPerDay, 60)]).await;
-    assign(&db, a, clashing, person, false, vec![segment(FRIDAY, NEXT_MONDAY, Mode::HoursPerDay, 60)]).await;
+    assign(
+        &db,
+        a,
+        joined,
+        generic,
+        false,
+        vec![segment(WEDNESDAY, FRIDAY, Mode::HoursPerDay, 120)],
+    )
+    .await;
+    assign(
+        &db,
+        a,
+        joined,
+        person,
+        false,
+        vec![segment(NEXT_MONDAY, NEXT_TUESDAY, Mode::HoursPerDay, 60)],
+    )
+    .await;
+    assign(
+        &db,
+        a,
+        clashing,
+        generic,
+        false,
+        vec![segment(THURSDAY, FRIDAY, Mode::HoursPerDay, 60)],
+    )
+    .await;
+    assign(
+        &db,
+        a,
+        clashing,
+        person,
+        false,
+        vec![segment(FRIDAY, NEXT_MONDAY, Mode::HoursPerDay, 60)],
+    )
+    .await;
 
     let done = replace(&db, a, generic, person, MONDAY, true).await;
 
@@ -306,11 +373,38 @@ async fn archived_projects_stay_and_overloads_of_the_person_are_told() {
     let (moving, _) = any_issue(&db, a, "OPS").await;
     let (frozen, frozen_project) = any_issue(&db, a, "OLD").await;
     // Wednesday has 7 h: the person's 5 h and the generic's 4 h make 9 h.
-    assign(&db, a, busy, person, false, vec![segment(WEDNESDAY, WEDNESDAY, Mode::HoursPerDay, 300)]).await;
-    assign(&db, a, moving, generic, false, vec![segment(WEDNESDAY, THURSDAY, Mode::HoursPerDay, 240)]).await;
-    assign(&db, a, frozen, generic, false, vec![segment(WEDNESDAY, WEDNESDAY, Mode::HoursPerDay, 60)]).await;
+    assign(
+        &db,
+        a,
+        busy,
+        person,
+        false,
+        vec![segment(WEDNESDAY, WEDNESDAY, Mode::HoursPerDay, 300)],
+    )
+    .await;
+    assign(
+        &db,
+        a,
+        moving,
+        generic,
+        false,
+        vec![segment(WEDNESDAY, THURSDAY, Mode::HoursPerDay, 240)],
+    )
+    .await;
+    assign(
+        &db,
+        a,
+        frozen,
+        generic,
+        false,
+        vec![segment(WEDNESDAY, WEDNESDAY, Mode::HoursPerDay, 60)],
+    )
+    .await;
     let mut tx = begin_tenant_tx(&db.app_pool, a.id).await.unwrap();
-    nodes::set_archived(&mut tx, frozen_project, None, true).await.unwrap().unwrap();
+    nodes::set_archived(&mut tx, frozen_project, None, true)
+        .await
+        .unwrap()
+        .unwrap();
     tx.commit().await.unwrap();
 
     // Previewed: told, then rolled back.
@@ -318,11 +412,18 @@ async fn archived_projects_stay_and_overloads_of_the_person_are_told() {
     assert_eq!(preview.moved.len(), 1);
     assert_eq!(preview.archived.len(), 1);
     assert_eq!(preview.archived[0].issue_id, frozen);
-    assert_eq!(preview.overloads.len(), 1, "Wednesday only: Thursday has 4 h of 7 h");
+    assert_eq!(
+        preview.overloads.len(),
+        1,
+        "Wednesday only: Thursday has 4 h of 7 h"
+    );
     let wednesday = &preview.overloads[0];
     assert_eq!(wednesday.date, infra::capacity::local_date(WEDNESDAY).unwrap());
     assert_eq!((wednesday.planned, wednesday.available), (540, 420));
-    assert!(of(&db, a, moving, person).await.is_none(), "a preview writes nothing");
+    assert!(
+        of(&db, a, moving, person).await.is_none(),
+        "a preview writes nothing"
+    );
     assert_eq!(day_load(&db, a, person, WEDNESDAY).await, 300);
     assert!(of(&db, a, frozen, generic).await.is_some());
 

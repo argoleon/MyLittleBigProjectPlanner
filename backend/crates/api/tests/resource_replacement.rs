@@ -137,7 +137,13 @@ fn segment(start: &str, end: &str, minutes: u32) -> Value {
     json!({"start": start, "end": end, "mode": "hours_per_day", "value": minutes})
 }
 
-async fn assign(api: &TestApi, tenant: &SeedTenant, issue: &str, resource: &str, segments: Vec<Value>) -> Value {
+async fn assign(
+    api: &TestApi,
+    tenant: &SeedTenant,
+    issue: &str,
+    resource: &str,
+    segments: Vec<Value>,
+) -> Value {
     created(
         api,
         tenant,
@@ -148,7 +154,12 @@ async fn assign(api: &TestApi, tenant: &SeedTenant, issue: &str, resource: &str,
 }
 
 /// The segments of `resource` on `issue`, as (start, end, minutes).
-async fn segments_of(api: &TestApi, tenant: &SeedTenant, issue: &str, resource: &str) -> Vec<(String, String, u64)> {
+async fn segments_of(
+    api: &TestApi,
+    tenant: &SeedTenant,
+    issue: &str,
+    resource: &str,
+) -> Vec<(String, String, u64)> {
     let list = get(api, tenant, &format!("/api/v1/issues/{issue}/assignments")).await;
     list["items"]
         .as_array()
@@ -192,13 +203,24 @@ async fn days_ahead_move_to_the_person_past_ones_stay_and_the_generic_is_deactiv
         a,
         "PLAT-1",
         &generic,
-        vec![segment("2026-11-16", "2026-11-17", 120), segment("2030-03-11", "2030-03-12", 120)],
+        vec![
+            segment("2026-11-16", "2026-11-17", 120),
+            segment("2030-03-11", "2030-03-12", 120),
+        ],
     )
     .await;
-    assign(&api, a, "PLAT-2", &generic, vec![segment("2030-03-13", "2030-03-13", 60)]).await;
+    assign(
+        &api,
+        a,
+        "PLAT-2",
+        &generic,
+        vec![segment("2030-03-13", "2030-03-13", 60)],
+    )
+    .await;
 
     // AC1: the preview tells what would move, and writes nothing.
-    let (status, told) = send(admin(&api, a, Method::POST, &preview(&generic)).json(&json!({"personId": person}))).await;
+    let (status, told) =
+        send(admin(&api, a, Method::POST, &preview(&generic)).json(&json!({"personId": person}))).await;
     assert_eq!(status, 200, "{told}");
     let keys: Vec<&str> = told["moved"]
         .as_array()
@@ -213,15 +235,25 @@ async fn days_ahead_move_to_the_person_past_ones_stay_and_the_generic_is_deactiv
     assert_eq!(told["overloads"], json!([]));
     assert!(segments_of(&api, a, "PLAT-2", &person).await.is_empty());
 
-    let (status, done) = send(admin(&api, a, Method::POST, &replacement(&generic)).json(&json!({"personId": person}))).await;
+    let (status, done) =
+        send(admin(&api, a, Method::POST, &replacement(&generic)).json(&json!({"personId": person}))).await;
     assert_eq!(status, 200, "{done}");
     assert_eq!(done["moved"].as_array().unwrap().len(), 2);
     assert_eq!(done["deactivated"], true);
 
-    assert_eq!(segments_of(&api, a, "PLAT-1", &generic).await, vec![span("2026-11-16", "2026-11-17", 120)]);
-    assert_eq!(segments_of(&api, a, "PLAT-1", &person).await, vec![span("2030-03-11", "2030-03-12", 120)]);
+    assert_eq!(
+        segments_of(&api, a, "PLAT-1", &generic).await,
+        vec![span("2026-11-16", "2026-11-17", 120)]
+    );
+    assert_eq!(
+        segments_of(&api, a, "PLAT-1", &person).await,
+        vec![span("2030-03-11", "2030-03-12", 120)]
+    );
     assert!(segments_of(&api, a, "PLAT-2", &generic).await.is_empty());
-    assert_eq!(segments_of(&api, a, "PLAT-2", &person).await, vec![span("2030-03-13", "2030-03-13", 60)]);
+    assert_eq!(
+        segments_of(&api, a, "PLAT-2", &person).await,
+        vec![span("2030-03-13", "2030-03-13", 60)]
+    );
     let read = get(&api, a, &format!("/api/v1/resources/{generic}")).await;
     assert_eq!(read["active"], false, "{read}");
 
@@ -238,7 +270,8 @@ async fn days_ahead_move_to_the_person_past_ones_stay_and_the_generic_is_deactiv
 
     // An inactive generic resource can be replaced again: nothing left.
     let (status, again) = send(
-        admin(&api, a, Method::POST, &replacement(&generic)).json(&json!({"personId": person, "deactivate": false})),
+        admin(&api, a, Method::POST, &replacement(&generic))
+            .json(&json!({"personId": person, "deactivate": false})),
     )
     .await;
     assert_eq!(status, 200, "{again}");
@@ -254,11 +287,26 @@ async fn the_generic_stays_active_on_demand_and_segments_join_the_persons_assign
     plat(&api, a).await;
     let generic = resource(&api, a, "generic", "Backend developer").await;
     let person = resource(&api, a, "person", "Nathan Roux").await;
-    assign(&api, a, "PLAT-1", &generic, vec![segment("2030-03-11", "2030-03-12", 120)]).await;
-    assign(&api, a, "PLAT-1", &person, vec![segment("2030-03-14", "2030-03-15", 60)]).await;
+    assign(
+        &api,
+        a,
+        "PLAT-1",
+        &generic,
+        vec![segment("2030-03-11", "2030-03-12", 120)],
+    )
+    .await;
+    assign(
+        &api,
+        a,
+        "PLAT-1",
+        &person,
+        vec![segment("2030-03-14", "2030-03-15", 60)],
+    )
+    .await;
 
     let (status, done) = send(
-        admin(&api, a, Method::POST, &replacement(&generic)).json(&json!({"personId": person, "deactivate": false})),
+        admin(&api, a, Method::POST, &replacement(&generic))
+            .json(&json!({"personId": person, "deactivate": false})),
     )
     .await;
     assert_eq!(status, 200, "{done}");
@@ -266,9 +314,15 @@ async fn the_generic_stays_active_on_demand_and_segments_join_the_persons_assign
     assert_eq!(done["deactivated"], false);
     assert_eq!(
         segments_of(&api, a, "PLAT-1", &person).await,
-        vec![span("2030-03-11", "2030-03-12", 120), span("2030-03-14", "2030-03-15", 60)]
+        vec![
+            span("2030-03-11", "2030-03-12", 120),
+            span("2030-03-14", "2030-03-15", 60)
+        ]
     );
-    assert_eq!(get(&api, a, &format!("/api/v1/resources/{generic}")).await["active"], true);
+    assert_eq!(
+        get(&api, a, &format!("/api/v1/resources/{generic}")).await["active"],
+        true
+    );
 }
 
 #[tokio::test]
@@ -280,22 +334,54 @@ async fn overlapping_segments_refuse_the_whole_replacement() {
     plat(&api, a).await;
     let generic = resource(&api, a, "generic", "Backend developer").await;
     let person = resource(&api, a, "person", "Nathan Roux").await;
-    assign(&api, a, "PLAT-1", &generic, vec![segment("2030-03-11", "2030-03-12", 60)]).await;
-    assign(&api, a, "PLAT-2", &generic, vec![segment("2030-03-11", "2030-03-12", 60)]).await;
-    assign(&api, a, "PLAT-2", &person, vec![segment("2030-03-12", "2030-03-13", 60)]).await;
+    assign(
+        &api,
+        a,
+        "PLAT-1",
+        &generic,
+        vec![segment("2030-03-11", "2030-03-12", 60)],
+    )
+    .await;
+    assign(
+        &api,
+        a,
+        "PLAT-2",
+        &generic,
+        vec![segment("2030-03-11", "2030-03-12", 60)],
+    )
+    .await;
+    assign(
+        &api,
+        a,
+        "PLAT-2",
+        &person,
+        vec![segment("2030-03-12", "2030-03-13", 60)],
+    )
+    .await;
 
-    let (status, told) = send(admin(&api, a, Method::POST, &preview(&generic)).json(&json!({"personId": person}))).await;
+    let (status, told) =
+        send(admin(&api, a, Method::POST, &preview(&generic)).json(&json!({"personId": person}))).await;
     assert_eq!(status, 200, "{told}");
-    assert_eq!(told["overlaps"], json!([{"issueId": told["overlaps"][0]["issueId"], "issueKey": "PLAT-2"}]));
+    assert_eq!(
+        told["overlaps"],
+        json!([{"issueId": told["overlaps"][0]["issueId"], "issueKey": "PLAT-2"}])
+    );
     assert_eq!(told["blocked"], true);
 
-    let (status, problem) = send(admin(&api, a, Method::POST, &replacement(&generic)).json(&json!({"personId": person}))).await;
+    let (status, problem) =
+        send(admin(&api, a, Method::POST, &replacement(&generic)).json(&json!({"personId": person}))).await;
     assert_problem(status, &problem, 409, "assignment.segments_overlap");
-    assert!(problem["detail"].as_str().unwrap().contains("PLAT-2"), "{problem}");
+    assert!(
+        problem["detail"].as_str().unwrap().contains("PLAT-2"),
+        "{problem}"
+    );
     // Nothing written, not even the ticket without overlap.
     assert_eq!(segments_of(&api, a, "PLAT-1", &generic).await.len(), 1);
     assert!(segments_of(&api, a, "PLAT-1", &person).await.is_empty());
-    assert_eq!(get(&api, a, &format!("/api/v1/resources/{generic}")).await["active"], true);
+    assert_eq!(
+        get(&api, a, &format!("/api/v1/resources/{generic}")).await["active"],
+        true
+    );
 }
 
 #[tokio::test]
@@ -308,19 +394,35 @@ async fn an_overload_is_refused_then_forced_with_the_permission_and_traced() {
     let generic = resource(&api, a, "generic", "Backend developer").await;
     let person = resource(&api, a, "person", "Nathan Roux").await;
     // 5 h already on Monday 11 March 2030; 4 h more make 9 h of 7 h.
-    assign(&api, a, "PLAT-3", &person, vec![segment("2030-03-11", "2030-03-11", 300)]).await;
-    assign(&api, a, "PLAT-1", &generic, vec![segment("2030-03-11", "2030-03-12", 240)]).await;
+    assign(
+        &api,
+        a,
+        "PLAT-3",
+        &person,
+        vec![segment("2030-03-11", "2030-03-11", 300)],
+    )
+    .await;
+    assign(
+        &api,
+        a,
+        "PLAT-1",
+        &generic,
+        vec![segment("2030-03-11", "2030-03-12", 240)],
+    )
+    .await;
     let (_, manager) = member(&db, &api, a, TenantRole::ResourceManager).await;
     let body = json!({"personId": person});
 
     // A resource manager without `force_overload` on PLAT: refused, not forceable.
-    let (status, told) = send(as_member(&api, a, &manager, Method::POST, &preview(&generic)).json(&body)).await;
+    let (status, told) =
+        send(as_member(&api, a, &manager, Method::POST, &preview(&generic)).json(&body)).await;
     assert_eq!(status, 200, "{told}");
     assert_eq!(told["blocked"], true);
     assert_eq!(told["forceable"], false);
     assert_eq!(told["overloads"][0]["date"], "2030-03-11");
     assert_eq!(told["overloads"][0]["plannedMinutes"], 540);
-    let (status, problem) = send(as_member(&api, a, &manager, Method::POST, &replacement(&generic)).json(&body)).await;
+    let (status, problem) =
+        send(as_member(&api, a, &manager, Method::POST, &replacement(&generic)).json(&body)).await;
     assert_problem(status, &problem, 409, "workload.overload");
     assert_eq!(problem["overload"]["forceable"], false);
     assert_eq!(problem["overload"]["days"].as_array().unwrap().len(), 1);
@@ -334,12 +436,16 @@ async fn an_overload_is_refused_then_forced_with_the_permission_and_traced() {
 
     // A tenant admin forces it: written, traced in both places.
     let (status, done) = send(
-        admin(&api, a, Method::POST, &replacement(&generic)).json(&json!({"personId": person, "force": true})),
+        admin(&api, a, Method::POST, &replacement(&generic))
+            .json(&json!({"personId": person, "force": true})),
     )
     .await;
     assert_eq!(status, 200, "{done}");
     assert_eq!(done["overloads"].as_array().unwrap().len(), 1);
-    assert_eq!(segments_of(&api, a, "PLAT-1", &person).await, vec![span("2030-03-11", "2030-03-12", 240)]);
+    assert_eq!(
+        segments_of(&api, a, "PLAT-1", &person).await,
+        vec![span("2030-03-11", "2030-03-12", 240)]
+    );
     let forced = get(&api, a, "/api/v1/tenant/forced-overloads").await;
     let items = forced["items"].as_array().unwrap();
     assert_eq!(items.len(), 1, "{forced}");
@@ -352,7 +458,10 @@ async fn an_overload_is_refused_then_forced_with_the_permission_and_traced() {
         .iter()
         .filter_map(|e| e["action"].as_str())
         .collect();
-    assert!(actions.contains(&"overload_forced") && actions.contains(&"resource_replaced"), "{activity}");
+    assert!(
+        actions.contains(&"overload_forced") && actions.contains(&"resource_replaced"),
+        "{activity}"
+    );
 }
 
 #[tokio::test]
@@ -374,24 +483,44 @@ async fn wrong_resources_members_and_other_tenants_are_refused() {
 
     for path in [replacement(&generic), preview(&generic)] {
         let field_error = |body: &Value| body["errors"][0].clone();
-        let (status, problem) = send(admin(&api, a, Method::POST, &path).json(&json!({"personId": other_generic}))).await;
+        let (status, problem) =
+            send(admin(&api, a, Method::POST, &path).json(&json!({"personId": other_generic}))).await;
         assert_problem(status, &problem, 400, "validation_failed");
-        assert_eq!(field_error(&problem), json!({"field": "personId", "code": "not_a_person"}));
-        let (status, problem) = send(admin(&api, a, Method::POST, &path).json(&json!({"personId": gone}))).await;
+        assert_eq!(
+            field_error(&problem),
+            json!({"field": "personId", "code": "not_a_person"})
+        );
+        let (status, problem) =
+            send(admin(&api, a, Method::POST, &path).json(&json!({"personId": gone}))).await;
         assert_problem(status, &problem, 400, "validation_failed");
-        assert_eq!(field_error(&problem), json!({"field": "personId", "code": "inactive"}));
+        assert_eq!(
+            field_error(&problem),
+            json!({"field": "personId", "code": "inactive"})
+        );
         let (status, problem) =
             send(admin(&api, a, Method::POST, &path).json(&json!({"personId": Uuid::from_u128(7)}))).await;
         assert_problem(status, &problem, 400, "validation_failed");
-        assert_eq!(field_error(&problem), json!({"field": "personId", "code": "not_found"}));
+        assert_eq!(
+            field_error(&problem),
+            json!({"field": "personId", "code": "not_found"})
+        );
     }
     // Only a generic resource is replaced.
     let (status, problem) =
         send(admin(&api, a, Method::POST, &replacement(&person)).json(&json!({"personId": person}))).await;
     assert_problem(status, &problem, 400, "validation_failed");
-    assert_eq!(problem["errors"][0], json!({"field": "id", "code": "not_generic"}));
+    assert_eq!(
+        problem["errors"][0],
+        json!({"field": "id", "code": "not_generic"})
+    );
     let (status, problem) = send(
-        admin(&api, a, Method::POST, &replacement(&Uuid::from_u128(7).to_string())).json(&json!({"personId": person})),
+        admin(
+            &api,
+            a,
+            Method::POST,
+            &replacement(&Uuid::from_u128(7).to_string()),
+        )
+        .json(&json!({"personId": person})),
     )
     .await;
     assert_problem(status, &problem, 404, "not_found");
@@ -409,7 +538,8 @@ async fn wrong_resources_members_and_other_tenants_are_refused() {
     assert_problem(status, &problem, 404, "not_found");
     // Unknown fields are refused.
     let (status, problem) = send(
-        admin(&api, a, Method::POST, &replacement(&generic)).json(&json!({"personId": person, "from": "2030-01-01"})),
+        admin(&api, a, Method::POST, &replacement(&generic))
+            .json(&json!({"personId": person, "from": "2030-01-01"})),
     )
     .await;
     assert_eq!(status, 400, "{problem}");
