@@ -105,6 +105,11 @@ export const routes: Routes = [
             loadComponent: () => import('./workload/heatmap-page').then((m) => m.HeatmapPage),
           },
           {
+            path: 'availability',
+            title: 'workload.availability.tab',
+            loadComponent: () => import('./workload/availability-page').then((m) => m.AvailabilityPage),
+          },
+          {
             path: 'resources',
             title: 'resources.title',
             loadComponent: () => import('./resources/resources-page').then((m) => m.ResourcesPage),

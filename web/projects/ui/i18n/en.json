@@ -2353,6 +2353,46 @@
   },
   "workload": {
     "tabs": "Workload sections",
+    "availability": {
+      "tab": "Availability",
+      "title": "Who is available?",
+      "intro": "Resources with free days or free hours over a period. Absences, public holidays and closures are deducted; the overload tolerance is not counted as free time.",
+      "period": "Period",
+      "start": "Start of the period",
+      "end": "End of the period",
+      "need": "Looking for",
+      "needs": {
+        "days": "Free days",
+        "hours": "Free hours"
+      },
+      "amount": "At least",
+      "daysHint": "Working days entirely free, not necessarily in a row.",
+      "hoursHint": "Capacity left over the period.",
+      "options": "Search options",
+      "search": "Search",
+      "results": "Resources found",
+      "loading": "Searching…",
+      "foundOne": "1 resource available from {{ from }} to {{ to }}.",
+      "foundMany": "{{ count }} resources available from {{ from }} to {{ to }}.",
+      "empty": "No resource has this availability. Try a longer period, fewer hours or days, or another team.",
+      "caption": "Available resources, most free time first",
+      "columns": {
+        "resource": "Resource",
+        "free": "Free time",
+        "freeDays": "Free days",
+        "load": "Planned",
+        "actions": "Actions"
+      },
+      "loadOf": "{{ load }} of {{ capacity }}",
+      "openHeatmap": "See in the heatmap",
+      "openHeatmapOf": "See in the heatmap: {{ name }}",
+      "errors": {
+        "period": "Choose the first and last days.",
+        "beforeStart": "The period ends before it starts.",
+        "tooLong": "92 days at most.",
+        "amount": "A whole number from 1 to {{ max }}."
+      }
+    },
     "heatmap": {
       "tab": "Heatmap",
       "title": "Resource workload",

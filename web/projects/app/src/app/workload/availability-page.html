@@ -1,0 +1,131 @@
+<section class="search" aria-labelledby="availability-title">
+  <h2 class="title" id="availability-title">{{ 'workload.availability.title' | transloco }}</h2>
+  <p class="intro">{{ 'workload.availability.intro' | transloco }}</p>
+
+  <form class="criteria" [formGroup]="form" (ngSubmit)="search()">
+    <mat-form-field appearance="outline" class="period">
+      <mat-label>{{ 'workload.availability.period' | transloco }}</mat-label>
+      <mat-date-range-input [rangePicker]="picker">
+        <input matStartDate formControlName="start" required [attr.aria-label]="'workload.availability.start' | transloco" />
+        <input matEndDate formControlName="end" required [attr.aria-label]="'workload.availability.end' | transloco" />
+      </mat-date-range-input>
+      <mat-datepicker-toggle matIconSuffix [for]="picker" />
+      <mat-date-range-picker #picker />
+      @if (periodProblem(); as key) {
+        <mat-hint class="problem" role="alert">{{ key | transloco }}</mat-hint>
+      }
+      @if (form.controls.start.invalid || form.controls.end.invalid) {
+        <mat-error>{{ 'workload.availability.errors.period' | transloco }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="team">
+      <mat-label>{{ 'workload.heatmap.team' | transloco }}</mat-label>
+      <mat-select formControlName="teamId">
+        <mat-option [value]="null">{{ 'workload.heatmap.allTeams' | transloco }}</mat-option>
+        @for (team of teams.value()?.items ?? []; track team.id) {
+          <mat-option [value]="team.id">{{ team.name ?? team.nameTranslations['fr'] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <div class="need">
+      <mat-button-toggle-group
+        formControlName="need"
+        (change)="setNeed($event.value)"
+        [attr.aria-label]="'workload.availability.need' | transloco"
+        hideSingleSelectionIndicator
+      >
+        <mat-button-toggle value="days">{{ 'workload.availability.needs.days' | transloco }}</mat-button-toggle>
+        <mat-button-toggle value="hours">{{ 'workload.availability.needs.hours' | transloco }}</mat-button-toggle>
+      </mat-button-toggle-group>
+      <mat-form-field appearance="outline" class="amount">
+        <mat-label>{{ 'workload.availability.amount' | transloco }}</mat-label>
+        <input matInput type="number" formControlName="amount" min="1" [max]="maxAmount()" step="1" />
+        <mat-hint>{{ (need() === 'days' ? 'workload.availability.daysHint' : 'workload.availability.hoursHint') | transloco }}</mat-hint>
+        @if (form.controls.amount.invalid) {
+          <mat-error>{{ 'workload.availability.errors.amount' | transloco: { max: maxAmount() + '' } }}</mat-error>
+        }
+      </mat-form-field>
+    </div>
+
+    <mat-chip-listbox [attr.aria-label]="'workload.availability.options' | transloco" multiple>
+      <mat-chip-option [selected]="includeProvisional()" (selectionChange)="includeProvisional.set($event.selected)">
+        {{ 'workload.heatmap.includeProvisional' | transloco }}
+      </mat-chip-option>
+    </mat-chip-listbox>
+
+    <button matButton="filled" type="submit" class="submit">
+      <mat-icon aria-hidden="true">search</mat-icon>
+      {{ 'workload.availability.search' | transloco }}
+    </button>
+  </form>
+</section>
+
+<section class="results" aria-labelledby="availability-results">
+  <h2 class="cdk-visually-hidden" id="availability-results">{{ 'workload.availability.results' | transloco }}</h2>
+  @if (results.error()) {
+    <ui-error-state [error]="results.error()" [headingLevel]="3" (retry)="results.reload()" />
+  } @else if (results.isLoading()) {
+    <mat-progress-bar mode="indeterminate" [attr.aria-label]="'workload.availability.loading' | transloco" />
+  } @else if (results.value(); as shown) {
+    <p class="summary" role="status">
+      {{
+        (items().length === 1 ? 'workload.availability.foundOne' : 'workload.availability.foundMany')
+          | transloco
+            : {
+                count: items().length + '',
+                from: (shown.from | localDate: { day: 'numeric', month: 'short' }),
+                to: (shown.to | localDate: { day: 'numeric', month: 'short', year: 'numeric' }),
+              }
+      }}
+    </p>
+    @if (items().length === 0) {
+      <p class="empty">{{ 'workload.availability.empty' | transloco }}</p>
+    } @else {
+      <table class="found">
+        <caption class="cdk-visually-hidden">{{ 'workload.availability.caption' | transloco }}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{{ 'workload.availability.columns.resource' | transloco }}</th>
+            <th scope="col" class="number">{{ 'workload.availability.columns.free' | transloco }}</th>
+            <th scope="col" class="number">{{ 'workload.availability.columns.freeDays' | transloco }}</th>
+            <th scope="col" class="number">{{ 'workload.availability.columns.load' | transloco }}</th>
+            <th scope="col"><span class="cdk-visually-hidden">{{ 'workload.availability.columns.actions' | transloco }}</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of items(); track item.resource.id) {
+            <tr>
+              <th scope="row" class="resource">
+                <a class="name" [routerLink]="['/workload/resources', item.resource.id]">{{ item.resource.displayName }}</a>
+                @if (item.resource.kind === 'generic') {
+                  &ngsp;<span class="tag">{{ 'resource.holding.generic' | transloco }}</span>
+                }
+                @if (item.resource.jobTitle) {
+                  &ngsp;<span class="job">{{ item.resource.jobTitle }}</span>
+                }
+              </th>
+              <td class="number free">{{ item.freeMinutes | duration }}</td>
+              <td class="number">{{ item.freeDays }}</td>
+              <td class="number">
+                {{ 'workload.availability.loadOf' | transloco: { load: (item.loadMinutes | duration), capacity: (item.capacityMinutes | duration) } }}
+              </td>
+              <td class="actions">
+                <a
+                  matButton
+                  [routerLink]="['/workload/heatmap']"
+                  [queryParams]="heatmapLink(item)"
+                  [attr.aria-label]="'workload.availability.openHeatmapOf' | transloco: { name: item.resource.displayName }"
+                >
+                  <mat-icon aria-hidden="true">grid_view</mat-icon>
+                  {{ 'workload.availability.openHeatmap' | transloco }}
+                </a>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  }
+</section>

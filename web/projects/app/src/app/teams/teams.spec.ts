@@ -118,7 +118,7 @@ function answerWorkloadCard(): void {
 }
 
 describe('WorkloadPage', () => {
-  it('shows the Heatmap, Resources, Teams and Calendars as routed tabs', async () => {
+  it('shows the Heatmap, Availability, Resources, Teams and Calendars as routed tabs', async () => {
     const kit = setup([
       {
         path: 'workload',
@@ -134,8 +134,8 @@ describe('WorkloadPage', () => {
     await kit.reply(isTeams, { items: [], canManage: false });
     expect(kit.text(kit.root().querySelector('h1'))).toBe('Workload');
     const tabs = Array.from(kit.root().querySelectorAll('a[mat-tab-link]'));
-    expect(tabs.map((tab) => kit.text(tab))).toEqual(['Heatmap', 'Resources', 'Teams', 'Calendars']);
-    expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual(['false', 'false', 'true', 'false']);
+    expect(tabs.map((tab) => kit.text(tab))).toEqual(['Heatmap', 'Availability', 'Resources', 'Teams', 'Calendars']);
+    expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual(['false', 'false', 'false', 'true', 'false']);
     expect(await axeViolations(harness.routeNativeElement!.parentElement!)).toEqual([]);
     answerWorkloadCard();
     TestBed.inject(HttpTestingController).verify();

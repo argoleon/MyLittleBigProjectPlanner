@@ -11,7 +11,9 @@
  * keyboard and in its table view, shows the week of those hours and what
  * is behind it, the forced overload included (L08-US06). A generic
  * resource is replaced by a person from its page (L08-US08). A provisional
- * assignment is pencilled in, then confirmed as firm (L08-US09).
+ * assignment is pencilled in, then confirmed as firm (L08-US09). The
+ * availability search finds who has free hours on a day in a team, and
+ * opens it in the heatmap (L08-US10).
  *
  * Runs with `just compose-e2e` only: deploy/tests/e2e.sh creates the admin
  * and passes E2E_ADMIN_EMAIL and E2E_ADMIN_SECRET.
@@ -321,4 +323,63 @@ test('a provisional assignment is pencilled in, then confirmed as firm', async (
   await expect(card.getByRole('status')).toHaveText(`${name}’s assignment is now firm.`);
   await expect(block.locator('.tag.provisional')).toHaveCount(0);
   await expect(confirm).toHaveCount(0);
+});
+
+test('who has free hours on a day in a team is found, then opened in the heatmap', async ({ page }) => {
+  test.setTimeout(120_000);
+  const stamp = Date.now();
+  const key = `AV${String(stamp).slice(-6)}`;
+  const name = `E2E Available ${stamp}`;
+  const team = `E2E Team ${stamp}`;
+  const wednesday = plainWednesday();
+  const day = new Date(wednesday).toISOString().slice(0, 10);
+
+  await page.context().addInitScript(() => localStorage.setItem('mlbpp.language', 'en'));
+  await page.goto('/sign-in');
+  await page.getByLabel('Email').fill(adminEmail!);
+  await page.getByLabel('Password').fill(adminSecret!);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Home');
+  // 4 h planned on that Wednesday: 3 h free of 7 h.
+  const resource = await seed(page, key, name, day);
+  await page.evaluate(
+    async ({ team, resource }) => {
+      const session = (await (await fetch('/api/v1/auth/session')).json()) as { csrfToken: string };
+      const headers = { 'content-type': 'application/json', 'x-csrf-token': session.csrfToken };
+      const created = await fetch('/api/v1/teams', { method: 'POST', headers, body: JSON.stringify({ nameTranslations: { fr: team, en: team } }) });
+      if (created.status >= 300) throw new Error(`POST /api/v1/teams: ${created.status}`);
+      const { id } = (await created.json()) as { id: string };
+      const added = await fetch(`/api/v1/teams/${id}/members/${resource}`, { method: 'PUT', headers });
+      if (added.status >= 300) throw new Error(`PUT member: ${added.status}`);
+    },
+    { team, resource },
+  );
+
+  await page.goto('/workload');
+  await page.getByRole('tab', { name: 'Availability' }).click();
+  await expect(page).toHaveURL(/\/workload\/availability$/);
+  await page.getByLabel('Start of the period').fill(typed(wednesday));
+  await page.getByLabel('End of the period').fill(typed(wednesday));
+  await page.locator('mat-form-field', { has: page.getByRole('combobox', { name: 'Team' }) }).click();
+  await page.getByRole('option', { name: team }).click();
+  await page.getByRole('radio', { name: 'Free hours' }).or(page.getByRole('button', { name: 'Free hours' })).first().click();
+  await page.getByLabel('At least').fill('3');
+  await page.getByRole('button', { name: 'Search' }).click();
+
+  const row = page.locator('table.found tbody tr', { hasText: name });
+  await expect(row.locator('td')).toHaveText(['3 h', '0', '4 h of 7 h', /See in the heatmap/]);
+  await expect(page.getByRole('status')).toContainText('1 resource available');
+  expect(await accessibilityViolations(page), 'availability search').toEqual([]);
+
+  // 4 free hours: nobody in the team.
+  await page.getByLabel('At least').fill('4');
+  await page.getByRole('button', { name: 'Search' }).click();
+  await expect(page.getByRole('status')).toContainText('0 resources available');
+
+  // Back to 3, then the heatmap on that day, the resource's details open.
+  await page.getByLabel('At least').fill('3');
+  await page.getByRole('button', { name: 'Search' }).click();
+  await row.getByRole('link', { name: `See in the heatmap: ${name}` }).click();
+  await expect(page).toHaveURL(/\/workload\/heatmap\?scale=day/);
+  await expect(page.locator('aside.panel h2')).toHaveText(name);
 });
