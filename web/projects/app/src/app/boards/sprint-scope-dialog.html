@@ -1,0 +1,48 @@
+@if (scope.hasValue()) {
+  @let s = scope.value();
+  <h2 mat-dialog-title>{{ s.sprint.name }}</h2>
+  <mat-dialog-content class="content">
+    <p class="totals">
+      {{ 'backlog.scope.committed.' + data.estimation | transloco: { count: s.sprint.committedCount ?? 0, estimate: (s.sprint.committedEstimate ?? 0 | localNumber) } }}
+      @if (s.sprint.completedCount !== null && s.sprint.completedCount !== undefined) {
+        · {{ 'backlog.scope.completed.' + data.estimation | transloco: { count: s.sprint.completedCount, estimate: (s.sprint.completedEstimate ?? 0 | localNumber) } }}
+      }
+    </p>
+    <table mat-table [dataSource]="s.items" class="scope">
+      <ng-container matColumnDef="key">
+        <th mat-header-cell *matHeaderCellDef>{{ 'backlog.scope.key' | transloco }}</th>
+        <td mat-cell *matCellDef="let item">
+          <a [routerLink]="['/issues', item.key]" mat-dialog-close>{{ item.key }}</a>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="summary">
+        <th mat-header-cell *matHeaderCellDef>{{ 'backlog.scope.summary' | transloco }}</th>
+        <td mat-cell *matCellDef="let item">{{ item.summary }}</td>
+      </ng-container>
+      <ng-container matColumnDef="arrival">
+        <th mat-header-cell *matHeaderCellDef>{{ 'backlog.scope.arrival' | transloco }}</th>
+        <td mat-cell *matCellDef="let item">{{ (item.committed ? 'backlog.scope.wasCommitted' : 'backlog.scope.addedLater') | transloco }}</td>
+      </ng-container>
+      <ng-container matColumnDef="outcome">
+        <th mat-header-cell *matHeaderCellDef>{{ 'backlog.scope.outcome' | transloco }}</th>
+        <td mat-cell *matCellDef="let item" [attr.data-outcome]="outcomeOf(item)">{{ 'backlog.scope.outcomes.' + outcomeOf(item) | transloco }}</td>
+      </ng-container>
+      <ng-container matColumnDef="estimate">
+        <th mat-header-cell *matHeaderCellDef>{{ 'backlog.scope.estimate' | transloco }}</th>
+        <td mat-cell *matCellDef="let item">{{ item.estimateAtClose ?? item.estimateAtStart ?? '–' }}</td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="columns"></tr>
+      <tr mat-row *matRowDef="let row; columns: columns"></tr>
+    </table>
+    @if (s.hidden > 0) {
+      <p class="hidden">{{ 'backlog.scope.hidden' | transloco: { count: s.hidden } }}</p>
+    }
+  </mat-dialog-content>
+} @else if (scope.error()) {
+  <mat-dialog-content><ui-error-state [error]="scope.error()" (retry)="scope.reload()" /></mat-dialog-content>
+} @else {
+  <mat-dialog-content><ui-loading-state [label]="'backlog.loading' | transloco" /></mat-dialog-content>
+}
+<mat-dialog-actions align="end">
+  <button matButton type="button" mat-dialog-close>{{ 'dialog.close' | transloco }}</button>
+</mat-dialog-actions>

@@ -919,9 +919,13 @@ pub struct StartBody {
     /// Up to 1,000 characters; its current goal when left out.
     #[serde(default)]
     goal: Option<String>,
-    #[schema(value_type = String, format = Date)]
+    /// Required: `validation_failed` when left out.
+    #[serde(default)]
+    #[schema(value_type = Option<String>, format = Date)]
     start_date: Option<Date>,
-    #[schema(value_type = String, format = Date)]
+    /// Required, not before `startDate`.
+    #[serde(default)]
+    #[schema(value_type = Option<String>, format = Date)]
     end_date: Option<Date>,
 }
 

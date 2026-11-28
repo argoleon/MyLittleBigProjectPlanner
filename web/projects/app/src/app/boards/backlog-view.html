@@ -65,16 +65,39 @@
               }
             </p>
           </div>
-          <p class="totals">
-            {{
-              'backlog.totals.' + b.estimation
-                | transloco
-                  : { count: entry.totals.count, estimate: (entry.totals.estimate | localNumber) }
-            }}
-            @if (entry.totals.unestimated > 0) {
-              · {{ 'backlog.totals.unestimated' | transloco: { count: entry.totals.unestimated } }}
-            }
-          </p>
+          @if (s.state === 'active') {
+            <div class="progress-done">
+              <mat-progress-bar
+                mode="determinate"
+                [value]="entry.totals.estimate > 0 ? (entry.totals.done / entry.totals.estimate) * 100 : 0"
+                [attr.aria-label]="'backlog.sprint.progress' | transloco: { name: s.name }"
+              />
+              <span class="totals">{{
+                'backlog.sprint.done.' + b.estimation
+                  | transloco: { done: (entry.totals.done | localNumber), estimate: (entry.totals.estimate | localNumber) }
+              }}</span>
+            </div>
+          } @else {
+            <p class="totals">
+              {{
+                'backlog.totals.' + b.estimation
+                  | transloco
+                    : { count: entry.totals.count, estimate: (entry.totals.estimate | localNumber) }
+              }}
+              @if (entry.totals.unestimated > 0) {
+                · {{ 'backlog.totals.unestimated' | transloco: { count: entry.totals.unestimated } }}
+              }
+            </p>
+          }
+          @if (entry.own && canPlan() && s.state === 'active') {
+            <button matButton="outlined" type="button" class="close-sprint" (click)="closeSprint(entry)">
+              {{ 'backlog.sprint.close' | transloco }}
+            </button>
+          } @else if (entry.own && canPlan() && s.state === 'future' && !hasActive()) {
+            <button matButton="filled" type="button" class="start-sprint" (click)="startSprint(s)">
+              {{ 'backlog.sprint.start' | transloco }}
+            </button>
+          }
           @if (entry.own && canPlan()) {
             <button
               matIconButton
@@ -188,6 +211,55 @@
           <p class="empty" role="listitem">{{ 'backlog.empty' | transloco }}</p>
         }
       </div>
+    </section>
+
+    <section class="closed" aria-labelledby="closed-title">
+      <button
+        matButton
+        type="button"
+        class="show-closed"
+        id="closed-title"
+        [attr.aria-expanded]="showClosed()"
+        aria-controls="closed-sprints"
+        (click)="showClosed.set(!showClosed())"
+      >
+        <mat-icon aria-hidden="true">{{ showClosed() ? 'expand_less' : 'expand_more' }}</mat-icon>
+        {{ 'backlog.closed.title' | transloco }}
+      </button>
+      @if (showClosed()) {
+        <div id="closed-sprints">
+          @if (closed.hasValue()) {
+            <ul class="closed-list">
+              @for (sprint of closed.value(); track sprint.id) {
+                <li class="closed-sprint">
+                  <span class="name">{{ sprint.name }}</span>
+                  <span class="meta">
+                    {{
+                      'backlog.closed.summary.' + b.estimation
+                        | transloco
+                          : {
+                              completed: (sprint.completedEstimate ?? 0 | localNumber),
+                              committed: (sprint.committedEstimate ?? 0 | localNumber),
+                              done: sprint.completedCount ?? 0,
+                              count: sprint.committedCount ?? 0,
+                            }
+                    }}
+                  </span>
+                  <button matButton type="button" class="see-scope" (click)="seeScope(sprint)" [attr.aria-label]="'backlog.closed.see' | transloco: { name: sprint.name }">
+                    {{ 'backlog.closed.scope' | transloco }}
+                  </button>
+                </li>
+              } @empty {
+                <li class="empty">{{ 'backlog.closed.none' | transloco }}</li>
+              }
+            </ul>
+          } @else if (closed.error()) {
+            <ui-error-state [error]="closed.error()" (retry)="closed.reload()" />
+          } @else {
+            <ui-loading-state [label]="'backlog.loading' | transloco" />
+          }
+        </div>
+      }
     </section>
   </div>
 }

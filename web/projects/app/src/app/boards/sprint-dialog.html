@@ -1,0 +1,45 @@
+<h2 mat-dialog-title>{{ 'backlog.dialog.title.' + mode | transloco }}</h2>
+<form [formGroup]="form" (ngSubmit)="save()" novalidate>
+  <mat-dialog-content class="fields">
+    @if (errorKey(); as errorKey) {
+      <p class="message error" role="alert">{{ errorKey | transloco }}</p>
+    }
+    @if (mode === 'start') {
+      <p class="note">{{ 'backlog.dialog.startNote' | transloco }}</p>
+    }
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'backlog.dialog.name' | transloco }}</mat-label>
+      <input matInput formControlName="name" [maxlength]="nameMax" autocomplete="off" [required]="!!data.sprint" />
+      @if (!data.sprint) {
+        <mat-hint>{{ 'backlog.dialog.nameHint' | transloco }}</mat-hint>
+      }
+      <mat-error>{{ form.controls.name.getError('api') ?? 'errors.field.required' | transloco }}</mat-error>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'backlog.dialog.goal' | transloco }}</mat-label>
+      <textarea matInput formControlName="goal" rows="2" [maxlength]="goalMax"></textarea>
+      @if (form.controls.goal.getError('api'); as key) {
+        <mat-error>{{ key | transloco }}</mat-error>
+      }
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'backlog.dialog.dates' | transloco }}</mat-label>
+      <mat-date-range-input [rangePicker]="picker" [formGroup]="form.controls.dates" [required]="mode === 'start'">
+        <input matStartDate formControlName="start" [placeholder]="'backlog.dialog.start' | transloco" />
+        <input matEndDate formControlName="end" [placeholder]="'backlog.dialog.end' | transloco" />
+      </mat-date-range-input>
+      <mat-datepicker-toggle matIconSuffix [for]="picker" />
+      <mat-date-range-picker #picker />
+      <mat-hint>{{ (mode === 'start' ? 'backlog.dialog.datesStartHint' : 'backlog.dialog.datesHint') | transloco }}</mat-hint>
+    </mat-form-field>
+    @if (datesError(); as key) {
+      <p class="message error dates-error" role="alert">{{ key | transloco }}</p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button matButton type="button" mat-dialog-close>{{ 'dialog.cancel' | transloco }}</button>
+    <button matButton="filled" type="submit" class="save" [disabled]="saving()">
+      {{ 'backlog.dialog.submit.' + mode | transloco }}
+    </button>
+  </mat-dialog-actions>
+</form>

@@ -6,6 +6,7 @@ import {
   inject,
   input,
   linkedSignal,
+  output,
   resource,
   signal,
 } from '@angular/core';
@@ -30,16 +31,21 @@ import {
   LocalNumberPipe,
   Realtime,
   Sprint,
+  SprintClosed,
   deleteSprint,
   errorTranslationKey,
   getBacklog,
   isApiProblem,
+  listSprints,
   moveBacklogIssue,
+  toLocalDate,
 } from 'ui';
 
 import { BACKLOG, ListId, itemsOf, listOfItem, moved, placement, plannable } from './backlog-model';
 import { BacklogRow, Shift, Target } from './backlog-row';
+import { CloseSprintData, CloseSprintDialog } from './close-sprint-dialog';
 import { SprintDialog, SprintDialogData } from './sprint-dialog';
+import { SprintScopeData, SprintScopeDialog } from './sprint-scope-dialog';
 
 /** How long real-time signals gather before the backlog is read again. */
 export const REALTIME_DELAY_MS = 300;
@@ -58,6 +64,11 @@ interface Message {
  * menu with the keyboard: move to a sprint or the backlog, up, down, top,
  * bottom. They create, change and delete future sprints. Changes by others
  * show as they happen.
+ *
+ * Planners start a future sprint when the board has none active, and close
+ * the active one (L09-US02); moving a ticket into or out of the active
+ * sprint asks first, as it changes its scope. The closed sprints are listed
+ * on demand, each with the scope it committed to and completed.
  */
 @Component({
   selector: 'app-backlog',
@@ -81,6 +92,8 @@ interface Message {
 })
 export class BacklogView {
   readonly board = input.required<Board>();
+  /** A sprint was started or closed: the board's sprint view changed. */
+  readonly cycled = output<'started' | 'closed'>();
 
   private readonly api = inject(Api);
   private readonly dialog = inject(MatDialog);
@@ -102,6 +115,15 @@ export class BacklogView {
   protected readonly ownSprints = computed(() =>
     (this.shown()?.sprints ?? []).filter((s) => s.own && s.sprint.state !== 'closed'),
   );
+  /** This board's active sprint, if any. */
+  protected readonly active = computed(() => this.ownSprints().find((s) => s.sprint.state === 'active') ?? null);
+  protected readonly hasActive = computed(() => this.active() !== null);
+  /** The closed sprints show. */
+  protected readonly showClosed = signal(false);
+  protected readonly closed = resource({
+    params: () => (this.showClosed() ? this.board().id : undefined),
+    loader: async ({ params }) => (await this.api.invoke(listSprints, { id: params, state: 'closed' })).items,
+  });
   /** The ticket whose move is under way. */
   protected readonly moving = signal<string | null>(null);
   protected readonly message = signal<Message | null>(null);
@@ -152,6 +174,22 @@ export class BacklogView {
       .map((i) => i.card.id)
       .filter((id) => id !== item.card.id);
     const place = placement(ids, index);
+    const active = this.active()?.sprint;
+    if (active && from !== to && (from === active.id || to === active.id)) {
+      const data: ConfirmDialogData = {
+        titleKey: 'backlog.scopeChange.title',
+        messageKey: to === active.id ? 'backlog.scopeChange.added' : 'backlog.scopeChange.removed',
+        confirmKey: 'backlog.scopeChange.confirm',
+        params: { key: item.card.key, name: active.name },
+      };
+      const confirmed = await new Promise<boolean>((resolve) =>
+        this.dialog
+          .open(ConfirmDialog, { data })
+          .afterClosed()
+          .subscribe((answer?: boolean) => resolve(!!answer)),
+      );
+      if (!confirmed) return;
+    }
     this.message.set(null);
     this.moving.set(item.card.id);
     this.shown.set(moved(backlog, item.card.id, from, to, index));
@@ -256,6 +294,37 @@ export class BacklogView {
           this.read.reload();
         }
       });
+  }
+
+  protected startSprint(sprint: Sprint): void {
+    const data: SprintDialogData = { boardId: this.board().id, sprint, start: true, today: toLocalDate(new Date()) };
+    this.dialog
+      .open<SprintDialog, SprintDialogData, Sprint>(SprintDialog, { data, width: 'min(560px, 100vw)', autoFocus: 'first-tabbable' })
+      .afterClosed()
+      .subscribe((started) => {
+        if (!started) return;
+        this.read.reload();
+        this.cycled.emit('started');
+      });
+  }
+
+  protected closeSprint(entry: BacklogSprint): void {
+    const done = entry.items.filter((i) => i.card.status.category === 'done').length;
+    const data: CloseSprintData = { sprint: entry.sprint, done, unfinished: entry.items.length - done };
+    this.dialog
+      .open<CloseSprintDialog, CloseSprintData, SprintClosed>(CloseSprintDialog, { data, width: 'min(520px, 100vw)', autoFocus: 'first-tabbable' })
+      .afterClosed()
+      .subscribe((closed) => {
+        if (!closed) return;
+        this.read.reload();
+        this.closed.reload();
+        this.cycled.emit('closed');
+      });
+  }
+
+  protected seeScope(sprint: Sprint): void {
+    const data: SprintScopeData = { sprintId: sprint.id, estimation: this.shown()?.estimation ?? 'points' };
+    this.dialog.open(SprintScopeDialog, { data, width: 'min(760px, 100vw)', autoFocus: 'first-tabbable' });
   }
 
   protected retry(): void {

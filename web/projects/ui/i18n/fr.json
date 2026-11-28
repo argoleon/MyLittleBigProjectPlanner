@@ -622,7 +622,9 @@
       "closed": "Ce sprint est clôturé.",
       "not_future": "Seul un sprint pas encore démarré peut être supprimé.",
       "foreign": "Ce ticket est planifié dans un sprint d’un autre board.",
-      "subtask": "Une sous-tâche suit son parent dans les sprints."
+      "subtask": "Une sous-tâche suit son parent dans les sprints.",
+      "not_active": "Ce sprint n’est pas actif.",
+      "active_exists": "Un autre sprint de ce board est actif : clôturez-le d’abord."
     }
   },
   "dialog": {
@@ -2108,6 +2110,20 @@
       },
       "kind": "Type",
       "kindHint": "Fixé à la création. Un board Scrum planifie ses tickets en sprints depuis un backlog."
+    },
+    "views": {
+      "label": "Vue du board",
+      "backlog": "Backlog",
+      "sprint": "Sprint actif"
+    },
+    "sprint": {
+      "remaining": {
+        "left": "{{ count }} jours restants",
+        "lastDay": "Dernier jour",
+        "ended": "Terminé depuis {{ count }} jours"
+      },
+      "none": "Aucun sprint actif : démarrez-en un depuis le backlog.",
+      "openBacklog": "Ouvrir le backlog"
     }
   },
   "exports": {
@@ -2875,7 +2891,14 @@
         "title": "Supprimer {{ name }} ?",
         "message": "Ses {{ count }} tickets retournent au backlog. Le sprint ne pourra pas être restauré.",
         "confirm": "Supprimer"
-      }
+      },
+      "progress": "Avancement de {{ name }}",
+      "done": {
+        "points": "{{ done }} / {{ estimate }} points terminés",
+        "hours": "{{ done }} / {{ estimate }} h terminées"
+      },
+      "close": "Clôturer le sprint",
+      "start": "Démarrer le sprint"
     },
     "item": {
       "subtasks": "{{ count }} sous-tâches",
@@ -2893,8 +2916,6 @@
       "subtask": "{{ key }} est une sous-tâche : elle suit son parent."
     },
     "dialog": {
-      "newTitle": "Nouveau sprint",
-      "editTitle": "Modifier le sprint",
       "name": "Nom",
       "nameHint": "Laissé vide, il prend le nom du projet, par exemple PLAT Sprint 4.",
       "goal": "Objectif",
@@ -2903,9 +2924,73 @@
       "end": "Fin",
       "datesHint": "Facultatives : les deux dates, ou aucune.",
       "bothDates": "Indiquez les deux dates, ou aucune.",
-      "create": "Créer",
-      "save": "Enregistrer",
-      "conflict": "Quelqu’un a modifié ce sprint entre-temps : fermez puis rouvrez-le."
+      "conflict": "Quelqu’un a modifié ce sprint entre-temps : fermez puis rouvrez-le.",
+      "title": {
+        "create": "Nouveau sprint",
+        "edit": "Modifier le sprint",
+        "start": "Démarrer le sprint"
+      },
+      "submit": {
+        "create": "Créer",
+        "edit": "Enregistrer",
+        "start": "Démarrer"
+      },
+      "startNote": "Ses tickets deviennent le périmètre engagé, avec leurs estimations.",
+      "datesRequired": "Un sprint démarre avec ses dates.",
+      "datesStartHint": "Obligatoires : premier et dernier jours du sprint."
+    },
+    "scopeChange": {
+      "title": "Modifier le périmètre du sprint actif ?",
+      "added": "{{ key }} va rejoindre {{ name }}, déjà démarré. Le changement est conservé pour son burndown.",
+      "removed": "{{ key }} va quitter {{ name }}, déjà démarré. Le changement est conservé pour son burndown.",
+      "confirm": "Modifier le périmètre"
+    },
+    "close": {
+      "title": "Clôturer {{ name }}",
+      "summary": "{{ done }} tickets terminés, {{ unfinished }} non terminés.",
+      "moveTo": "Déplacer les tickets non terminés vers",
+      "toBacklog": "Le backlog",
+      "toSprint": "Un sprint à venir",
+      "sprint": "Sprint",
+      "toNewSprint": "Un nouveau sprint",
+      "allDone": "Tous les tickets sont terminés.",
+      "note": "Le sprint conserve le périmètre engagé et terminé.",
+      "confirm": "Clôturer le sprint",
+      "conflict": "Quelqu’un a modifié ce sprint entre-temps : fermez la fenêtre et réessayez."
+    },
+    "closed": {
+      "title": "Sprints clôturés",
+      "summary": {
+        "points": "{{ completed }} points terminés sur {{ committed }} · {{ done }} tickets engagés sur {{ count }}",
+        "hours": "{{ completed }} h terminées sur {{ committed }} · {{ done }} tickets engagés sur {{ count }}"
+      },
+      "see": "Voir le périmètre de {{ name }}",
+      "scope": "Voir son périmètre",
+      "none": "Aucun sprint clôturé pour l’instant."
+    },
+    "scope": {
+      "committed": {
+        "points": "Engagé : {{ count }} tickets, {{ estimate }} points",
+        "hours": "Engagé : {{ count }} tickets, {{ estimate }} h"
+      },
+      "completed": {
+        "points": "terminé : {{ count }} tickets, {{ estimate }} points",
+        "hours": "terminé : {{ count }} tickets, {{ estimate }} h"
+      },
+      "key": "Clé",
+      "summary": "Titre",
+      "arrival": "Arrivée",
+      "outcome": "Issue",
+      "estimate": "Estimation",
+      "wasCommitted": "Engagé",
+      "addedLater": "Ajouté en cours",
+      "outcomes": {
+        "done": "Terminé",
+        "notDone": "Non terminé",
+        "removed": "Retiré",
+        "running": "En cours"
+      },
+      "hidden": "{{ count }} autres tickets que vous ne pouvez pas voir."
     }
   }
 }

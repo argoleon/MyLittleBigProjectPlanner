@@ -6,7 +6,11 @@
  * What a sprint starts with.
  */
 export interface SprintStart {
-  endDate: string;
+
+  /**
+   * Required, not before `startDate`.
+   */
+  endDate?: (string | null);
 
   /**
    * Up to 1,000 characters; its current goal when left out.
@@ -17,5 +21,9 @@ export interface SprintStart {
    * 1 to 100 characters; its current name when left out.
    */
   name?: (string | null);
-  startDate: string;
+
+  /**
+   * Required: `validation_failed` when left out.
+   */
+  startDate?: (string | null);
 }

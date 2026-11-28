@@ -326,11 +326,17 @@ pub struct Snapshot {
     pub estimate: f64,
 }
 
+/// The sum of `estimates`, `0.0` when there are none (`Iterator::sum` of
+/// floats starts from `-0.0`, which would read "-0").
+fn total(estimates: impl Iterator<Item = f64>) -> f64 {
+    estimates.fold(0.0, |sum, estimate| sum + estimate)
+}
+
 /// The snapshot of `stays`: what a sprint commits to when it starts.
 pub fn snapshot<Id>(stays: &[Stay<Id>]) -> Snapshot {
     Snapshot {
         count: stays.len(),
-        estimate: stays.iter().filter_map(|s| s.estimate).sum(),
+        estimate: total(stays.iter().filter_map(|s| s.estimate)),
     }
 }
 
@@ -354,7 +360,7 @@ pub fn close<Id: Copy>(stays: &[Stay<Id>]) -> Closing<Id> {
         unfinished: rest.iter().map(|s| s.issue).collect(),
         snapshot: Snapshot {
             count: done.len(),
-            estimate: done.iter().filter_map(|s| s.estimate).sum(),
+            estimate: total(done.iter().filter_map(|s| s.estimate)),
         },
     }
 }
@@ -629,5 +635,10 @@ mod tests {
             }
         );
         assert_eq!(close::<u32>(&[]), Closing::default());
+        // Nothing estimated: zero, not minus zero.
+        let unestimated = [stay(5, true, None)];
+        assert!(snapshot(&unestimated).estimate.is_sign_positive());
+        assert!(close(&unestimated).snapshot.estimate.is_sign_positive());
+        assert!(snapshot::<u32>(&[]).estimate.is_sign_positive());
     }
 }

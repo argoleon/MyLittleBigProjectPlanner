@@ -24,14 +24,18 @@ import {
   EVENT_SOURCE,
   EventSourceLike,
   Realtime,
+  addDays,
   provideApi,
   provideMaterialDefaults,
+  toLocalDate,
 } from 'ui';
 import { axeViolations, provideI18nTesting } from 'ui/testing';
 
 import { REALTIME_DELAY_MS } from './backlog-view';
 import { BoardPage } from './board-page';
+import { CloseSprintDialog } from './close-sprint-dialog';
 import { SprintDialog } from './sprint-dialog';
+import { SprintScopeDialog } from './sprint-scope-dialog';
 
 const BOARD: Board = {
   id: 'b1',
@@ -103,6 +107,9 @@ function backlog(overrides: Partial<Backlog> = {}): Backlog {
   };
 }
 
+/** The cards of a Scrum board without an active sprint. */
+const NO_SPRINT = { columns: [], swimlanes: 'none', lanes: [], total: 0, unmapped: 0, truncated: false, sprint: null };
+
 /** A stream the test drives. */
 class FakeSource implements EventSourceLike {
   readyState = 1;
@@ -124,7 +131,7 @@ class FakeSource implements EventSourceLike {
 }
 
 describe('the Scrum backlog', () => {
-  async function open(first: Backlog | null = backlog(), board: Board = BOARD) {
+  async function open(first: Backlog | null = backlog(), board: Board = BOARD, cards: object = NO_SPRINT) {
     const source = new FakeSource();
     TestBed.configureTestingModule({
       providers: [
@@ -158,7 +165,14 @@ describe('the Scrum backlog', () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/boards/b1');
     await reply((url, method) => url === '/api/v1/boards/b1' && method === 'GET', board);
+    // Without an active sprint, the board opens on its backlog.
+    await reply((url, method) => url === '/api/v1/boards/b1/cards?swimlanes=none' && method === 'GET', cards);
     const backlogAsked = (url: string, method: string) => url === '/api/v1/boards/b1/backlog' && method === 'GET';
+    if ('sprint' in cards && cards.sprint) {
+      // On the active sprint: the backlog is one click away.
+      (harness.routeNativeElement as HTMLElement).querySelectorAll<HTMLElement>('.views button')[0].click();
+      await settle();
+    }
     if (first) await reply(backlogAsked, first);
     else await reply(backlogAsked, { code: 'internal', status: 500, title: 'Internal' }, 500);
     const page = () => harness.routeNativeElement as HTMLElement;
@@ -378,5 +392,242 @@ describe('the Scrum backlog', () => {
   it('passes the accessibility checks', async () => {
     const { page } = await open();
     expect(await axeViolations(page())).toEqual([]);
+  });
+});
+
+describe('the sprint cycle', () => {
+  /** A backlog whose first sprint is active: one ticket done, one not. */
+  function running(): Backlog {
+    const base = backlog();
+    const active = sprint('sp1', 'PLAT Sprint 1', [item(1, 8, { status: DONE }), item(2, 3)], {}, {
+      state: 'active',
+      goal: 'OIDC in acceptance',
+      startDate: '2026-11-16',
+      endDate: '2026-11-27',
+      committedCount: 2,
+      committedEstimate: 11,
+    });
+    return { ...base, sprints: [{ ...active, totals: { count: 2, estimate: 11, done: 8, unestimated: 0 } }, base.sprints[1]] };
+  }
+
+  const activeCards = (overrides: object = {}) => ({
+    columns: [
+      { id: 'c-todo', name: 'To do', statuses: ['todo'], wipLimit: null, count: 1, wip: 'unlimited' },
+      { id: 'c-done', name: 'Done', statuses: ['done'], wipLimit: null, count: 1, wip: 'unlimited' },
+    ],
+    swimlanes: 'none',
+    lanes: [{ id: null, key: null, label: null, cells: [[item(2, 3).card], [item(1, 8, { status: DONE }).card]] }],
+    total: 2,
+    unmapped: 0,
+    truncated: false,
+    sprint: running().sprints[0].sprint,
+    ...overrides,
+  });
+
+  async function open(first: Backlog | null, cards: object = { columns: [], swimlanes: 'none', lanes: [], total: 0, unmapped: 0, truncated: false, sprint: null }) {
+    const source = new FakeSource();
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([{ path: 'boards/:id', component: BoardPage }], withComponentInputBinding()),
+        provideApi(),
+        provideHttpClientTesting(),
+        provideI18nTesting(),
+        provideMaterialDefaults(),
+        { provide: EVENT_SOURCE, useValue: () => source },
+      ],
+    });
+    const http = TestBed.inject(HttpTestingController);
+    const settle = async () => {
+      for (let i = 0; i < 3; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        TestBed.tick();
+      }
+    };
+    const reply = async (match: (url: string, method: string) => boolean, body: object | null, status = 200): Promise<TestRequest> => {
+      let request: TestRequest | undefined;
+      for (let i = 0; i < 50 && !request; i++) {
+        [request] = http.match((r) => match(r.urlWithParams, r.method));
+        if (!request) await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      if (!request) throw new Error('no matching request');
+      request.flush(body, { status, statusText: status < 400 ? 'OK' : 'Error', headers: status >= 400 ? { 'content-type': 'application/problem+json' } : {} });
+      await settle();
+      return request;
+    };
+    TestBed.inject(Realtime).start();
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/boards/b1');
+    await reply((url, method) => url === '/api/v1/boards/b1' && method === 'GET', BOARD);
+    const cardsAsked = (url: string, method: string) => url === '/api/v1/boards/b1/cards?swimlanes=none' && method === 'GET';
+    await reply(cardsAsked, cards);
+    const backlogAsked = (url: string, method: string) => url === '/api/v1/boards/b1/backlog' && method === 'GET';
+    if (first) await reply(backlogAsked, first);
+    const page = () => harness.routeNativeElement as HTMLElement;
+    const text = (element: Element | null | undefined) => element?.textContent?.replace(/\s+/g, ' ').trim();
+    const click = async (element: Element | null | undefined) => {
+      if (!element) throw new Error('nothing to click');
+      (element as HTMLElement).click();
+      await settle();
+    };
+    const dialogs = () => TestBed.inject(MatDialog).openDialogs;
+    return { http, harness, page, reply, settle, text, click, dialogs, cardsAsked, backlogAsked };
+  }
+
+  afterEach(async () => {
+    TestBed.inject(MatDialog).closeAll();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    TestBed.inject(HttpTestingController).verify({ ignoreCancelled: true });
+  });
+
+  it('starts a future sprint with its dates, then shows its board', async () => {
+    const { page, click, reply, text, dialogs, cardsAsked, settle } = await open(backlog());
+    const starts = page().querySelectorAll('.start-sprint');
+    expect(starts.length).toBe(2);
+    await click(starts[0]);
+    expect(dialogs()[0].componentInstance).toBeInstanceOf(SprintDialog);
+    const pane = document.querySelector('app-sprint-dialog') as HTMLElement;
+    expect(text(pane.querySelector('h2'))).toBe('Start the sprint');
+    // Its own dates, kept.
+    expect((pane.querySelector('input[matStartDate]') as HTMLInputElement).value).not.toBe('');
+    await click(pane.querySelector('button.save'));
+    const started = await reply((url, method) => url === '/api/v1/sprints/sp1/start' && method === 'POST', {
+      ...running().sprints[0].sprint,
+    });
+    expect(started.request.headers.get('If-Match')).toBe('"1"');
+    expect(started.request.body).toEqual({ name: 'PLAT Sprint 1', goal: 'OIDC in acceptance', startDate: '2026-11-16', endDate: '2026-11-27' });
+    await settle();
+    // The board switches to the active sprint.
+    await reply(cardsAsked, activeCards());
+    expect(text(page().querySelector('.sprint-name'))).toBe('PLAT Sprint 1');
+    expect(text(page().querySelector('.sprint-goal'))).toBe('Goal: OIDC in acceptance');
+    expect(text(page().querySelector('.sprint-left'))).toMatch(/days ago|days left|Last day/);
+    expect(page().querySelector('app-backlog')).toBeNull();
+    expect(page().querySelectorAll('app-board-card').length).toBe(2);
+  });
+
+  it('starts a sprint without dates over two weeks from today', async () => {
+    const undated = backlog();
+    const { page, click, reply } = await open({ ...undated, sprints: [undated.sprints[1]] });
+    await click(page().querySelector('.start-sprint'));
+    const pane = document.querySelector('app-sprint-dialog') as HTMLElement;
+    await click(pane.querySelector('button.save'));
+    const today = toLocalDate(new Date());
+    const started = await reply((url) => url === '/api/v1/sprints/sp2/start', { ...undated.sprints[1].sprint, state: 'active' });
+    expect(started.request.body).toEqual({ name: 'Sprint 25', goal: null, startDate: today, endDate: addDays(today, 13) });
+    await reply((url) => url.startsWith('/api/v1/boards/b1/cards'), activeCards());
+  });
+
+  it('asks before changing the scope of the active sprint, then closes it', async () => {
+    const { page, harness, click, reply, settle, http, text, dialogs, backlogAsked } = await open(null, activeCards());
+    // On the active sprint, then to the backlog.
+    expect(text(page().querySelector('.sprint-name'))).toBe('PLAT Sprint 1');
+    await click(page().querySelectorAll('.views button')[0]);
+    await reply(backlogAsked, running());
+    expect(page().querySelector('.start-sprint')).toBeNull();
+    expect(text(page().querySelector('.progress-done .totals'))).toBe('8 / 11 points done');
+
+    const lists = harness.fixture.debugElement.queryAll(By.directive(CdkDropList)).map((d) => d.injector.get(CdkDropList));
+    const [active, , rest] = lists;
+    active.dropped.emit({ previousContainer: rest, container: active, item: { data: item(4, null) }, previousIndex: 1, currentIndex: 2 } as never);
+    await settle();
+    const confirm = () => dialogs().find((d) => d.componentInstance instanceof ConfirmDialog);
+    expect(document.querySelector('mat-dialog-content')?.textContent).toContain('PLAT-4 will join PLAT Sprint 1, which has started');
+    confirm()!.close(false);
+    await settle();
+    expect(http.match((r) => r.url.includes('/backlog/moves')).length).toBe(0);
+    active.dropped.emit({ previousContainer: rest, container: active, item: { data: item(4, null) }, previousIndex: 1, currentIndex: 2 } as never);
+    await settle();
+    confirm()!.close(true);
+    await settle();
+    const moved = await reply((url) => url === '/api/v1/boards/b1/backlog/moves', null, 204);
+    expect(moved.request.body).toEqual({ issueId: 'i4', sprintId: 'sp1', afterId: 'i2', beforeId: null });
+    await reply(backlogAsked, running());
+
+    await click(page().querySelector('.close-sprint'));
+    expect(dialogs()[0].componentInstance).toBeInstanceOf(CloseSprintDialog);
+    await reply((url) => url === '/api/v1/boards/b1/sprints?state=open', { items: running().sprints.map((s) => s.sprint) });
+    const pane = document.querySelector('app-close-sprint-dialog') as HTMLElement;
+    expect(text(pane.querySelector('.summary'))).toBe('1 tickets done, 1 unfinished.');
+    expect(text(pane.querySelector('mat-select'))).toBe('Sprint 25');
+    await click(pane.querySelector('.confirm-close'));
+    const closed = await reply((url, method) => url === '/api/v1/sprints/sp1/close' && method === 'POST', {
+      sprint: { ...running().sprints[0].sprint, state: 'closed' },
+      moved: 1,
+      target: running().sprints[1].sprint,
+    });
+    expect(closed.request.headers.get('If-Match')).toBe('"1"');
+    expect(closed.request.body).toEqual({ moveTo: 'sprint', sprintId: 'sp2' });
+    await reply(backlogAsked, backlog());
+  });
+
+  it('closes the active sprint from its board, the unfinished tickets to a new sprint', async () => {
+    const { page, click, reply, text, backlogAsked } = await open(null, activeCards());
+    await click(page().querySelector('.sprint-head .close-sprint'));
+    await reply((url) => url === '/api/v1/boards/b1/sprints?state=open', { items: [running().sprints[0].sprint] });
+    const pane = document.querySelector('app-close-sprint-dialog') as HTMLElement;
+    expect(text(pane.querySelector('.summary'))).toBe('1 tickets done, 1 unfinished.');
+    // No future sprint: the backlog by default, or a new sprint.
+    expect(pane.querySelector('.to-sprint')).toBeNull();
+    await click(pane.querySelector('.to-new input'));
+    await click(pane.querySelector('.confirm-close'));
+    const closed = await reply((url) => url === '/api/v1/sprints/sp1/close', {
+      sprint: { ...running().sprints[0].sprint, state: 'closed' },
+      moved: 1,
+      target: { ...running().sprints[1].sprint, id: 'sp3', name: 'PLAT Sprint 3' },
+    });
+    expect(closed.request.body).toEqual({ moveTo: 'new_sprint', sprintId: null });
+    // Then the backlog.
+    await reply(backlogAsked, backlog());
+    expect(page().querySelector('app-backlog')).not.toBeNull();
+  });
+
+  it('tells a board without an active sprint, and lists the closed sprints with their scope', async () => {
+    const { page, click, reply, text, backlogAsked, cardsAsked, dialogs } = await open(backlog());
+    await click(page().querySelectorAll('.views button')[1]);
+    await reply(cardsAsked, { columns: [], swimlanes: 'none', lanes: [], total: 0, unmapped: 0, truncated: false, sprint: null });
+    expect(text(page().querySelector('.no-sprint span'))).toBe('No active sprint: start one from the backlog.');
+    await click(page().querySelector('.no-sprint .to-backlog'));
+    await reply(backlogAsked, backlog());
+
+    await click(page().querySelector('.show-closed'));
+    const closedSprint = {
+      ...running().sprints[0].sprint,
+      id: 'c1',
+      name: 'PLAT Sprint 0',
+      state: 'closed',
+      completedCount: 1,
+      completedEstimate: 8,
+    };
+    await reply((url) => url === '/api/v1/boards/b1/sprints?state=closed', { items: [closedSprint] });
+    expect(text(page().querySelector('.closed-sprint .meta'))).toBe('8 of 11 points completed · 1 of 2 committed tickets');
+    await click(page().querySelector('.see-scope'));
+    expect(dialogs()[0].componentInstance).toBeInstanceOf(SprintScopeDialog);
+    await reply((url) => url === '/api/v1/sprints/c1/scope', {
+      sprint: closedSprint,
+      hidden: 1,
+      items: [
+        { issueId: 'i1', key: 'PLAT-1', summary: 'Ticket 1', committed: true, addedLater: false, removed: false, completed: true, estimateAtStart: 8, estimateAtClose: 8 },
+        { issueId: 'i2', key: 'PLAT-2', summary: 'Ticket 2', committed: true, addedLater: false, removed: false, completed: false, estimateAtStart: 3, estimateAtClose: 3 },
+        { issueId: 'i4', key: 'PLAT-4', summary: 'Ticket 4', committed: false, addedLater: true, removed: true, completed: null, estimateAtStart: null, estimateAtClose: null },
+      ],
+    });
+    const pane = document.querySelector('app-sprint-scope-dialog') as HTMLElement;
+    expect(text(pane.querySelector('.totals'))).toBe('Committed: 2 tickets, 11 points · completed: 1 tickets, 8 points');
+    const rows = Array.from(pane.querySelectorAll('tr.mat-mdc-row')).map((r) => Array.from(r.querySelectorAll('td')).map((c) => text(c)));
+    expect(rows).toEqual([
+      ['PLAT-1', 'Ticket 1', 'Committed', 'Done', '8'],
+      ['PLAT-2', 'Ticket 2', 'Committed', 'Not done', '3'],
+      ['PLAT-4', 'Ticket 4', 'Added later', 'Taken out', '–'],
+    ]);
+    expect(text(pane.querySelector('.hidden'))).toBe('1 more tickets you may not see.');
+    expect(await axeViolations(pane)).toEqual([]);
+  });
+
+  it('passes the accessibility checks on the active sprint and in the close dialog', async () => {
+    const { page, click, reply } = await open(null, activeCards());
+    expect(await axeViolations(page())).toEqual([]);
+    await click(page().querySelector('.sprint-head .close-sprint'));
+    await reply((url) => url === '/api/v1/boards/b1/sprints?state=open', { items: running().sprints.map((s) => s.sprint) });
+    expect(await axeViolations(document.querySelector('mat-dialog-container') as HTMLElement)).toEqual([]);
   });
 });

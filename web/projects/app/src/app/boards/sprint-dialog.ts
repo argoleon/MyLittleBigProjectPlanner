@@ -15,14 +15,23 @@ import {
   fieldErrorTranslationKey,
   fromLocalDate,
   isApiProblem,
+  startSprint,
   toLocalDate,
   updateSprint,
 } from 'ui';
 
-/** What the dialog edits: a new sprint of a Scrum board, or this one. */
+import { defaultDates } from './sprint-dates';
+
+/**
+ * What the dialog does: creates a sprint of a Scrum board, changes this one,
+ * or starts it (`start`, L09-US02).
+ */
 export interface SprintDialogData {
   readonly boardId: string;
   readonly sprint?: Sprint;
+  readonly start?: boolean;
+  /** Today, as a local date: where a sprint without dates starts. */
+  readonly today?: string;
 }
 
 /** Longest name and goal, as the API checks them. */
@@ -32,83 +41,16 @@ export const GOAL_MAX = 1000;
 /**
  * Creates or changes a sprint of a Scrum board (mockup 17, L09-US01): its
  * name (left empty at creation, the API names it after the node's key),
- * goal and dates, both or none. Closes with the saved sprint.
+ * goal and dates, both or none. Starting a sprint (L09-US02) takes the same
+ * fields, the dates then required: two weeks from today unless it has its
+ * own. Closes with the saved sprint.
  */
 @Component({
   selector: 'app-sprint-dialog',
-  imports: [
-    MatButtonModule,
-    MatDatepickerModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    ReactiveFormsModule,
-    TranslocoPipe,
-  ],
+  imports: [MatButtonModule, MatDatepickerModule, MatDialogModule, MatFormFieldModule, MatInputModule, ReactiveFormsModule, TranslocoPipe],
   providers: [provideNativeDateAdapter()],
   styleUrl: '../admin/provider-dialog.scss',
-  template: `
-    <h2 mat-dialog-title>
-      {{ (data.sprint ? 'backlog.dialog.editTitle' : 'backlog.dialog.newTitle') | transloco }}
-    </h2>
-    <form [formGroup]="form" (ngSubmit)="save()" novalidate>
-      <mat-dialog-content class="fields">
-        @if (errorKey(); as errorKey) {
-          <p class="message error" role="alert">{{ errorKey | transloco }}</p>
-        }
-        <mat-form-field appearance="outline">
-          <mat-label>{{ 'backlog.dialog.name' | transloco }}</mat-label>
-          <input
-            matInput
-            formControlName="name"
-            [maxlength]="nameMax"
-            autocomplete="off"
-            [required]="!!data.sprint"
-          />
-          @if (!data.sprint) {
-            <mat-hint>{{ 'backlog.dialog.nameHint' | transloco }}</mat-hint>
-          }
-          <mat-error>{{
-            form.controls.name.getError('api') ?? 'errors.field.required' | transloco
-          }}</mat-error>
-        </mat-form-field>
-        <mat-form-field appearance="outline">
-          <mat-label>{{ 'backlog.dialog.goal' | transloco }}</mat-label>
-          <textarea matInput formControlName="goal" rows="2" [maxlength]="goalMax"></textarea>
-          @if (form.controls.goal.getError('api'); as key) {
-            <mat-error>{{ key | transloco }}</mat-error>
-          }
-        </mat-form-field>
-        <mat-form-field appearance="outline">
-          <mat-label>{{ 'backlog.dialog.dates' | transloco }}</mat-label>
-          <mat-date-range-input [rangePicker]="picker" [formGroup]="form.controls.dates">
-            <input
-              matStartDate
-              formControlName="start"
-              [placeholder]="'backlog.dialog.start' | transloco"
-            />
-            <input
-              matEndDate
-              formControlName="end"
-              [placeholder]="'backlog.dialog.end' | transloco"
-            />
-          </mat-date-range-input>
-          <mat-datepicker-toggle matIconSuffix [for]="picker" />
-          <mat-date-range-picker #picker />
-          <mat-hint>{{ 'backlog.dialog.datesHint' | transloco }}</mat-hint>
-        </mat-form-field>
-        @if (datesError(); as key) {
-          <p class="message error dates-error" role="alert">{{ key | transloco }}</p>
-        }
-      </mat-dialog-content>
-      <mat-dialog-actions align="end">
-        <button matButton type="button" mat-dialog-close>{{ 'dialog.cancel' | transloco }}</button>
-        <button matButton="filled" type="submit" class="save" [disabled]="saving()">
-          {{ (data.sprint ? 'backlog.dialog.save' : 'backlog.dialog.create') | transloco }}
-        </button>
-      </mat-dialog-actions>
-    </form>
-  `,
+  templateUrl: './sprint-dialog.html',
 })
 export class SprintDialog {
   protected readonly data = inject<SprintDialogData>(MAT_DIALOG_DATA);
@@ -116,31 +58,33 @@ export class SprintDialog {
   private readonly dialogRef = inject<MatDialogRef<SprintDialog, Sprint>>(MatDialogRef);
   protected readonly nameMax = NAME_MAX;
   protected readonly goalMax = GOAL_MAX;
+  /** `create`, `edit` or `start`. */
+  protected readonly mode = this.data.start ? 'start' : this.data.sprint ? 'edit' : 'create';
 
+  private readonly dates = this.mode === 'start' && !this.data.sprint?.startDate ? defaultDates(this.data.today ?? toLocalDate(new Date())) : null;
   protected readonly form = new FormGroup({
     name: new FormControl(this.data.sprint?.name ?? '', {
       nonNullable: true,
-      validators: this.data.sprint
-        ? [Validators.required, Validators.maxLength(NAME_MAX)]
-        : [Validators.maxLength(NAME_MAX)],
+      validators: this.data.sprint ? [Validators.required, Validators.maxLength(NAME_MAX)] : [Validators.maxLength(NAME_MAX)],
     }),
-    goal: new FormControl(this.data.sprint?.goal ?? '', {
-      nonNullable: true,
-      validators: [Validators.maxLength(GOAL_MAX)],
-    }),
+    goal: new FormControl(this.data.sprint?.goal ?? '', { nonNullable: true, validators: [Validators.maxLength(GOAL_MAX)] }),
     dates: new FormGroup({
-      start: new FormControl<Date | null>(fromLocalDate(this.data.sprint?.startDate)),
-      end: new FormControl<Date | null>(fromLocalDate(this.data.sprint?.endDate)),
+      start: new FormControl<Date | null>(fromLocalDate(this.dates?.start ?? this.data.sprint?.startDate)),
+      end: new FormControl<Date | null>(fromLocalDate(this.dates?.end ?? this.data.sprint?.endDate)),
     }),
   });
   protected readonly saving = signal(false);
   protected readonly errorKey = signal<string | null>(null);
-  /** Why the dates were refused: one only, or the end before the start. */
+  /** Why the dates were refused: one only, none to start, or the end before the start. */
   protected readonly datesError = signal<string | null>(null);
 
   protected async save(): Promise<void> {
     this.datesError.set(null);
     const { name, goal, dates } = this.form.getRawValue();
+    if (this.mode === 'start' && (!dates.start || !dates.end)) {
+      this.datesError.set('backlog.dialog.datesRequired');
+      return;
+    }
     if (!dates.start !== !dates.end) {
       this.datesError.set('backlog.dialog.bothDates');
       return;
@@ -157,14 +101,13 @@ export class SprintDialog {
       startDate: dates.start ? toLocalDate(dates.start) : null,
       endDate: dates.end ? toLocalDate(dates.end) : null,
     };
+    const sprint = this.data.sprint;
     try {
-      const saved = this.data.sprint
-        ? await this.api.invoke(updateSprint, {
-            id: this.data.sprint.id,
-            'If-Match': `"${this.data.sprint.version}"`,
-            body,
-          })
-        : await this.api.invoke(createSprint, { id: this.data.boardId, body });
+      const saved = !sprint
+        ? await this.api.invoke(createSprint, { id: this.data.boardId, body })
+        : this.mode === 'start'
+          ? await this.api.invoke(startSprint, { id: sprint.id, 'If-Match': `"${sprint.version}"`, body })
+          : await this.api.invoke(updateSprint, { id: sprint.id, 'If-Match': `"${sprint.version}"`, body });
       this.dialogRef.close(saved);
     } catch (error) {
       this.showError(error);

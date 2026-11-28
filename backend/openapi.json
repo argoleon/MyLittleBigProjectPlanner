@@ -35301,14 +35301,14 @@
       "SprintStart": {
         "type": "object",
         "description": "What a sprint starts with.",
-        "required": [
-          "startDate",
-          "endDate"
-        ],
         "properties": {
           "endDate": {
-            "type": "string",
-            "format": "date"
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "Required, not before `startDate`."
           },
           "goal": {
             "type": [
@@ -35325,8 +35325,12 @@
             "description": "1 to 100 characters; its current name when left out."
           },
           "startDate": {
-            "type": "string",
-            "format": "date"
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "Required: `validation_failed` when left out."
           }
         },
         "additionalProperties": false,

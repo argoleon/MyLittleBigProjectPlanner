@@ -622,7 +622,9 @@
       "closed": "This sprint is closed.",
       "not_future": "Only a sprint not started yet can be deleted.",
       "foreign": "This ticket is planned in a sprint of another board.",
-      "subtask": "A sub-task follows its parent into sprints."
+      "subtask": "A sub-task follows its parent into sprints.",
+      "not_active": "This sprint is not active.",
+      "active_exists": "Another sprint of this board is active: close it first."
     }
   },
   "dialog": {
@@ -2108,6 +2110,20 @@
       },
       "kind": "Kind",
       "kindHint": "Set at creation. A Scrum board plans its tickets in sprints from a backlog."
+    },
+    "views": {
+      "label": "View of the board",
+      "backlog": "Backlog",
+      "sprint": "Active sprint"
+    },
+    "sprint": {
+      "remaining": {
+        "left": "{{ count }} days left",
+        "lastDay": "Last day",
+        "ended": "Ended {{ count }} days ago"
+      },
+      "none": "No active sprint: start one from the backlog.",
+      "openBacklog": "Open the backlog"
     }
   },
   "exports": {
@@ -2875,7 +2891,14 @@
         "title": "Delete {{ name }}?",
         "message": "Its {{ count }} tickets go back to the backlog. The sprint cannot be restored.",
         "confirm": "Delete"
-      }
+      },
+      "progress": "Progress of {{ name }}",
+      "done": {
+        "points": "{{ done }} / {{ estimate }} points done",
+        "hours": "{{ done }} / {{ estimate }} h done"
+      },
+      "close": "Close the sprint",
+      "start": "Start the sprint"
     },
     "item": {
       "subtasks": "{{ count }} sub-tasks",
@@ -2893,8 +2916,6 @@
       "subtask": "{{ key }} is a sub-task: it follows its parent."
     },
     "dialog": {
-      "newTitle": "New sprint",
-      "editTitle": "Edit the sprint",
       "name": "Name",
       "nameHint": "Left empty, it is named after the project, e.g. PLAT Sprint 4.",
       "goal": "Goal",
@@ -2903,9 +2924,73 @@
       "end": "End",
       "datesHint": "Optional: both dates, or none.",
       "bothDates": "Give both dates, or none.",
-      "create": "Create",
-      "save": "Save",
-      "conflict": "Someone changed this sprint meanwhile: close and open it again."
+      "conflict": "Someone changed this sprint meanwhile: close and open it again.",
+      "title": {
+        "create": "New sprint",
+        "edit": "Edit the sprint",
+        "start": "Start the sprint"
+      },
+      "submit": {
+        "create": "Create",
+        "edit": "Save",
+        "start": "Start"
+      },
+      "startNote": "Its tickets become the scope it commits to, with their estimates.",
+      "datesRequired": "A sprint starts with its dates.",
+      "datesStartHint": "Required: the first and last days of the sprint."
+    },
+    "scopeChange": {
+      "title": "Change the scope of the active sprint?",
+      "added": "{{ key }} will join {{ name }}, which has started. The change is kept for its burndown.",
+      "removed": "{{ key }} will leave {{ name }}, which has started. The change is kept for its burndown.",
+      "confirm": "Change the scope"
+    },
+    "close": {
+      "title": "Close {{ name }}",
+      "summary": "{{ done }} tickets done, {{ unfinished }} unfinished.",
+      "moveTo": "Move the unfinished tickets to",
+      "toBacklog": "The backlog",
+      "toSprint": "A future sprint",
+      "sprint": "Sprint",
+      "toNewSprint": "A new sprint",
+      "allDone": "Every ticket is done.",
+      "note": "The sprint keeps the scope it committed to and completed.",
+      "confirm": "Close the sprint",
+      "conflict": "Someone changed this sprint meanwhile: close the dialog and try again."
+    },
+    "closed": {
+      "title": "Closed sprints",
+      "summary": {
+        "points": "{{ completed }} of {{ committed }} points completed · {{ done }} of {{ count }} committed tickets",
+        "hours": "{{ completed }} of {{ committed }} h completed · {{ done }} of {{ count }} committed tickets"
+      },
+      "see": "See the scope of {{ name }}",
+      "scope": "See its scope",
+      "none": "No sprint closed yet."
+    },
+    "scope": {
+      "committed": {
+        "points": "Committed: {{ count }} tickets, {{ estimate }} points",
+        "hours": "Committed: {{ count }} tickets, {{ estimate }} h"
+      },
+      "completed": {
+        "points": "completed: {{ count }} tickets, {{ estimate }} points",
+        "hours": "completed: {{ count }} tickets, {{ estimate }} h"
+      },
+      "key": "Key",
+      "summary": "Title",
+      "arrival": "Arrival",
+      "outcome": "Outcome",
+      "estimate": "Estimate",
+      "wasCommitted": "Committed",
+      "addedLater": "Added later",
+      "outcomes": {
+        "done": "Done",
+        "notDone": "Not done",
+        "removed": "Taken out",
+        "running": "In progress"
+      },
+      "hidden": "{{ count }} more tickets you may not see."
     }
   }
 }
