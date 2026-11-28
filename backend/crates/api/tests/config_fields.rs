@@ -321,7 +321,8 @@ async fn every_field_type_takes_its_own_options() {
         assert_eq!(added["kind"], *kind);
     }
     let list = fields(&api, t, &id).await;
-    assert_eq!(list["items"].as_array().unwrap().len(), 2 + kinds.len());
+    // The three system fields, then those added.
+    assert_eq!(list["items"].as_array().unwrap().len(), 3 + kinds.len());
     let cascade = by_key(&list, "cascading_select");
     let erp = &cascade["options"]["values"][0];
     assert_eq!(erp["children"].as_array().unwrap().len(), 2);
@@ -519,5 +520,5 @@ async fn only_configuration_admins_of_the_tenant_edit_fields() {
         let (status, hidden) = send(admin(&api, b, method, &path).header("if-match", "*").json(body)).await;
         assert_problem(status, &hidden, 404, "not_found");
     }
-    assert_eq!(fields(&api, a, &id).await["items"].as_array().unwrap().len(), 2);
+    assert_eq!(fields(&api, a, &id).await["items"].as_array().unwrap().len(), 3);
 }

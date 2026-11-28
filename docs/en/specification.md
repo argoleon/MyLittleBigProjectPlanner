@@ -208,7 +208,7 @@ A single query language, inspired by JQL, powers search, filters, boards, the Ga
   - Moving a card to a column runs the workflow transition that leads there, with its conditions, validators and post-functions; when none can, the card goes back and the reason shows. The keyboard offers the same action as drag and drop.
   - Cards follow the board's manual rank, shared with its Scrum backlog; the tickets not ranked yet come after, in the filter's order (`ORDER BY`). Planners ("manage sprints") reorder the cards of a column, with the mouse or the keyboard.
 - **Scrum**: backlog, sprint planning and closing (unfinished tickets move to the next sprint or the backlog), active sprint board.
-- **Estimation**: points or hours, configurable per board. Workload always stays in hours, through assignments.
+- **Estimation**: points or hours, configurable per board: story points, or the original estimate in hours (a system field; the remaining work feeds the burndown). Columns, sprints and the backlog show their total, the tickets without an estimate counted apart. Workload always stays in hours, through assignments.
 - **Reports**: burndown (in points or hours, based on remaining work), velocity over the last N sprints.
 - **Versions and releases**: per project, with release date, status and release notes generated from the tickets.
 - **Epics**: an issue type, with its progress bar.

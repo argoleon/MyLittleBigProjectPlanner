@@ -391,6 +391,12 @@ pub struct ColumnCardsView {
     /// Its cards, every swimlane included.
     count: usize,
     wip: WipView,
+    /// The sum of its cards' estimates, in the board's estimation.
+    #[schema(example = 13.0)]
+    estimate: f64,
+    /// Its cards without an estimate.
+    #[schema(example = 1)]
+    unestimated: usize,
 }
 
 /// A card: a ticket on the board.
@@ -1077,7 +1083,8 @@ fn quick_toggled(raw: Option<&str>, count: usize) -> Result<Vec<usize>, Problem>
                    without `ORDER BY`), in the column of their status (on a Scrum board, those of \
                    its active sprint only, and their sub-tasks) \
                    and grouped in swimlanes. Each column tells its count against its work in \
-                   progress limit.",
+                   progress limit, and the sum of its estimates in the board's estimation (story \
+                   points, or original estimate in hours) with its cards not estimated.",
     params(
         ("id" = Uuid, Path, description = "Id of the board"),
         CardParams,
@@ -1168,8 +1175,10 @@ pub async fn cards(
         }
     }
     let mut counts = vec![0_usize; columns.len()];
-    for (column, _) in &placed {
+    let mut estimates: Vec<Vec<Option<f64>>> = vec![Vec::new(); columns.len()];
+    for (column, card) in &placed {
         counts[*column] += 1;
+        estimates[*column].push(card.estimate);
     }
     let total = placed.len();
     let lanes = lanes_of(swimlanes, placed, &epics, columns.len());
@@ -1177,13 +1186,19 @@ pub async fn cards(
         .columns
         .into_iter()
         .zip(counts)
-        .map(|(c, count)| ColumnCardsView {
-            wip: wip(count, c.wip_limit).into(),
-            id: c.id,
-            name: c.name,
-            statuses: c.statuses,
-            wip_limit: c.wip_limit,
-            count,
+        .zip(estimates)
+        .map(|((c, count), estimates)| {
+            let totals = domain::boards::estimate_totals(estimates);
+            ColumnCardsView {
+                estimate: totals.estimate,
+                unestimated: totals.unestimated,
+                wip: wip(count, c.wip_limit).into(),
+                id: c.id,
+                name: c.name,
+                statuses: c.statuses,
+                wip_limit: c.wip_limit,
+                count,
+            }
         })
         .collect();
     let mut response = ApiJson(BoardCardsView {

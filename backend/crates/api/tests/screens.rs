@@ -142,7 +142,8 @@ async fn a_type_gets_its_own_creation_screen_whose_fields_are_added_removed_and_
     let fields = get(&api, t, &config.path("/fields")).await["items"].clone();
     let points = by(&fields, "key", "story_points")["id"].clone();
     let remaining = by(&fields, "key", "remaining")["id"].clone();
-    assert_eq!(list[0]["fieldIds"], json!([points, remaining]));
+    let original = by(&fields, "key", "original_estimate")["id"].clone();
+    assert_eq!(list[0]["fieldIds"], json!([points, remaining, original]));
     assert_eq!(list[0]["name"], "Creation");
 
     // Bug creation: its own screen.
@@ -197,7 +198,8 @@ async fn a_type_gets_its_own_creation_screen_whose_fields_are_added_removed_and_
         resolved(&api, t, &config, &query(&story)).await,
         [
             shown("story_points", "visible", false),
-            shown("remaining", "visible", false)
+            shown("remaining", "visible", false),
+            shown("original_estimate", "visible", false)
         ]
     );
 
@@ -398,6 +400,7 @@ async fn rules_win_and_fields_join_and_leave_the_screens() {
         resolved(&api, t, &config, &query).await,
         [
             shown("remaining", "visible", false),
+            shown("original_estimate", "visible", false),
             shown("environment", "required", true)
         ]
     );
@@ -411,6 +414,7 @@ async fn rules_win_and_fields_join_and_leave_the_screens() {
         resolved(&api, t, &config, &view).await,
         [
             shown("remaining", "visible", false),
+            shown("original_estimate", "visible", false),
             shown("application", "visible", false),
             shown("environment", "visible", false)
         ]

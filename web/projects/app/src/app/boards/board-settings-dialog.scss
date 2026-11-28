@@ -90,3 +90,23 @@
 .delete {
   color: var(--mat-sys-error);
 }
+
+.estimation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-1);
+}
+
+.estimation-label {
+  font: var(--mat-sys-label-large);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.estimation-toggle {
+  align-self: flex-start;
+}
+
+.estimation-hint {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}

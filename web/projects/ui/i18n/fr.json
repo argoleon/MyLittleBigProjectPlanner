@@ -2038,7 +2038,7 @@
     },
     "estimation": {
       "points": "Points d’histoire",
-      "hours": "Heures (reste à faire)"
+      "hours": "Heures (estimation initiale)"
     },
     "truncated": "Ce board montre les 1 000 premiers tickets de son filtre : affinez le filtre pour voir les autres.",
     "wip": {
@@ -2064,12 +2064,16 @@
       "priority": "Priorité : {{ priority }}",
       "estimate": {
         "points": "{{ value }} points",
-        "hours": "{{ value }} heures restantes"
+        "hours": "{{ value }} heures estimées"
       },
       "move": "Déplacer {{ key }}",
       "moveTo": "Déplacer vers {{ column }}",
       "moveUp": "Monter",
-      "moveDown": "Descendre"
+      "moveDown": "Descendre",
+      "estimateShort": {
+        "points": "{{ value }} pts",
+        "hours": "{{ value }} h"
+      }
     },
     "choose": {
       "title": "Déplacer {{ key }}",
@@ -2109,7 +2113,8 @@
         "confirm": "Supprimer"
       },
       "kind": "Type",
-      "kindHint": "Fixé à la création. Un board Scrum planifie ses tickets en sprints depuis un backlog."
+      "kindHint": "Fixé à la création. Un board Scrum planifie ses tickets en sprints depuis un backlog.",
+      "estimationHint": "La charge reste toujours en heures, via les affectations."
     },
     "views": {
       "label": "Vue du board",
@@ -2124,7 +2129,8 @@
       },
       "none": "Aucun sprint actif : démarrez-en un depuis le backlog.",
       "openBacklog": "Ouvrir le backlog"
-    }
+    },
+    "unestimated": "{{ count }} non estimés"
   },
   "exports": {
     "title": "Export",
@@ -2862,7 +2868,7 @@
     "title": "Backlog",
     "estimatedIn": {
       "points": "Estimation en points",
-      "hours": "Estimation en heures de reste à faire"
+      "hours": "Estimation en heures (estimation initiale)"
     },
     "createSprint": "Créer un sprint",
     "hint": "glissez un ticket vers un sprint pour le planifier",

@@ -49,14 +49,15 @@
       }
     </mat-form-field>
     <div class="pair">
-      <mat-form-field appearance="outline">
-        <mat-label>{{ 'boards.settings.estimation' | transloco }}</mat-label>
-        <mat-select formControlName="estimation">
+      <div class="estimation">
+        <span class="estimation-label" id="board-estimation-label">{{ 'boards.settings.estimation' | transloco }}</span>
+        <mat-button-toggle-group formControlName="estimation" aria-labelledby="board-estimation-label" class="estimation-toggle">
           @for (estimation of estimations; track estimation) {
-            <mat-option [value]="estimation">{{ 'boards.estimation.' + estimation | transloco }}</mat-option>
+            <mat-button-toggle [value]="estimation">{{ 'boards.estimation.' + estimation | transloco }}</mat-button-toggle>
           }
-        </mat-select>
-      </mat-form-field>
+        </mat-button-toggle-group>
+        <span class="estimation-hint">{{ 'boards.settings.estimationHint' | transloco }}</span>
+      </div>
       <mat-form-field appearance="outline">
         <mat-label>{{ 'boards.settings.swimlanes' | transloco }}</mat-label>
         <mat-select formControlName="swimlanes">

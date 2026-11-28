@@ -248,7 +248,7 @@ async fn several_tickets_get_the_values_set_each_with_its_history_and_event() {
         .iter()
         .map(|f| f["key"].as_str().unwrap())
         .collect();
-    assert_eq!(shared, ["story_points", "remaining"]);
+    assert_eq!(shared, ["story_points", "remaining", "original_estimate"]);
     let reachable: Vec<(&str, u64)> = options["statuses"]
         .as_array()
         .unwrap()

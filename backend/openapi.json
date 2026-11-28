@@ -2131,7 +2131,7 @@
           "boards"
         ],
         "summary": "The cards of a board",
-        "description": "Members who see its node. The tickets of its filter (`AND` the quick filters toggled on) that the member may see, at most 1,000, in the board's rank, the unranked ones last in the order of the filter (priority then last change without `ORDER BY`), in the column of their status (on a Scrum board, those of its active sprint only, and their sub-tasks) and grouped in swimlanes. Each column tells its count against its work in progress limit.",
+        "description": "Members who see its node. The tickets of its filter (`AND` the quick filters toggled on) that the member may see, at most 1,000, in the board's rank, the unranked ones last in the order of the filter (priority then last change without `ORDER BY`), in the column of their status (on a Scrum board, those of its active sprint only, and their sub-tasks) and grouped in swimlanes. Each column tells its count against its work in progress limit, and the sum of its estimates in the board's estimation (story points, or original estimate in hours) with its cards not estimated.",
         "operationId": "getBoardCards",
         "parameters": [
           {
@@ -25380,13 +25380,21 @@
           "name",
           "statuses",
           "count",
-          "wip"
+          "wip",
+          "estimate",
+          "unestimated"
         ],
         "properties": {
           "count": {
             "type": "integer",
             "description": "Its cards, every swimlane included.",
             "minimum": 0
+          },
+          "estimate": {
+            "type": "number",
+            "format": "double",
+            "description": "The sum of its cards' estimates, in the board's estimation.",
+            "example": 13.0
           },
           "id": {
             "type": "string",
@@ -25400,6 +25408,12 @@
             "items": {
               "type": "string"
             }
+          },
+          "unestimated": {
+            "type": "integer",
+            "description": "Its cards without an estimate.",
+            "example": 1,
+            "minimum": 0
           },
           "wip": {
             "$ref": "#/components/schemas/BoardWip"

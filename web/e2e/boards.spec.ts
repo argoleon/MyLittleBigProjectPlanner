@@ -89,13 +89,14 @@ async function mockBoard(page: Page) {
     (url) => url.pathname === '/api/v1/boards/b1/cards',
     (route) => {
       const columns = COLUMNS.map((column) => {
-        const count = tickets.filter((t) => column.statuses.includes(t.status)).length;
+        const inColumn = tickets.filter((t) => column.statuses.includes(t.status));
+        const count = inColumn.length;
         const wip = column.wipLimit === null ? 'unlimited' : count > column.wipLimit ? 'exceeded' : count === column.wipLimit ? 'reached' : 'under';
-        return { ...column, count, wip };
+        return { ...column, count, wip, estimate: inColumn.reduce((sum, t) => sum + t.n, 0), unestimated: 0 };
       });
       const cells = COLUMNS.map((column) => tickets.filter((t) => column.statuses.includes(t.status)).map(card));
       return route.fulfill({
-        json: { columns, swimlanes: 'none', lanes: [{ id: null, key: null, label: null, cells }], total: tickets.length, unmapped: 0, truncated: false },
+        json: { columns, swimlanes: 'none', lanes: [{ id: null, key: null, label: null, cells }], total: tickets.length, unmapped: 0, truncated: false, sprint: null },
       });
     },
   );

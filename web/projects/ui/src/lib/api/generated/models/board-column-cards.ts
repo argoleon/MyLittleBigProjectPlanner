@@ -12,9 +12,19 @@ export interface BoardColumnCards {
    * Its cards, every swimlane included.
    */
   count: number;
+
+  /**
+   * The sum of its cards' estimates, in the board's estimation.
+   */
+  estimate: number;
   id: string;
   name: string;
   statuses: Array<string>;
+
+  /**
+   * Its cards without an estimate.
+   */
+  unestimated: number;
   wip: BoardWip;
   wipLimit?: (number | null);
 }

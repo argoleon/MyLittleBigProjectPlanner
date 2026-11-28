@@ -914,7 +914,7 @@ pub struct SystemField {
 
 /// The system fields (`app_seed_default_fields`; an integration test keeps
 /// both in step), in their order.
-pub const SYSTEM_FIELDS: [SystemField; 2] = [
+pub const SYSTEM_FIELDS: [SystemField; 3] = [
     SystemField {
         key: "story_points",
         label_fr: "Points",
@@ -929,6 +929,18 @@ pub const SYSTEM_FIELDS: [SystemField; 2] = [
         key: "remaining",
         label_fr: "Reste à faire",
         label_en: "Remaining work",
+        kind: Kind::Number,
+        decimals: 2,
+        unit: Some(Unit::Hours),
+        all_types: true,
+        type_keys: &[],
+    },
+    // What boards estimated in hours sum (L09-US03); remaining work is for
+    // the burndown.
+    SystemField {
+        key: "original_estimate",
+        label_fr: "Estimation initiale",
+        label_en: "Original estimate",
         kind: Kind::Number,
         decimals: 2,
         unit: Some(Unit::Hours),

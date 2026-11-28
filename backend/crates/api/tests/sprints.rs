@@ -1321,3 +1321,142 @@ async fn starting_and_closing_need_manage_sprints_and_stay_in_their_tenant() {
     .await;
     assert_eq!(status, 200, "{scope}");
 }
+
+/// Sets the system field `key` of the ticket `id` to `value`, directly.
+async fn set_field(db: &TestDb, tenant: &SeedTenant, id: Uuid, key: &str, value: f64) {
+    let mut tx = infra::db::begin_tenant_tx(&db.app_pool, tenant.id).await.unwrap();
+    infra::sqlx::query(
+        r#"
+        UPDATE issue i SET fields = i.fields || jsonb_build_object(
+            (SELECT f.item_id::text FROM field_def f JOIN project_config_version v ON v.id = f.version_id
+             AND v.state = 'published' JOIN node n ON n.config_id = v.config_id AND n.id = i.project_id
+             WHERE f.key = $2), $3::float8)
+        WHERE i.id = $1
+        "#,
+    )
+    .bind(id)
+    .bind(key)
+    .bind(value)
+    .execute(&mut *tx)
+    .await
+    .unwrap();
+    tx.commit().await.unwrap();
+}
+
+#[tokio::test]
+async fn an_hours_board_sums_original_estimates_while_workload_stays_in_hours() {
+    let db = TestDb::new().await;
+    let api = common::start(&db, multi()).await;
+    let t = &db.tenant_a;
+    let plat = project(&api, t, "Identity platform", "PLAT").await;
+    let p1 = ticket(
+        &db,
+        t,
+        Ticket {
+            type_key: "story",
+            points: Some(3.0),
+            ..task(plat, 1, "todo")
+        },
+    )
+    .await;
+    let p2 = ticket(&db, t, task(plat, 2, "todo")).await;
+    let p3 = ticket(&db, t, task(plat, 3, "todo")).await;
+    set_field(&db, t, p1, "original_estimate", 7.5).await;
+    set_field(&db, t, p2, "original_estimate", 16.0).await;
+    // Remaining work is not the estimate of an hour board.
+    set_field(&db, t, p3, "remaining", 4.0).await;
+    let body = json!({
+        "nodeId": plat,
+        "name": "Platform Scrum",
+        "kind": "scrum",
+        "estimation": "hours",
+        "filter": "project = PLAT ORDER BY key",
+        "columns": [{"name": "To do", "statuses": ["todo"]}, {"name": "Done", "statuses": ["done"]}],
+        "quickFilters": []
+    });
+    let (status, created) = send(admin(&api, t, Method::POST, "/api/v1/boards").json(&body)).await;
+    assert_eq!(status, 201, "{created}");
+    let board = created["id"].as_str().unwrap().to_owned();
+
+    let read = backlog(&api, t, &board).await;
+    assert_eq!(read["estimation"], "hours");
+    assert_eq!(
+        read["backlog"]["totals"],
+        json!({"count": 3, "estimate": 23.5, "done": 0.0, "unestimated": 1})
+    );
+    let estimates: Vec<&Value> = read["backlog"]["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|i| &i["card"]["estimate"])
+        .collect();
+    assert_eq!(estimates, [&json!(7.5), &json!(16.0), &Value::Null]);
+
+    // The sprint commits in hours; its board totals its columns in hours.
+    let sprint = create_sprint(&api, t, &board, json!({})).await["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    for issue in [p1, p2, p3] {
+        planned(&api, t, &board, json!({"issueId": issue, "sprintId": sprint})).await;
+    }
+    let started = start_sprint(&api, t, &sprint).await;
+    assert_eq!(
+        (&started["committedCount"], &started["committedEstimate"]),
+        (&json!(3), &json!(23.5))
+    );
+    let cards = get(&api, t, &format!("/api/v1/boards/{board}/cards")).await;
+    let column = &cards["columns"][0];
+    assert_eq!(
+        (&column["count"], &column["estimate"], &column["unestimated"]),
+        (&json!(3), &json!(23.5), &json!(1))
+    );
+    assert_eq!(
+        (
+            &cards["columns"][1]["estimate"],
+            &cards["columns"][1]["unestimated"]
+        ),
+        (&json!(0.0), &json!(0))
+    );
+
+    // A ticket's assignment, in hours whatever the board estimates.
+    let resource = send(
+        admin(&api, t, Method::POST, "/api/v1/resources")
+            .json(&json!({"kind": "generic", "displayName": "Rust developer"})),
+    )
+    .await
+    .1["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let (status, assigned) = send(
+        admin(&api, t, Method::POST, "/api/v1/issues/PLAT-1/assignments").json(&json!({
+            "resourceId": resource,
+            "segments": [{"start": "2030-03-04", "end": "2030-03-08", "mode": "hours_per_day", "value": 240}],
+        })),
+    )
+    .await;
+    assert_eq!(status, 201, "{assigned}");
+    assert_eq!(assigned["loadMinutes"], 1200);
+    let before = get(&api, t, "/api/v1/issues/PLAT-1/assignments").await;
+
+    // Switched to points: the totals follow, the workload does not.
+    let (status, changed) = send(
+        admin(&api, t, Method::PUT, &format!("/api/v1/boards/{board}"))
+            .header("if-match", "*")
+            .json(&json!({"name": "Platform Scrum", "filter": "project = PLAT ORDER BY key", "estimation": "points"})),
+    )
+    .await;
+    assert_eq!(status, 200, "{changed}");
+    let read = backlog(&api, t, &board).await;
+    assert_eq!(
+        read["sprints"][0]["totals"],
+        json!({"count": 3, "estimate": 3.0, "done": 0.0, "unestimated": 2})
+    );
+    let column = get(&api, t, &format!("/api/v1/boards/{board}/cards")).await["columns"][0].clone();
+    assert_eq!(
+        (&column["estimate"], &column["unestimated"]),
+        (&json!(3.0), &json!(2))
+    );
+    assert_eq!(get(&api, t, "/api/v1/issues/PLAT-1/assignments").await, before);
+}
