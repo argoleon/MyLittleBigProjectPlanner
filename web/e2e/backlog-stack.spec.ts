@@ -77,6 +77,7 @@ function rowOf(page: Page, key: string): Locator {
 
 /** Drags the handle of `source` over `target` with the mouse, as the CDK expects. */
 async function drag(page: Page, source: Locator, target: Locator) {
+  await source.locator('.handle').scrollIntoViewIfNeeded();
   const from = (await source.locator('.handle').boundingBox())!;
   const to = (await target.boundingBox())!;
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
