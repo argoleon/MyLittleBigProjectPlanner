@@ -1,5 +1,5 @@
 import { CdkDrag, CdkDragDrop, CdkDropList, CdkDropListGroup, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
-import { Component, DestroyRef, computed, inject, input, linkedSignal, resource, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, input, linkedSignal, resource, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -22,7 +22,10 @@ import {
   Issue,
   IssueTransition,
   LoadingState,
+  LocalDatePipe,
   Realtime,
+  SprintClosed,
+  toLocalDate,
   errorTranslationKey,
   getBoard,
   getBoardCards,
@@ -38,6 +41,8 @@ import { BacklogView } from './backlog-view';
 import { BoardCard } from './board-card';
 import { BoardSettingsDialog, BoardSettingsData, BoardSettingsOutcome } from './board-settings-dialog';
 import { ChooseTransitionDialog, ChooseTransitionData } from './choose-transition-dialog';
+import { CloseSprintData, CloseSprintDialog } from './close-sprint-dialog';
+import { Remaining, remaining } from './sprint-dates';
 
 /** Cards a cell shows before "Show N more". */
 export const CELL_LIMIT = 20;
@@ -67,7 +72,10 @@ interface Message {
  * as they happen. Planners reorder the cards of a column (dragged, or
  * moved up and down through the menu): the board's rank (L09-US01).
  *
- * A Scrum board shows its backlog instead (`BacklogView`).
+ * A Scrum board shows its backlog (`BacklogView`) or its active sprint
+ * (L09-US02): the same columns with the sprint's tickets only, under a
+ * header with its dates, the days left and its goal, from where planners
+ * close it. It opens on the active sprint when there is one.
  */
 @Component({
   selector: 'app-board-page',
@@ -80,6 +88,7 @@ interface Message {
     CdkDropListGroup,
     ErrorState,
     LoadingState,
+    LocalDatePipe,
     MatButtonModule,
     MatButtonToggleModule,
     MatChipsModule,
@@ -105,6 +114,17 @@ export class BoardPage {
     params: () => this.id(),
     loader: ({ params }) => this.api.invoke(getBoard, { id: params }),
   });
+  /** The view of a Scrum board the member chose; `null` until then. */
+  protected readonly view = signal<'backlog' | 'sprint' | null>(null);
+  /**
+   * The view shown: a Kanban board's own; on a Scrum board, the one chosen,
+   * else the active sprint when there is one, else the backlog.
+   */
+  protected readonly shownView = computed<'kanban' | 'backlog' | 'sprint' | null>(() => {
+    if (!this.board.hasValue()) return null;
+    if (this.board.value().kind !== 'scrum') return 'kanban';
+    return this.view() ?? (this.cards.error() ? 'sprint' : null);
+  });
   /** The quick filters toggled on, by position. */
   protected readonly quick = signal<readonly number[]>([]);
   /** The swimlanes shown: the board's own until the member switches. */
@@ -112,11 +132,16 @@ export class BoardPage {
     source: () => (this.board.hasValue() ? this.board.value() : undefined),
     computation: (board, previous) => previous?.value ?? board?.swimlanes ?? 'none',
   });
-  protected readonly cards = resource({
-    params: () =>
-      this.board.hasValue() && this.board.value().kind !== 'scrum'
+  /** What the cards are read for; equal values ask nothing again (the view settling, say). */
+  private readonly cardsQuery = computed(
+    () =>
+      this.board.hasValue() && (this.board.value().kind !== 'scrum' || this.view() !== 'backlog')
         ? { id: this.board.value().id, quick: this.quick(), swimlanes: this.swimlanes(), version: this.board.value().version }
         : undefined,
+    { equal: (a, b) => JSON.stringify(a) === JSON.stringify(b) },
+  );
+  protected readonly cards = resource({
+    params: () => this.cardsQuery(),
     loader: ({ params }) =>
       this.api.invoke(getBoardCards, {
         id: params.id,
@@ -149,6 +174,12 @@ export class BoardPage {
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
+    // A Scrum board opens on its active sprint, or on its backlog without one.
+    effect(() => {
+      if (this.view() === null && this.cards.hasValue() && this.board.hasValue() && this.board.value().kind === 'scrum') {
+        this.view.set(this.cards.value().sprint ? 'sprint' : 'backlog');
+      }
+    });
     inject(Realtime)
       .events.pipe(takeUntilDestroyed())
       .subscribe((event) => {
@@ -166,6 +197,37 @@ export class BoardPage {
       this.refreshTimer = null;
       if (!this.moving()) this.cards.reload();
     }, REALTIME_DELAY_MS);
+  }
+
+  protected setView(view: 'backlog' | 'sprint'): void {
+    this.view.set(view);
+  }
+
+  /** A sprint started or closed from the backlog: its board, then. */
+  protected cycled(change: 'started' | 'closed'): void {
+    if (change === 'started') this.view.set('sprint');
+    else if (this.view() !== 'backlog') this.cards.reload();
+  }
+
+  /** What remains of a sprint ending on `end`, from today. */
+  protected remainingOf(end: string): { kind: Remaining['kind']; days: number } {
+    const left = remaining(toLocalDate(new Date()), end);
+    return { kind: left.kind, days: left.kind === 'lastDay' ? 0 : left.days };
+  }
+
+  /** Closes the active sprint, counting its tickets (sub-tasks aside) done or not. */
+  protected closeSprint(): void {
+    const read = this.cards.hasValue() ? this.cards.value() : undefined;
+    if (!read?.sprint) return;
+    const cards = read.lanes.flatMap((lane) => lane.cells.flat()).filter((card) => !card.type.isSubtask);
+    const done = cards.filter((card) => card.status.category === 'done').length;
+    const data: CloseSprintData = { sprint: read.sprint, done, unfinished: cards.length - done };
+    this.dialog
+      .open<CloseSprintDialog, CloseSprintData, SprintClosed>(CloseSprintDialog, { data, width: 'min(520px, 100vw)', autoFocus: 'first-tabbable' })
+      .afterClosed()
+      .subscribe((closed) => {
+        if (closed) this.view.set('backlog');
+      });
   }
 
   protected toggleQuick(index: number, selected: boolean): void {

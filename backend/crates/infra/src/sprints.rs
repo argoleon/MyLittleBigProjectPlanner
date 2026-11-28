@@ -16,7 +16,7 @@ use time::{Date, OffsetDateTime};
 use uuid::Uuid;
 
 /// A sprint.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Sprint {
     pub id: Uuid,
     pub board_id: Uuid,
@@ -28,6 +28,14 @@ pub struct Sprint {
     pub end_date: Option<Date>,
     /// `future`, `active` or `closed`.
     pub state: String,
+    pub started_at: Option<OffsetDateTime>,
+    pub closed_at: Option<OffsetDateTime>,
+    /// The scope when it started: tickets, and their estimate in the board's estimation.
+    pub committed_count: Option<i32>,
+    pub committed_estimate: Option<f64>,
+    /// The scope done when it closed.
+    pub completed_count: Option<i32>,
+    pub completed_estimate: Option<f64>,
     pub version: i64,
     pub created_at: OffsetDateTime,
 }
@@ -60,6 +68,12 @@ struct Row {
     start_date: Option<Date>,
     end_date: Option<Date>,
     state: String,
+    started_at: Option<OffsetDateTime>,
+    closed_at: Option<OffsetDateTime>,
+    committed_count: Option<i32>,
+    committed_estimate: Option<f64>,
+    completed_count: Option<i32>,
+    completed_estimate: Option<f64>,
     version: i64,
     created_at: OffsetDateTime,
 }
@@ -76,31 +90,43 @@ impl From<Row> for Sprint {
             start_date: row.start_date,
             end_date: row.end_date,
             state: row.state,
+            started_at: row.started_at,
+            closed_at: row.closed_at,
+            committed_count: row.committed_count,
+            committed_estimate: row.committed_estimate,
+            completed_count: row.completed_count,
+            completed_estimate: row.completed_estimate,
             version: row.version,
             created_at: row.created_at,
         }
     }
 }
 
-/// The sprints `ids`, or the open ones of `board`: the active ones first,
-/// then by their number on their board.
+/// The sprints `ids`, or the open ones of `board`, or its closed ones: the
+/// active ones first, the last closed first, then by their number on their
+/// board.
 async fn select(
     conn: &mut PgConnection,
     ids: Option<&[Uuid]>,
     open_of_board: Option<Uuid>,
+    closed_of_board: Option<Uuid>,
 ) -> Result<Vec<Sprint>, sqlx::Error> {
     let rows = sqlx::query_as!(
         Row,
         r#"
         SELECT s.id, s.board_id, b.name AS board_name, s.sequence, s.name, s.goal,
-               s.start_date, s.end_date, s.state, s.version, s.created_at
+               s.start_date, s.end_date, s.state, s.started_at, s.closed_at,
+               s.committed_count, s.committed_estimate, s.completed_count, s.completed_estimate,
+               s.version, s.created_at
         FROM sprint s JOIN board b ON b.id = s.board_id
         WHERE ($1::uuid[] IS NULL OR s.id = ANY($1))
           AND ($2::uuid IS NULL OR (s.board_id = $2 AND s.state <> 'closed'))
-        ORDER BY (s.state = 'active') DESC, lower(b.name), s.board_id, s.sequence
+          AND ($3::uuid IS NULL OR (s.board_id = $3 AND s.state = 'closed'))
+        ORDER BY (s.state = 'active') DESC, s.closed_at DESC NULLS FIRST, lower(b.name), s.board_id, s.sequence
         "#,
         ids,
-        open_of_board
+        open_of_board,
+        closed_of_board
     )
     .fetch_all(&mut *conn)
     .await?;
@@ -109,17 +135,30 @@ async fn select(
 
 /// The open sprints of `board`: active first, then by number.
 pub async fn open_of_board(conn: &mut PgConnection, board: Uuid) -> Result<Vec<Sprint>, sqlx::Error> {
-    select(conn, None, Some(board)).await
+    select(conn, None, Some(board), None).await
+}
+
+/// The closed sprints of `board`, the last closed first.
+pub async fn closed_of_board(conn: &mut PgConnection, board: Uuid) -> Result<Vec<Sprint>, sqlx::Error> {
+    select(conn, None, None, Some(board)).await
+}
+
+/// The active sprint of `board`, if any.
+pub async fn active_of_board(conn: &mut PgConnection, board: Uuid) -> Result<Option<Sprint>, sqlx::Error> {
+    Ok(open_of_board(conn, board)
+        .await?
+        .into_iter()
+        .find(|s| s.state == "active"))
 }
 
 /// The sprints `ids`, in the same order.
 pub async fn find_many(conn: &mut PgConnection, ids: &[Uuid]) -> Result<Vec<Sprint>, sqlx::Error> {
-    select(conn, Some(ids), None).await
+    select(conn, Some(ids), None, None).await
 }
 
 /// The sprint `id`.
 pub async fn find(conn: &mut PgConnection, id: Uuid) -> Result<Option<Sprint>, sqlx::Error> {
-    Ok(select(conn, Some(&[id]), None).await?.pop())
+    Ok(select(conn, Some(&[id]), None, None).await?.pop())
 }
 
 /// Locks the board `id` until the end of the transaction: its sprints and
@@ -480,4 +519,157 @@ pub async fn rebalance(conn: &mut PgConnection, board: Uuid) -> Result<(), sqlx:
         write_rank(conn, board, *issue, &rank).await?;
     }
     Ok(())
+}
+
+/// The tickets in the sprint `sprint` now (not those that left it).
+pub async fn issues_in(conn: &mut PgConnection, sprint: Uuid) -> Result<Vec<Uuid>, sqlx::Error> {
+    sqlx::query_scalar!(
+        "SELECT issue_id FROM sprint_issue WHERE sprint_id = $1 AND removed_at IS NULL ORDER BY added_at, id",
+        sprint
+    )
+    .fetch_all(conn)
+    .await
+}
+
+/// A ticket's estimate, in the board's estimation, at a start or a close.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Estimated {
+    pub issue: Uuid,
+    pub estimate: Option<f64>,
+    /// At a close: its status is of the `done` category.
+    pub done: bool,
+}
+
+/// Starts the future sprint `id`, if its version is expected: its name, goal
+/// and dates as given, and the scope it commits to (every ticket in it now,
+/// with its estimate; `count` and `estimate` their totals). The board's
+/// lock is the caller's.
+pub async fn start(
+    conn: &mut PgConnection,
+    id: Uuid,
+    expected_versions: Option<&[i64]>,
+    input: &SprintInput<'_>,
+    committed: &[Estimated],
+    (count, estimate): (i32, f64),
+) -> WriteResult<Sprint> {
+    let updated = sqlx::query_scalar!(
+        r#"
+        UPDATE sprint
+        SET state = 'active', started_at = now(), name = $3, goal = $4, start_date = $5, end_date = $6,
+            committed_count = $7, committed_estimate = $8, version = version + 1
+        WHERE id = $1 AND state = 'future' AND ($2::bigint[] IS NULL OR version = ANY($2))
+        RETURNING id
+        "#,
+        id,
+        expected_versions,
+        input.name.trim(),
+        input.goal.map(str::trim).filter(|g| !g.is_empty()),
+        input.start_date,
+        input.end_date,
+        count,
+        estimate
+    )
+    .fetch_optional(&mut *conn)
+    .await?;
+    if updated.is_none() {
+        return Ok(Err(missing_or_stale(conn, id).await?));
+    }
+    for stay in committed {
+        sqlx::query!(
+            r#"
+            UPDATE sprint_issue SET committed = true, estimate_at_start = $3
+            WHERE sprint_id = $1 AND issue_id = $2 AND removed_at IS NULL
+            "#,
+            id,
+            stay.issue,
+            stay.estimate
+        )
+        .execute(&mut *conn)
+        .await?;
+    }
+    Ok(find(conn, id).await?.ok_or(WriteConflict::NotFound))
+}
+
+/// Closes the active sprint `id`, if its version is expected: each ticket in
+/// it now keeps its stay, marked completed or not with its estimate; the
+/// totals of the completed ones are `(count, estimate)`. The stays no longer
+/// count as open: the caller then puts the unfinished tickets where chosen.
+pub async fn close(
+    conn: &mut PgConnection,
+    id: Uuid,
+    expected_versions: Option<&[i64]>,
+    stays: &[Estimated],
+    (count, estimate): (i32, f64),
+) -> WriteResult<Sprint> {
+    let updated = sqlx::query_scalar!(
+        r#"
+        UPDATE sprint
+        SET state = 'closed', closed_at = now(), completed_count = $3, completed_estimate = $4,
+            version = version + 1
+        WHERE id = $1 AND state = 'active' AND ($2::bigint[] IS NULL OR version = ANY($2))
+        RETURNING id
+        "#,
+        id,
+        expected_versions,
+        count,
+        estimate
+    )
+    .fetch_optional(&mut *conn)
+    .await?;
+    if updated.is_none() {
+        return Ok(Err(missing_or_stale(conn, id).await?));
+    }
+    for stay in stays {
+        sqlx::query!(
+            r#"
+            UPDATE sprint_issue SET completed = $3, estimate_at_close = $4
+            WHERE sprint_id = $1 AND issue_id = $2 AND removed_at IS NULL
+            "#,
+            id,
+            stay.issue,
+            stay.done,
+            stay.estimate
+        )
+        .execute(&mut *conn)
+        .await?;
+    }
+    sqlx::query!(
+        "UPDATE sprint_issue SET sprint_open = false WHERE sprint_id = $1",
+        id
+    )
+    .execute(&mut *conn)
+    .await?;
+    Ok(find(conn, id).await?.ok_or(WriteConflict::NotFound))
+}
+
+/// A stay of a ticket in a sprint, with what its start and close kept.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ScopeRow {
+    pub issue_id: Uuid,
+    pub issue_key: String,
+    pub issue_summary: String,
+    pub project_id: Uuid,
+    pub added_at: OffsetDateTime,
+    pub removed_at: Option<OffsetDateTime>,
+    pub committed: bool,
+    pub estimate_at_start: Option<f64>,
+    pub completed: Option<bool>,
+    pub estimate_at_close: Option<f64>,
+}
+
+/// Every stay in the sprint `sprint`, by arrival.
+pub async fn scope(conn: &mut PgConnection, sprint: Uuid) -> Result<Vec<ScopeRow>, sqlx::Error> {
+    sqlx::query_as!(
+        ScopeRow,
+        r#"
+        SELECT si.issue_id, i.key AS issue_key, i.summary AS issue_summary, i.project_id,
+               si.added_at, si.removed_at, si.committed, si.estimate_at_start, si.completed, si.estimate_at_close
+        FROM sprint_issue si JOIN issue i ON i.id = si.issue_id
+        WHERE si.sprint_id = $1
+        ORDER BY si.added_at, si.id
+        "#,
+        sprint
+    )
+    .fetch_all(conn)
+    .await
 }

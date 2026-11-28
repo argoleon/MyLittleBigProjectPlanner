@@ -1,0 +1,36 @@
+<h2 mat-dialog-title>{{ 'backlog.close.title' | transloco: { name: data.sprint.name } }}</h2>
+<mat-dialog-content class="content">
+  @if (errorKey(); as key) {
+    <p class="message error" role="alert">{{ key | transloco }}</p>
+  }
+  <p class="summary">{{ 'backlog.close.summary' | transloco: { done: data.done, unfinished: data.unfinished } }}</p>
+  @if (data.unfinished > 0) {
+    <p class="legend" id="close-move-to">{{ 'backlog.close.moveTo' | transloco }}</p>
+    <mat-radio-group class="targets" aria-labelledby="close-move-to" [ngModel]="choice()" (ngModelChange)="choice.set($event)">
+      <mat-radio-button value="backlog" class="to-backlog">{{ 'backlog.close.toBacklog' | transloco }}</mat-radio-button>
+      @if (future.hasValue() && future.value().length > 0) {
+        <mat-radio-button value="sprint" class="to-sprint">{{ 'backlog.close.toSprint' | transloco }}</mat-radio-button>
+      }
+      <mat-radio-button value="new_sprint" class="to-new">{{ 'backlog.close.toNewSprint' | transloco }}</mat-radio-button>
+    </mat-radio-group>
+    @if (choice() === 'sprint' && future.hasValue()) {
+      <mat-form-field appearance="outline" class="sprint-choice">
+        <mat-label>{{ 'backlog.close.sprint' | transloco }}</mat-label>
+        <mat-select [ngModel]="targetId()" (ngModelChange)="target.set($event)">
+          @for (sprint of future.value(); track sprint.id) {
+            <mat-option [value]="sprint.id">{{ sprint.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    }
+  } @else {
+    <p class="all-done">{{ 'backlog.close.allDone' | transloco }}</p>
+  }
+  <p class="note">{{ 'backlog.close.note' | transloco }}</p>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button matButton type="button" mat-dialog-close>{{ 'dialog.cancel' | transloco }}</button>
+  <button matButton="filled" type="button" class="confirm-close" [disabled]="saving() || future.isLoading()" (click)="close()">
+    {{ 'backlog.close.confirm' | transloco }}
+  </button>
+</mat-dialog-actions>

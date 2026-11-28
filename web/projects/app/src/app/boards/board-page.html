@@ -26,6 +26,18 @@
       </p>
     </div>
     <div class="header-actions">
+      @if (b.kind === 'scrum') {
+        <mat-button-toggle-group
+          hideSingleSelectionIndicator
+          class="views"
+          [aria-label]="'boards.views.label' | transloco"
+          [value]="shownView()"
+          (change)="setView($event.value)"
+        >
+          <mat-button-toggle value="backlog">{{ 'boards.views.backlog' | transloco }}</mat-button-toggle>
+          <mat-button-toggle value="sprint">{{ 'boards.views.sprint' | transloco }}</mat-button-toggle>
+        </mat-button-toggle-group>
+      }
       @if (b.canManage && !b.node.archived) {
         <button matButton="outlined" type="button" class="configure" (click)="configure()">
           <mat-icon aria-hidden="true">tune</mat-icon>
@@ -41,14 +53,42 @@
     </div>
   </div>
 
-  @if (b.kind === 'scrum') {
+  @if (shownView() === 'backlog') {
     <div class="filter scrum-filter">
       <span class="filter-label" id="board-filter-label">{{ 'boards.filter' | transloco }}</span>
       <code class="filter-query" aria-labelledby="board-filter-label">{{ b.filter || ('boards.filterEmpty' | transloco) }}</code>
       <a matButton class="open-search" routerLink="/search" [queryParams]="{ q: b.filter }">{{ 'boards.openSearch' | transloco }}</a>
     </div>
-    <app-backlog [board]="b" />
+    <app-backlog [board]="b" (cycled)="cycled($event)" />
   } @else {
+    @if (b.kind === 'scrum' && cards.hasValue()) {
+      @if (cards.value().sprint; as sprint) {
+        <section class="sprint-head" aria-labelledby="sprint-head-name">
+          <div class="sprint-title">
+            <h2 class="sprint-name" id="sprint-head-name">{{ sprint.name }}</h2>
+            @if (sprint.startDate && sprint.endDate) {
+              <span class="sprint-dates">{{
+                'backlog.sprint.dates'
+                  | transloco: { start: (sprint.startDate | localDate: { day: 'numeric', month: 'short' }), end: (sprint.endDate | localDate: { day: 'numeric', month: 'short' }) }
+              }}</span>
+              @let left = remainingOf(sprint.endDate);
+              <span class="sprint-left" [attr.data-remaining]="left.kind">{{ 'boards.sprint.remaining.' + left.kind | transloco: { count: left.days } }}</span>
+            }
+          </div>
+          @if (sprint.goal) {
+            <p class="sprint-goal">{{ 'backlog.sprint.goal' | transloco: { goal: sprint.goal } }}</p>
+          }
+          @if (b.canPlan) {
+            <button matButton="outlined" type="button" class="close-sprint" (click)="closeSprint()">{{ 'backlog.sprint.close' | transloco }}</button>
+          }
+        </section>
+      } @else {
+        <div class="no-sprint" role="status">
+          <span>{{ 'boards.sprint.none' | transloco }}</span>
+          <button matButton type="button" class="to-backlog" (click)="setView('backlog')">{{ 'boards.sprint.openBacklog' | transloco }}</button>
+        </div>
+      }
+    }
     <div class="toolbar">
       <div class="filter">
         <span class="filter-label" id="board-filter-label">{{ 'boards.filter' | transloco }}</span>

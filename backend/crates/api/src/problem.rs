@@ -103,6 +103,8 @@ pub enum ErrorCode {
     SprintNotFuture,
     SprintForeign,
     SprintSubtask,
+    SprintNotActive,
+    SprintActiveExists,
     ExportTooLarge,
     ExportNotReady,
     BulkTooMany,
@@ -156,7 +158,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 111] = [
+    pub const ALL: [Self; 113] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -220,6 +222,8 @@ impl ErrorCode {
         Self::SprintNotFuture,
         Self::SprintForeign,
         Self::SprintSubtask,
+        Self::SprintNotActive,
+        Self::SprintActiveExists,
         Self::ExportTooLarge,
         Self::ExportNotReady,
         Self::BulkTooMany,
@@ -335,6 +339,8 @@ impl ErrorCode {
             Self::SprintNotFuture => "sprint.not_future",
             Self::SprintForeign => "sprint.foreign",
             Self::SprintSubtask => "sprint.subtask",
+            Self::SprintNotActive => "sprint.not_active",
+            Self::SprintActiveExists => "sprint.active_exists",
             Self::ExportTooLarge => "export.too_large",
             Self::ExportNotReady => "export.not_ready",
             Self::BulkTooMany => "bulk.too_many",
@@ -448,6 +454,8 @@ impl ErrorCode {
             | Self::SprintNotFuture
             | Self::SprintForeign
             | Self::SprintSubtask
+            | Self::SprintNotActive
+            | Self::SprintActiveExists
             | Self::ExportNotReady
             | Self::RoleLabelTaken
             | Self::RoleInUse
@@ -567,6 +575,8 @@ impl ErrorCode {
             Self::SprintNotFuture => "Only a sprint not started yet can be deleted",
             Self::SprintForeign => "The ticket is planned in a sprint of another board",
             Self::SprintSubtask => "A sub-task follows its parent into sprints",
+            Self::SprintNotActive => "The sprint is not active",
+            Self::SprintActiveExists => "Another sprint of this board is active",
             Self::ExportTooLarge => "The query finds more tickets than an export holds",
             Self::ExportNotReady => "The export is not ready",
             Self::BulkTooMany => "More tickets than a bulk action takes",
@@ -990,7 +1000,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 104] = [
+        let expected: [(ErrorCode, u16); 106] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -1043,6 +1053,8 @@ mod tests {
             (ErrorCode::SprintNotFuture, 409),
             (ErrorCode::SprintForeign, 409),
             (ErrorCode::SprintSubtask, 409),
+            (ErrorCode::SprintNotActive, 409),
+            (ErrorCode::SprintActiveExists, 409),
             (ErrorCode::ExportTooLarge, 422),
             (ErrorCode::ExportNotReady, 409),
             (ErrorCode::BulkTooMany, 422),

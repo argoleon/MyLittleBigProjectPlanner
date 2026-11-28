@@ -4,6 +4,7 @@
 import { BoardColumnCards } from '../models/board-column-cards';
 import { BoardLane } from '../models/board-lane';
 import { BoardSwimlanes } from '../models/board-swimlanes';
+import { Sprint } from '../models/sprint';
 
 /**
  * The cards of a board.
@@ -11,6 +12,7 @@ import { BoardSwimlanes } from '../models/board-swimlanes';
 export interface BoardCards {
   columns: Array<BoardColumnCards>;
   lanes: Array<BoardLane>;
+  sprint?: (Sprint | null);
   swimlanes: BoardSwimlanes;
 
   /**

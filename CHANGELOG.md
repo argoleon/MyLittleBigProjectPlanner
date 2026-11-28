@@ -14,6 +14,13 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
   - Every stay of a ticket in a sprint is kept (added, removed), for the burndown and the velocity to come.
   - The query language runs `sprint = "PLAT Sprint 4"`, `sprint IN openSprints()`, `sprint IS EMPTY`; a sub-task follows its parent. `fixVersion` still answers `query.unsupported` until the versions.
   - `GET /api/v1/boards/{id}/backlog`, `POST /api/v1/boards/{id}/sprints`, `/api/v1/sprints/{id}` (read, change, delete), `POST /api/v1/boards/{id}/backlog/moves`, `POST /api/v1/boards/{id}/rank`; boards carry their `kind` and `canPlan`; problems `board.not_scrum`, `sprint.closed`, `sprint.not_future`, `sprint.foreign`, `sprint.subtask`.
+- **Running and closing sprints** (#265)
+  - Planners start a future sprint from the backlog when the board has none active (`sprint.active_exists` otherwise): its dates are required (two weeks from today by default), and its tickets become its committed scope, with their estimates.
+  - A Scrum board then opens on its **active sprint**: the board's columns with the sprint's tickets and their sub-tasks only, under a header with its dates, the days left and its goal. A toggle switches between **Backlog** and **Active sprint**; without an active sprint the board opens on its backlog.
+  - Adding a ticket to the active sprint or taking one out asks first: it changes the scope of a sprint under way. Every change is kept for the burndown.
+  - **Close the sprint** (from its board or the backlog) keeps its finished tickets (status of the Done category) as its completed scope, with their estimates, and sends the unfinished ones to the backlog, a future sprint of the board (the next one by default) or a new sprint.
+  - The backlog lists the **closed sprints** on demand, each with the points and tickets it committed to and completed; its scope shows every ticket, committed or added later, done, not done or taken out.
+  - `POST /api/v1/sprints/{id}/start`, `POST /api/v1/sprints/{id}/close`, `GET /api/v1/boards/{id}/sprints?state=open|closed`, `GET /api/v1/sprints/{id}/scope`; sprints carry their committed and completed scope; a Scrum board's cards carry its active `sprint`; problems `sprint.not_active`, `sprint.active_exists`.
 
 ## [0.8.0] - 2026-11-27
 
