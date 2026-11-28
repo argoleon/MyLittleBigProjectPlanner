@@ -458,6 +458,9 @@ pub struct BoardCardsView {
     unmapped: usize,
     /// The filter holds more than 1,000 tickets: only the first are shown.
     truncated: bool,
+    /// A Scrum board shows the tickets of its active sprint only (and their
+    /// sub-tasks): that sprint, `null` when none is active.
+    sprint: Option<crate::sprints::SprintView>,
 }
 
 /// A card dropped in a column.
@@ -1071,7 +1074,8 @@ fn quick_toggled(raw: Option<&str>, count: usize) -> Result<Vec<usize>, Problem>
     description = "Members who see its node. The tickets of its filter (`AND` the quick filters \
                    toggled on) that the member may see, at most 1,000, in the board's rank, the \
                    unranked ones last in the order of the filter (priority then last change \
-                   without `ORDER BY`), in the column of their status \
+                   without `ORDER BY`), in the column of their status (on a Scrum board, those of \
+                   its active sprint only, and their sub-tasks) \
                    and grouped in swimlanes. Each column tells its count against its work in \
                    progress limit.",
     params(
@@ -1122,6 +1126,21 @@ pub async fn cards(
         .map_err(search_problem)?;
     let truncated = page.next_cursor.is_some();
     let mut items = page.items;
+    // A Scrum board: its active sprint's tickets only, sub-tasks following their parent.
+    let sprint = if Kind::parse(&board.kind) == Some(Kind::Scrum) {
+        let active = infra::sprints::active_of_board(&mut tx, board.id).await?;
+        let in_sprint: BTreeSet<Uuid> = match &active {
+            Some(sprint) => infra::sprints::issues_in(&mut tx, sprint.id)
+                .await?
+                .into_iter()
+                .collect(),
+            None => BTreeSet::new(),
+        };
+        items.retain(|i| in_sprint.contains(&i.id) || i.parent_id.is_some_and(|p| in_sprint.contains(&p)));
+        active
+    } else {
+        None
+    };
     let ids: Vec<Uuid> = items.iter().map(|i| i.id).collect();
     let ranks = infra::sprints::ranks_of(&mut tx, board.id, &ids).await?;
     sort_by_rank(&mut items, |i| ranks.get(&i.id).map(String::as_str));
@@ -1174,6 +1193,7 @@ pub async fn cards(
         total,
         unmapped,
         truncated,
+        sprint: sprint.map(crate::sprints::sprint_view),
     })
     .into_response();
     language.headers(&mut response);

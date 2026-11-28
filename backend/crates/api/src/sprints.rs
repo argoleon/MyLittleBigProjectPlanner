@@ -11,6 +11,12 @@
 //! A ticket is in one open sprint at most. Ranks are kept per board and
 //! order Kanban boards too (`POST /boards/{id}/rank`). Every move records an
 //! outbox event on the ticket, so that the boards showing it follow.
+//!
+//! A board has one active sprint at most (L09-US02). Starting a sprint takes
+//! its dates and snapshots the committed scope; closing it snapshots the
+//! completed scope and sends the unfinished tickets to the backlog, a future
+//! sprint of the board or a new one. The stays of a closed sprint are kept:
+//! its scope can be read afterwards (`GET /sprints/{id}/scope`).
 
 use std::collections::{BTreeMap, HashMap};
 
@@ -21,23 +27,24 @@ use domain::boards::{Estimation, Kind, MAX_CARDS, effective_query};
 use domain::permissions::Permission;
 use domain::rank::sort_by_rank;
 use domain::sprints::{
-    self as rules, Item, MoveRefusal, SprintFields, SprintRef, State as SprintState, Target, Totals,
+    self as rules, CloseRefusal, CloseTarget, Item, MoveRefusal, SprintFields, SprintRef, StartRefusal,
+    State as SprintState, Stay, Target, Totals,
 };
 use domain::validation::FieldError;
 use infra::boards::Board;
 use infra::full_text::Audience;
 use infra::outbox::Event;
 use infra::search::Context;
-use infra::sprints::{self as repo, Place, Sprint, SprintInput, WriteConflict};
+use infra::sprints::{self as repo, Estimated, Place, Sprint, SprintInput, WriteConflict};
 use infra::uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use time::Date;
-use utoipa::ToSchema;
+use time::{Date, OffsetDateTime};
+use utoipa::{IntoParams, ToSchema};
 
 use crate::boards::{CardView, EstimationView, build_cards, visible};
 use crate::etag::{etag, if_none_match, require_if_match};
-use crate::extract::{AcceptLanguage, ApiJson, ApiPath};
+use crate::extract::{AcceptLanguage, ApiJson, ApiPath, ApiQuery};
 use crate::issues::{Content, visible_issue};
 use crate::nodes::{Sight, is_tenant_admin};
 use crate::problem::{ErrorCode, PROBLEM_JSON, Problem, ProblemBody};
@@ -94,13 +101,33 @@ pub struct SprintView {
     #[schema(value_type = Option<String>, format = Date, example = "2026-11-27")]
     end_date: Option<Date>,
     state: StateView,
+    /// When it closed.
+    #[serde(with = "time::serde::rfc3339::option")]
+    #[schema(value_type = Option<String>, format = DateTime)]
+    closed_at: Option<OffsetDateTime>,
+    /// The scope it committed to when it started: tickets, and their
+    /// estimate in the board's estimation.
+    #[schema(example = 4)]
+    committed_count: Option<i32>,
+    #[schema(example = 34.0)]
+    committed_estimate: Option<f64>,
+    /// The scope done when it closed.
+    #[schema(example = 3)]
+    completed_count: Option<i32>,
+    #[schema(example = 21.0)]
+    completed_estimate: Option<f64>,
     #[schema(example = 1)]
     version: i64,
 }
 
-fn sprint_view(sprint: Sprint) -> SprintView {
+pub(crate) fn sprint_view(sprint: Sprint) -> SprintView {
     SprintView {
         state: SprintState::parse(&sprint.state).unwrap_or_default().into(),
+        closed_at: sprint.closed_at,
+        committed_count: sprint.committed_count,
+        committed_estimate: sprint.committed_estimate,
+        completed_count: sprint.completed_count,
+        completed_estimate: sprint.completed_estimate,
         id: sprint.id,
         board_id: sprint.board_id,
         board_name: sprint.board_name,
@@ -879,4 +906,483 @@ pub async fn rank_issue(
     record(&mut tx, RANKED, issue.id, json!({"boardId": board.id}), actor).await?;
     tx.commit().await?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// What a sprint starts with.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[schema(as = SprintStart, example = json!({"name": "PLAT Sprint 25", "goal": "Audit of sign-ins", "startDate": "2026-11-30", "endDate": "2026-12-11"}))]
+pub struct StartBody {
+    /// 1 to 100 characters; its current name when left out.
+    #[serde(default)]
+    name: Option<String>,
+    /// Up to 1,000 characters; its current goal when left out.
+    #[serde(default)]
+    goal: Option<String>,
+    #[schema(value_type = String, format = Date)]
+    start_date: Option<Date>,
+    #[schema(value_type = String, format = Date)]
+    end_date: Option<Date>,
+}
+
+/// Where the unfinished tickets of a closing sprint go.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+#[schema(as = SprintCloseTarget)]
+pub enum MoveToView {
+    Backlog,
+    /// The future sprint `sprintId` of the board.
+    Sprint,
+    /// A sprint created for them, after the board's others.
+    NewSprint,
+}
+
+/// How a sprint closes.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[schema(as = SprintClose, example = json!({"moveTo": "sprint", "sprintId": "01933b2e-7c4a-7b9e-8f3d-2a6c5e1f0b9b"}))]
+pub struct CloseBody {
+    move_to: MoveToView,
+    /// With `moveTo: sprint`.
+    #[serde(default)]
+    sprint_id: Option<Uuid>,
+}
+
+/// What closing a sprint did.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(as = SprintClosed)]
+pub struct ClosedView {
+    sprint: SprintView,
+    /// The tickets moved out, unfinished.
+    #[schema(example = 3)]
+    moved: usize,
+    /// Where they went: a sprint of the board, or `null` for the backlog.
+    target: Option<SprintView>,
+}
+
+/// `?state=` of a board's sprints.
+#[derive(Debug, Default, Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+#[serde(rename_all = "camelCase")]
+pub struct SprintListParams {
+    /// `open` (future and active, the active one first) or `closed` (the
+    /// last closed first); all of them when left out.
+    pub state: Option<String>,
+}
+
+/// The sprints of a board.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(as = SprintList)]
+pub struct SprintListView {
+    items: Vec<SprintView>,
+}
+
+/// A stay of a ticket in a sprint.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(as = SprintScopeItem)]
+pub struct ScopeItemView {
+    issue_id: Uuid,
+    #[schema(example = "PLAT-142")]
+    key: String,
+    summary: String,
+    /// In the sprint when it started.
+    committed: bool,
+    /// Added once the sprint had started.
+    added_later: bool,
+    /// Taken out before the sprint closed.
+    removed: bool,
+    /// Done when the sprint closed; `null` while it runs, or when it left before.
+    completed: Option<bool>,
+    estimate_at_start: Option<f64>,
+    estimate_at_close: Option<f64>,
+}
+
+/// The scope of a sprint over its life.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(as = SprintScope)]
+pub struct ScopeView {
+    sprint: SprintView,
+    /// Every stay of the tickets the member sees, by arrival.
+    items: Vec<ScopeItemView>,
+    /// Stays of tickets the member does not see, left out of `items`.
+    hidden: usize,
+}
+
+/// The estimate in `estimation`, and whether its status is done, of each of
+/// `issues` (those of a project without a configuration are left out).
+async fn estimated(
+    tx: &mut TenantTx,
+    issues: &[Uuid],
+    estimation: Estimation,
+) -> Result<Vec<Estimated>, Problem> {
+    let found = infra::issues::find_many(tx, issues).await?;
+    let projects: Vec<Uuid> = found.iter().map(|i| i.project_id).collect();
+    let configs: HashMap<Uuid, Option<Uuid>> = infra::search::projects_of(tx, &projects)
+        .await?
+        .into_iter()
+        .map(|p| (p.id, p.config_id))
+        .collect();
+    let mut contents: BTreeMap<Uuid, Content> = BTreeMap::new();
+    for config in configs.values().flatten() {
+        if let std::collections::btree_map::Entry::Vacant(entry) = contents.entry(*config) {
+            entry.insert(Content::of_config(tx, *config).await?);
+        }
+    }
+    let mut out = Vec::with_capacity(found.len());
+    for issue in found {
+        let Some(content) = configs
+            .get(&issue.project_id)
+            .copied()
+            .flatten()
+            .and_then(|c| contents.get(&c))
+        else {
+            continue;
+        };
+        let estimate = content
+            .fields
+            .iter()
+            .find(|f| f.key == estimation.field_key())
+            .and_then(|f| issue.fields.get(f.item_id.to_string()))
+            .and_then(serde_json::Value::as_f64);
+        let done = content
+            .workflows
+            .statuses
+            .iter()
+            .find(|s| s.item_id == issue.status_id)
+            .is_some_and(|s| {
+                domain::workflows::Category::parse(&s.category) == Some(domain::workflows::Category::Done)
+            });
+        out.push(Estimated {
+            issue: issue.id,
+            estimate,
+            done,
+        });
+    }
+    Ok(out)
+}
+
+fn stays_of(estimated: &[Estimated]) -> Vec<Stay<Uuid>> {
+    estimated
+        .iter()
+        .map(|e| Stay {
+            issue: e.issue,
+            done: e.done,
+            estimate: e.estimate,
+        })
+        .collect()
+}
+
+fn count_of(count: usize) -> i32 {
+    i32::try_from(count).unwrap_or(i32::MAX)
+}
+
+/// `POST /api/v1/sprints/{id}/start`: requires `If-Match`.
+#[utoipa::path(
+    post,
+    path = "/sprints/{id}/start",
+    tag = TAG,
+    operation_id = "startSprint",
+    summary = "Start a sprint",
+    description = "Members with `manage_sprints` on its board's node. The sprint must be future and \
+                   the board without an active sprint; it takes its dates (both required), and its \
+                   current tickets become its committed scope, with their estimate.",
+    params(
+        ("id" = Uuid, Path, description = "Id of the sprint"),
+        ("If-Match" = String, Header, description = "ETag of the sprint, or `*`"),
+    ),
+    request_body = StartBody,
+    responses(
+        (status = 200, description = "The sprint, active", body = SprintView, headers(
+            ("ETag" = String, description = "New version of the sprint"),
+        )),
+        (status = 400, description = "`validation_failed` (`name`, `goal`, `startDate` and `endDate` \
+                                      `required`, `endDate` `before_start`)", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 403, description = "`permission.denied`, or `csrf.invalid`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 404, description = "No such sprint visible to the member", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 409, description = "`sprint.not_future`, `sprint.active_exists`, or `node.archived`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 412, description = "`precondition_failed`: the sprint changed since this ETag", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 428, description = "`precondition_required`: `If-Match` is missing", body = ProblemBody, content_type = PROBLEM_JSON),
+    )
+)]
+pub async fn start(
+    State(state): State<AppState>,
+    mut tx: TenantTx,
+    headers: HeaderMap,
+    ApiPath(id): ApiPath<Uuid>,
+    ApiJson(body): ApiJson<StartBody>,
+) -> Result<Response, Problem> {
+    let sight = Sight::of(&mut tx).await?;
+    let (sprint, board) = visible_sprint(&mut tx, &sight, id).await?;
+    require_plan(&state, &mut tx, &board).await?;
+    let if_match = require_if_match(&headers)?;
+    repo::lock_board(&mut tx, board.id).await?;
+    let active = repo::active_of_board(&mut tx, board.id).await?;
+    rules::check_start(
+        SprintState::parse(&sprint.state).unwrap_or_default(),
+        active.is_some(),
+    )
+    .map_err(|refusal| {
+        Problem::new(match refusal {
+            StartRefusal::NotFuture => ErrorCode::SprintNotFuture,
+            StartRefusal::ActiveExists => ErrorCode::SprintActiveExists,
+        })
+    })?;
+    let name = body.name.clone().unwrap_or_else(|| sprint.name.clone());
+    let goal = body
+        .goal
+        .clone()
+        .or_else(|| sprint.goal.clone())
+        .map(|g| g.trim().to_owned())
+        .filter(|g| !g.is_empty());
+    let local = |date: Option<Date>| date.and_then(infra::capacity::local_date);
+    rules::validate_start(&SprintFields {
+        name: name.clone(),
+        goal: goal.clone(),
+        start: local(body.start_date),
+        end: local(body.end_date),
+    })
+    .map_err(Problem::validation)?;
+    let estimation = Estimation::parse(&board.estimation).unwrap_or_default();
+    let issues = repo::issues_in(&mut tx, id).await?;
+    let committed = estimated(&mut tx, &issues, estimation).await?;
+    let snapshot = rules::snapshot(&stays_of(&committed));
+    let sprint = repo::start(
+        &mut tx,
+        id,
+        if_match.versions(),
+        &SprintInput {
+            name: name.trim(),
+            goal: goal.as_deref(),
+            start_date: body.start_date,
+            end_date: body.end_date,
+        },
+        &committed,
+        (count_of(snapshot.count), snapshot.estimate),
+    )
+    .await?
+    .map_err(conflict_problem)?;
+    let actor = tx.account_id();
+    tracing::info!(target: "audit", actor = %actor, sprint = %id, board = %board.id, "sprint started");
+    tx.commit().await?;
+    let version = sprint.version;
+    Ok(with_etag(ApiJson(sprint_view(sprint)).into_response(), version))
+}
+
+/// `POST /api/v1/sprints/{id}/close`: requires `If-Match`.
+#[utoipa::path(
+    post,
+    path = "/sprints/{id}/close",
+    tag = TAG,
+    operation_id = "closeSprint",
+    summary = "Close a sprint",
+    description = "Members with `manage_sprints` on its board's node, while it is active. Its \
+                   tickets whose status is of the `done` category are its completed scope, kept \
+                   with their estimate; the others go to the backlog, to a future sprint of the \
+                   board, or to a new sprint after the board's others (\"<node key> Sprint <n>\"). \
+                   Sub-tasks follow their parent.",
+    params(
+        ("id" = Uuid, Path, description = "Id of the sprint"),
+        ("If-Match" = String, Header, description = "ETag of the sprint, or `*`"),
+    ),
+    request_body = CloseBody,
+    responses(
+        (status = 200, description = "The sprint, closed", body = ClosedView),
+        (status = 400, description = "`validation_failed`: `sprintId` `required` or `not_found` (not a \
+                                      future sprint of the board)", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 403, description = "`permission.denied`, or `csrf.invalid`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 404, description = "No such sprint visible to the member", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 409, description = "`sprint.not_active`, or `node.archived`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 412, description = "`precondition_failed`: the sprint changed since this ETag", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 428, description = "`precondition_required`: `If-Match` is missing", body = ProblemBody, content_type = PROBLEM_JSON),
+    )
+)]
+pub async fn close(
+    State(state): State<AppState>,
+    mut tx: TenantTx,
+    headers: HeaderMap,
+    ApiPath(id): ApiPath<Uuid>,
+    ApiJson(body): ApiJson<CloseBody>,
+) -> Result<Response, Problem> {
+    let sight = Sight::of(&mut tx).await?;
+    let (sprint, board) = visible_sprint(&mut tx, &sight, id).await?;
+    require_plan(&state, &mut tx, &board).await?;
+    let if_match = require_if_match(&headers)?;
+    repo::lock_board(&mut tx, board.id).await?;
+    let chosen = match (body.move_to, body.sprint_id) {
+        (MoveToView::Sprint, None) => {
+            return Err(Problem::validation(vec![FieldError::new("sprintId", "required")]));
+        }
+        (MoveToView::Sprint, Some(target)) => Some(
+            repo::find(&mut tx, target)
+                .await?
+                .ok_or_else(|| Problem::validation(vec![FieldError::new("sprintId", "not_found")]))?,
+        ),
+        _ => None,
+    };
+    let target = match &chosen {
+        Some(chosen) => CloseTarget::Sprint(SprintRef {
+            id: chosen.id,
+            board: chosen.board_id,
+            state: SprintState::parse(&chosen.state).unwrap_or_default(),
+        }),
+        None if body.move_to == MoveToView::NewSprint => CloseTarget::NewSprint,
+        None => CloseTarget::Backlog,
+    };
+    rules::check_close(
+        board.id,
+        SprintState::parse(&sprint.state).unwrap_or_default(),
+        target,
+    )
+    .map_err(|refusal| match refusal {
+        CloseRefusal::NotActive => Problem::new(ErrorCode::SprintNotActive),
+        CloseRefusal::BadTarget => Problem::validation(vec![FieldError::new("sprintId", "not_found")]),
+    })?;
+
+    let estimation = Estimation::parse(&board.estimation).unwrap_or_default();
+    let issues = repo::issues_in(&mut tx, id).await?;
+    let stays = estimated(&mut tx, &issues, estimation).await?;
+    let closing = rules::close(&stays_of(&stays));
+    let closed = repo::close(
+        &mut tx,
+        id,
+        if_match.versions(),
+        &stays,
+        (count_of(closing.snapshot.count), closing.snapshot.estimate),
+    )
+    .await?
+    .map_err(conflict_problem)?;
+    let actor = tx.account_id();
+    let target = match target {
+        CloseTarget::Backlog => None,
+        CloseTarget::Sprint(_) => chosen,
+        CloseTarget::NewSprint => {
+            let sequence = repo::next_sequence(&mut tx, board.id).await?;
+            let name = rules::default_name(&board.node_key, sequence);
+            let input = SprintInput {
+                name: &name,
+                goal: None,
+                start_date: None,
+                end_date: None,
+            };
+            Some(repo::insert(&mut tx, infra::id::new_id(), board.id, sequence, actor, &input).await?)
+        }
+    };
+    for issue in &closing.unfinished {
+        if let Some(target) = &target {
+            repo::put(&mut tx, *issue, target.id, actor).await?;
+        }
+        record(
+            &mut tx,
+            PLANNED,
+            *issue,
+            json!({"boardId": board.id, "sprintId": target.as_ref().map(|t| t.id)}),
+            actor,
+        )
+        .await?;
+    }
+    tracing::info!(target: "audit", actor = %actor, sprint = %id, board = %board.id, moved = closing.unfinished.len(), "sprint closed");
+    tx.commit().await?;
+    Ok(ApiJson(ClosedView {
+        sprint: sprint_view(closed),
+        moved: closing.unfinished.len(),
+        target: target.map(sprint_view),
+    })
+    .into_response())
+}
+
+/// `GET /api/v1/boards/{id}/sprints`.
+#[utoipa::path(
+    get,
+    path = "/boards/{id}/sprints",
+    tag = TAG,
+    operation_id = "listSprints",
+    summary = "The sprints of a Scrum board",
+    description = "Members who see its node: its open sprints (the active one first, then by number), \
+                   then its closed ones (the last closed first), with their committed and completed \
+                   scope.",
+    params(("id" = Uuid, Path, description = "Id of the board"), SprintListParams),
+    responses(
+        (status = 200, description = "The sprints", body = SprintListView),
+        (status = 400, description = "`validation_failed`: `state` `invalid`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 404, description = "No such board visible to the member", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 409, description = "`board.not_scrum`", body = ProblemBody, content_type = PROBLEM_JSON),
+    )
+)]
+pub async fn list(
+    mut tx: TenantTx,
+    ApiPath(id): ApiPath<Uuid>,
+    ApiQuery(params): ApiQuery<SprintListParams>,
+) -> Result<ApiJson<SprintListView>, Problem> {
+    let sight = Sight::of(&mut tx).await?;
+    let board = visible(&mut tx, &sight, id).await?;
+    require_scrum(&board)?;
+    let (open, closed) = match params.state.as_deref() {
+        None => (true, true),
+        Some("open") => (true, false),
+        Some("closed") => (false, true),
+        Some(_) => return Err(Problem::validation(vec![FieldError::new("state", "invalid")])),
+    };
+    let mut items = Vec::new();
+    if open {
+        items.extend(repo::open_of_board(&mut tx, board.id).await?);
+    }
+    if closed {
+        items.extend(repo::closed_of_board(&mut tx, board.id).await?);
+    }
+    tx.commit().await?;
+    Ok(ApiJson(SprintListView {
+        items: items.into_iter().map(sprint_view).collect(),
+    }))
+}
+
+/// `GET /api/v1/sprints/{id}/scope`.
+#[utoipa::path(
+    get,
+    path = "/sprints/{id}/scope",
+    tag = TAG,
+    operation_id = "getSprintScope",
+    summary = "The scope of a sprint over its life",
+    description = "Members who see its board's node: every stay of a ticket in the sprint, whether it \
+                   was committed at the start, added later or taken out, and whether it was \
+                   completed at the close, with its estimates then. Tickets the member does not see \
+                   are only counted.",
+    params(("id" = Uuid, Path, description = "Id of the sprint")),
+    responses(
+        (status = 200, description = "The scope", body = ScopeView),
+        (status = 401, description = "`unauthenticated`", body = ProblemBody, content_type = PROBLEM_JSON),
+        (status = 404, description = "No such sprint visible to the member", body = ProblemBody, content_type = PROBLEM_JSON),
+    )
+)]
+pub async fn scope(mut tx: TenantTx, ApiPath(id): ApiPath<Uuid>) -> Result<ApiJson<ScopeView>, Problem> {
+    let sight = Sight::of(&mut tx).await?;
+    let (sprint, _) = visible_sprint(&mut tx, &sight, id).await?;
+    let rows = repo::scope(&mut tx, id).await?;
+    tx.commit().await?;
+    let started = sprint.started_at;
+    let (seen, hidden): (Vec<_>, Vec<_>) = rows.into_iter().partition(|r| sight.sees(r.project_id));
+    Ok(ApiJson(ScopeView {
+        items: seen
+            .into_iter()
+            .map(|r| ScopeItemView {
+                added_later: started.is_some_and(|s| r.added_at > s) && !r.committed,
+                removed: r.removed_at.is_some(),
+                issue_id: r.issue_id,
+                key: r.issue_key,
+                summary: r.issue_summary,
+                committed: r.committed,
+                completed: r.completed,
+                estimate_at_start: r.estimate_at_start,
+                estimate_at_close: r.estimate_at_close,
+            })
+            .collect(),
+        hidden: hidden.len(),
+        sprint: sprint_view(sprint),
+    }))
 }

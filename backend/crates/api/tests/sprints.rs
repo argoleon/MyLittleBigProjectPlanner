@@ -258,17 +258,31 @@ async fn search_keys(api: &TestApi, tenant: &SeedTenant, query: &str) -> Vec<Str
         .collect()
 }
 
-/// Puts a sprint in `state` directly (starting and closing are L09-US02).
-async fn set_state(db: &TestDb, tenant: &SeedTenant, sprint: &str, state: &str) {
-    let mut tx = infra::db::begin_tenant_tx(&db.app_pool, tenant.id).await.unwrap();
-    let changed = infra::sqlx::query("UPDATE sprint SET state = $2 WHERE id = $1::uuid")
-        .bind(sprint)
-        .bind(state)
-        .execute(&mut *tx)
-        .await
-        .unwrap();
-    assert_eq!(changed.rows_affected(), 1);
-    tx.commit().await.unwrap();
+/// Starts the sprint `sprint` through the API, over two weeks.
+async fn start_sprint(api: &TestApi, tenant: &SeedTenant, sprint: &str) -> Value {
+    let path = format!("/api/v1/sprints/{sprint}/start");
+    let body = json!({"startDate": "2026-11-30", "endDate": "2026-12-11"});
+    let (status, started) = send(
+        admin(api, tenant, Method::POST, &path)
+            .header("if-match", "*")
+            .json(&body),
+    )
+    .await;
+    assert_eq!(status, 200, "{started}");
+    started
+}
+
+/// Closes the sprint `sprint` through the API, its unfinished tickets going as `body` says.
+async fn close_sprint(api: &TestApi, tenant: &SeedTenant, sprint: &str, body: Value) -> Value {
+    let path = format!("/api/v1/sprints/{sprint}/close");
+    let (status, closed) = send(
+        admin(api, tenant, Method::POST, &path)
+            .header("if-match", "*")
+            .json(&body),
+    )
+    .await;
+    assert_eq!(status, 200, "{closed}");
+    closed
 }
 
 #[tokio::test]
@@ -812,12 +826,12 @@ async fn sprints_are_checked_versioned_deleted_and_closed_ones_kept() {
         .as_str()
         .unwrap()
         .to_owned();
-    set_state(&db, t, &started, "active").await;
+    start_sprint(&api, t, &started).await;
     let started_path = format!("/api/v1/sprints/{started}");
     let (status, refused) = send(admin(&api, t, Method::DELETE, &started_path).header("if-match", "*")).await;
     assert_problem(status, &refused, 409, "sprint.not_future");
     planned(&api, t, &board, json!({"issueId": p1, "sprintId": started})).await;
-    set_state(&db, t, &started, "closed").await;
+    close_sprint(&api, t, &started, json!({"moveTo": "backlog"})).await;
     let (status, refused) = send(
         admin(&api, t, Method::PUT, &started_path)
             .header("if-match", "*")
@@ -913,4 +927,397 @@ async fn sprints_and_ranks_stay_in_their_tenant() {
         get(&api, a, &format!("/api/v1/sprints/{sprint}")).await["version"],
         1
     );
+}
+
+/// Puts the ticket `id` in the status `status` of its configuration, directly.
+async fn set_status(db: &TestDb, tenant: &SeedTenant, id: Uuid, status: &str) {
+    let mut tx = infra::db::begin_tenant_tx(&db.app_pool, tenant.id).await.unwrap();
+    infra::sqlx::query(
+        r#"
+        UPDATE issue i SET status_id = (
+            SELECT s.item_id FROM workflow_status s JOIN project_config_version v ON v.id = s.version_id
+            AND v.state = 'published' JOIN node n ON n.config_id = v.config_id AND n.id = i.project_id
+            WHERE s.key = $2)
+        WHERE i.id = $1
+        "#,
+    )
+    .bind(id)
+    .bind(status)
+    .execute(&mut *tx)
+    .await
+    .unwrap();
+    tx.commit().await.unwrap();
+}
+
+/// The keys of every card of a board, sorted.
+fn card_keys(cards: &Value) -> Vec<String> {
+    let mut keys: Vec<String> = cards["lanes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|lane| lane["cells"].as_array().unwrap().iter())
+        .flat_map(|cell| cell.as_array().unwrap().iter())
+        .map(|card| card["key"].as_str().unwrap().to_owned())
+        .collect();
+    keys.sort();
+    keys
+}
+
+#[tokio::test]
+async fn a_sprint_starts_alone_on_its_board_which_then_shows_its_tickets() {
+    let db = TestDb::new().await;
+    let api = common::start(&db, multi()).await;
+    let t = &db.tenant_a;
+    let plat = project(&api, t, "Identity platform", "PLAT").await;
+    let story = |number, points| Ticket {
+        type_key: "story",
+        points: Some(points),
+        ..task(plat, number, "todo")
+    };
+    let p1 = ticket(&db, t, story(1, 8.0)).await;
+    let p2 = ticket(&db, t, story(2, 5.0)).await;
+    ticket(
+        &db,
+        t,
+        Ticket {
+            type_key: "subtask",
+            parent: Some(p1),
+            ..task(plat, 3, "todo")
+        },
+    )
+    .await;
+    let p4 = ticket(&db, t, task(plat, 4, "todo")).await;
+    let board = create_board(&api, t, plat, "Platform Scrum", "scrum").await;
+    let s1 = create_sprint(&api, t, &board, json!({"goal": "OIDC"})).await["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let s2 = create_sprint(&api, t, &board, json!({})).await["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    planned(&api, t, &board, json!({"issueId": p1, "sprintId": s1})).await;
+    planned(&api, t, &board, json!({"issueId": p2, "sprintId": s1})).await;
+    let cards_path = format!("/api/v1/boards/{board}/cards");
+
+    // No active sprint: an empty sprint board.
+    let cards = get(&api, t, &cards_path).await;
+    assert_eq!(
+        (card_keys(&cards), &cards["sprint"]),
+        (Vec::<String>::new(), &Value::Null)
+    );
+
+    // Dates are needed.
+    let start = format!("/api/v1/sprints/{s1}/start");
+    let (status, refused) = send(
+        admin(&api, t, Method::POST, &start)
+            .header("if-match", "*")
+            .json(&json!({})),
+    )
+    .await;
+    assert_problem(status, &refused, 400, "validation_failed");
+    assert_eq!(
+        field_codes(&refused),
+        [
+            ("endDate".to_owned(), "required".to_owned()),
+            ("startDate".to_owned(), "required".to_owned())
+        ]
+    );
+    let (status, missing) = send(admin(&api, t, Method::POST, &start).json(&json!({}))).await;
+    assert_problem(status, &missing, 428, "precondition_required");
+    let (status, stale) = send(
+        admin(&api, t, Method::POST, &start)
+            .header("if-match", "\"9\"")
+            .json(&json!({"startDate": "2026-11-30", "endDate": "2026-12-11"})),
+    )
+    .await;
+    assert_problem(status, &stale, 412, "precondition_failed");
+    let started = start_sprint(&api, t, &s1).await;
+    assert_eq!(
+        (
+            &started["state"],
+            &started["committedCount"],
+            &started["committedEstimate"],
+            &started["goal"]
+        ),
+        (&json!("active"), &json!(2), &json!(13.0), &json!("OIDC"))
+    );
+    assert_eq!(
+        (&started["startDate"], &started["endDate"]),
+        (&json!("2026-11-30"), &json!("2026-12-11"))
+    );
+
+    // One active sprint per board, started once.
+    let (status, refused) = send(
+        admin(&api, t, Method::POST, &format!("/api/v1/sprints/{s2}/start"))
+            .header("if-match", "*")
+            .json(&json!({"startDate": "2026-12-14", "endDate": "2026-12-25"})),
+    )
+    .await;
+    assert_problem(status, &refused, 409, "sprint.active_exists");
+    let (status, refused) = send(
+        admin(&api, t, Method::POST, &start)
+            .header("if-match", "*")
+            .json(&json!({"startDate": "2026-11-30", "endDate": "2026-12-11"})),
+    )
+    .await;
+    assert_problem(status, &refused, 409, "sprint.not_future");
+
+    // The board shows the sprint's tickets and their sub-tasks only.
+    let cards = get(&api, t, &cards_path).await;
+    assert_eq!(card_keys(&cards), ["PLAT-1", "PLAT-2", "PLAT-3"]);
+    assert_eq!(
+        (&cards["sprint"]["id"], &cards["sprint"]["state"]),
+        (&json!(s1), &json!("active"))
+    );
+    // Its scope may still change: a ticket added once started.
+    planned(&api, t, &board, json!({"issueId": p4, "sprintId": s1})).await;
+    assert_eq!(
+        card_keys(&get(&api, t, &cards_path).await),
+        ["PLAT-1", "PLAT-2", "PLAT-3", "PLAT-4"]
+    );
+    let read = backlog(&api, t, &board).await;
+    assert_eq!(
+        sprints_of(&read)[0],
+        ("PLAT Sprint 1", true, vec!["PLAT-1", "PLAT-2", "PLAT-4"])
+    );
+    assert_eq!(read["sprints"][0]["sprint"]["state"], "active");
+    // A Kanban board shows no sprint.
+    let kanban = create_board(&api, t, plat, "Flow", "kanban").await;
+    assert_eq!(
+        get(&api, t, &format!("/api/v1/boards/{kanban}/cards")).await["sprint"],
+        Value::Null
+    );
+}
+
+#[tokio::test]
+async fn closing_a_sprint_keeps_its_scope_and_moves_the_unfinished_tickets() {
+    let db = TestDb::new().await;
+    let api = common::start(&db, multi()).await;
+    let t = &db.tenant_a;
+    let plat = project(&api, t, "Identity platform", "PLAT").await;
+    let story = |number, points| Ticket {
+        type_key: "story",
+        points: Some(points),
+        ..task(plat, number, "todo")
+    };
+    let p1 = ticket(&db, t, story(1, 8.0)).await;
+    let p2 = ticket(&db, t, story(2, 5.0)).await;
+    let p3 = ticket(&db, t, story(3, 2.0)).await;
+    let board = create_board(&api, t, plat, "Platform Scrum", "scrum").await;
+    let other = create_board(&api, t, plat, "Other Scrum", "scrum").await;
+    let elsewhere = create_sprint(&api, t, &other, json!({})).await["id"].clone();
+    let s1 = create_sprint(&api, t, &board, json!({})).await["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let s2 = create_sprint(&api, t, &board, json!({"name": "Next"})).await["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    planned(&api, t, &board, json!({"issueId": p1, "sprintId": s1})).await;
+    planned(&api, t, &board, json!({"issueId": p2, "sprintId": s1})).await;
+    start_sprint(&api, t, &s1).await;
+    // Added once started, then the first one done.
+    planned(&api, t, &board, json!({"issueId": p3, "sprintId": s1})).await;
+    set_status(&db, t, p1, "done").await;
+    let close = format!("/api/v1/sprints/{s1}/close");
+
+    // Where the unfinished tickets go must be a future sprint of the board.
+    let (status, refused) = send(
+        admin(&api, t, Method::POST, &close)
+            .header("if-match", "*")
+            .json(&json!({"moveTo": "sprint"})),
+    )
+    .await;
+    assert_problem(status, &refused, 400, "validation_failed");
+    assert_eq!(
+        field_codes(&refused),
+        [("sprintId".to_owned(), "required".to_owned())]
+    );
+    for target in [elsewhere, json!(s1)] {
+        let (status, refused) = send(
+            admin(&api, t, Method::POST, &close)
+                .header("if-match", "*")
+                .json(&json!({"moveTo": "sprint", "sprintId": target})),
+        )
+        .await;
+        assert_problem(status, &refused, 400, "validation_failed");
+        assert_eq!(
+            field_codes(&refused),
+            [("sprintId".to_owned(), "not_found".to_owned())]
+        );
+    }
+    let (status, refused) = send(
+        admin(&api, t, Method::POST, &format!("/api/v1/sprints/{s2}/close"))
+            .header("if-match", "*")
+            .json(&json!({"moveTo": "backlog"})),
+    )
+    .await;
+    assert_problem(status, &refused, 409, "sprint.not_active");
+
+    let closed = close_sprint(&api, t, &s1, json!({"moveTo": "sprint", "sprintId": s2})).await;
+    assert_eq!(
+        (&closed["moved"], &closed["target"]["name"]),
+        (&json!(2), &json!("Next"))
+    );
+    let sprint = &closed["sprint"];
+    assert_eq!(
+        (
+            &sprint["state"],
+            &sprint["committedCount"],
+            &sprint["committedEstimate"]
+        ),
+        (&json!("closed"), &json!(2), &json!(13.0))
+    );
+    assert_eq!(
+        (&sprint["completedCount"], &sprint["completedEstimate"]),
+        (&json!(1), &json!(8.0))
+    );
+    assert!(sprint["closedAt"].is_string());
+    let (status, refused) = send(
+        admin(&api, t, Method::POST, &close)
+            .header("if-match", "*")
+            .json(&json!({"moveTo": "backlog"})),
+    )
+    .await;
+    assert_problem(status, &refused, 409, "sprint.not_active");
+
+    // The unfinished ones are in the next sprint; the closed one is listed apart.
+    let read = backlog(&api, t, &board).await;
+    assert_eq!(sprints_of(&read), [("Next", true, vec!["PLAT-2", "PLAT-3"])]);
+    let listed = get(&api, t, &format!("/api/v1/boards/{board}/sprints?state=closed")).await;
+    assert_eq!(listed["items"].as_array().unwrap().len(), 1);
+    assert_eq!(listed["items"][0]["completedEstimate"], 8.0);
+    let all = get(&api, t, &format!("/api/v1/boards/{board}/sprints")).await;
+    let names: Vec<&str> = all["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, ["Next", "PLAT Sprint 1"]);
+    let (status, refused) = send(admin(
+        &api,
+        t,
+        Method::GET,
+        &format!("/api/v1/boards/{board}/sprints?state=done"),
+    ))
+    .await;
+    assert_problem(status, &refused, 400, "validation_failed");
+
+    // Its scope, read later, is as it was.
+    let scope = get(&api, t, &format!("/api/v1/sprints/{s1}/scope")).await;
+    let rows: Vec<(&str, bool, bool, &Value, &Value, &Value)> = scope["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| {
+            (
+                r["key"].as_str().unwrap(),
+                r["committed"].as_bool().unwrap(),
+                r["addedLater"].as_bool().unwrap(),
+                &r["completed"],
+                &r["estimateAtStart"],
+                &r["estimateAtClose"],
+            )
+        })
+        .collect();
+    assert_eq!(
+        rows,
+        [
+            ("PLAT-1", true, false, &json!(true), &json!(8.0), &json!(8.0)),
+            ("PLAT-2", true, false, &json!(false), &json!(5.0), &json!(5.0)),
+            ("PLAT-3", false, true, &json!(false), &Value::Null, &json!(2.0)),
+        ]
+    );
+    assert_eq!(scope["hidden"], 0);
+    assert_eq!(
+        search_keys(&api, t, "sprint = \"PLAT Sprint 1\" ORDER BY key").await,
+        ["PLAT-1", "PLAT-2", "PLAT-3"]
+    );
+    assert_eq!(
+        search_keys(&api, t, "sprint IN openSprints() ORDER BY key").await,
+        ["PLAT-2", "PLAT-3"]
+    );
+    let moved = events(&db, t, "issue.planned").await;
+    assert_eq!(moved.last().unwrap()["sprintId"], json!(s2));
+
+    // Closed towards a new sprint, named after the project.
+    start_sprint(&api, t, &s2).await;
+    set_status(&db, t, p2, "done").await;
+    let closed = close_sprint(&api, t, &s2, json!({"moveTo": "new_sprint"})).await;
+    assert_eq!(
+        (&closed["moved"], &closed["target"]["name"]),
+        (&json!(1), &json!("PLAT Sprint 3"))
+    );
+    assert_eq!(
+        sprints_of(&backlog(&api, t, &board).await),
+        [("PLAT Sprint 3", true, vec!["PLAT-3"])]
+    );
+}
+
+#[tokio::test]
+async fn starting_and_closing_need_manage_sprints_and_stay_in_their_tenant() {
+    let db = TestDb::new().await;
+    let api = common::start(&db, multi()).await;
+    let (t, b) = (&db.tenant_a, &db.tenant_b);
+    let plat = project(&api, t, "Identity platform", "PLAT").await;
+    let board = create_board(&api, t, plat, "Platform Scrum", "scrum").await;
+    let sprint = create_sprint(&api, t, &board, json!({})).await["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let (account, reader) = member(&db, &api, t).await;
+    grant(&db, &api, t, plat, "Reader", account).await;
+    let dates = json!({"startDate": "2026-11-30", "endDate": "2026-12-11"});
+    let start = format!("/api/v1/sprints/{sprint}/start");
+    let close = format!("/api/v1/sprints/{sprint}/close");
+    let (status, refused) = send(
+        as_member(&api, t, &reader, Method::POST, &start)
+            .header("if-match", "*")
+            .json(&dates),
+    )
+    .await;
+    assert_problem(status, &refused, 403, "permission.denied");
+    for request in [
+        admin(&api, b, Method::POST, &start)
+            .header("if-match", "*")
+            .json(&dates),
+        admin(&api, b, Method::POST, &close)
+            .header("if-match", "*")
+            .json(&json!({"moveTo": "backlog"})),
+        admin(&api, b, Method::GET, &format!("/api/v1/sprints/{sprint}/scope")),
+        admin(&api, b, Method::GET, &format!("/api/v1/boards/{board}/sprints")),
+    ] {
+        let (status, hidden) = send(request).await;
+        assert_problem(status, &hidden, 404, "not_found");
+    }
+    start_sprint(&api, t, &sprint).await;
+    let (status, refused) = send(
+        as_member(&api, t, &reader, Method::POST, &close)
+            .header("if-match", "*")
+            .json(&json!({"moveTo": "backlog"})),
+    )
+    .await;
+    assert_problem(status, &refused, 403, "permission.denied");
+    // The reader still reads the sprints and their scope.
+    let (status, listed) = send(as_member(
+        &api,
+        t,
+        &reader,
+        Method::GET,
+        &format!("/api/v1/boards/{board}/sprints"),
+    ))
+    .await;
+    assert_eq!((status, listed["items"].as_array().unwrap().len()), (200, 1));
+    let (status, scope) = send(as_member(
+        &api,
+        t,
+        &reader,
+        Method::GET,
+        &format!("/api/v1/sprints/{sprint}/scope"),
+    ))
+    .await;
+    assert_eq!(status, 200, "{scope}");
 }

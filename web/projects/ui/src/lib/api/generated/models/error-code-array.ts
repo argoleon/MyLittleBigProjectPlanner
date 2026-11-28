@@ -70,6 +70,8 @@ export const ERROR_CODE: ErrorCode[] = [
   'sprint.not_future',
   'sprint.foreign',
   'sprint.subtask',
+  'sprint.not_active',
+  'sprint.active_exists',
   'export.too_large',
   'export.not_ready',
   'bulk.too_many',

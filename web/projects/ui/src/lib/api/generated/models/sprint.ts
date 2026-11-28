@@ -15,6 +15,24 @@ export interface Sprint {
   boardName: string;
 
   /**
+   * When it closed.
+   */
+  closedAt?: (string | null);
+
+  /**
+   * The scope it committed to when it started: tickets, and their
+   * estimate in the board's estimation.
+   */
+  committedCount?: (number | null);
+  committedEstimate?: (number | null);
+
+  /**
+   * The scope done when it closed.
+   */
+  completedCount?: (number | null);
+  completedEstimate?: (number | null);
+
+  /**
    * Last day, included.
    */
   endDate?: (string | null);

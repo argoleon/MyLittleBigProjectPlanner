@@ -10,6 +10,11 @@
 //!   parent into a sprint and only show as a count on its row ([`plan`]).
 //! - Every list follows the board's rank, the unranked tickets last in the
 //!   order of the filter (`crate::rank::sort_by_rank`).
+//! - A board has one active sprint at most. Starting a sprint needs its
+//!   dates and snapshots its committed scope ([`check_start`],
+//!   [`snapshot`]); closing it snapshots the completed scope and sends the
+//!   unfinished tickets to the backlog, a future sprint of the board, or a
+//!   new one ([`check_close`], [`close`]) (L09-US02).
 
 use std::collections::BTreeMap;
 
@@ -233,6 +238,127 @@ pub fn check_move<Id: Copy + Eq>(
     Ok(())
 }
 
+/// Why a sprint cannot start.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StartRefusal {
+    /// It is already active, or closed.
+    NotFuture,
+    /// Another sprint of the board is active.
+    ActiveExists,
+}
+
+/// Whether a sprint in `state` may start, the board having an active sprint
+/// or not.
+pub fn check_start(state: State, board_has_active: bool) -> Result<(), StartRefusal> {
+    if state != State::Future {
+        return Err(StartRefusal::NotFuture);
+    }
+    if board_has_active {
+        return Err(StartRefusal::ActiveExists);
+    }
+    Ok(())
+}
+
+/// Checks the fields a sprint starts with: those of [`validate`], the two
+/// dates required.
+pub fn validate_start(fields: &SprintFields) -> Result<(), Vec<FieldError>> {
+    let mut errors = validate(fields).err().unwrap_or_default();
+    for (field, date) in [("startDate", fields.start), ("endDate", fields.end)] {
+        if date.is_none() && !errors.iter().any(|e| e.field == field) {
+            errors.push(FieldError::new(field, "required"));
+        }
+    }
+    if errors.is_empty() { Ok(()) } else { Err(errors) }
+}
+
+/// Where the unfinished tickets of a closing sprint go.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CloseTarget<Id> {
+    Backlog,
+    /// A future sprint of the board.
+    Sprint(SprintRef<Id>),
+    /// A sprint created for them, after the board's others.
+    NewSprint,
+}
+
+/// Why a sprint cannot close so.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CloseRefusal {
+    /// It is not active.
+    NotActive,
+    /// The sprint chosen is not a future sprint of the board.
+    BadTarget,
+}
+
+/// Whether the sprint in `state` of `board` may close, its unfinished
+/// tickets going to `target`.
+pub fn check_close<Id: Copy + Eq>(
+    board: Id,
+    state: State,
+    target: CloseTarget<Id>,
+) -> Result<(), CloseRefusal> {
+    if state != State::Active {
+        return Err(CloseRefusal::NotActive);
+    }
+    match target {
+        CloseTarget::Sprint(sprint) if sprint.board != board || sprint.state != State::Future => {
+            Err(CloseRefusal::BadTarget)
+        }
+        _ => Ok(()),
+    }
+}
+
+/// A ticket in a sprint, as a start or a close sees it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Stay<Id> {
+    pub issue: Id,
+    /// Its status is of the `done` category.
+    pub done: bool,
+    /// In the board's estimation.
+    pub estimate: Option<f64>,
+}
+
+/// The count and estimate of a sprint's scope at a moment.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct Snapshot {
+    pub count: usize,
+    /// The sum of the estimates given.
+    pub estimate: f64,
+}
+
+/// The snapshot of `stays`: what a sprint commits to when it starts.
+pub fn snapshot<Id>(stays: &[Stay<Id>]) -> Snapshot {
+    Snapshot {
+        count: stays.len(),
+        estimate: stays.iter().filter_map(|s| s.estimate).sum(),
+    }
+}
+
+/// What closing a sprint does with its tickets.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Closing<Id> {
+    /// The finished ones: they stay in the closed sprint.
+    pub completed: Vec<Id>,
+    /// The others: they go to the target.
+    pub unfinished: Vec<Id>,
+    /// The completed scope.
+    pub snapshot: Snapshot,
+}
+
+/// Splits the tickets of a closing sprint between the completed and the
+/// unfinished ones, by the category of their status.
+pub fn close<Id: Copy>(stays: &[Stay<Id>]) -> Closing<Id> {
+    let (done, rest): (Vec<&Stay<Id>>, Vec<&Stay<Id>>) = stays.iter().partition(|s| s.done);
+    Closing {
+        completed: done.iter().map(|s| s.issue).collect(),
+        unfinished: rest.iter().map(|s| s.issue).collect(),
+        snapshot: Snapshot {
+            count: done.len(),
+            estimate: done.iter().filter_map(|s| s.estimate).sum(),
+        },
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -405,5 +531,103 @@ mod tests {
             check_move(1, true, None, Target::Backlog),
             Err(MoveRefusal::Subtask)
         );
+    }
+
+    #[test]
+    fn a_sprint_starts_once_and_alone_on_its_board() {
+        assert_eq!(check_start(State::Future, false), Ok(()));
+        assert_eq!(check_start(State::Future, true), Err(StartRefusal::ActiveExists));
+        assert_eq!(check_start(State::Active, false), Err(StartRefusal::NotFuture));
+        assert_eq!(check_start(State::Closed, true), Err(StartRefusal::NotFuture));
+    }
+
+    #[test]
+    fn a_sprint_starts_with_its_dates() {
+        assert!(validate_start(&fields("S", Some("2026-11-30"), Some("2026-12-11"))).is_ok());
+        assert_eq!(
+            codes(validate_start(&fields("S", None, None))),
+            vec![
+                ("startDate".to_owned(), "required"),
+                ("endDate".to_owned(), "required")
+            ]
+        );
+        assert_eq!(
+            codes(validate_start(&fields("S", Some("2026-11-30"), None))),
+            vec![("endDate".to_owned(), "required")]
+        );
+        assert_eq!(
+            codes(validate_start(&fields(
+                "",
+                Some("2026-12-11"),
+                Some("2026-11-30")
+            ))),
+            vec![
+                ("name".to_owned(), "required"),
+                ("endDate".to_owned(), "before_start")
+            ]
+        );
+    }
+
+    #[test]
+    fn a_sprint_closes_when_active_towards_a_future_sprint_of_its_board() {
+        let sprint = |board, state| SprintRef { id: 7, board, state };
+        assert_eq!(check_close(1, State::Active, CloseTarget::Backlog), Ok(()));
+        assert_eq!(check_close(1, State::Active, CloseTarget::NewSprint), Ok(()));
+        assert_eq!(
+            check_close(1, State::Active, CloseTarget::Sprint(sprint(1, State::Future))),
+            Ok(())
+        );
+        assert_eq!(
+            check_close(1, State::Future, CloseTarget::Backlog),
+            Err(CloseRefusal::NotActive)
+        );
+        assert_eq!(
+            check_close(1, State::Closed, CloseTarget::Backlog),
+            Err(CloseRefusal::NotActive)
+        );
+        for target in [
+            sprint(2, State::Future),
+            sprint(1, State::Active),
+            sprint(1, State::Closed),
+        ] {
+            assert_eq!(
+                check_close(1, State::Active, CloseTarget::Sprint(target)),
+                Err(CloseRefusal::BadTarget)
+            );
+        }
+    }
+
+    #[test]
+    fn start_and_close_snapshot_the_committed_and_completed_scope() {
+        let stay = |issue, done, estimate| Stay {
+            issue,
+            done,
+            estimate,
+        };
+        let stays = vec![
+            stay(1, true, Some(8.0)),
+            stay(2, false, Some(5.0)),
+            stay(3, true, None),
+            stay(4, false, None),
+        ];
+        assert_eq!(
+            snapshot(&stays),
+            Snapshot {
+                count: 4,
+                estimate: 13.0
+            }
+        );
+        assert_eq!(snapshot::<u32>(&[]), Snapshot::default());
+        let closing = close(&stays);
+        assert_eq!(closing.completed, vec![1, 3]);
+        assert_eq!(closing.unfinished, vec![2, 4]);
+        assert_eq!(
+            closing.snapshot,
+            Snapshot {
+                count: 2,
+                estimate: 8.0
+            }
+        );
+        assert_eq!(close::<u32>(&[]), Closing::default());
     }
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT s.id, s.board_id, b.name AS board_name, s.sequence, s.name, s.goal,\n               s.start_date, s.end_date, s.state, s.version, s.created_at\n        FROM sprint s JOIN board b ON b.id = s.board_id\n        WHERE ($1::uuid[] IS NULL OR s.id = ANY($1))\n          AND ($2::uuid IS NULL OR (s.board_id = $2 AND s.state <> 'closed'))\n        ORDER BY (s.state = 'active') DESC, lower(b.name), s.board_id, s.sequence\n        ",
+  "query": "\n        SELECT s.id, s.board_id, b.name AS board_name, s.sequence, s.name, s.goal,\n               s.start_date, s.end_date, s.state, s.started_at, s.closed_at,\n               s.committed_count, s.committed_estimate, s.completed_count, s.completed_estimate,\n               s.version, s.created_at\n        FROM sprint s JOIN board b ON b.id = s.board_id\n        WHERE ($1::uuid[] IS NULL OR s.id = ANY($1))\n          AND ($2::uuid IS NULL OR (s.board_id = $2 AND s.state <> 'closed'))\n          AND ($3::uuid IS NULL OR (s.board_id = $3 AND s.state = 'closed'))\n        ORDER BY (s.state = 'active') DESC, s.closed_at DESC NULLS FIRST, lower(b.name), s.board_id, s.sequence\n        ",
   "describe": {
     "columns": [
       {
@@ -104,6 +104,72 @@
       },
       {
         "ordinal": 9,
+        "name": "started_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "sprint",
+            "name": "started_at"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "closed_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "sprint",
+            "name": "closed_at"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "committed_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "sprint",
+            "name": "committed_count"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "committed_estimate",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "sprint",
+            "name": "committed_estimate"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "completed_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "sprint",
+            "name": "completed_count"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "completed_estimate",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "sprint",
+            "name": "completed_estimate"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
         "name": "version",
         "type_info": "Int8",
         "origin": {
@@ -114,7 +180,7 @@
         }
       },
       {
-        "ordinal": 10,
+        "ordinal": 16,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -128,6 +194,7 @@
     "parameters": {
       "Left": [
         "UuidArray",
+        "Uuid",
         "Uuid"
       ]
     },
@@ -141,9 +208,15 @@
       true,
       true,
       false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
       false,
       false
     ]
   },
-  "hash": "fcca488cfa0b6c2a0d787bd2a23d9e5c90bc1b61580a2683bf72bacf5a6c31fd"
+  "hash": "afce142edfc4dbb2a4fe214c22b3de32de26392395b29864130416a00261eec5"
 }

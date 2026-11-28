@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT issue_id FROM sprint_issue WHERE sprint_id = $1 AND removed_at IS NULL ORDER BY added_at, id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "issue_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "sprint_issue",
+            "name": "issue_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "3cd15705e36d9f76e21ae16e5f0d44f2f9a3d01d4cb611f388aa05d292c2c3b3"
+}

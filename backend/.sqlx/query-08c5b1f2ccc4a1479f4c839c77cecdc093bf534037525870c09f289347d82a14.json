@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE sprint_issue SET committed = true, estimate_at_start = $3\n            WHERE sprint_id = $1 AND issue_id = $2 AND removed_at IS NULL\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "08c5b1f2ccc4a1479f4c839c77cecdc093bf534037525870c09f289347d82a14"
+}

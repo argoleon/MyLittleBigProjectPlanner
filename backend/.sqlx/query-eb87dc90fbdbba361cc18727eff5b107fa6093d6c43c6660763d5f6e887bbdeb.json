@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE sprint_issue SET sprint_open = false WHERE sprint_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "eb87dc90fbdbba361cc18727eff5b107fa6093d6c43c6660763d5f6e887bbdeb"
+}

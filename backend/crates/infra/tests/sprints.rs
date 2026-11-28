@@ -381,7 +381,10 @@ async fn the_query_language_finds_tickets_by_sprint() {
     let open = sprint(&mut tx, scrum, by, "PLAT Sprint 2").await;
     let closed = sprint(&mut tx, scrum, by, "PLAT Sprint 1").await;
     sprints::put(&mut tx, t1, closed, by).await.unwrap();
-    sqlx::query("UPDATE sprint SET state = 'closed' WHERE id = $1")
+    sqlx::query(
+        "UPDATE sprint SET state = 'closed', started_at = now(), closed_at = now(), start_date = '2026-11-02', \
+         end_date = '2026-11-13', committed_count = 1, completed_count = 0 WHERE id = $1",
+    )
         .bind(closed)
         .execute(&mut *tx)
         .await
@@ -421,6 +424,150 @@ async fn the_query_language_finds_tickets_by_sprint() {
     assert_eq!(
         found(&mut tx, "NOT sprint IN openSprints()", by).await,
         ["PLAT-1", "PLAT-3"]
+    );
+    tx.commit().await.unwrap();
+}
+
+#[tokio::test]
+async fn a_sprint_starts_alone_and_closes_keeping_its_scope() {
+    use infra::sprints::Estimated;
+    let db = TestDb::new().await;
+    let a = &db.tenant_a;
+    let by = admin_of(&db, a).await;
+    let mut tx = begin_tenant_tx(&db.app_pool, a.id).await.unwrap();
+    let plat = project(&mut tx, "PLAT", by).await;
+    let scrum = board(&mut tx, plat, by, "Scrum", "scrum").await;
+    let (t1, t2, t3) = (
+        ticket(&mut tx, plat, 1).await,
+        ticket(&mut tx, plat, 2).await,
+        ticket(&mut tx, plat, 3).await,
+    );
+    let s1 = sprint(&mut tx, scrum, by, "PLAT Sprint 1").await;
+    let s2 = sprint(&mut tx, scrum, by, "PLAT Sprint 2").await;
+    sprints::put(&mut tx, t1, s1, by).await.unwrap();
+    sprints::put(&mut tx, t2, s1, by).await.unwrap();
+    let dates = SprintInput {
+        name: "PLAT Sprint 1",
+        goal: Some("OIDC"),
+        start_date: Some(time::macros::date!(2026 - 11 - 30)),
+        end_date: Some(time::macros::date!(2026 - 12 - 11)),
+    };
+    let estimated = |issue, estimate, done| Estimated {
+        issue,
+        estimate,
+        done,
+    };
+    let committed = [estimated(t1, Some(8.0), false), estimated(t2, None, false)];
+    assert_eq!(
+        sprints::start(&mut tx, s1, Some(&[9]), &dates, &committed, (2, 8.0))
+            .await
+            .unwrap(),
+        Err(WriteConflict::VersionMismatch)
+    );
+    let started = sprints::start(&mut tx, s1, Some(&[1]), &dates, &committed, (2, 8.0))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        (
+            started.state.as_str(),
+            started.committed_count,
+            started.committed_estimate
+        ),
+        ("active", Some(2), Some(8.0))
+    );
+    assert!(started.started_at.is_some());
+    assert_eq!(
+        sprints::active_of_board(&mut tx, scrum)
+            .await
+            .unwrap()
+            .unwrap()
+            .id,
+        s1
+    );
+    assert_eq!(sprints::issues_in(&mut tx, s1).await.unwrap(), [t1, t2]);
+    // Started already: nothing changes.
+    assert_eq!(
+        sprints::start(&mut tx, s1, None, &dates, &committed, (2, 8.0))
+            .await
+            .unwrap(),
+        Err(WriteConflict::VersionMismatch)
+    );
+    // Added once started: not committed.
+    sprints::put(&mut tx, t3, s1, by).await.unwrap();
+    tx.commit().await.unwrap();
+
+    // The database holds one active sprint per board.
+    let mut tx = begin_tenant_tx(&db.app_pool, a.id).await.unwrap();
+    let refused = sqlx::query(
+        "UPDATE sprint SET state = 'active', started_at = now(), start_date = '2026-12-14', end_date = '2026-12-25', \
+         committed_count = 0 WHERE id = $1",
+    )
+    .bind(s2)
+    .execute(&mut *tx)
+    .await;
+    assert!(refused.is_err(), "{refused:?}");
+    tx.rollback().await.unwrap();
+
+    let mut tx = begin_tenant_tx(&db.app_pool, a.id).await.unwrap();
+    let stays = [
+        estimated(t1, Some(8.0), true),
+        estimated(t2, Some(3.0), false),
+        estimated(t3, None, false),
+    ];
+    let closed = sprints::close(&mut tx, s1, Some(&[2]), &stays, (1, 8.0))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        (
+            closed.state.as_str(),
+            closed.completed_count,
+            closed.completed_estimate
+        ),
+        ("closed", Some(1), Some(8.0))
+    );
+    assert!(closed.closed_at.is_some());
+    // No longer open: the tickets may go elsewhere, the stays stay.
+    assert!(
+        sprints::open_sprint_of(&mut tx, &[t1, t2, t3])
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    assert!(sprints::put(&mut tx, t2, s2, by).await.unwrap());
+    assert_eq!(sprints::active_of_board(&mut tx, scrum).await.unwrap(), None);
+    let closed_ones: Vec<Uuid> = sprints::closed_of_board(&mut tx, scrum)
+        .await
+        .unwrap()
+        .iter()
+        .map(|s| s.id)
+        .collect();
+    assert_eq!(closed_ones, [s1]);
+    let scope = sprints::scope(&mut tx, s1).await.unwrap();
+    let rows: Vec<(Uuid, bool, Option<f64>, Option<bool>, Option<f64>)> = scope
+        .iter()
+        .map(|r| {
+            (
+                r.issue_id,
+                r.committed,
+                r.estimate_at_start,
+                r.completed,
+                r.estimate_at_close,
+            )
+        })
+        .collect();
+    assert_eq!(
+        rows,
+        [
+            (t1, true, Some(8.0), Some(true), Some(8.0)),
+            (t2, true, None, Some(false), Some(3.0)),
+            (t3, false, None, Some(false), None),
+        ]
+    );
+    assert_eq!(
+        sprints::close(&mut tx, s1, None, &stays, (1, 8.0)).await.unwrap(),
+        Err(WriteConflict::VersionMismatch)
     );
     tx.commit().await.unwrap();
 }

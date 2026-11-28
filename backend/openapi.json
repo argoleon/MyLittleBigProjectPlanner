@@ -2131,7 +2131,7 @@
           "boards"
         ],
         "summary": "The cards of a board",
-        "description": "Members who see its node. The tickets of its filter (`AND` the quick filters toggled on) that the member may see, at most 1,000, in the board's rank, the unranked ones last in the order of the filter (priority then last change without `ORDER BY`), in the column of their status and grouped in swimlanes. Each column tells its count against its work in progress limit.",
+        "description": "Members who see its node. The tickets of its filter (`AND` the quick filters toggled on) that the member may see, at most 1,000, in the board's rank, the unranked ones last in the order of the filter (priority then last change without `ORDER BY`), in the column of their status (on a Scrum board, those of its active sprint only, and their sub-tasks) and grouped in swimlanes. Each column tells its count against its work in progress limit.",
         "operationId": "getBoardCards",
         "parameters": [
           {
@@ -2442,6 +2442,87 @@
       }
     },
     "/api/v1/boards/{id}/sprints": {
+      "get": {
+        "tags": [
+          "sprints"
+        ],
+        "summary": "The sprints of a Scrum board",
+        "description": "Members who see its node: its open sprints (the active one first, then by number), then its closed ones (the last closed first), with their committed and completed scope.",
+        "operationId": "listSprints",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the board",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "description": "`open` (future and active, the active one first) or `closed` (the\nlast closed first); all of them when left out.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The sprints",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SprintList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`: `state` `invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such board visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`board.not_scrum`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "sprints"
@@ -19199,6 +19280,314 @@
         }
       }
     },
+    "/api/v1/sprints/{id}/close": {
+      "post": {
+        "tags": [
+          "sprints"
+        ],
+        "summary": "Close a sprint",
+        "description": "Members with `manage_sprints` on its board's node, while it is active. Its tickets whose status is of the `done` category are its completed scope, kept with their estimate; the others go to the backlog, to a future sprint of the board, or to a new sprint after the board's others (\"<node key> Sprint <n>\"). Sub-tasks follow their parent.",
+        "operationId": "closeSprint",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the sprint",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the sprint, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SprintClose"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The sprint, closed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SprintClosed"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed`: `sprintId` `required` or `not_found` (not a future sprint of the board)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`permission.denied`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such sprint visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`sprint.not_active`, or `node.archived`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "`precondition_failed`: the sprint changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`precondition_required`: `If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sprints/{id}/scope": {
+      "get": {
+        "tags": [
+          "sprints"
+        ],
+        "summary": "The scope of a sprint over its life",
+        "description": "Members who see its board's node: every stay of a ticket in the sprint, whether it was committed at the start, added later or taken out, and whether it was completed at the close, with its estimates then. Tickets the member does not see are only counted.",
+        "operationId": "getSprintScope",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the sprint",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SprintScope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such sprint visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sprints/{id}/start": {
+      "post": {
+        "tags": [
+          "sprints"
+        ],
+        "summary": "Start a sprint",
+        "description": "Members with `manage_sprints` on its board's node. The sprint must be future and the board without an active sprint; it takes its dates (both required), and its current tickets become its committed scope, with their estimate.",
+        "operationId": "startSprint",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the sprint",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "ETag of the sprint, or `*`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SprintStart"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The sprint, active",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "New version of the sprint"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Sprint"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_failed` (`name`, `goal`, `startDate` and `endDate` `required`, `endDate` `before_start`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`permission.denied`, or `csrf.invalid`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such sprint visible to the member",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`sprint.not_future`, `sprint.active_exists`, or `node.archived`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "`precondition_failed`: the sprint changed since this ETag",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`precondition_required`: `If-Match` is missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams": {
       "get": {
         "tags": [
@@ -24913,6 +25302,17 @@
               "$ref": "#/components/schemas/BoardLane"
             }
           },
+          "sprint": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Sprint",
+                "description": "A Scrum board shows the tickets of its active sprint only (and their\nsub-tasks): that sprint, `null` when none is active."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "swimlanes": {
             "$ref": "#/components/schemas/BoardSwimlanes"
           },
@@ -26737,7 +27137,7 @@
       },
       "ErrorCode": {
         "type": "string",
-        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n| `invitation.invalid` | 400 | This invitation link is invalid, expired or already used |\n| `invitation.pending` | 409 | This email already has an open invitation; send it again instead |\n| `invitation.already_member` | 409 | This email already belongs to a member of the tenant |\n| `invitation.closed` | 409 | This invitation was already accepted or revoked |\n| `member.last_admin` | 409 | The tenant needs at least one active tenant admin |\n| `group.name_taken` | 409 | Another group already has this name |\n| `saved_filter.name_taken` | 409 | You already have a saved filter with this name |\n| `resource.account_taken` | 409 | This member is already linked to another resource |\n| `team.name_taken` | 409 | Another team already has this name |\n| `capacity_pattern.date_taken` | 409 | The resource already has a capacity period starting that day |\n| `calendar_exception.day_taken` | 409 | There is already an exception that day |\n| `absence.overlap` | 409 | Another absence of the resource takes a same half day |\n| `assignment.resource_taken` | 409 | The resource is already assigned to this ticket |\n| `assignment.segments_overlap` | 409 | Two segments of the assignment take a same day |\n| `assignment.outside_issue_dates` | 409 | Segments must stay within the ticket's dates |\n| `workload.overload` | 409 | The assignment exceeds the resource's capacity |\n| `calendar.tenant` | 409 | The tenant calendar is never deleted and keeps a holiday set |\n| `calendar.name_taken` | 409 | Another calendar already has this name |\n| `board.name_taken` | 409 | This node already has a board with this name |\n| `board.no_transition` | 409 | No transition of the workflow leads to this column |\n| `board.not_scrum` | 409 | Only a Scrum board has a backlog and sprints |\n| `sprint.closed` | 409 | The sprint is closed |\n| `sprint.not_future` | 409 | Only a sprint not started yet can be deleted |\n| `sprint.foreign` | 409 | The ticket is planned in a sprint of another board |\n| `sprint.subtask` | 409 | A sub-task follows its parent into sprints |\n| `export.too_large` | 422 | The query finds more tickets than an export holds |\n| `export.not_ready` | 409 | The export is not ready |\n| `bulk.too_many` | 422 | More tickets than a bulk action takes |\n| `permission.denied` | 403 | You do not have the permission this needs |\n| `role.label_taken` | 409 | Another role already has this label |\n| `role.in_use` | 409 | Grants use this role: remove them first |\n| `account.no_password` | 409 | This account signs in through its organization: it has no password |\n| `session.current` | 409 | This is the session of the request: sign out instead |\n| `account.reauthentication_required` | 403 | Sign in again through your organization, then erase your account within 10 minutes |\n| `account.platform_admin` | 409 | A platform super admin cannot be erased: another one removes the role first |\n| `export.pending` | 409 | The export is not ready yet |\n| `node.key_taken` | 409 | Another project of the organization has this key |\n| `node.cycle` | 409 | This link would make the node its own ancestor |\n| `node.parent_not_allowed` | 409 | This type of node cannot be attached under that parent |\n| `node.grant_exists` | 409 | They already have this role on this node |\n| `node.confidential_lockout` | 409 | You would lose your own access: get a role granted on the project itself first |\n| `node.archived` | 409 | This project is archived: it is read-only until it is restored |\n| `node.active_children` | 409 | This project still has active sub-projects: archive or detach them first |\n| `node.parent_archived` | 409 | This project is under an archived project: restore that one first |\n| `config.name_taken` | 409 | Another project configuration already has this name |\n| `config.no_draft` | 409 | This configuration has no draft: nothing to publish or discard |\n| `config.default` | 409 | The default configuration stays: new projects get it |\n| `config.in_use` | 409 | Projects use this configuration: move them to another one first |\n| `issue_type.key_taken` | 409 | Another type of this configuration already has this identifier |\n| `issue_type.cycle` | 409 | A type cannot be its own ancestor |\n| `issue_type.subtask_parent` | 409 | A sub-task type cannot be the parent of another type |\n| `issue_type.last_type` | 409 | A configuration keeps at least one type that is not a sub-task |\n| `issue_type.orphan_subtask` | 409 | A sub-task type would have no parent type left: change it first |\n| `workflow.key_taken` | 409 | Another workflow of this configuration, or status of this workflow, already has this identifier |\n| `workflow.in_use` | 409 | Issue types follow this workflow: move them to another one first |\n| `workflow.last` | 409 | A configuration keeps at least one workflow |\n| `workflow.invalid` | 409 | Workflows of the draft cannot be published as they are: see errors |\n| `config_field.key_taken` | 409 | Another field of this configuration already has this identifier |\n| `config_field.system` | 409 | A system field keeps its label and options and cannot be removed; only its types and rules change |\n| `screen.exists` | 409 | This type, or the configuration, already has a screen of this kind |\n| `screen.general` | 409 | The general creation and view screens of a configuration stay |\n| `screen.in_use` | 409 | Transitions show this screen: give them another one first |\n| `mapping_incomplete` | 400 | Every removed status and type must be mapped to one the draft keeps: see errors |\n| `config.migration_running` | 409 | A migration of this configuration is already under way |\n| `config.migration_required` | 409 | Tickets use statuses or types the draft removes: map them through a migration first |\n| `issue.subtask_moves_with_parent` | 409 | A sub-task moves with its parent: move the parent instead |\n| `issue_link.exists` | 409 | The two tickets already have this link |\n| `attachment.too_large` | 413 | The file is larger than the maximum allowed |\n| `attachment.quota_exceeded` | 413 | The organization's storage quota would be exceeded |\n| `attachment.not_uploaded` | 409 | The file was not uploaded, or not whole |\n| `attachment.not_scanned` | 409 | The file is not available: not scanned yet, or refused by the antivirus |\n| `storage.unavailable` | 503 | The file storage is not available |\n| `query.invalid` | 400 | The query cannot be run |\n",
+        "description": "Stable error code of a Problem Details response. Clients translate it; it never changes once published.\n\n| Code | Status | Title |\n| --- | --- | --- |\n| `bad_request` | 400 | The request is malformed |\n| `validation_failed` | 400 | The request contains invalid fields |\n| `invalid_json` | 400 | The request body is not valid JSON for this operation |\n| `invalid_query` | 400 | The query string is invalid |\n| `not_found` | 404 | Resource not found |\n| `method_not_allowed` | 405 | Method not allowed on this resource |\n| `request_timeout` | 408 | The request took too long |\n| `conflict` | 409 | The request conflicts with the current state |\n| `precondition_failed` | 412 | The resource was modified in the meantime |\n| `payload_too_large` | 413 | The request body is too large |\n| `unsupported_media_type` | 415 | Unsupported content type; send application/json |\n| `precondition_required` | 428 | This request needs an If-Match header |\n| `too_many_requests` | 429 | Too many attempts; retry after the delay in Retry-After |\n| `internal` | 500 | Internal server error |\n| `unauthenticated` | 401 | Sign-in required, or the session has ended |\n| `forbidden` | 403 | You are not allowed to do this |\n| `csrf.invalid` | 403 | Missing or invalid X-CSRF-Token header |\n| `auth.invalid_credentials` | 401 | Incorrect email or password |\n| `auth.reset_token_invalid` | 400 | This password reset link is invalid, expired or already used |\n| `auth.invalid_code` | 401 | Incorrect or already used verification code |\n| `mfa.already_enabled` | 409 | Two-step verification is already enabled |\n| `mfa.not_started` | 409 | Start two-step verification setup first |\n| `mfa.required_by_policy` | 409 | The organization requires two-step verification |\n| `auth.sso_required` | 403 | This organization signs its members in through its identity provider |\n| `auth.oidc_failed` | 400 | Sign-in through the identity provider failed; try again |\n| `auth.oidc_no_member` | 403 | No member of this organization has this account's email |\n| `auth.oidc_email_unverified` | 403 | The identity provider does not vouch for this account's email |\n| `auth.switch_failed` | 400 | This switch link is invalid, expired or already used; sign in again |\n| `oidc_provider.duplicate` | 409 | This identity provider is already configured |\n| `oidc_provider.unreachable` | 502 | The identity provider cannot be reached or answered badly |\n| `idempotency_key.invalid` | 400 | The Idempotency-Key header is invalid |\n| `idempotency_key.reused` | 422 | This Idempotency-Key was used for a different request |\n| `idempotency_key.in_flight` | 409 | A request with this Idempotency-Key is still in progress |\n| `tenant.not_found` | 404 | Tenant not found |\n| `tenant.slug_taken` | 409 | Another tenant already has this slug |\n| `tenant.confirmation_mismatch` | 400 | Type the tenant's slug in `confirm` to delete it |\n| `tenant.delete_current` | 409 | The tenant you are signed in to cannot be deleted |\n| `reference_item.code_taken` | 409 | Another reference item already has this code |\n| `invitation.invalid` | 400 | This invitation link is invalid, expired or already used |\n| `invitation.pending` | 409 | This email already has an open invitation; send it again instead |\n| `invitation.already_member` | 409 | This email already belongs to a member of the tenant |\n| `invitation.closed` | 409 | This invitation was already accepted or revoked |\n| `member.last_admin` | 409 | The tenant needs at least one active tenant admin |\n| `group.name_taken` | 409 | Another group already has this name |\n| `saved_filter.name_taken` | 409 | You already have a saved filter with this name |\n| `resource.account_taken` | 409 | This member is already linked to another resource |\n| `team.name_taken` | 409 | Another team already has this name |\n| `capacity_pattern.date_taken` | 409 | The resource already has a capacity period starting that day |\n| `calendar_exception.day_taken` | 409 | There is already an exception that day |\n| `absence.overlap` | 409 | Another absence of the resource takes a same half day |\n| `assignment.resource_taken` | 409 | The resource is already assigned to this ticket |\n| `assignment.segments_overlap` | 409 | Two segments of the assignment take a same day |\n| `assignment.outside_issue_dates` | 409 | Segments must stay within the ticket's dates |\n| `workload.overload` | 409 | The assignment exceeds the resource's capacity |\n| `calendar.tenant` | 409 | The tenant calendar is never deleted and keeps a holiday set |\n| `calendar.name_taken` | 409 | Another calendar already has this name |\n| `board.name_taken` | 409 | This node already has a board with this name |\n| `board.no_transition` | 409 | No transition of the workflow leads to this column |\n| `board.not_scrum` | 409 | Only a Scrum board has a backlog and sprints |\n| `sprint.closed` | 409 | The sprint is closed |\n| `sprint.not_future` | 409 | Only a sprint not started yet can be deleted |\n| `sprint.foreign` | 409 | The ticket is planned in a sprint of another board |\n| `sprint.subtask` | 409 | A sub-task follows its parent into sprints |\n| `sprint.not_active` | 409 | The sprint is not active |\n| `sprint.active_exists` | 409 | Another sprint of this board is active |\n| `export.too_large` | 422 | The query finds more tickets than an export holds |\n| `export.not_ready` | 409 | The export is not ready |\n| `bulk.too_many` | 422 | More tickets than a bulk action takes |\n| `permission.denied` | 403 | You do not have the permission this needs |\n| `role.label_taken` | 409 | Another role already has this label |\n| `role.in_use` | 409 | Grants use this role: remove them first |\n| `account.no_password` | 409 | This account signs in through its organization: it has no password |\n| `session.current` | 409 | This is the session of the request: sign out instead |\n| `account.reauthentication_required` | 403 | Sign in again through your organization, then erase your account within 10 minutes |\n| `account.platform_admin` | 409 | A platform super admin cannot be erased: another one removes the role first |\n| `export.pending` | 409 | The export is not ready yet |\n| `node.key_taken` | 409 | Another project of the organization has this key |\n| `node.cycle` | 409 | This link would make the node its own ancestor |\n| `node.parent_not_allowed` | 409 | This type of node cannot be attached under that parent |\n| `node.grant_exists` | 409 | They already have this role on this node |\n| `node.confidential_lockout` | 409 | You would lose your own access: get a role granted on the project itself first |\n| `node.archived` | 409 | This project is archived: it is read-only until it is restored |\n| `node.active_children` | 409 | This project still has active sub-projects: archive or detach them first |\n| `node.parent_archived` | 409 | This project is under an archived project: restore that one first |\n| `config.name_taken` | 409 | Another project configuration already has this name |\n| `config.no_draft` | 409 | This configuration has no draft: nothing to publish or discard |\n| `config.default` | 409 | The default configuration stays: new projects get it |\n| `config.in_use` | 409 | Projects use this configuration: move them to another one first |\n| `issue_type.key_taken` | 409 | Another type of this configuration already has this identifier |\n| `issue_type.cycle` | 409 | A type cannot be its own ancestor |\n| `issue_type.subtask_parent` | 409 | A sub-task type cannot be the parent of another type |\n| `issue_type.last_type` | 409 | A configuration keeps at least one type that is not a sub-task |\n| `issue_type.orphan_subtask` | 409 | A sub-task type would have no parent type left: change it first |\n| `workflow.key_taken` | 409 | Another workflow of this configuration, or status of this workflow, already has this identifier |\n| `workflow.in_use` | 409 | Issue types follow this workflow: move them to another one first |\n| `workflow.last` | 409 | A configuration keeps at least one workflow |\n| `workflow.invalid` | 409 | Workflows of the draft cannot be published as they are: see errors |\n| `config_field.key_taken` | 409 | Another field of this configuration already has this identifier |\n| `config_field.system` | 409 | A system field keeps its label and options and cannot be removed; only its types and rules change |\n| `screen.exists` | 409 | This type, or the configuration, already has a screen of this kind |\n| `screen.general` | 409 | The general creation and view screens of a configuration stay |\n| `screen.in_use` | 409 | Transitions show this screen: give them another one first |\n| `mapping_incomplete` | 400 | Every removed status and type must be mapped to one the draft keeps: see errors |\n| `config.migration_running` | 409 | A migration of this configuration is already under way |\n| `config.migration_required` | 409 | Tickets use statuses or types the draft removes: map them through a migration first |\n| `issue.subtask_moves_with_parent` | 409 | A sub-task moves with its parent: move the parent instead |\n| `issue_link.exists` | 409 | The two tickets already have this link |\n| `attachment.too_large` | 413 | The file is larger than the maximum allowed |\n| `attachment.quota_exceeded` | 413 | The organization's storage quota would be exceeded |\n| `attachment.not_uploaded` | 409 | The file was not uploaded, or not whole |\n| `attachment.not_scanned` | 409 | The file is not available: not scanned yet, or refused by the antivirus |\n| `storage.unavailable` | 503 | The file storage is not available |\n| `query.invalid` | 400 | The query cannot be run |\n",
         "enum": [
           "bad_request",
           "validation_failed",
@@ -26802,6 +27202,8 @@
           "sprint.not_future",
           "sprint.foreign",
           "sprint.subtask",
+          "sprint.not_active",
+          "sprint.active_exists",
           "export.too_large",
           "export.not_ready",
           "bulk.too_many",
@@ -34606,6 +35008,48 @@
             "type": "string",
             "example": "Platform board"
           },
+          "closedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When it closed."
+          },
+          "committedCount": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "The scope it committed to when it started: tickets, and their\nestimate in the board's estimation.",
+            "example": 4
+          },
+          "committedEstimate": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "example": 34.0
+          },
+          "completedCount": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "The scope done when it closed.",
+            "example": 3
+          },
+          "completedEstimate": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "example": 21.0
+          },
           "endDate": {
             "type": [
               "string",
@@ -34649,6 +35093,70 @@
           }
         }
       },
+      "SprintClose": {
+        "type": "object",
+        "description": "How a sprint closes.",
+        "required": [
+          "moveTo"
+        ],
+        "properties": {
+          "moveTo": {
+            "$ref": "#/components/schemas/SprintCloseTarget"
+          },
+          "sprintId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "With `moveTo: sprint`."
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "moveTo": "sprint",
+          "sprintId": "01933b2e-7c4a-7b9e-8f3d-2a6c5e1f0b9b"
+        }
+      },
+      "SprintCloseTarget": {
+        "type": "string",
+        "description": "Where the unfinished tickets of a closing sprint go.",
+        "enum": [
+          "backlog",
+          "sprint",
+          "new_sprint"
+        ]
+      },
+      "SprintClosed": {
+        "type": "object",
+        "description": "What closing a sprint did.",
+        "required": [
+          "sprint",
+          "moved"
+        ],
+        "properties": {
+          "moved": {
+            "type": "integer",
+            "description": "The tickets moved out, unfinished.",
+            "example": 3,
+            "minimum": 0
+          },
+          "sprint": {
+            "$ref": "#/components/schemas/Sprint"
+          },
+          "target": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Sprint",
+                "description": "Where they went: a sprint of the board, or `null` for the backlog."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
       "SprintFields": {
         "type": "object",
         "description": "A sprint to write.",
@@ -34689,6 +35197,144 @@
           "goal": "Audit and security of sign-ins",
           "name": "PLAT Sprint 25",
           "startDate": "2026-11-16"
+        }
+      },
+      "SprintList": {
+        "type": "object",
+        "description": "The sprints of a board.",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Sprint"
+            }
+          }
+        }
+      },
+      "SprintScope": {
+        "type": "object",
+        "description": "The scope of a sprint over its life.",
+        "required": [
+          "sprint",
+          "items",
+          "hidden"
+        ],
+        "properties": {
+          "hidden": {
+            "type": "integer",
+            "description": "Stays of tickets the member does not see, left out of `items`.",
+            "minimum": 0
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SprintScopeItem"
+            },
+            "description": "Every stay of the tickets the member sees, by arrival."
+          },
+          "sprint": {
+            "$ref": "#/components/schemas/Sprint"
+          }
+        }
+      },
+      "SprintScopeItem": {
+        "type": "object",
+        "description": "A stay of a ticket in a sprint.",
+        "required": [
+          "issueId",
+          "key",
+          "summary",
+          "committed",
+          "addedLater",
+          "removed"
+        ],
+        "properties": {
+          "addedLater": {
+            "type": "boolean",
+            "description": "Added once the sprint had started."
+          },
+          "committed": {
+            "type": "boolean",
+            "description": "In the sprint when it started."
+          },
+          "completed": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Done when the sprint closed; `null` while it runs, or when it left before."
+          },
+          "estimateAtClose": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "estimateAtStart": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "issueId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string",
+            "example": "PLAT-142"
+          },
+          "removed": {
+            "type": "boolean",
+            "description": "Taken out before the sprint closed."
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      },
+      "SprintStart": {
+        "type": "object",
+        "description": "What a sprint starts with.",
+        "required": [
+          "startDate",
+          "endDate"
+        ],
+        "properties": {
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "goal": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Up to 1,000 characters; its current goal when left out."
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "1 to 100 characters; its current name when left out."
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "endDate": "2026-12-11",
+          "goal": "Audit of sign-ins",
+          "name": "PLAT Sprint 25",
+          "startDate": "2026-11-30"
         }
       },
       "SprintState": {
