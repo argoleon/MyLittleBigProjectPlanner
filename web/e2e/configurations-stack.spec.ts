@@ -229,8 +229,8 @@ test('a custom field with its rules is published, then a value of it is deactiva
   await admin.getByRole('tab', { name: 'Fields' }).click();
 
   // The system fields of every configuration.
-  await expect(admin.locator('app-fields-tab code')).toHaveText(['story_points', 'remaining']);
-  await expect(admin.locator('app-fields-tab .system')).toHaveCount(2);
+  await expect(admin.locator('app-fields-tab code')).toHaveText(['story_points', 'remaining', 'original_estimate']);
+  await expect(admin.locator('app-fields-tab .system')).toHaveCount(3);
 
   // Application, a single select on bugs, required at their creation.
   await admin.getByRole('button', { name: 'New field' }).click();
@@ -254,7 +254,7 @@ test('a custom field with its rules is published, then a value of it is deactiva
   await expect(panel.getByRole('button', { name: 'Bug, Creation: Required' })).toBeVisible();
   await panel.getByRole('button', { name: 'Save' }).click();
   await expect(admin.getByRole('status')).toHaveText('Field “Application” saved in the draft.');
-  await expect(admin.locator('app-fields-tab code')).toHaveText(['story_points', 'remaining', 'application']);
+  await expect(admin.locator('app-fields-tab code')).toHaveText(['story_points', 'remaining', 'original_estimate', 'application']);
   expect(await accessibilityViolations(admin), 'field panel').toEqual([]);
 
   // Published: version 2, with the field and its rule.
