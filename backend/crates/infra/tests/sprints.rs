@@ -428,6 +428,9 @@ async fn the_query_language_finds_tickets_by_sprint() {
     tx.commit().await.unwrap();
 }
 
+/// A stay as kept: ticket, committed, estimate at the start, completed, estimate at the close.
+type ScopeLine = (Uuid, bool, Option<f64>, Option<bool>, Option<f64>);
+
 #[tokio::test]
 async fn a_sprint_starts_alone_and_closes_keeping_its_scope() {
     use infra::sprints::Estimated;
@@ -545,7 +548,7 @@ async fn a_sprint_starts_alone_and_closes_keeping_its_scope() {
         .collect();
     assert_eq!(closed_ones, [s1]);
     let scope = sprints::scope(&mut tx, s1).await.unwrap();
-    let rows: Vec<(Uuid, bool, Option<f64>, Option<bool>, Option<f64>)> = scope
+    let rows: Vec<ScopeLine> = scope
         .iter()
         .map(|r| {
             (
