@@ -206,7 +206,7 @@ Un langage de requête unique, inspiré de JQL, sert à la recherche, aux filtre
   - Un board appartient à un nœud de la hiérarchie : qui voit le nœud voit le board (chacun n'y voit que les tickets qu'il peut voir), la permission « gérer les boards » sur le nœud permet de le créer, le configurer et le supprimer.
   - Des filtres rapides propres au board (un libellé et une clause du langage de requête) s'ajoutent à son filtre quand on les active.
   - Déplacer une carte vers une colonne lance la transition du workflow qui y mène, avec ses conditions, validateurs et post-fonctions ; sans transition possible, la carte revient à sa place et la raison s'affiche. Le clavier offre la même action qu'un glisser-déposer.
-  - Les cartes suivent l'ordre du filtre (`ORDER BY`) ; le rang manuel arrive avec le backlog Scrum.
+  - Les cartes suivent le rang manuel du board, partagé avec son backlog Scrum ; les tickets pas encore classés viennent après, dans l'ordre du filtre (`ORDER BY`). Les planificateurs (« gérer les sprints ») réordonnent les cartes d'une colonne, à la souris ou au clavier.
 - **Scrum** : backlog, planification et clôture de sprint (les tickets non terminés sont reportés au sprint suivant ou au backlog), board du sprint actif.
 - **Estimation** : points ou heures, configurable par board. Le workload reste toujours en heures, via les affectations.
 - **Rapports** : burndown (en points ou en heures, à partir du reste à faire), vélocité sur les N derniers sprints.

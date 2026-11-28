@@ -1,0 +1,33 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE sprint\n        SET name = $3, goal = $4, start_date = $5, end_date = $6, version = version + 1\n        WHERE id = $1 AND ($2::bigint[] IS NULL OR version = ANY($2))\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "sprint",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8Array",
+        "Text",
+        "Text",
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "cada69cd2050d79c04fcd9e20c01d3ac23198656f19964d82c775e80b94afd6a"
+}

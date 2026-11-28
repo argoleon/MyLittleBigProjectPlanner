@@ -1,4 +1,4 @@
-//! SQL of Kanban boards (L06-US05). Row-level security scopes every query to
+//! SQL of boards, Kanban (L06-US05) and Scrum (L09-US01). Row-level security scopes every query to
 //! the current tenant; which nodes a member sees is decided by the caller
 //! (`grants::sight`).
 
@@ -64,6 +64,8 @@ pub struct ColumnInput<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BoardInput<'a> {
     pub name: &'a str,
+    /// `kanban` or `scrum`: set at creation, kept by updates.
+    pub kind: &'a str,
     pub filter: &'a str,
     pub estimation: &'a str,
     pub swimlanes: &'a str,
@@ -196,8 +198,8 @@ pub async fn insert(
     let quick = serde_json::to_value(input.quick_filters).unwrap_or_default();
     let inserted = sqlx::query!(
         r#"
-        INSERT INTO board (id, tenant_id, node_id, name, filter, estimation, swimlanes, quick_filters, created_by)
-        VALUES ($1, app_current_tenant(), $2, $3, $4, $5, $6, $7, $8)
+        INSERT INTO board (id, tenant_id, node_id, name, kind, filter, estimation, swimlanes, quick_filters, created_by)
+        VALUES ($1, app_current_tenant(), $2, $3, $9, $4, $5, $6, $7, $8)
         "#,
         id,
         node,
@@ -206,7 +208,8 @@ pub async fn insert(
         input.estimation,
         input.swimlanes,
         quick,
-        created_by
+        created_by,
+        input.kind
     )
     .execute(&mut *conn)
     .await;

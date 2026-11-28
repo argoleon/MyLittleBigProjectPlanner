@@ -207,7 +207,8 @@ async fn a_query_that_cannot_run_answers_problem_details_with_its_position() {
         "unknown_field"
     );
     assert_eq!(
-        problem(json!({"query": "sprint IN openSprints()"})).await["query"]["reason"],
+        // Versions come with L09-US06 (sprints run since L09-US01).
+        problem(json!({"query": "fixVersion = \"2.1\""})).await["query"]["reason"],
         "unsupported"
     );
     assert_eq!(

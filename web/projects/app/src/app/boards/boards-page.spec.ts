@@ -26,6 +26,7 @@ function board(id: string, name: string, node: { id: string; key: string; name: 
     quickFilters: [],
     columns: [],
     canManage: false,
+    canPlan: false,
     version: 1,
   };
 }

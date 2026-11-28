@@ -1,4 +1,4 @@
-import { CdkDrag, CdkDragDrop, CdkDropList, CdkDropListGroup, transferArrayItem } from '@angular/cdk/drag-drop';
+import { CdkDrag, CdkDragDrop, CdkDropList, CdkDropListGroup, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { Component, DestroyRef, computed, inject, input, linkedSignal, resource, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -28,10 +28,13 @@ import {
   getBoardCards,
   isApiProblem,
   moveBoardCard,
+  rankBoardIssue,
 } from 'ui';
 
 import { createIssueFlow } from '../issues/issue-flow';
 import { TransitionDialog, TransitionDialogData, TransitionOutcome } from '../issues/transition-dialog';
+import { placement } from './backlog-model';
+import { BacklogView } from './backlog-view';
 import { BoardCard } from './board-card';
 import { BoardSettingsDialog, BoardSettingsData, BoardSettingsOutcome } from './board-settings-dialog';
 import { ChooseTransitionDialog, ChooseTransitionData } from './choose-transition-dialog';
@@ -61,12 +64,16 @@ interface Message {
  * column (or moved through its menu, with the keyboard) runs the workflow's
  * transition: one with fields opens its form, several leading there ask
  * which; a refusal puts the card back and tells why. Moves by others show
- * as they happen.
+ * as they happen. Planners reorder the cards of a column (dragged, or
+ * moved up and down through the menu): the board's rank (L09-US01).
+ *
+ * A Scrum board shows its backlog instead (`BacklogView`).
  */
 @Component({
   selector: 'app-board-page',
   imports: [
     Avatar,
+    BacklogView,
     BoardCard,
     CdkDrag,
     CdkDropList,
@@ -107,7 +114,7 @@ export class BoardPage {
   });
   protected readonly cards = resource({
     params: () =>
-      this.board.hasValue()
+      this.board.hasValue() && this.board.value().kind !== 'scrum'
         ? { id: this.board.value().id, quick: this.quick(), swimlanes: this.swimlanes(), version: this.board.value().version }
         : undefined,
     loader: ({ params }) =>
@@ -132,6 +139,8 @@ export class BoardPage {
   protected readonly moving = signal<string | null>(null);
   protected readonly message = signal<Message | null>(null);
   protected readonly canMove = computed(() => this.board.hasValue() && !this.board.value().node.archived);
+  /** The member may reorder the cards of a column. */
+  protected readonly canRank = computed(() => this.board.hasValue() && this.board.value().canPlan);
   protected readonly canCreate = computed(
     () => this.board.hasValue() && this.board.value().node.nodeType === 'project' && !this.board.value().node.archived,
   );
@@ -195,7 +204,13 @@ export class BoardPage {
   protected dropped(event: CdkDragDrop<Cell, Cell, Card>): void {
     const from = event.previousContainer.data;
     const to = event.container.data;
-    if (from.column === to.column || this.moving()) return;
+    if (this.moving()) return;
+    if (from.column === to.column) {
+      if (from.lane === to.lane && event.previousIndex !== event.currentIndex) {
+        void this.rank(event.item.data, to, event.previousIndex, event.currentIndex);
+      }
+      return;
+    }
     const columns = this.columns().map((c) => c.id);
     const lanes = this.lanes().map((lane) => ({ ...lane, cells: lane.cells.map((cell) => [...cell]) }));
     const source = lanes[from.lane]?.cells[columns.indexOf(from.column)];
@@ -206,6 +221,42 @@ export class BoardPage {
     transferArrayItem(source, target, index, 0);
     this.lanes.set(lanes);
     void this.move(event.item.data, to.column);
+  }
+
+  /** Moves `card` of a cell one place up (-1) or down (1). */
+  protected step(card: Card, cell: Cell, step: -1 | 1): void {
+    const cards = this.cellCards(cell);
+    const from = cards.findIndex((c) => c.id === card.id);
+    if (from < 0 || from + step < 0 || from + step >= cards.length) return;
+    void this.rank(card, cell, from, from + step);
+  }
+
+  private cellCards(cell: Cell): readonly Card[] {
+    const column = this.columns().findIndex((c) => c.id === cell.column);
+    return this.lanes()[cell.lane]?.cells[column] ?? [];
+  }
+
+  /** Moves `card` from position `from` to `to` of its cell: at once, then in the board's rank. */
+  private async rank(card: Card, cell: Cell, from: number, to: number): Promise<void> {
+    const board = this.board.hasValue() ? this.board.value() : undefined;
+    if (!board || !this.canRank()) return;
+    const column = this.columns().findIndex((c) => c.id === cell.column);
+    const lanes = this.lanes().map((lane) => ({ ...lane, cells: lane.cells.map((c) => [...c]) }));
+    const cards = lanes[cell.lane]?.cells[column];
+    if (!cards) return;
+    moveItemInArray(cards, from, to);
+    this.lanes.set(lanes);
+    const others = cards.filter((c) => c.id !== card.id).map((c) => c.id);
+    this.message.set(null);
+    this.moving.set(card.id);
+    try {
+      await this.api.invoke(rankBoardIssue, { id: board.id, body: { issueId: card.id, ...placement(others, to) } });
+    } catch (error) {
+      this.message.set({ key: isApiProblem(error) ? error.translationKey : errorTranslationKey('unknown') });
+    } finally {
+      this.moving.set(null);
+      this.cards.reload();
+    }
   }
 
   /**

@@ -379,8 +379,8 @@ mod tests {
     }
 
     #[test]
-    fn sprints_and_versions_wait_for_their_work_package() {
-        assert!(SystemField::Sprint.is_pending() && SystemField::FixVersion.is_pending());
-        assert!(SystemField::ALL.iter().filter(|f| f.is_pending()).count() == 2);
+    fn versions_wait_for_their_story() {
+        assert!(!SystemField::Sprint.is_pending() && SystemField::FixVersion.is_pending());
+        assert!(SystemField::ALL.iter().filter(|f| f.is_pending()).count() == 1);
     }
 }

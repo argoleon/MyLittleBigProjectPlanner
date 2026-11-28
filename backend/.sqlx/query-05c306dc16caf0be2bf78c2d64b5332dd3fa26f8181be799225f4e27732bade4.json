@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE sprint_issue SET removed_at = greatest(now(), added_at), removed_by = $2\n        WHERE issue_id = $1 AND removed_at IS NULL AND sprint_open\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "05c306dc16caf0be2bf78c2d64b5332dd3fa26f8181be799225f4e27732bade4"
+}

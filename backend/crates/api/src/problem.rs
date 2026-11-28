@@ -98,6 +98,11 @@ pub enum ErrorCode {
     CalendarNameTaken,
     BoardNameTaken,
     BoardNoTransition,
+    BoardNotScrum,
+    SprintClosed,
+    SprintNotFuture,
+    SprintForeign,
+    SprintSubtask,
     ExportTooLarge,
     ExportNotReady,
     BulkTooMany,
@@ -151,7 +156,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Every code, for documentation and the OpenAPI contract.
-    pub const ALL: [Self; 106] = [
+    pub const ALL: [Self; 111] = [
         Self::BadRequest,
         Self::ValidationFailed,
         Self::InvalidJson,
@@ -210,6 +215,11 @@ impl ErrorCode {
         Self::CalendarNameTaken,
         Self::BoardNameTaken,
         Self::BoardNoTransition,
+        Self::BoardNotScrum,
+        Self::SprintClosed,
+        Self::SprintNotFuture,
+        Self::SprintForeign,
+        Self::SprintSubtask,
         Self::ExportTooLarge,
         Self::ExportNotReady,
         Self::BulkTooMany,
@@ -320,6 +330,11 @@ impl ErrorCode {
             Self::CalendarNameTaken => "calendar.name_taken",
             Self::BoardNameTaken => "board.name_taken",
             Self::BoardNoTransition => "board.no_transition",
+            Self::BoardNotScrum => "board.not_scrum",
+            Self::SprintClosed => "sprint.closed",
+            Self::SprintNotFuture => "sprint.not_future",
+            Self::SprintForeign => "sprint.foreign",
+            Self::SprintSubtask => "sprint.subtask",
             Self::ExportTooLarge => "export.too_large",
             Self::ExportNotReady => "export.not_ready",
             Self::BulkTooMany => "bulk.too_many",
@@ -428,6 +443,11 @@ impl ErrorCode {
             | Self::CalendarNameTaken
             | Self::BoardNameTaken
             | Self::BoardNoTransition
+            | Self::BoardNotScrum
+            | Self::SprintClosed
+            | Self::SprintNotFuture
+            | Self::SprintForeign
+            | Self::SprintSubtask
             | Self::ExportNotReady
             | Self::RoleLabelTaken
             | Self::RoleInUse
@@ -542,6 +562,11 @@ impl ErrorCode {
             Self::CalendarNameTaken => "Another calendar already has this name",
             Self::BoardNameTaken => "This node already has a board with this name",
             Self::BoardNoTransition => "No transition of the workflow leads to this column",
+            Self::BoardNotScrum => "Only a Scrum board has a backlog and sprints",
+            Self::SprintClosed => "The sprint is closed",
+            Self::SprintNotFuture => "Only a sprint not started yet can be deleted",
+            Self::SprintForeign => "The ticket is planned in a sprint of another board",
+            Self::SprintSubtask => "A sub-task follows its parent into sprints",
             Self::ExportTooLarge => "The query finds more tickets than an export holds",
             Self::ExportNotReady => "The export is not ready",
             Self::BulkTooMany => "More tickets than a bulk action takes",
@@ -965,7 +990,7 @@ mod tests {
 
     #[test]
     fn every_code_maps_to_the_expected_status() {
-        let expected: [(ErrorCode, u16); 99] = [
+        let expected: [(ErrorCode, u16); 104] = [
             (ErrorCode::BadRequest, 400),
             (ErrorCode::ValidationFailed, 400),
             (ErrorCode::InvalidJson, 400),
@@ -1013,6 +1038,11 @@ mod tests {
             (ErrorCode::SavedFilterNameTaken, 409),
             (ErrorCode::BoardNameTaken, 409),
             (ErrorCode::BoardNoTransition, 409),
+            (ErrorCode::BoardNotScrum, 409),
+            (ErrorCode::SprintClosed, 409),
+            (ErrorCode::SprintNotFuture, 409),
+            (ErrorCode::SprintForeign, 409),
+            (ErrorCode::SprintSubtask, 409),
             (ErrorCode::ExportTooLarge, 422),
             (ErrorCode::ExportNotReady, 409),
             (ErrorCode::BulkTooMany, 422),

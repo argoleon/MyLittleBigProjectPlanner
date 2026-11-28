@@ -11,6 +11,7 @@ import {
   Api,
   Board,
   BoardEstimation,
+  BoardKind,
   BoardSwimlanes,
   ConfirmDialog,
   ConfirmDialogData,
@@ -60,9 +61,9 @@ function isNode(item: NodeItem): item is Node {
 }
 
 /**
- * Creates or changes a Kanban board (L06-US05). A new board takes its node,
- * name and filter: its columns (one per status category) and quick filters
- * come by default. Changing it also sets its columns (statuses, work in
+ * Creates or changes a board (L06-US05). A new board takes its node, kind
+ * (Kanban, or Scrum with a backlog and sprints, L09-US01), name and filter:
+ * its columns (one per status category) and quick filters come by default. Changing it also sets its columns (statuses, work in
  * progress limit, order) and quick filters; it may be deleted there.
  */
 @Component({
@@ -81,6 +82,7 @@ export class BoardSettingsDialog {
   protected readonly editing = !!this.data.board;
   protected readonly maxColumns = MAX_COLUMNS;
   protected readonly maxQuick = MAX_QUICK_FILTERS;
+  protected readonly kinds: readonly BoardKind[] = ['kanban', 'scrum'];
   protected readonly estimations: readonly BoardEstimation[] = ['points', 'hours'];
   protected readonly swimlaneModes: readonly BoardSwimlanes[] = ['none', 'assignee', 'epic'];
 
@@ -88,6 +90,7 @@ export class BoardSettingsDialog {
     nodeId: new FormControl(this.data.board?.node.id ?? this.data.nodeId ?? '', { nonNullable: true, validators: [Validators.required] }),
     name: new FormControl(this.data.board?.name ?? '', { nonNullable: true, validators: [Validators.required, Validators.maxLength(100)] }),
     filter: new FormControl(this.data.board?.filter ?? '', { nonNullable: true }),
+    kind: new FormControl<BoardKind>(this.data.board?.kind ?? 'kanban', { nonNullable: true }),
     estimation: new FormControl<BoardEstimation>(this.data.board?.estimation ?? 'points', { nonNullable: true }),
     swimlanes: new FormControl<BoardSwimlanes>(this.data.board?.swimlanes ?? 'none', { nonNullable: true }),
     columns: new FormArray<ColumnForm>((this.data.board?.columns ?? []).map((c) => this.columnForm(c.name, c.statuses, c.wipLimit ?? null))),
@@ -198,7 +201,7 @@ export class BoardSettingsDialog {
           },
         });
       } else {
-        saved = await this.api.invoke(createBoard, { body: { ...fields, nodeId: value.nodeId } });
+        saved = await this.api.invoke(createBoard, { body: { ...fields, nodeId: value.nodeId, kind: value.kind } });
       }
       this.dialogRef.close(saved);
     } catch (error) {

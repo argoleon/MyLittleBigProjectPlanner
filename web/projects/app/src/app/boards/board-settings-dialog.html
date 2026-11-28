@@ -20,6 +20,17 @@
         }
       </mat-form-field>
     }
+    @if (!editing) {
+      <mat-form-field appearance="outline" class="kind">
+        <mat-label>{{ 'boards.settings.kind' | transloco }}</mat-label>
+        <mat-select formControlName="kind">
+          @for (kind of kinds; track kind) {
+            <mat-option [value]="kind">{{ 'boards.kind.' + kind | transloco }}</mat-option>
+          }
+        </mat-select>
+        <mat-hint>{{ 'boards.settings.kindHint' | transloco }}</mat-hint>
+      </mat-form-field>
+    }
     <mat-form-field appearance="outline">
       <mat-label>{{ 'boards.settings.name' | transloco }}</mat-label>
       <input matInput formControlName="name" maxlength="100" autocomplete="off" />

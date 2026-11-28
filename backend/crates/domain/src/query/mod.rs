@@ -376,10 +376,11 @@ impl SystemField {
         }
     }
 
-    /// Fields that come with a later work package: parsed and checked now,
-    /// refused when run (`QueryErrorKind::Unsupported`) until then.
+    /// Fields that come with a later story: parsed and checked now, refused
+    /// when run (`QueryErrorKind::Unsupported`) until then (`fixVersion`,
+    /// with the versions of L09-US06).
     pub const fn is_pending(self) -> bool {
-        matches!(self, Self::Sprint | Self::FixVersion)
+        matches!(self, Self::FixVersion)
     }
 }
 

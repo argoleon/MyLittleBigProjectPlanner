@@ -1,4 +1,4 @@
-//! Kanban boards (specification §6, L06-US05).
+//! Boards (specification §6): Kanban (L06-US05) and Scrum (L09-US01).
 //!
 //! A board belongs to a node of the hierarchy and shows the tickets of a
 //! filter (a query of the language) in columns, each mapped to one or more
@@ -13,8 +13,10 @@
 //!   board, joined with `AND` to its filter.
 //! - Dropping a card in a column runs the one transition that leads from
 //!   its status to a status of that column ([`pick_transition`]).
-//! - Cards follow the filter's `ORDER BY`; priority then last change
-//!   without one. There is no manual rank before the Scrum backlog (L09).
+//! - Cards follow the board's manual rank (`crate::rank`), the unranked ones
+//!   last in the filter's order (`ORDER BY`; priority then last change
+//!   without one).
+//! - A Scrum board also plans its tickets in sprints (`crate::sprints`).
 
 use std::collections::BTreeMap;
 
@@ -38,6 +40,30 @@ pub const MAX_QUICK_FILTERS: usize = 10;
 pub const QUICK_LABEL_MAX_CHARS: usize = 40;
 /// Most cards a board shows: beyond, it tells the filter to narrow.
 pub const MAX_CARDS: usize = 1_000;
+
+/// What a board is for: the flow of its tickets (Kanban), or planning them
+/// in sprints (Scrum). Set at creation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Kind {
+    #[default]
+    Kanban,
+    Scrum,
+}
+
+impl Kind {
+    pub const ALL: [Self; 2] = [Self::Kanban, Self::Scrum];
+
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Kanban => "kanban",
+            Self::Scrum => "scrum",
+        }
+    }
+
+    pub fn parse(raw: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|k| k.as_str() == raw)
+    }
+}
 
 /// How the cards of a board are grouped in rows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -753,6 +779,10 @@ mod tests {
         for e in Estimation::ALL {
             assert_eq!(Estimation::parse(e.as_str()), Some(e));
         }
+        for k in Kind::ALL {
+            assert_eq!(Kind::parse(k.as_str()), Some(k));
+        }
+        assert_eq!(Kind::parse("safe"), None);
         assert_eq!(Swimlanes::parse("sprint"), None);
         assert_eq!(Estimation::parse("days"), None);
         assert_eq!(Estimation::Points.field_key(), "story_points");

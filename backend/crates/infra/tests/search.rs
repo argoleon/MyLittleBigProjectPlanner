@@ -543,8 +543,9 @@ async fn custom_fields_full_text_and_empty_fields() {
         }
     );
     assert_eq!(
-        refusal(run(&mut tx, "sprint IN openSprints()", &ctx).await),
-        QueryErrorKind::Unsupported("sprint".to_owned())
+        // Versions come with L09-US06 (sprints run since L09-US01).
+        refusal(run(&mut tx, "fixVersion = \"2.1\"", &ctx).await),
+        QueryErrorKind::Unsupported("fixVersion".to_owned())
     );
 }
 

@@ -40,6 +40,7 @@ const BOARD: Board = {
     { id: 'c-done', name: 'Done', statuses: ['done'], wipLimit: null },
   ],
   canManage: true,
+  canPlan: true,
   version: 2,
 };
 
@@ -331,6 +332,31 @@ describe('the Kanban board', () => {
     await settle();
   });
 
+  it('reorders the cards of a column, dragged or with the keyboard (the board rank)', async () => {
+    const { harness, page, reply, cardsAsked, columns, settle, click } = await open();
+    const lists = harness.fixture.debugElement.queryAll(By.directive(CdkDropList)).map((d) => d.injector.get(CdkDropList));
+    const progress = lists[1];
+    progress.dropped.emit({ previousContainer: progress, container: progress, item: { data: card(2, 'in_progress') }, previousIndex: 0, currentIndex: 2 } as never);
+    await settle();
+    expect(columns()[1]).toEqual(['PLAT-3', 'PLAT-4', 'PLAT-2', 'PLAT-5']);
+    const isRank = (url: string, method: string) => url === '/api/v1/boards/b1/rank' && method === 'POST';
+    const ranked = await reply(isRank, null, 204);
+    expect(ranked.request.body).toEqual({ issueId: 'i2', afterId: 'i4', beforeId: null });
+    await reply(cardsAsked(), cards());
+
+    const third = page().querySelectorAll('.cell')[1].querySelectorAll('app-board-card')[2];
+    await click(third.querySelector('button.move'));
+    expect(Array.from(document.querySelectorAll('.move-up, .move-down')).map((b) => b.textContent?.trim())).toEqual(['Move up', 'Move down']);
+    await click(document.querySelector('.move-down'));
+    const down = await reply(isRank, null, 204);
+    expect(down.request.body).toEqual({ issueId: 'i4', afterId: 'i5', beforeId: null });
+    await reply(cardsAsked(), cards());
+
+    // Alone in its column: no moving up or down.
+    await click(page().querySelectorAll('.cell')[0].querySelector('button.move'));
+    expect(document.querySelector('.move-up, .move-down')).toBeNull();
+  });
+
   it('opens the form of a transition with fields, and asks which when several lead there', async () => {
     const { page, click, reply, cardsAsked, dialogs, settle } = await open();
     await click(page().querySelectorAll('app-board-card')[1].querySelector('button.move'));
@@ -375,7 +401,7 @@ describe('the Kanban board', () => {
   it('shows the truncated board, the more button, and a read-only archived board', async () => {
     const many = Array.from({ length: 23 }, (_, i) => card(10 + i, 'todo'));
     const { page, texts, click, text } = await open(
-      { ...BOARD, canManage: false, node: { ...BOARD.node, archived: true } },
+      { ...BOARD, canManage: false, canPlan: false, node: { ...BOARD.node, archived: true } },
       cards({ truncated: true, lanes: [{ id: null, key: null, label: null, cells: [many, [], [], []] }] }),
     );
     expect(text(page().querySelector('[role="status"].warning'))).toContain('first 1,000 tickets');

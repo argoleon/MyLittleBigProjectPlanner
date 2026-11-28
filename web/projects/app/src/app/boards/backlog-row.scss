@@ -1,0 +1,92 @@
+:host {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-3);
+  min-height: 52px;
+  padding: var(--app-space-2) var(--app-space-4);
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  background: var(--mat-sys-surface-container-lowest);
+  color: var(--mat-sys-on-surface);
+
+  &.busy {
+    opacity: 0.6;
+  }
+}
+
+.handle {
+  flex: none;
+  color: var(--mat-sys-on-surface-variant);
+  cursor: grab;
+}
+
+.key {
+  flex: none;
+  font: var(--mat-sys-label-large);
+  color: var(--mat-sys-primary);
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+}
+
+.summary {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font: var(--mat-sys-body-large);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subtasks {
+  flex: none;
+  font: var(--mat-sys-label-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.epic {
+  flex: none;
+  max-width: 220px;
+  overflow: hidden;
+  padding: var(--app-space-1) var(--app-space-2);
+  border-radius: var(--mat-sys-corner-small);
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+  font: var(--mat-sys-label-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.estimate {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 var(--app-space-1);
+  border-radius: var(--mat-sys-corner-full);
+  background: var(--mat-sys-surface-container-high);
+  font: var(--mat-sys-label-large);
+
+  &.none {
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+@media (width <= 720px) {
+  :host {
+    flex-wrap: wrap;
+  }
+
+  .summary {
+    flex-basis: 100%;
+    order: 1;
+    white-space: normal;
+  }
+
+  .epic {
+    display: none;
+  }
+}

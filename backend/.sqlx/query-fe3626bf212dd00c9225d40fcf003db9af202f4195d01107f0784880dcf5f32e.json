@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO sprint (id, tenant_id, board_id, sequence, name, goal, start_date, end_date, created_by)\n        VALUES ($1, app_current_tenant(), $2, $3, $4, $5, $6, $7, $8)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Int4",
+        "Text",
+        "Text",
+        "Date",
+        "Date",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fe3626bf212dd00c9225d40fcf003db9af202f4195d01107f0784880dcf5f32e"
+}

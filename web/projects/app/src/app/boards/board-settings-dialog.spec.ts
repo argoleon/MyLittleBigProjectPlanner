@@ -30,6 +30,7 @@ const BOARD: Board = {
     { id: 'c3', name: 'Done', statuses: ['done'], wipLimit: null },
   ],
   canManage: true,
+  canPlan: true,
   version: 2,
 };
 
@@ -125,12 +126,29 @@ describe('the board settings dialog', () => {
     const created = await reply((url, method) => url === '/api/v1/boards' && method === 'POST', BOARD);
     expect(created.request.body).toEqual({
       nodeId: 'p1',
+      kind: 'kanban',
       name: 'Platform board',
       filter: 'project = PLAT',
       estimation: 'points',
       swimlanes: 'none',
     });
     expect(closed).toEqual([BOARD]);
+  });
+
+  it('creates a Scrum board, a kind set once and for all', async () => {
+    const { pane, click, type, reply, text, closed } = await open({ nodeId: 'p1' });
+    const kind = pane().querySelector('.kind mat-select');
+    expect(text(kind)).toBe('Kanban');
+    expect(text(pane().querySelector('.kind mat-hint'))).toContain('plans its tickets in sprints');
+    await click(kind);
+    expect(Array.from(document.querySelectorAll('mat-option')).map((o) => text(o))).toEqual(['Kanban', 'Scrum']);
+    await click(document.querySelectorAll('mat-option')[1]);
+    await type('input[formControlName="name"]', 'Platform Scrum');
+    await click(pane().ownerDocument.querySelector('button.save'));
+    const scrum = { ...BOARD, kind: 'scrum' as const, name: 'Platform Scrum' };
+    const created = await reply((url, method) => url === '/api/v1/boards' && method === 'POST', scrum);
+    expect(created.request.body).toEqual(expect.objectContaining({ nodeId: 'p1', kind: 'scrum', name: 'Platform Scrum' }));
+    expect(closed).toEqual([scrum]);
   });
 
   it('starts on the node asked for, even beyond the nodes listed', async () => {
@@ -143,6 +161,8 @@ describe('the board settings dialog', () => {
 
   it('changes the columns and quick filters of a board, in order', async () => {
     const { pane, click, type, reply, texts, values, closed } = await open({ board: BOARD });
+    // The kind is set at creation only.
+    expect(pane().querySelector('.kind')).toBeNull();
     expect(texts('h2')).toEqual(['Configure the board']);
     expect(values('.column-name input')).toEqual(['To do', 'In progress', 'Done']);
     expect(values('.column-wip input')).toEqual(['', '3', '']);
