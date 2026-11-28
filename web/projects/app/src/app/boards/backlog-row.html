@@ -31,7 +31,7 @@
     [attr.aria-label]="
       'boards.card.estimate.' + estimation() | transloco: { value: c.estimate }
     "
-    >{{ c.estimate }}</span
+    >{{ 'boards.card.estimateShort.' + estimation() | transloco: { value: (c.estimate | localNumber) } }}</span
   >
 }
 <ui-avatar [name]="c.assignee?.name" />

@@ -208,7 +208,7 @@ Un langage de requête unique, inspiré de JQL, sert à la recherche, aux filtre
   - Déplacer une carte vers une colonne lance la transition du workflow qui y mène, avec ses conditions, validateurs et post-fonctions ; sans transition possible, la carte revient à sa place et la raison s'affiche. Le clavier offre la même action qu'un glisser-déposer.
   - Les cartes suivent le rang manuel du board, partagé avec son backlog Scrum ; les tickets pas encore classés viennent après, dans l'ordre du filtre (`ORDER BY`). Les planificateurs (« gérer les sprints ») réordonnent les cartes d'une colonne, à la souris ou au clavier.
 - **Scrum** : backlog, planification et clôture de sprint (les tickets non terminés sont reportés au sprint suivant ou au backlog), board du sprint actif.
-- **Estimation** : points ou heures, configurable par board. Le workload reste toujours en heures, via les affectations.
+- **Estimation** : points ou heures, configurable par board : les story points, ou l'estimation initiale en heures (un champ système ; le reste à faire alimente le burndown). Colonnes, sprints et backlog affichent leur total, les tickets sans estimation comptés à part. Le workload reste toujours en heures, via les affectations.
 - **Rapports** : burndown (en points ou en heures, à partir du reste à faire), vélocité sur les N derniers sprints.
 - **Versions et releases** : par projet, avec date de sortie, statut et notes de version générées à partir des tickets.
 - **Epics** : un type de ticket, avec sa barre de progression.

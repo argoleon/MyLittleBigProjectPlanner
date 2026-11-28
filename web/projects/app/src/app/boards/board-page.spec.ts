@@ -74,10 +74,10 @@ const CAMILLE = { id: 'a2', name: 'Camille Martin' };
 function cards(overrides: Partial<BoardCards> = {}): BoardCards {
   return {
     columns: [
-      { id: 'c-todo', name: 'To do', statuses: ['todo'], wipLimit: null, count: 1, wip: 'unlimited' },
-      { id: 'c-progress', name: 'In progress', statuses: ['in_progress'], wipLimit: 3, count: 4, wip: 'exceeded' },
-      { id: 'c-review', name: 'Review', statuses: ['in_review'], wipLimit: null, count: 0, wip: 'unlimited' },
-      { id: 'c-done', name: 'Done', statuses: ['done'], wipLimit: null, count: 1, wip: 'unlimited' },
+      { id: 'c-todo', name: 'To do', statuses: ['todo'], wipLimit: null, count: 1, wip: 'unlimited', estimate: 5, unestimated: 0 },
+      { id: 'c-progress', name: 'In progress', statuses: ['in_progress'], wipLimit: 3, count: 4, wip: 'exceeded', estimate: 0, unestimated: 4 },
+      { id: 'c-review', name: 'Review', statuses: ['in_review'], wipLimit: null, count: 0, wip: 'unlimited', estimate: 0, unestimated: 0 },
+      { id: 'c-done', name: 'Done', statuses: ['done'], wipLimit: null, count: 1, wip: 'unlimited', estimate: 0, unestimated: 1 },
     ],
     swimlanes: 'none',
     lanes: [
@@ -230,6 +230,9 @@ describe('the Kanban board', () => {
     expect(first.querySelector('a.summary')?.getAttribute('href')).toBe('/issues/PLAT-1');
     expect(text(first.querySelector('.blocked'))).toBe('block Blocked by PLAT-9');
     expect(first.querySelector('.estimate')?.getAttribute('aria-label')).toBe('5 points');
+    expect(text(first.querySelector('.estimate'))).toBe('5 pts');
+    // Each column's estimate, its cards not estimated apart; none for an empty column.
+    expect(texts('.column-estimate')).toEqual(['5 pts', '0 pts · 4 not estimated', '0 pts · 1 not estimated']);
     expect(text(first.querySelector('ui-avatar'))).toBe('CMCamille Martin');
     expect(first.getAttribute('aria-label')).toBe('PLAT-1 Ticket 1');
     expect(page().querySelector('.configure')).not.toBeNull();
@@ -413,6 +416,17 @@ describe('the Kanban board', () => {
     expect(page().querySelector('.new-ticket')).toBeNull();
     expect(page().querySelector('button.move')).toBeNull();
     expect(text(page().querySelector('.subtitle'))).toContain('Archived: read-only');
+  });
+
+  it('shows the estimates of an hour board in hours, localized', async () => {
+    const hourly = cards();
+    hourly.columns[0] = { ...hourly.columns[0], estimate: 7.5 };
+    hourly.lanes[0].cells[0] = [card(1, 'todo', { estimate: 7.5 })];
+    const { page, text } = await open({ ...BOARD, estimation: 'hours' }, hourly);
+    const first = page().querySelector('app-board-card')!;
+    expect(text(first.querySelector('.estimate'))).toBe('7.5 h');
+    expect(first.querySelector('.estimate')?.getAttribute('aria-label')).toBe('7.5 hours estimated');
+    expect(text(page().querySelector('.column-estimate'))).toBe('7.5 h');
   });
 
   it('tells when the board cannot be read', async () => {

@@ -21,6 +21,10 @@ All notable changes of My Little Big Project Planner. The format follows [Keep a
   - **Close the sprint** (from its board or the backlog) keeps its finished tickets (status of the Done category) as its completed scope, with their estimates, and sends the unfinished ones to the backlog, a future sprint of the board (the next one by default) or a new sprint.
   - The backlog lists the **closed sprints** on demand, each with the points and tickets it committed to and completed; its scope shows every ticket, committed or added later, done, not done or taken out.
   - `POST /api/v1/sprints/{id}/start`, `POST /api/v1/sprints/{id}/close`, `GET /api/v1/boards/{id}/sprints?state=open|closed`, `GET /api/v1/sprints/{id}/scope`; sprints carry their committed and completed scope; a Scrum board's cards carry its active `sprint`; problems `sprint.not_active`, `sprint.active_exists`.
+- **Estimation in points or hours** (#270)
+  - A new system field, **Original estimate** (hours, on every type), added to every configuration, its drafts and its general screens. Boards estimated in hours now sum it, for their columns, sprints, backlog and the committed and completed scope of their sprints; **Remaining work** stays for the burndown. Upgrade: tickets with remaining work and no original estimate get their remaining work as original estimate, which hour boards summed until now.
+  - Every column of a board shows the total estimate of its cards, with those not estimated counted apart; estimates read with their unit ("5 pts", "7.5 h"), in the member's locale. The board settings choose the unit with a toggle; workload always stays in hours, through assignments.
+  - Board cards' columns carry their `estimate` and `unestimated`.
 
 ## [0.8.0] - 2026-11-27
 

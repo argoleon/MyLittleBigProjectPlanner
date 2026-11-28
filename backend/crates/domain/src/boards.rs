@@ -114,13 +114,39 @@ impl Estimation {
     }
 
     /// The key of the system field holding the estimate (`fields::SYSTEM_FIELDS`):
-    /// story points, or the remaining work in hours.
+    /// story points, or the original estimate in hours (L09-US03). Workload
+    /// never reads it: it stays in hours, through assignments.
     pub const fn field_key(self) -> &'static str {
         match self {
             Self::Points => "story_points",
-            Self::Hours => "remaining",
+            Self::Hours => "original_estimate",
         }
     }
+}
+
+/// The estimate of a list of cards, in the board's estimation.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct EstimateTotals {
+    /// The sum of the estimates given.
+    pub estimate: f64,
+    /// The cards without one: counted apart, and flagged.
+    pub unestimated: usize,
+}
+
+/// The totals of `estimates`, one per card (`None`: not estimated).
+pub fn estimate_totals(estimates: impl IntoIterator<Item = Option<f64>>) -> EstimateTotals {
+    estimates
+        .into_iter()
+        .fold(EstimateTotals::default(), |totals, estimate| match estimate {
+            Some(estimate) => EstimateTotals {
+                estimate: totals.estimate + estimate,
+                ..totals
+            },
+            None => EstimateTotals {
+                unestimated: totals.unestimated + 1,
+                ..totals
+            },
+        })
 }
 
 /// A column, as written.
@@ -786,10 +812,37 @@ mod tests {
         assert_eq!(Swimlanes::parse("sprint"), None);
         assert_eq!(Estimation::parse("days"), None);
         assert_eq!(Estimation::Points.field_key(), "story_points");
-        assert_eq!(Estimation::Hours.field_key(), "remaining");
+        assert_eq!(Estimation::Hours.field_key(), "original_estimate");
+        for estimation in Estimation::ALL {
+            assert!(
+                crate::fields::is_system_key(estimation.field_key()),
+                "{estimation:?}"
+            );
+        }
         assert_eq!(
             [Wip::Unlimited, Wip::Under, Wip::Reached, Wip::Exceeded].map(Wip::as_str),
             ["unlimited", "under", "reached", "exceeded"]
+        );
+    }
+
+    #[test]
+    fn totals_sum_the_estimates_given_and_count_the_others() {
+        assert_eq!(estimate_totals([]), EstimateTotals::default());
+        assert!(estimate_totals([None]).estimate.is_sign_positive());
+        // Points: decimals kept; hours: the same sum, read in hours.
+        assert_eq!(
+            estimate_totals([Some(8.0), Some(0.5), None, Some(3.0), None]),
+            EstimateTotals {
+                estimate: 11.5,
+                unestimated: 2
+            }
+        );
+        assert_eq!(
+            estimate_totals([Some(7.5), Some(16.0)]),
+            EstimateTotals {
+                estimate: 23.5,
+                unestimated: 0
+            }
         );
     }
 }

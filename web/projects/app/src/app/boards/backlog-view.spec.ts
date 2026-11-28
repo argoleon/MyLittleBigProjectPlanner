@@ -226,6 +226,8 @@ describe('the Scrum backlog', () => {
     expect(text(row('PLAT-1')!.querySelector('.epic'))).toBe('Unified authentication');
     expect(text(row('PLAT-3')!.querySelector('.subtasks'))).toBe('2 sub-tasks');
     expect(row('PLAT-3')!.querySelector('.estimate')?.getAttribute('aria-label')).toBe('5 points');
+    expect(text(row('PLAT-3')!.querySelector('.estimate'))).toBe('5 pts');
+    expect(text(row('PLAT-4')!.querySelector('.estimate'))).toBe('–');
     expect(row('PLAT-4')!.querySelector('.estimate')?.getAttribute('aria-label')).toBe('Not estimated');
     expect(row('PLAT-1')!.querySelector('.handle')).not.toBeNull();
     expect(page().querySelector('.create-sprint')).not.toBeNull();
@@ -412,8 +414,8 @@ describe('the sprint cycle', () => {
 
   const activeCards = (overrides: object = {}) => ({
     columns: [
-      { id: 'c-todo', name: 'To do', statuses: ['todo'], wipLimit: null, count: 1, wip: 'unlimited' },
-      { id: 'c-done', name: 'Done', statuses: ['done'], wipLimit: null, count: 1, wip: 'unlimited' },
+      { id: 'c-todo', name: 'To do', statuses: ['todo'], wipLimit: null, count: 1, wip: 'unlimited', estimate: 3, unestimated: 0 },
+      { id: 'c-done', name: 'Done', statuses: ['done'], wipLimit: null, count: 1, wip: 'unlimited', estimate: 8, unestimated: 0 },
     ],
     swimlanes: 'none',
     lanes: [{ id: null, key: null, label: null, cells: [[item(2, 3).card], [item(1, 8, { status: DONE }).card]] }],

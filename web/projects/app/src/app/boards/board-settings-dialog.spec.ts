@@ -144,10 +144,15 @@ describe('the board settings dialog', () => {
     expect(Array.from(document.querySelectorAll('mat-option')).map((o) => text(o))).toEqual(['Kanban', 'Scrum']);
     await click(document.querySelectorAll('mat-option')[1]);
     await type('input[formControlName="name"]', 'Platform Scrum');
+    // Estimated in hours: the original estimate.
+    const units = pane().querySelectorAll('.estimation-toggle button');
+    expect(Array.from(units).map((b) => text(b))).toEqual(['Story points', 'Hours (original estimate)']);
+    expect(text(pane().querySelector('.estimation-hint'))).toBe('Workload always stays in hours, through assignments.');
+    await click(units[1]);
     await click(pane().ownerDocument.querySelector('button.save'));
     const scrum = { ...BOARD, kind: 'scrum' as const, name: 'Platform Scrum' };
     const created = await reply((url, method) => url === '/api/v1/boards' && method === 'POST', scrum);
-    expect(created.request.body).toEqual(expect.objectContaining({ nodeId: 'p1', kind: 'scrum', name: 'Platform Scrum' }));
+    expect(created.request.body).toEqual(expect.objectContaining({ nodeId: 'p1', kind: 'scrum', name: 'Platform Scrum', estimation: 'hours' }));
     expect(closed).toEqual([scrum]);
   });
 

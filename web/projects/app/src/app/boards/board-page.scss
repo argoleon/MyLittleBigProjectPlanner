@@ -116,6 +116,7 @@
 
 .column-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--app-space-2);
@@ -266,4 +267,8 @@
   margin: var(--app-space-4) 0 0;
   font: var(--mat-sys-body-medium);
   color: var(--mat-sys-on-surface-variant);
+}
+
+.column-estimate {
+  font: var(--mat-sys-label-medium);
 }

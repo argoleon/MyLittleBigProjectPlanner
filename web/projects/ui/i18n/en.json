@@ -2038,7 +2038,7 @@
     },
     "estimation": {
       "points": "Story points",
-      "hours": "Hours (remaining work)"
+      "hours": "Hours (original estimate)"
     },
     "truncated": "This board shows the first 1,000 tickets of its filter: narrow the filter to see the others.",
     "wip": {
@@ -2064,12 +2064,16 @@
       "priority": "Priority: {{ priority }}",
       "estimate": {
         "points": "{{ value }} points",
-        "hours": "{{ value }} hours remaining"
+        "hours": "{{ value }} hours estimated"
       },
       "move": "Move {{ key }}",
       "moveTo": "Move to {{ column }}",
       "moveUp": "Move up",
-      "moveDown": "Move down"
+      "moveDown": "Move down",
+      "estimateShort": {
+        "points": "{{ value }} pts",
+        "hours": "{{ value }} h"
+      }
     },
     "choose": {
       "title": "Move {{ key }}",
@@ -2109,7 +2113,8 @@
         "confirm": "Delete"
       },
       "kind": "Kind",
-      "kindHint": "Set at creation. A Scrum board plans its tickets in sprints from a backlog."
+      "kindHint": "Set at creation. A Scrum board plans its tickets in sprints from a backlog.",
+      "estimationHint": "Workload always stays in hours, through assignments."
     },
     "views": {
       "label": "View of the board",
@@ -2124,7 +2129,8 @@
       },
       "none": "No active sprint: start one from the backlog.",
       "openBacklog": "Open the backlog"
-    }
+    },
+    "unestimated": "{{ count }} not estimated"
   },
   "exports": {
     "title": "Export",
@@ -2862,7 +2868,7 @@
     "title": "Backlog",
     "estimatedIn": {
       "points": "Estimated in points",
-      "hours": "Estimated in hours of remaining work"
+      "hours": "Estimated in hours (original estimate)"
     },
     "createSprint": "Create a sprint",
     "hint": "drag a ticket to a sprint to plan it",

@@ -399,3 +399,141 @@ async fn fields_stay_in_their_tenant() {
     let foreign = fields::insert(&mut tx, published, new_id(), "stolen", Kind::Checkbox, &stolen).await;
     assert!(foreign.is_err());
 }
+
+/// The item ids of the original estimate in `version`'s fields and on its general screens.
+async fn original_estimate_of(conn: &mut PgConnection, version: Uuid) -> (Option<Uuid>, i64) {
+    let item: Option<Uuid> = infra::sqlx::query_scalar(
+        "SELECT item_id FROM field_def WHERE version_id = $1 AND key = 'original_estimate'",
+    )
+    .bind(version)
+    .fetch_optional(&mut *conn)
+    .await
+    .unwrap();
+    let screens: i64 = infra::sqlx::query_scalar(
+        "SELECT count(*) FROM screen WHERE version_id = $1 AND issue_type_id IS NULL \
+         AND kind IN ('creation', 'view') AND $2 = ANY (field_ids)",
+    )
+    .bind(version)
+    .bind(item)
+    .fetch_one(&mut *conn)
+    .await
+    .unwrap();
+    (item, screens)
+}
+
+#[tokio::test]
+async fn configurations_made_before_get_the_original_estimate() {
+    let db = TestDb::new().await;
+    let a = &db.tenant_a;
+    let by = db
+        .add_member(a, infra::accounts::TenantRole::TenantAdmin)
+        .await
+        .account_id;
+    let mut tx = begin_tenant_tx(&db.app_pool, a.id).await.unwrap();
+    let (id, published) = config(&mut tx, "Software").await;
+    let draft = draft(&mut tx, id).await;
+    // New configurations have it, on their general screens.
+    let (item, screens) = original_estimate_of(&mut tx, published).await;
+    assert!(item.is_some());
+    assert_eq!(screens, 2);
+    let remaining = find(&fields::list(&mut tx, published).await.unwrap(), "remaining").item_id;
+    let project = infra::nodes::insert(
+        &mut tx,
+        &infra::nodes::NewNode {
+            id: new_id(),
+            node_type: domain::hierarchy::NodeType::Project,
+            key: "PLAT",
+            fields: infra::nodes::NodeFields {
+                key: None,
+                name: "Identity platform",
+                description: "",
+                objectives: "",
+                start_date: None,
+                end_date: None,
+                health: domain::hierarchy::Health::OnTrack,
+                owners: &[],
+            },
+            parent: None,
+            created_by: by,
+        },
+    )
+    .await
+    .unwrap()
+    .unwrap()
+    .id;
+    assert!(configs::assign(&mut tx, project, id).await.unwrap());
+    // As the migration finds a configuration made before: no original estimate.
+    infra::sqlx::query(
+        "UPDATE screen SET field_ids = array_remove(field_ids, $1) WHERE version_id = ANY ($2)",
+    )
+    .bind(item)
+    .bind([published, draft])
+    .execute(&mut *tx)
+    .await
+    .unwrap();
+    infra::sqlx::query("DELETE FROM field_def WHERE key = 'original_estimate' AND version_id = ANY ($1)")
+        .bind([published, draft])
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    let ticket = |number: i32, fields: serde_json::Value| {
+        infra::sqlx::query(
+            "INSERT INTO issue (id, tenant_id, project_id, key_number, key, type_id, status_id, summary, fields) \
+             SELECT $1, app_current_tenant(), $2, $3, 'PLAT-' || $3, \
+                    (SELECT item_id FROM issue_type WHERE version_id = $4 LIMIT 1), \
+                    (SELECT item_id FROM workflow_status WHERE version_id = $4 LIMIT 1), 'Ticket', $5",
+        )
+        .bind(new_id())
+        .bind(project)
+        .bind(number)
+        .bind(published)
+        .bind(fields)
+    };
+    ticket(1, serde_json::json!({ remaining.to_string(): 6.5 }))
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    ticket(2, serde_json::json!({})).execute(&mut *tx).await.unwrap();
+    tx.commit().await.unwrap();
+
+    // The migration's step, in tenant A's context, as the owner runs it.
+    let mut owner = db.owner_pool.begin().await.unwrap();
+    infra::sqlx::query("SELECT set_config('app.tenant_id', $1, true)")
+        .bind(a.id.to_string())
+        .execute(&mut *owner)
+        .await
+        .unwrap();
+    let added: i32 = infra::sqlx::query_scalar("SELECT app_add_original_estimate()")
+        .fetch_one(&mut *owner)
+        .await
+        .unwrap();
+    assert_eq!(added, 1, "only the configuration without it");
+    let again: i32 = infra::sqlx::query_scalar("SELECT app_add_original_estimate()")
+        .fetch_one(&mut *owner)
+        .await
+        .unwrap();
+    assert_eq!(again, 0);
+    owner.commit().await.unwrap();
+
+    let mut tx = begin_tenant_tx(&db.app_pool, a.id).await.unwrap();
+    let (added_item, screens) = original_estimate_of(&mut tx, published).await;
+    let added_item = added_item.unwrap();
+    assert_eq!(screens, 2);
+    // The draft has it with the same identity.
+    assert_eq!(original_estimate_of(&mut tx, draft).await, (Some(added_item), 2));
+    let all = fields::list(&mut tx, published).await.unwrap();
+    let field = find(&all, "original_estimate");
+    assert_eq!((field.options.unit, field.all_types), (Some(Unit::Hours), true));
+    assert_eq!(all.last().unwrap().key, "original_estimate");
+    // The remaining work became the original estimate, where there was one.
+    let estimates: Vec<Option<f64>> = infra::sqlx::query_scalar(
+        "SELECT (fields ->> $1::text)::float8 FROM issue WHERE project_id = $2 ORDER BY key_number",
+    )
+    .bind(added_item)
+    .bind(project)
+    .fetch_all(&mut *tx)
+    .await
+    .unwrap();
+    assert_eq!(estimates, [Some(6.5), None]);
+    tx.commit().await.unwrap();
+}

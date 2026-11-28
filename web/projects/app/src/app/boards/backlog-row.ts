@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { Avatar, BacklogItem, BoardEstimation, Sprint, StatusChip, TypeChip } from 'ui';
+import { Avatar, BacklogItem, BoardEstimation, LocalNumberPipe, Sprint, StatusChip, TypeChip } from 'ui';
 
 import { chipCategory, chipKind } from '../issues/issue-fields';
 import { ListId } from './backlog-model';
@@ -29,6 +29,7 @@ export type Shift = 'up' | 'down' | 'top' | 'bottom';
   selector: 'app-backlog-row',
   imports: [
     Avatar,
+    LocalNumberPipe,
     CdkDragHandle,
     MatButtonModule,
     MatIconModule,

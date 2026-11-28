@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { Avatar, BoardCard as Card, BoardColumnCards, TypeChip, priorityIcon } from 'ui';
+import { Avatar, BoardCard as Card, BoardColumnCards, LocalNumberPipe, TypeChip, priorityIcon } from 'ui';
 
 import { chipKind } from '../issues/issue-fields';
 
@@ -17,7 +17,7 @@ import { chipKind } from '../issues/issue-fields';
  */
 @Component({
   selector: 'app-board-card',
-  imports: [Avatar, MatButtonModule, MatIconModule, MatMenuModule, RouterLink, TranslocoPipe, TypeChip],
+  imports: [Avatar, LocalNumberPipe, MatButtonModule, MatIconModule, MatMenuModule, RouterLink, TranslocoPipe, TypeChip],
   template: `
     @let c = card();
     <div class="top">
@@ -41,7 +41,9 @@ import { chipKind } from '../issues/issue-fields';
         {{ priorityIcon(c.priority) }}
       </mat-icon>
       @if (c.estimate !== null && c.estimate !== undefined) {
-        <span class="estimate" [attr.aria-label]="'boards.card.estimate.' + estimation() | transloco: { value: c.estimate }">{{ c.estimate }}</span>
+        <span class="estimate" [attr.aria-label]="'boards.card.estimate.' + estimation() | transloco: { value: c.estimate }">{{
+          'boards.card.estimateShort.' + estimation() | transloco: { value: (c.estimate | localNumber) }
+        }}</span>
       }
       <ui-avatar [name]="c.assignee?.name" />
       @if (movable() && (targets().length > 0 || rankable())) {
